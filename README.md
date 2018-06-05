@@ -1,9 +1,11 @@
 ## LaserDisc
 
 [![Build Status](https://travis-ci.org/laserdisc-io/laserdisc.svg?branch=master)](https://travis-ci.org/laserdisc-io/laserdisc)
-[![Latest version](https://index.scala-lang.org/laserdisc/laserdisc/laserdisc-core/latest.svg?color=orange&v=1)](https://index.scala-lang.org/laserdisc/laserdisc/laserdisc-core)
-[![Latest version](https://index.scala-lang.org/laserdisc/laserdisc/laserdisc-fs2/latest.svg?color=blue&v=1)](https://index.scala-lang.org/laserdisc/laserdisc/laserdisc-fs2)
 [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.17.svg)](http://scala-js.org)
+[![Latest core version](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core/latest.svg?color=orange&v=1)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
+[![core docs](https://www.javadoc.io/badge/io.laserdisc/laserdisc-core_2.12.svg?color=orange&label=core docs)](https://www.javadoc.io/doc/io.laserdisc/laserdisc-core_2.12)
+[![Latest fs2 version](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2/latest.svg?color=blue&v=1)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2)
+[![fs2 docs](https://www.javadoc.io/badge/io.laserdisc/laserdisc-fs2_2.12.svg?color=blue&label=fs2 docs)](https://www.javadoc.io/doc/io.laserdisc/laserdisc-fs2_2.12)
 
 LaserDisc is a(nother) Scala driver for [Redis](https://redis.io/), written in Scala from the ground up.
 

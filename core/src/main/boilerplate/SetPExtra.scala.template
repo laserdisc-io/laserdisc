@@ -1,0 +1,53 @@
+package laserdisc
+package protocol
+
+trait SetPExtra { this: SetP =>
+  import Read.==>
+  import eu.timepit.refined.api.RefinedType
+
+  //SADD
+  [..21#final def sadd[A: Show](key: Key, [#member1: A#]): Protocol.Aux[NonNegInt] =
+    sadd(key, RefinedType[OneOrMore[A]].unsafeRefine([#member1# :: ] :: Nil))#
+  ]
+
+  //SDIFF
+  [..21#final def sdiff[A](key##1: Key, [#key2: Key#])(
+      implicit ev: NonNullBulkString ==> A
+  ): Protocol.Aux[Seq[A]] =
+    sdiff[A](TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil))#
+  ]
+
+  //SDIFFSTORE
+  [..20#final def sdiffstore(key##1: Key, [#key2: Key#], destinationKey: Key): Protocol.Aux[NonNegInt] =
+    sdiffstore(TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil), destinationKey)#
+  ]
+
+  //SINTER
+  [..21#final def sinter[A](key##1: Key, [#key2: Key#])(
+      implicit ev: NonNullBulkString ==> A
+  ): Protocol.Aux[Seq[A]] =
+    sinter[A](TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil))#
+  ]
+
+  //SINTERSTORE
+  [..20#final def sinterstore(key##1: Key, [#key2: Key#], destinationKey: Key): Protocol.Aux[NonNegInt] =
+    sinterstore(TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil), destinationKey)#
+  ]
+
+  //SREM
+  [..21#final def srem[A: Show](key: Key, [#member1: A#]): Protocol.Aux[NonNegInt] =
+    srem(key, RefinedType[OneOrMore[A]].unsafeRefine([#member1# :: ] :: Nil))#
+  ]
+
+  //SUNION
+  [..21#final def sunion[A](key##1: Key, [#key2: Key#])(
+      implicit ev: NonNullBulkString ==> A
+  ): Protocol.Aux[Seq[A]] =
+    sunion[A](TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil))#
+  ]
+
+  //SUNIONSTORE
+  [..20#final def sunionstore(key##1: Key, [#key2: Key#], destinationKey: Key): Protocol.Aux[NonNegInt] =
+    sunionstore(TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil), destinationKey)#
+  ]
+}

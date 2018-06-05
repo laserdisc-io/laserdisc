@@ -1,0 +1,72 @@
+package laserdisc
+package protocol
+
+trait SortedSetPExtra { this: SortedSetP =>
+  import SortedSetP.{Aggregate, Flag}
+  import eu.timepit.refined.api.RefinedType
+
+  //ZADD with no flag
+  [..21#final def zadd[A: Show](key: Key, [#member1: A, score1: ValidDouble#]): Protocol.Aux[NonNegInt] =
+    zadd(key, RefinedType[OneOrMore[(A, ValidDouble)]].unsafeRefine([#(member1 -> score1)# :: ] :: Nil))#
+  ]
+
+  //ZADD with flag
+  [..20#final def zadd[A: Show](key: Key, flag: Flag, [#member1: A, score1: ValidDouble#]): Protocol.Aux[NonNegInt] =
+    zadd(key, flag, RefinedType[OneOrMore[(A, ValidDouble)]].unsafeRefine([#(member1 -> score1)# :: ] :: Nil))#
+  ]
+
+  //ZADD with no flag changed
+  [..21#final def zaddch[A: Show](key: Key, [#member1: A, score1: ValidDouble#]): Protocol.Aux[NonNegInt] =
+    zaddch(key, RefinedType[OneOrMore[(A, ValidDouble)]].unsafeRefine([#(member1 -> score1)# :: ] :: Nil))#
+  ]
+
+  //ZADD with flag changed
+  [..20#final def zaddch[A: Show](key: Key, flag: Flag, [#member1: A, score1: ValidDouble#]): Protocol.Aux[NonNegInt] =
+    zaddch(key, flag, RefinedType[OneOrMore[(A, ValidDouble)]].unsafeRefine([#(member1 -> score1)# :: ] :: Nil))#
+  ]
+
+  //ZINTERSTORE with no weights
+  [..20#final def zinterstore(key##1: Key, [#key2: Key#], destinationKey: Key): Protocol.Aux[NonNegInt] =
+    zinterstore(TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil), destinationKey)#
+  ]
+
+  //ZINTERSTORE with weights
+  [..20#final def zinterstore(key##1: Key, weight##1: ValidDouble, [#key2: Key, weight2: ValidDouble#], destinationKey: Key): Protocol.Aux[NonNegInt] =
+    zinterstoreweighted(TwoOrMoreWeightedKeys.unsafeFrom((key##1 -> weight##1) :: [#(key2 -> weight2)# :: ] :: Nil), destinationKey)#
+  ]
+
+  //ZINTERSTORE with no weights
+  [..19#final def zinterstore(key##1: Key, [#key2: Key#], destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] =
+    zinterstore(TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil), destinationKey, aggregate)#
+  ]
+
+  //ZINTERSTORE with weights
+  [..19#final def zinterstore(key##1: Key, weight##1: ValidDouble, [#key2: Key, weight2: ValidDouble#], destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] =
+    zinterstoreweighted(TwoOrMoreWeightedKeys.unsafeFrom((key##1 -> weight##1) :: [#(key2 -> weight2)# :: ] :: Nil), destinationKey, aggregate)#
+  ]
+
+  //ZREM
+  [..21#final def zrem[A: Show](key: Key, [#member1: A#]): Protocol.Aux[NonNegInt] =
+    zrem(key, RefinedType[OneOrMore[A]].unsafeRefine([#member1# :: ] :: Nil))#
+  ]
+
+  //ZUNIONSTORE with no weights
+  [..20#final def zunionstore(key##1: Key, [#key2: Key#], destinationKey: Key): Protocol.Aux[NonNegInt] =
+    zunionstore(TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil), destinationKey)#
+  ]
+
+  //ZUNIONSTORE with weights
+  [..20#final def zunionstore(key##1: Key, weight##1: ValidDouble, [#key2: Key, weight2: ValidDouble#], destinationKey: Key): Protocol.Aux[NonNegInt] =
+    zunionstoreweighted(TwoOrMoreWeightedKeys.unsafeFrom((key##1 -> weight##1) :: [#(key2 -> weight2)# :: ] :: Nil), destinationKey)#
+  ]
+
+  //ZUNIONSTORE with no weights
+  [..19#final def zunionstore(key##1: Key, [#key2: Key#], destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] =
+    zunionstore(TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil), destinationKey, aggregate)#
+  ]
+
+  //ZUNIONSTORE with weights
+  [..19#final def zunionstore(key##1: Key, weight##1: ValidDouble, [#key2: Key, weight2: ValidDouble#], destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] =
+    zunionstoreweighted(TwoOrMoreWeightedKeys.unsafeFrom((key##1 -> weight##1) :: [#(key2 -> weight2)# :: ] :: Nil), destinationKey, aggregate)#
+  ]
+}

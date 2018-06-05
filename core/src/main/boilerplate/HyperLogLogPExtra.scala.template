@@ -1,0 +1,19 @@
+package laserdisc
+package protocol
+
+trait HyperLogLogPExtra { this: HyperLogLogP =>
+  //PFADD
+  [..21#final def pfadd(key: Key, [#element1: Key#]): Protocol.Aux[Boolean] =
+    pfadd(key, OneOrMoreKeys.unsafeFrom([#element1# :: ] :: Nil))#
+  ]
+
+  //PFCOUNT
+  [#final def pfcount([#key1: Key#]): Protocol.Aux[NonNegInt] =
+    pfcount(OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil))#
+  ]
+
+  //PFMERGE
+  [..20#final def pfmerge(sourceKey##1: Key, [#sourceKey2: Key#], destinationKey: Key): Protocol.Aux["OK"] =
+    pfmerge(TwoOrMoreKeys.unsafeFrom(sourceKey##1 :: [#sourceKey2# :: ] :: Nil), destinationKey)#
+  ]
+}

@@ -1,0 +1,1226 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="566" onload="init(evt)" viewBox="0 0 1200 566" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs >
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	.func_g:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	var details, searchbtn, matchedtxt, svg;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+	}
+
+	// mouse-over for info
+	function s(node) {		// show
+		info = g_to_text(node);
+		details.nodeValue = "Function: " + info;
+	}
+	function c() {			// clear
+		details.nodeValue = ' ';
+	}
+
+	// ctrl-F for search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+	})
+
+	// functions
+	function find_child(parent, name, attr) {
+		var children = parent.childNodes;
+		for (var i=0; i<children.length;i++) {
+			if (children[i].tagName == name)
+				return (attr != undefined) ? children[i].attributes[attr].value : children[i];
+		}
+		return;
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_"+attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_"+attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_"+attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes["width"].value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes["x"].value = parseFloat(r.attributes["x"].value) +3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2*12*0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+
+		for (var x=txt.length-2; x>0; x--) {
+			if (t.getSubStringLength(0, x+2) <= w) {
+				t.textContent = txt.substring(0,x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for(var i=0, c=e.childNodes; i<c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes["x"] != undefined) {
+				orig_save(e, "x");
+				e.attributes["x"].value = (parseFloat(e.attributes["x"].value) - x - 10) * ratio + 10;
+				if(e.tagName == "text") e.attributes["x"].value = find_child(e.parentNode, "rect", "x") + 3;
+			}
+			if (e.attributes["width"] != undefined) {
+				orig_save(e, "width");
+				e.attributes["width"].value = parseFloat(e.attributes["width"].value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for(var i=0, c=e.childNodes; i<c.length; i++) {
+			zoom_child(c[i], x-10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes["x"] != undefined) {
+				orig_save(e, "x");
+				e.attributes["x"].value = 10;
+			}
+			if (e.attributes["width"] != undefined) {
+				orig_save(e, "width");
+				e.attributes["width"].value = parseInt(svg.width.baseVal.value) - (10*2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for(var i=0, c=e.childNodes; i<c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr["width"].value);
+		var xmin = parseFloat(attr["x"].value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr["y"].value);
+		var ratio = (svg.width.baseVal.value - 2*10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		var unzoombtn = document.getElementById("unzoom");
+		unzoombtn.style["opacity"] = "1.0";
+
+		var el = document.getElementsByTagName("g");
+		for(var i=0;i<el.length;i++){
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a["x"].value);
+			var ew = parseFloat(a["width"].value);
+			// Is it an ancestor
+			if (0 == 0) {
+				var upstack = parseFloat(a["y"].value) > ymin;
+			} else {
+				var upstack = parseFloat(a["y"].value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.style["opacity"] = "0.5";
+					zoom_parent(e);
+					e.onclick = function(e){unzoom(); zoom(this);};
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.style["display"] = "none";
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.style["display"] = "none";
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					e.onclick = function(e){zoom(this);};
+					update_text(e);
+				}
+			}
+		}
+	}
+	function unzoom() {
+		var unzoombtn = document.getElementById("unzoom");
+		unzoombtn.style["opacity"] = "0.0";
+
+		var el = document.getElementsByTagName("g");
+		for(i=0;i<el.length;i++) {
+			el[i].style["display"] = "block";
+			el[i].style["opacity"] = "1";
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+	}
+
+	// search
+	function reset_search() {
+		var el = document.getElementsByTagName("rect");
+		for (var i=0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)", "");
+			if (term != null) {
+				search(term)
+			}
+		} else {
+			reset_search();
+			searching = 0;
+			searchbtn.style["opacity"] = "0.1";
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.style["opacity"] = "0.0";
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		var re = new RegExp(term);
+		var el = document.getElementsByTagName("g");
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			if (e.attributes["class"].value != "func_g")
+				continue;
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (rect == null) {
+				// the rect might be wrapped in an anchor
+				// if nameattr href is being used
+				if (rect = find_child(e, "a")) {
+				    rect = find_child(r, "rect");
+				}
+			}
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes["width"].value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes["x"].value);
+				orig_save(rect, "fill");
+				rect.attributes["fill"].value =
+				    "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+
+		searchbtn.style["opacity"] = "1.0";
+		searchbtn.firstChild.nodeValue = "Reset Search"
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.style["opacity"] = "1.0";
+		pct = 100 * count / maxwidth;
+		if (pct == 100)
+			pct = "100"
+		else
+			pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+	function searchover(e) {
+		searchbtn.style["opacity"] = "1.0";
+	}
+	function searchout(e) {
+		if (searching) {
+			searchbtn.style["opacity"] = "1.0";
+		} else {
+			searchbtn.style["opacity"] = "0.1";
+		}
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="566.0" fill="url(#background)"  />
+<text text-anchor="middle" x="600.00" y="24" font-size="17" font-family="Verdana" fill="rgb(0,0,0)"  >Flame Graph</text>
+<text text-anchor="" x="10.00" y="549" font-size="12" font-family="Verdana" fill="rgb(0,0,0)" id="details" > </text>
+<text text-anchor="" x="10.00" y="24" font-size="12" font-family="Verdana" fill="rgb(0,0,0)" id="unzoom" onclick="unzoom()" style="opacity:0.0;cursor:pointer" >Reset Zoom</text>
+<text text-anchor="" x="1090.00" y="24" font-size="12" font-family="Verdana" fill="rgb(0,0,0)" id="search" onmouseover="searchover()" onmouseout="searchout()" onclick="search_prompt()" style="opacity:0.1;cursor:pointer" >Search</text>
+<text text-anchor="" x="1090.00" y="549" font-size="12" font-family="Verdana" fill="rgb(0,0,0)" id="matched" > </text>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPCodecs.$anonfun$simpleStringCodec$2$adapted(Object):257 (27 samples, 0.23%)</title><rect x="810.3" y="213" width="2.7" height="15.0" fill="rgb(239,46,7)" rx="2" ry="2" />
+<text text-anchor="" x="813.32" y="223.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Charset.atBugLevel(String):287 (47 samples, 0.40%)</title><rect x="198.5" y="69" width="4.7" height="15.0" fill="rgb(226,229,5)" rx="2" ry="2" />
+<text text-anchor="" x="201.48" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BenchmarkHandler$BenchmarkTask.call():437 (11,655 samples, 99.87%)</title><rect x="10.0" y="405" width="1178.5" height="15.0" fill="rgb(228,131,53)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="415.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >BenchmarkHandler$BenchmarkTask.call():437</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCodec.encode(Object):10 (6,480 samples, 55.53%)</title><rect x="155.1" y="181" width="655.2" height="15.0" fill="rgb(230,126,2)" rx="2" ry="2" />
+<text text-anchor="" x="158.10" y="191.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >StringCodec.encode(Object):10</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.duplicate():111 (302 samples, 2.59%)</title><rect x="397.6" y="117" width="30.5" height="15.0" fill="rgb(223,213,28)" rx="2" ry="2" />
+<text text-anchor="" x="400.57" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >He..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Attempt$Successful.flatMap(Function1):94 (953 samples, 8.17%)</title><rect x="58.7" y="181" width="96.4" height="15.0" fill="rgb(223,47,21)" rx="2" ry="2" />
+<text text-anchor="" x="61.74" y="191.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Attempt$Suc..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPCodecs$$anon$5.encode(Object):322 (3,403 samples, 29.16%)</title><rect x="843.8" y="261" width="344.1" height="15.0" fill="rgb(254,10,0)" rx="2" ry="2" />
+<text text-anchor="" x="846.79" y="271.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPCodecs$$anon$5.encode(Object):322</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer, ByteBuffer, boolean):589 (36 samples, 0.31%)</title><rect x="1172.1" y="117" width="3.6" height="15.0" fill="rgb(207,92,38)" rx="2" ry="2" />
+<text text-anchor="" x="1175.10" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.&lt;init&gt;(Charset, float, float, byte[]):207 (75 samples, 0.64%)</title><rect x="918.3" y="69" width="7.6" height="15.0" fill="rgb(216,179,40)" rx="2" ry="2" />
+<text text-anchor="" x="921.31" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$.apply(ByteBuffer):1431 (557 samples, 4.77%)</title><rect x="371.8" y="133" width="56.3" height="15.0" fill="rgb(235,23,47)" rx="2" ry="2" />
+<text text-anchor="" x="374.79" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >ByteV..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$Chunk.size():1357 (21 samples, 0.18%)</title><rect x="362.6" y="101" width="2.1" height="15.0" fill="rgb(243,199,43)" rx="2" ry="2" />
+<text text-anchor="" x="365.58" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteBuffer.&lt;init&gt;(int, int, int, int, byte[], int):281 (74 samples, 0.63%)</title><rect x="1105.2" y="85" width="7.4" height="15.0" fill="rgb(235,59,22)" rx="2" ry="2" />
+<text text-anchor="" x="1108.17" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Array$.ofDim(int, ClassTag):217 (621 samples, 5.32%)</title><rect x="475.1" y="117" width="62.8" height="15.0" fill="rgb(214,68,28)" rx="2" ry="2" />
+<text text-anchor="" x="478.12" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Array$..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$.apply(ByteBuffer):1432 (1,088 samples, 9.32%)</title><rect x="428.1" y="133" width="110.0" height="15.0" fill="rgb(205,116,36)" rx="2" ry="2" />
+<text text-anchor="" x="431.11" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >ByteVector$.a..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.replaceWith(byte[]):301 (52 samples, 0.45%)</title><rect x="919.7" y="53" width="5.3" height="15.0" fill="rgb(206,101,39)" rx="2" ry="2" />
+<text text-anchor="" x="922.72" y="63.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$View.&lt;init&gt;(ByteVector$At, long, long):1306 (31 samples, 0.27%)</title><rect x="608.3" y="101" width="3.1" height="15.0" fill="rgb(231,137,0)" rx="2" ry="2" />
+<text text-anchor="" x="611.29" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$Append.&lt;init&gt;(BitVector, BitVector):1750 (20 samples, 0.17%)</title><rect x="147.3" y="101" width="2.0" height="15.0" fill="rgb(218,109,45)" rx="2" ry="2" />
+<text text-anchor="" x="150.31" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Codec$$anon$8.encode(Object):411 (7,480 samples, 64.10%)</title><rect x="54.0" y="213" width="756.3" height="15.0" fill="rgb(207,5,19)" rx="2" ry="2" />
+<text text-anchor="" x="56.98" y="223.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Codec$$anon$8.encode(Object):411</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.&lt;init&gt;(Charset, float, float, byte[]):192 (20 samples, 0.17%)</title><rect x="194.8" y="85" width="2.1" height="15.0" fill="rgb(211,16,14)" rx="2" ry="2" />
+<text text-anchor="" x="197.84" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.nextPutIndex():520 (62 samples, 0.53%)</title><rect x="1154.1" y="53" width="6.3" height="15.0" fill="rgb(206,83,53)" rx="2" ry="2" />
+<text text-anchor="" x="1157.10" y="63.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharBuffer.wrap(CharSequence):487 (953 samples, 8.17%)</title><rect x="227.4" y="149" width="96.4" height="15.0" fill="rgb(219,123,19)" rx="2" ry="2" />
+<text text-anchor="" x="230.40" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >CharBuffer...</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPBench_simpleString_encode_jmhTest.simpleString_encode_Throughput(InfraControl, ThreadParams):83 (3,500 samples, 29.99%)</title><rect x="834.6" y="309" width="353.9" height="15.0" fill="rgb(225,23,27)" rx="2" ry="2" />
+<text text-anchor="" x="837.58" y="319.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPBench_simpleString_encode_jmhTest.simpleStr..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPBench.simpleString_encode():44 (3,455 samples, 29.61%)</title><rect x="838.5" y="277" width="349.4" height="15.0" fill="rgb(228,56,3)" rx="2" ry="2" />
+<text text-anchor="" x="841.53" y="287.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPBench.simpleString_encode():44</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCharBuffer.get():73 (99 samples, 0.85%)</title><rect x="731.0" y="85" width="10.1" height="15.0" fill="rgb(236,221,37)" rx="2" ry="2" />
+<text text-anchor="" x="734.04" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCodec.encode(String):17 (4,812 samples, 41.23%)</title><rect x="323.8" y="165" width="486.5" height="15.0" fill="rgb(252,172,4)" rx="2" ry="2" />
+<text text-anchor="" x="326.76" y="175.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >StringCodec.encode(String):17</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer, ByteBuffer, boolean):579 (1,243 samples, 10.65%)</title><rect x="663.9" y="133" width="125.7" height="15.0" fill="rgb(252,54,48)" rx="2" ry="2" />
+<text text-anchor="" x="666.90" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >CharsetEncoder...</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCharBuffer.&lt;init&gt;(CharSequence, int, int):41 (440 samples, 3.77%)</title><rect x="277.0" y="117" width="44.5" height="15.0" fill="rgb(219,15,45)" rx="2" ry="2" />
+<text text-anchor="" x="280.04" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Stri..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.scodec$bits$BitVector$$bytesNeededForBits(long):1927 (33 samples, 0.28%)</title><rect x="343.3" y="101" width="3.3" height="15.0" fill="rgb(219,54,37)" rx="2" ry="2" />
+<text text-anchor="" x="346.27" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.toBytes(ByteVector, long):1645 (24 samples, 0.21%)</title><rect x="992.9" y="101" width="2.5" height="15.0" fill="rgb(208,82,25)" rx="2" ry="2" />
+<text text-anchor="" x="995.93" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCodec.encode(String):16 (983 samples, 8.42%)</title><rect x="224.4" y="165" width="99.4" height="15.0" fill="rgb(215,178,10)" rx="2" ry="2" />
+<text text-anchor="" x="227.36" y="175.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >StringCodec...</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeBufferLoop(CharBuffer, ByteBuffer):646 (29 samples, 0.25%)</title><rect x="741.1" y="101" width="2.9" height="15.0" fill="rgb(218,88,13)" rx="2" ry="2" />
+<text text-anchor="" x="744.05" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector.$plus$plus(BitVector):188 (278 samples, 2.38%)</title><rect x="123.7" y="117" width="28.1" height="15.0" fill="rgb(248,159,4)" rx="2" ry="2" />
+<text text-anchor="" x="126.65" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >B..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCodec.encode(String):17 (2,033 samples, 17.42%)</title><rect x="973.7" y="149" width="205.6" height="15.0" fill="rgb(250,6,50)" rx="2" ry="2" />
+<text text-anchor="" x="976.72" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >StringCodec.encode(String):17</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeLoop(CharBuffer, ByteBuffer):690 (21 samples, 0.18%)</title><rect x="1133.4" y="101" width="2.1" height="15.0" fill="rgb(236,187,14)" rx="2" ry="2" />
+<text text-anchor="" x="1136.38" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Arrays.copyOf(byte[], int):3237 (81 samples, 0.69%)</title><rect x="212.7" y="53" width="8.2" height="15.0" fill="rgb(234,150,41)" rx="2" ry="2" />
+<text text-anchor="" x="215.73" y="63.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.&lt;init&gt;(Charset, UTF_8$1):554 (228 samples, 1.95%)</title><rect x="903.4" y="117" width="23.1" height="15.0" fill="rgb(223,84,49)" rx="2" ry="2" />
+<text text-anchor="" x="906.44" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >U..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.put(byte):169 (288 samples, 2.47%)</title><rect x="745.4" y="85" width="29.1" height="15.0" fill="rgb(210,214,7)" rx="2" ry="2" />
+<text text-anchor="" x="748.40" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >He..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPCodecs$$anon$2.encode(BitVector):235 (382 samples, 3.27%)</title><rect x="855.7" y="117" width="38.6" height="15.0" fill="rgb(254,215,14)" rx="2" ry="2" />
+<text text-anchor="" x="858.72" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RES..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPBench_simpleString_encode_jmhTest.simpleString_encode_Throughput(InfraControl, ThreadParams):83 (8,155 samples, 69.88%)</title><rect x="10.0" y="325" width="824.6" height="15.0" fill="rgb(231,3,6)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="335.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPBench_simpleString_encode_jmhTest.simpleString_encode_Throughput(InfraControl, ThreadParams):83</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.capacity():217 (37 samples, 0.32%)</title><rect x="407.6" y="101" width="3.7" height="15.0" fill="rgb(236,201,15)" rx="2" ry="2" />
+<text text-anchor="" x="410.58" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer):802 (1,439 samples, 12.33%)</title><rect x="656.5" y="149" width="145.5" height="15.0" fill="rgb(220,134,17)" rx="2" ry="2" />
+<text text-anchor="" x="659.52" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >CharsetEncoder.enc..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCodec.encode(Object):10 (2,818 samples, 24.15%)</title><rect x="894.3" y="165" width="285.0" height="15.0" fill="rgb(246,103,53)" rx="2" ry="2" />
+<text text-anchor="" x="897.34" y="175.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >StringCodec.encode(Object):10</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>package$$anon$16.$anonfun$encode$4(package$$anon$16, BitVector):1430 (953 samples, 8.17%)</title><rect x="58.7" y="165" width="96.4" height="15.0" fill="rgb(253,201,27)" rx="2" ry="2" />
+<text text-anchor="" x="61.74" y="175.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >package$$an..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer):795 (134 samples, 1.15%)</title><rect x="1099.6" y="133" width="13.6" height="15.0" fill="rgb(222,194,27)" rx="2" ry="2" />
+<text text-anchor="" x="1102.60" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.get(byte[], int, int):153 (117 samples, 1.00%)</title><rect x="574.8" y="101" width="11.9" height="15.0" fill="rgb(226,49,24)" rx="2" ry="2" />
+<text text-anchor="" x="577.82" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeBufferLoop(CharBuffer, ByteBuffer):645 (84 samples, 0.72%)</title><rect x="1139.3" y="85" width="8.5" height="15.0" fill="rgb(247,44,7)" rx="2" ry="2" />
+<text text-anchor="" x="1142.34" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.&lt;init&gt;(int, int, int, int):186 (41 samples, 0.35%)</title><rect x="1106.7" y="69" width="4.1" height="15.0" fill="rgb(238,84,32)" rx="2" ry="2" />
+<text text-anchor="" x="1109.68" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector.$plus$plus(BitVector):187 (496 samples, 4.25%)</title><rect x="73.5" y="117" width="50.2" height="15.0" fill="rgb(245,25,46)" rx="2" ry="2" />
+<text text-anchor="" x="76.50" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >BitVe..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$.view(byte[]):1451 (121 samples, 1.04%)</title><rect x="1085.4" y="101" width="12.3" height="15.0" fill="rgb(213,197,53)" rx="2" ry="2" />
+<text text-anchor="" x="1088.45" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCharBuffer.get():73 (43 samples, 0.37%)</title><rect x="1143.5" y="69" width="4.3" height="15.0" fill="rgb(247,192,52)" rx="2" ry="2" />
+<text text-anchor="" x="1146.49" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Codec$$anon$2.encode(Object):200 (3,271 samples, 28.03%)</title><rect x="849.7" y="213" width="330.7" height="15.0" fill="rgb(221,207,8)" rx="2" ry="2" />
+<text text-anchor="" x="852.65" y="223.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Codec$$anon$2.encode(Object):200</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.position(int):243 (37 samples, 0.32%)</title><rect x="1080.6" y="69" width="3.7" height="15.0" fill="rgb(209,148,3)" rx="2" ry="2" />
+<text text-anchor="" x="1083.59" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>all (11,670 samples, 100%)</title><rect x="10.0" y="517" width="1180.0" height="15.0" fill="rgb(254,82,10)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="527.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector.$plus$plus(BitVector):187 (185 samples, 1.59%)</title><rect x="861.1" y="101" width="18.7" height="15.0" fill="rgb(206,71,48)" rx="2" ry="2" />
+<text text-anchor="" x="864.08" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.limit():256 (47 samples, 0.40%)</title><rect x="392.8" y="101" width="4.8" height="15.0" fill="rgb(249,227,14)" rx="2" ry="2" />
+<text text-anchor="" x="395.82" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.toBytes(ByteVector, long):1643 (56 samples, 0.48%)</title><rect x="984.2" y="101" width="5.7" height="15.0" fill="rgb(206,179,34)" rx="2" ry="2" />
+<text text-anchor="" x="987.23" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.&lt;init&gt;(int, int, int, int):202 (22 samples, 0.19%)</title><rect x="652.5" y="85" width="2.2" height="15.0" fill="rgb(235,193,11)" rx="2" ry="2" />
+<text text-anchor="" x="655.48" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.apply(ByteVector):1279 (328 samples, 2.81%)</title><rect x="338.6" y="133" width="33.2" height="15.0" fill="rgb(206,4,14)" rx="2" ry="2" />
+<text text-anchor="" x="341.62" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Bi..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CoderResult.isUnderflow():120 (35 samples, 0.30%)</title><rect x="795.9" y="117" width="3.5" height="15.0" fill="rgb(207,126,49)" rx="2" ry="2" />
+<text text-anchor="" x="798.86" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Attempt$.successful(Object):73 (29 samples, 0.25%)</title><rect x="858.1" y="101" width="3.0" height="15.0" fill="rgb(218,48,47)" rx="2" ry="2" />
+<text text-anchor="" x="861.14" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.&lt;init&gt;(int, int, int, int):201 (33 samples, 0.28%)</title><rect x="422.5" y="69" width="3.4" height="15.0" fill="rgb(213,159,31)" rx="2" ry="2" />
+<text text-anchor="" x="425.54" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.get(byte[], int, int):153 (53 samples, 0.45%)</title><rect x="1079.5" y="85" width="5.3" height="15.0" fill="rgb(218,15,40)" rx="2" ry="2" />
+<text text-anchor="" x="1082.48" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.position(int):243 (78 samples, 0.67%)</title><rect x="577.1" y="85" width="7.9" height="15.0" fill="rgb(243,11,32)" rx="2" ry="2" />
+<text text-anchor="" x="580.15" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Codec$$anon$2.encode(Object):200 (7,616 samples, 65.26%)</title><rect x="43.0" y="229" width="770.0" height="15.0" fill="rgb(227,218,6)" rx="2" ry="2" />
+<text text-anchor="" x="45.96" y="239.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Codec$$anon$2.encode(Object):200</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeLoop(CharBuffer, ByteBuffer):693 (344 samples, 2.95%)</title><rect x="1135.5" y="101" width="34.8" height="15.0" fill="rgb(236,225,11)" rx="2" ry="2" />
+<text text-anchor="" x="1138.50" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >UT..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>String.length():623 (31 samples, 0.27%)</title><rect x="262.2" y="101" width="3.1" height="15.0" fill="rgb(235,132,54)" rx="2" ry="2" />
+<text text-anchor="" x="265.18" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeBufferLoop(CharBuffer, ByteBuffer):683 (38 samples, 0.33%)</title><rect x="785.7" y="101" width="3.9" height="15.0" fill="rgb(239,50,37)" rx="2" ry="2" />
+<text text-anchor="" x="788.75" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Method.invoke(Object, Object[]):498 (11,655 samples, 99.87%)</title><rect x="10.0" y="373" width="1178.5" height="15.0" fill="rgb(226,217,38)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="383.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Method.invoke(Object, Object[]):498</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ManifestFactory$ByteManifest.newArray(int):93 (228 samples, 1.95%)</title><rect x="1042.4" y="69" width="23.0" height="15.0" fill="rgb(247,43,11)" rx="2" ry="2" />
+<text text-anchor="" x="1045.37" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >M..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharBuffer.&lt;init&gt;(int, int, int, int):289 (21 samples, 0.18%)</title><rect x="943.0" y="85" width="2.1" height="15.0" fill="rgb(225,116,49)" rx="2" ry="2" />
+<text text-anchor="" x="945.98" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.nextPutIndex():522 (48 samples, 0.41%)</title><rect x="764.2" y="69" width="4.9" height="15.0" fill="rgb(223,98,53)" rx="2" ry="2" />
+<text text-anchor="" x="767.21" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPBench.simpleString_encode():44 (8,041 samples, 68.90%)</title><rect x="19.7" y="293" width="813.1" height="15.0" fill="rgb(239,77,48)" rx="2" ry="2" />
+<text text-anchor="" x="22.71" y="303.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPBench.simpleString_encode():44</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ManifestFactory$ByteManifest.newArray(int):91 (533 samples, 4.57%)</title><rect x="484.0" y="101" width="53.9" height="15.0" fill="rgb(216,5,39)" rx="2" ry="2" />
+<text text-anchor="" x="487.02" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Manif..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$.apply(ByteBuffer):1434 (127 samples, 1.09%)</title><rect x="1084.8" y="117" width="12.9" height="15.0" fill="rgb(233,38,52)" rx="2" ry="2" />
+<text text-anchor="" x="1087.84" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.&lt;init&gt;(byte[], int, int, int, int, int):86 (72 samples, 0.62%)</title><rect x="1011.8" y="85" width="7.3" height="15.0" fill="rgb(207,140,49)" rx="2" ry="2" />
+<text text-anchor="" x="1014.84" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>FutureTask.run():266 (11,655 samples, 99.87%)</title><rect x="10.0" y="421" width="1178.5" height="15.0" fill="rgb(242,77,36)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="431.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >FutureTask.run():266</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.duplicate():110 (111 samples, 0.95%)</title><rect x="386.3" y="117" width="11.3" height="15.0" fill="rgb(250,49,15)" rx="2" ry="2" />
+<text text-anchor="" x="389.35" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$Bytes.&lt;init&gt;(ByteVector, long):1648 (35 samples, 0.30%)</title><rect x="366.2" y="101" width="3.6" height="15.0" fill="rgb(209,196,51)" rx="2" ry="2" />
+<text text-anchor="" x="369.22" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.&lt;init&gt;(byte[], int, int, int, int, int):86 (166 samples, 1.42%)</title><rect x="411.3" y="101" width="16.8" height="15.0" fill="rgb(244,31,5)" rx="2" ry="2" />
+<text text-anchor="" x="414.32" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeBufferLoop(CharBuffer, ByteBuffer):646 (23 samples, 0.20%)</title><rect x="1147.8" y="85" width="2.4" height="15.0" fill="rgb(244,166,6)" rx="2" ry="2" />
+<text text-anchor="" x="1150.84" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPBench_simpleString_encode_jmhTest.simpleString_encode_thrpt_jmhStub(InfraControl, RawResults, BenchmarkParams, IterationParams, ThreadParams, Blackhole, Control, int, RESPBench_jmhType):121 (3,494 samples, 29.94%)</title><rect x="834.6" y="293" width="353.3" height="15.0" fill="rgb(253,122,17)" rx="2" ry="2" />
+<text text-anchor="" x="837.58" y="303.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPBench_simpleString_encode_jmhTest.simpleStr..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.replaceWith(byte[]):303 (25 samples, 0.21%)</title><rect x="220.9" y="69" width="2.6" height="15.0" fill="rgb(233,69,41)" rx="2" ry="2" />
+<text text-anchor="" x="223.92" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8.newEncoder():72 (244 samples, 2.09%)</title><rect x="901.8" y="133" width="24.7" height="15.0" fill="rgb(250,15,45)" rx="2" ry="2" />
+<text text-anchor="" x="904.83" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >U..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$AtArray.&lt;init&gt;(byte[]):1256 (31 samples, 0.27%)</title><rect x="602.5" y="101" width="3.2" height="15.0" fill="rgb(246,40,31)" rx="2" ry="2" />
+<text text-anchor="" x="605.53" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.position(int):243 (20 samples, 0.17%)</title><rect x="785.7" y="85" width="2.1" height="15.0" fill="rgb(240,56,19)" rx="2" ry="2" />
+<text text-anchor="" x="788.75" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCharBuffer.&lt;init&gt;(CharSequence, int, int):39 (66 samples, 0.57%)</title><rect x="270.4" y="117" width="6.6" height="15.0" fill="rgb(253,89,12)" rx="2" ry="2" />
+<text text-anchor="" x="273.37" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>String.length():623 (22 samples, 0.19%)</title><rect x="321.5" y="133" width="2.3" height="15.0" fill="rgb(209,179,5)" rx="2" ry="2" />
+<text text-anchor="" x="324.53" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Attempt$Successful.flatMap(Function1):94 (382 samples, 3.27%)</title><rect x="855.7" y="165" width="38.6" height="15.0" fill="rgb(224,47,53)" rx="2" ry="2" />
+<text text-anchor="" x="858.72" y="175.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Att..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.get(byte[], int, int):149 (72 samples, 0.62%)</title><rect x="555.5" y="101" width="7.3" height="15.0" fill="rgb(207,55,52)" rx="2" ry="2" />
+<text text-anchor="" x="558.51" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteBuffer.allocate(int):335 (131 samples, 1.12%)</title><rect x="1099.9" y="117" width="13.3" height="15.0" fill="rgb(249,11,39)" rx="2" ry="2" />
+<text text-anchor="" x="1102.91" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>package$$anon$16.encode(Object):1430 (3,217 samples, 27.57%)</title><rect x="854.0" y="181" width="325.3" height="15.0" fill="rgb(217,29,27)" rx="2" ry="2" />
+<text text-anchor="" x="857.00" y="191.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >package$$anon$16.encode(Object):1430</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer, ByteBuffer, boolean):569 (20 samples, 0.17%)</title><rect x="1114.0" y="117" width="2.0" height="15.0" fill="rgb(214,22,41)" rx="2" ry="2" />
+<text text-anchor="" x="1116.96" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector.$plus$plus(BitVector):188 (135 samples, 1.16%)</title><rect x="879.8" y="101" width="13.6" height="15.0" fill="rgb(236,108,9)" rx="2" ry="2" />
+<text text-anchor="" x="882.78" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CoderResult.isUnderflow():120 (26 samples, 0.22%)</title><rect x="1173.1" y="101" width="2.6" height="15.0" fill="rgb(244,149,54)" rx="2" ry="2" />
+<text text-anchor="" x="1176.11" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPCodecs$$anon$2.encode(BitVector):235 (953 samples, 8.17%)</title><rect x="58.7" y="133" width="96.4" height="15.0" fill="rgb(245,87,1)" rx="2" ry="2" />
+<text text-anchor="" x="61.74" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPCodecs$..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>NativeMethodAccessorImpl.invoke0(Method, Object, Object[]):-1 (3,500 samples, 29.99%)</title><rect x="834.6" y="325" width="353.9" height="15.0" fill="rgb(222,64,17)" rx="2" ry="2" />
+<text text-anchor="" x="837.58" y="335.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >NativeMethodAccessorImpl.invoke0(Method, Object..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$.view(byte[]):1451 (232 samples, 1.99%)</title><rect x="588.0" y="117" width="23.4" height="15.0" fill="rgb(248,3,46)" rx="2" ry="2" />
+<text text-anchor="" x="590.97" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >B..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$.apply(ByteBuffer):1431 (229 samples, 1.96%)</title><rect x="996.0" y="117" width="23.1" height="15.0" fill="rgb(248,225,21)" rx="2" ry="2" />
+<text text-anchor="" x="998.96" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >B..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>SimpleString.value():41 (24 samples, 0.21%)</title><rect x="810.6" y="197" width="2.4" height="15.0" fill="rgb(250,37,24)" rx="2" ry="2" />
+<text text-anchor="" x="813.62" y="207.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.get(byte[], int, int):152 (44 samples, 0.38%)</title><rect x="1075.0" y="85" width="4.5" height="15.0" fill="rgb(219,68,2)" rx="2" ry="2" />
+<text text-anchor="" x="1078.03" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>package$$anon$16.encode(Object):1430 (164 samples, 1.41%)</title><rect x="813.0" y="229" width="16.6" height="15.0" fill="rgb(229,129,27)" rx="2" ry="2" />
+<text text-anchor="" x="816.05" y="239.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.&lt;init&gt;(Charset, UTF_8$1):554 (475 samples, 4.07%)</title><rect x="176.3" y="133" width="48.1" height="15.0" fill="rgb(224,100,3)" rx="2" ry="2" />
+<text text-anchor="" x="179.33" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >UTF_..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCharBuffer.&lt;init&gt;(CharSequence, int, int):39 (33 samples, 0.28%)</title><rect x="949.3" y="101" width="3.4" height="15.0" fill="rgb(246,16,48)" rx="2" ry="2" />
+<text text-anchor="" x="952.35" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCodec.encode(String):15 (301 samples, 2.58%)</title><rect x="896.1" y="149" width="30.4" height="15.0" fill="rgb(218,123,21)" rx="2" ry="2" />
+<text text-anchor="" x="899.06" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >St..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Arrays.copyOf(byte[], int):3237 (39 samples, 0.33%)</title><rect x="921.0" y="37" width="4.0" height="15.0" fill="rgb(233,54,50)" rx="2" ry="2" />
+<text text-anchor="" x="924.04" y="47.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer):818 (26 samples, 0.22%)</title><rect x="1176.7" y="133" width="2.6" height="15.0" fill="rgb(231,129,11)" rx="2" ry="2" />
+<text text-anchor="" x="1179.65" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Attempt.&lt;init&gt;():16 (50 samples, 0.43%)</title><rect x="332.1" y="117" width="5.1" height="15.0" fill="rgb(206,147,36)" rx="2" ry="2" />
+<text text-anchor="" x="335.15" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPCodecs$$anon$2.encode(Object):233 (382 samples, 3.27%)</title><rect x="855.7" y="133" width="38.6" height="15.0" fill="rgb(214,107,37)" rx="2" ry="2" />
+<text text-anchor="" x="858.72" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RES..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteBuffer.allocate(int):335 (368 samples, 3.15%)</title><rect x="619.1" y="133" width="37.2" height="15.0" fill="rgb(229,147,47)" rx="2" ry="2" />
+<text text-anchor="" x="622.11" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Byt..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer, ByteBuffer, boolean):569 (67 samples, 0.57%)</title><rect x="657.1" y="133" width="6.8" height="15.0" fill="rgb(233,108,14)" rx="2" ry="2" />
+<text text-anchor="" x="660.13" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.apply(ByteBuffer):1287 (1,157 samples, 9.91%)</title><rect x="980.7" y="133" width="117.0" height="15.0" fill="rgb(209,167,17)" rx="2" ry="2" />
+<text text-anchor="" x="983.69" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >BitVector$.app..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPCodecs$$anon$5.encode(RESP):325 (7,942 samples, 68.05%)</title><rect x="29.7" y="261" width="803.1" height="15.0" fill="rgb(236,225,17)" rx="2" ry="2" />
+<text text-anchor="" x="32.72" y="271.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPCodecs$$anon$5.encode(RESP):325</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Executors$RunnableAdapter.call():511 (11,655 samples, 99.87%)</title><rect x="10.0" y="437" width="1178.5" height="15.0" fill="rgb(212,89,25)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="447.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Executors$RunnableAdapter.call():511</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8.newEncoder():72 (511 samples, 4.38%)</title><rect x="172.7" y="149" width="51.7" height="15.0" fill="rgb(239,33,37)" rx="2" ry="2" />
+<text text-anchor="" x="175.69" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >UTF_8..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$.apply(ByteBuffer):1433 (480 samples, 4.11%)</title><rect x="538.1" y="133" width="48.6" height="15.0" fill="rgb(209,198,18)" rx="2" ry="2" />
+<text text-anchor="" x="541.12" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Byte..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer):794 (60 samples, 0.51%)</title><rect x="611.4" y="149" width="6.1" height="15.0" fill="rgb(252,102,45)" rx="2" ry="2" />
+<text text-anchor="" x="614.43" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.toBytes(ByteVector, long):1645 (50 samples, 0.43%)</title><rect x="364.7" y="117" width="5.1" height="15.0" fill="rgb(228,23,30)" rx="2" ry="2" />
+<text text-anchor="" x="367.71" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.&lt;init&gt;(Charset, float, float):233 (456 samples, 3.91%)</title><rect x="178.3" y="101" width="46.1" height="15.0" fill="rgb(205,170,5)" rx="2" ry="2" />
+<text text-anchor="" x="181.25" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Char..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>package$$anon$16.encode(Object):1430 (63 samples, 0.54%)</title><rect x="1180.4" y="213" width="6.4" height="15.0" fill="rgb(219,144,9)" rx="2" ry="2" />
+<text text-anchor="" x="1183.39" y="223.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer):795 (384 samples, 3.29%)</title><rect x="617.5" y="149" width="38.8" height="15.0" fill="rgb(234,110,43)" rx="2" ry="2" />
+<text text-anchor="" x="620.49" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Cha..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Charset.atBugLevel(String):287 (24 samples, 0.21%)</title><rect x="912.3" y="53" width="2.5" height="15.0" fill="rgb(206,12,33)" rx="2" ry="2" />
+<text text-anchor="" x="915.34" y="63.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.toBytes(ByteVector, long):1642 (34 samples, 0.29%)</title><rect x="343.2" y="117" width="3.4" height="15.0" fill="rgb(217,165,45)" rx="2" ry="2" />
+<text text-anchor="" x="346.17" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>String.charAt(int):657 (43 samples, 0.37%)</title><rect x="735.9" y="69" width="4.3" height="15.0" fill="rgb(207,133,9)" rx="2" ry="2" />
+<text text-anchor="" x="738.90" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.apply(ByteVector):1279 (143 samples, 1.23%)</title><rect x="981.5" y="117" width="14.5" height="15.0" fill="rgb(237,9,32)" rx="2" ry="2" />
+<text text-anchor="" x="984.50" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.put(byte):169 (125 samples, 1.07%)</title><rect x="1151.0" y="69" width="12.6" height="15.0" fill="rgb(231,74,13)" rx="2" ry="2" />
+<text text-anchor="" x="1153.97" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeBufferLoop(CharBuffer, ByteBuffer):650 (288 samples, 2.47%)</title><rect x="745.4" y="101" width="29.1" height="15.0" fill="rgb(206,51,38)" rx="2" ry="2" />
+<text text-anchor="" x="748.40" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >UT..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.toBytes(ByteVector, long):1644 (30 samples, 0.26%)</title><rect x="989.9" y="101" width="3.0" height="15.0" fill="rgb(214,194,7)" rx="2" ry="2" />
+<text text-anchor="" x="992.90" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCharBuffer.&lt;init&gt;(CharSequence, int, int):37 (228 samples, 1.95%)</title><rect x="242.3" y="117" width="23.0" height="15.0" fill="rgb(209,167,19)" rx="2" ry="2" />
+<text text-anchor="" x="245.26" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >S..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Codec$$anon$8.encode(Object):411 (7,910 samples, 67.78%)</title><rect x="29.8" y="245" width="799.8" height="15.0" fill="rgb(229,229,6)" rx="2" ry="2" />
+<text text-anchor="" x="32.82" y="255.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Codec$$anon$8.encode(Object):411</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer, ByteBuffer, boolean):589 (48 samples, 0.41%)</title><rect x="794.5" y="133" width="4.9" height="15.0" fill="rgb(252,142,44)" rx="2" ry="2" />
+<text text-anchor="" x="797.54" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.replaceWith(byte[]):301 (94 samples, 0.81%)</title><rect x="211.4" y="69" width="9.5" height="15.0" fill="rgb(217,32,43)" rx="2" ry="2" />
+<text text-anchor="" x="214.42" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.&lt;init&gt;(int, int):57 (114 samples, 0.98%)</title><rect x="1101.6" y="101" width="11.6" height="15.0" fill="rgb(206,90,53)" rx="2" ry="2" />
+<text text-anchor="" x="1104.63" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.duplicate():110 (49 samples, 0.42%)</title><rect x="1001.5" y="101" width="5.0" height="15.0" fill="rgb(243,53,25)" rx="2" ry="2" />
+<text text-anchor="" x="1004.52" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Attempt$Successful.&lt;init&gt;(Object):91 (20 samples, 0.17%)</title><rect x="978.7" y="117" width="2.0" height="15.0" fill="rgb(213,226,25)" rx="2" ry="2" />
+<text text-anchor="" x="981.67" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.checkBounds(int, int, int):566 (30 samples, 0.26%)</title><rect x="559.8" y="85" width="3.0" height="15.0" fill="rgb(238,222,40)" rx="2" ry="2" />
+<text text-anchor="" x="562.76" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer, ByteBuffer, boolean):579 (537 samples, 4.60%)</title><rect x="1116.0" y="117" width="54.3" height="15.0" fill="rgb(226,92,49)" rx="2" ry="2" />
+<text text-anchor="" x="1118.98" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Chars..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeBufferLoop(CharBuffer, ByteBuffer):645 (230 samples, 1.97%)</title><rect x="717.8" y="101" width="23.3" height="15.0" fill="rgb(216,215,25)" rx="2" ry="2" />
+<text text-anchor="" x="720.80" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >U..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$Chunk.size():1357 (20 samples, 0.17%)</title><rect x="369.8" y="117" width="2.0" height="15.0" fill="rgb(228,186,17)" rx="2" ry="2" />
+<text text-anchor="" x="372.76" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.toBytes(ByteVector, long):1644 (59 samples, 0.51%)</title><rect x="358.7" y="117" width="6.0" height="15.0" fill="rgb(237,63,15)" rx="2" ry="2" />
+<text text-anchor="" x="361.74" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeLoop(CharBuffer, ByteBuffer):693 (786 samples, 6.74%)</title><rect x="710.1" y="117" width="79.5" height="15.0" fill="rgb(239,23,24)" rx="2" ry="2" />
+<text text-anchor="" x="713.11" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >UTF_8$Enc..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Attempt$.successful(Object):73 (50 samples, 0.43%)</title><rect x="332.1" y="149" width="5.1" height="15.0" fill="rgb(219,121,23)" rx="2" ry="2" />
+<text text-anchor="" x="335.15" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>FutureTask.run():266 (11,655 samples, 99.87%)</title><rect x="10.0" y="453" width="1178.5" height="15.0" fill="rgb(216,119,40)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="463.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >FutureTask.run():266</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharBuffer.wrap(CharSequence, int, int):466 (418 samples, 3.58%)</title><rect x="930.9" y="117" width="42.3" height="15.0" fill="rgb(210,77,29)" rx="2" ry="2" />
+<text text-anchor="" x="933.95" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Cha..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeBufferLoop(CharBuffer, ByteBuffer):682 (55 samples, 0.47%)</title><rect x="1163.6" y="85" width="5.6" height="15.0" fill="rgb(206,136,14)" rx="2" ry="2" />
+<text text-anchor="" x="1166.61" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCharBuffer.&lt;init&gt;(CharSequence, int, int):41 (203 samples, 1.74%)</title><rect x="952.7" y="101" width="20.5" height="15.0" fill="rgb(245,87,48)" rx="2" ry="2" />
+<text text-anchor="" x="955.69" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer, ByteBuffer, boolean):586 (34 samples, 0.29%)</title><rect x="791.1" y="133" width="3.4" height="15.0" fill="rgb(241,86,10)" rx="2" ry="2" />
+<text text-anchor="" x="794.11" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.ix(int):131 (54 samples, 0.46%)</title><rect x="769.1" y="69" width="5.4" height="15.0" fill="rgb(220,216,24)" rx="2" ry="2" />
+<text text-anchor="" x="772.06" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharBuffer.&lt;init&gt;(int, int, int, int, char[], int):281 (52 samples, 0.45%)</title><rect x="256.6" y="85" width="5.3" height="15.0" fill="rgb(246,192,32)" rx="2" ry="2" />
+<text text-anchor="" x="259.62" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCharBuffer.&lt;init&gt;(CharSequence, int, int):37 (105 samples, 0.90%)</title><rect x="936.1" y="101" width="10.6" height="15.0" fill="rgb(221,197,6)" rx="2" ry="2" />
+<text text-anchor="" x="939.10" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ThreadPoolExecutor.runWorker(ThreadPoolExecutor$Worker):1149 (11,655 samples, 99.87%)</title><rect x="10.0" y="469" width="1178.5" height="15.0" fill="rgb(205,161,47)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="479.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >ThreadPoolExecutor.runWorker(ThreadPoolExecutor$Worker):1149</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteBuffer.get(byte[]):715 (184 samples, 1.58%)</title><rect x="1066.2" y="101" width="18.6" height="15.0" fill="rgb(227,179,32)" rx="2" ry="2" />
+<text text-anchor="" x="1069.24" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.&lt;init&gt;(int, int, int, int):201 (30 samples, 0.26%)</title><rect x="649.4" y="85" width="3.1" height="15.0" fill="rgb(207,166,40)" rx="2" ry="2" />
+<text text-anchor="" x="652.44" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteBuffer.&lt;init&gt;(int, int, int, int, byte[], int):281 (212 samples, 1.82%)</title><rect x="633.3" y="101" width="21.4" height="15.0" fill="rgb(248,60,2)" rx="2" ry="2" />
+<text text-anchor="" x="636.27" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >B..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.hasRemaining():402 (32 samples, 0.27%)</title><rect x="714.6" y="85" width="3.2" height="15.0" fill="rgb(241,133,45)" rx="2" ry="2" />
+<text text-anchor="" x="717.56" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeBufferLoop(CharBuffer, ByteBuffer):650 (127 samples, 1.09%)</title><rect x="1150.8" y="85" width="12.8" height="15.0" fill="rgb(225,199,25)" rx="2" ry="2" />
+<text text-anchor="" x="1153.77" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteBuffer.&lt;init&gt;(int, int, int, int, byte[], int):281 (114 samples, 0.98%)</title><rect x="416.3" y="85" width="11.5" height="15.0" fill="rgb(231,168,45)" rx="2" ry="2" />
+<text text-anchor="" x="419.28" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Codec$$anon$8.encode(Object):411 (3,218 samples, 27.57%)</title><rect x="853.9" y="197" width="325.4" height="15.0" fill="rgb(223,67,9)" rx="2" ry="2" />
+<text text-anchor="" x="856.90" y="207.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Codec$$anon$8.encode(Object):411</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>package$$anon$16.encode(Object):1430 (7,479 samples, 64.09%)</title><rect x="54.1" y="197" width="756.2" height="15.0" fill="rgb(253,173,43)" rx="2" ry="2" />
+<text text-anchor="" x="57.09" y="207.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >package$$anon$16.encode(Object):1430</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.toBytes(ByteVector, long):1643 (120 samples, 1.03%)</title><rect x="346.6" y="117" width="12.1" height="15.0" fill="rgb(215,86,19)" rx="2" ry="2" />
+<text text-anchor="" x="349.61" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$.apply(ByteBuffer):1434 (245 samples, 2.10%)</title><rect x="586.7" y="133" width="24.7" height="15.0" fill="rgb(216,40,48)" rx="2" ry="2" />
+<text text-anchor="" x="589.65" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >B..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.&lt;init&gt;(Charset, float, float, byte[]):191 (28 samples, 0.24%)</title><rect x="192.0" y="85" width="2.8" height="15.0" fill="rgb(207,130,54)" rx="2" ry="2" />
+<text text-anchor="" x="195.01" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.duplicate():108 (42 samples, 0.36%)</title><rect x="382.1" y="117" width="4.2" height="15.0" fill="rgb(234,229,36)" rx="2" ry="2" />
+<text text-anchor="" x="385.10" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$.apply(ByteBuffer):1433 (190 samples, 1.63%)</title><rect x="1065.6" y="117" width="19.2" height="15.0" fill="rgb(233,189,13)" rx="2" ry="2" />
+<text text-anchor="" x="1068.63" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeLoop(CharBuffer, ByteBuffer):690 (50 samples, 0.43%)</title><rect x="705.1" y="117" width="5.0" height="15.0" fill="rgb(235,7,13)" rx="2" ry="2" />
+<text text-anchor="" x="708.06" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer):818 (65 samples, 0.56%)</title><rect x="803.7" y="149" width="6.6" height="15.0" fill="rgb(218,127,16)" rx="2" ry="2" />
+<text text-anchor="" x="806.74" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESP$.laserdisc$protocol$RESPCodecs$$crlf():348 (33 samples, 0.28%)</title><rect x="151.8" y="117" width="3.3" height="15.0" fill="rgb(218,81,20)" rx="2" ry="2" />
+<text text-anchor="" x="154.76" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESP$.laserdisc$protocol$RESPCodecs$$simpleStringCodec():348 (31 samples, 0.27%)</title><rect x="829.6" y="245" width="3.2" height="15.0" fill="rgb(226,101,34)" rx="2" ry="2" />
+<text text-anchor="" x="832.63" y="255.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeBufferLoop(CharBuffer, ByteBuffer):644 (36 samples, 0.31%)</title><rect x="714.2" y="101" width="3.6" height="15.0" fill="rgb(228,147,22)" rx="2" ry="2" />
+<text text-anchor="" x="717.16" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector$.apply(ByteBuffer):1287 (2,712 samples, 23.24%)</title><rect x="337.2" y="149" width="274.2" height="15.0" fill="rgb(241,127,31)" rx="2" ry="2" />
+<text text-anchor="" x="340.20" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >BitVector$.apply(ByteBuffer):1287</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$.apply(ByteBuffer):1432 (460 samples, 3.94%)</title><rect x="1019.1" y="117" width="46.5" height="15.0" fill="rgb(217,36,34)" rx="2" ry="2" />
+<text text-anchor="" x="1022.12" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Byte..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.&lt;init&gt;(Charset, float, float):233 (221 samples, 1.89%)</title><rect x="904.2" y="85" width="22.3" height="15.0" fill="rgb(236,173,54)" rx="2" ry="2" />
+<text text-anchor="" x="907.15" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >C..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Array$.ofDim(int, ClassTag):217 (280 samples, 2.40%)</title><rect x="1037.1" y="101" width="28.3" height="15.0" fill="rgb(239,165,50)" rx="2" ry="2" />
+<text text-anchor="" x="1040.12" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >A..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharBuffer.hasArray():970 (20 samples, 0.17%)</title><rect x="708.1" y="101" width="2.0" height="15.0" fill="rgb(237,210,48)" rx="2" ry="2" />
+<text text-anchor="" x="711.09" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPBench_simpleString_encode_jmhTest.simpleString_encode_thrpt_jmhStub(InfraControl, RawResults, BenchmarkParams, IterationParams, ThreadParams, Blackhole, Control, int, RESPBench_jmhType):121 (8,137 samples, 69.73%)</title><rect x="10.0" y="309" width="822.8" height="15.0" fill="rgb(228,36,33)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="319.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPBench_simpleString_encode_jmhTest.simpleString_encode_thrpt_jmhStub(InfraControl, RawResults, BenchmarkParams,..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharBuffer.wrap(CharSequence, int, int):466 (888 samples, 7.61%)</title><rect x="231.7" y="133" width="89.8" height="15.0" fill="rgb(223,144,43)" rx="2" ry="2" />
+<text text-anchor="" x="234.74" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >CharBuffer..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCharBuffer.&lt;init&gt;(CharSequence, int, int):38 (50 samples, 0.43%)</title><rect x="265.3" y="117" width="5.1" height="15.0" fill="rgb(219,7,27)" rx="2" ry="2" />
+<text text-anchor="" x="268.31" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharBuffer.&lt;init&gt;(int, int, int, int):289 (70 samples, 0.60%)</title><rect x="255.1" y="101" width="7.1" height="15.0" fill="rgb(238,94,19)" rx="2" ry="2" />
+<text text-anchor="" x="258.10" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$Chunk.&lt;init&gt;(ByteVector$View):1356 (26 samples, 0.22%)</title><rect x="605.7" y="101" width="2.6" height="15.0" fill="rgb(247,114,34)" rx="2" ry="2" />
+<text text-anchor="" x="608.66" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteVector$View.&lt;init&gt;(ByteVector$At, long, long):1306 (21 samples, 0.18%)</title><rect x="1095.6" y="85" width="2.1" height="15.0" fill="rgb(233,36,4)" rx="2" ry="2" />
+<text text-anchor="" x="1098.56" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.&lt;init&gt;(Charset):558 (475 samples, 4.07%)</title><rect x="176.3" y="117" width="48.1" height="15.0" fill="rgb(233,169,13)" rx="2" ry="2" />
+<text text-anchor="" x="179.33" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >UTF_..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPCodecs$$anon$5.encode(Object):322 (7,942 samples, 68.05%)</title><rect x="29.7" y="277" width="803.1" height="15.0" fill="rgb(244,29,27)" rx="2" ry="2" />
+<text text-anchor="" x="32.72" y="287.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPCodecs$$anon$5.encode(Object):322</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPCodecs$$anon$5.encode(RESP):325 (3,403 samples, 29.16%)</title><rect x="843.8" y="245" width="344.1" height="15.0" fill="rgb(254,13,3)" rx="2" ry="2" />
+<text text-anchor="" x="846.79" y="255.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPCodecs$$anon$5.encode(RESP):325</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ManifestFactory$ByteManifest.newArray(int):93 (533 samples, 4.57%)</title><rect x="484.0" y="85" width="53.9" height="15.0" fill="rgb(236,84,53)" rx="2" ry="2" />
+<text text-anchor="" x="487.02" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Manif..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer, ByteBuffer, boolean):590 (26 samples, 0.22%)</title><rect x="799.4" y="133" width="2.6" height="15.0" fill="rgb(253,27,47)" rx="2" ry="2" />
+<text text-anchor="" x="802.40" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Attempt.&lt;init&gt;():16 (20 samples, 0.17%)</title><rect x="978.7" y="101" width="2.0" height="15.0" fill="rgb(205,201,52)" rx="2" ry="2" />
+<text text-anchor="" x="981.67" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.&lt;init&gt;(Charset):558 (228 samples, 1.95%)</title><rect x="903.4" y="101" width="23.1" height="15.0" fill="rgb(244,111,29)" rx="2" ry="2" />
+<text text-anchor="" x="906.44" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >U..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.duplicate():107 (33 samples, 0.28%)</title><rect x="378.8" y="117" width="3.3" height="15.0" fill="rgb(243,84,27)" rx="2" ry="2" />
+<text text-anchor="" x="381.76" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.encodeBufferLoop(CharBuffer, ByteBuffer):682 (110 samples, 0.94%)</title><rect x="774.6" y="101" width="11.1" height="15.0" fill="rgb(227,73,16)" rx="2" ry="2" />
+<text text-anchor="" x="777.62" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Codec$$anon$8.encode(Object):411 (3,391 samples, 29.06%)</title><rect x="843.9" y="229" width="342.9" height="15.0" fill="rgb(238,185,48)" rx="2" ry="2" />
+<text text-anchor="" x="846.89" y="239.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Codec$$anon$8.encode(Object):411</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.&lt;init&gt;(Charset, float, float, byte[]):204 (30 samples, 0.26%)</title><rect x="204.0" y="85" width="3.1" height="15.0" fill="rgb(206,156,7)" rx="2" ry="2" />
+<text text-anchor="" x="207.04" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteBuffer.get(byte[]):715 (457 samples, 3.92%)</title><rect x="540.4" y="117" width="46.3" height="15.0" fill="rgb(239,140,28)" rx="2" ry="2" />
+<text text-anchor="" x="543.44" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Byte..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Attempt$Successful.&lt;init&gt;(Object):91 (50 samples, 0.43%)</title><rect x="332.1" y="133" width="5.1" height="15.0" fill="rgb(209,156,30)" rx="2" ry="2" />
+<text text-anchor="" x="335.15" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.get(byte[], int, int):152 (101 samples, 0.87%)</title><rect x="564.6" y="101" width="10.2" height="15.0" fill="rgb(237,220,20)" rx="2" ry="2" />
+<text text-anchor="" x="567.61" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.encode(CharBuffer):802 (625 samples, 5.36%)</title><rect x="1113.3" y="133" width="63.2" height="15.0" fill="rgb(213,92,7)" rx="2" ry="2" />
+<text text-anchor="" x="1116.25" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Charse..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Attempt$.successful(Object):73 (20 samples, 0.17%)</title><rect x="978.7" y="133" width="2.0" height="15.0" fill="rgb(254,60,45)" rx="2" ry="2" />
+<text text-anchor="" x="981.67" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.&lt;init&gt;(int, int, int, int):186 (108 samples, 0.93%)</title><rect x="637.6" y="85" width="10.9" height="15.0" fill="rgb(208,134,3)" rx="2" ry="2" />
+<text text-anchor="" x="640.61" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Thread.run():748 (11,655 samples, 99.87%)</title><rect x="10.0" y="501" width="1178.5" height="15.0" fill="rgb(251,87,11)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="511.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Thread.run():748</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>GeneratedMethodAccessor3.invoke(Object, Object[]):-1 (8,155 samples, 69.88%)</title><rect x="10.0" y="341" width="824.6" height="15.0" fill="rgb(210,215,30)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="351.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >GeneratedMethodAccessor3.invoke(Object, Object[]):-1</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ManifestFactory$ByteManifest.newArray(int):91 (228 samples, 1.95%)</title><rect x="1042.4" y="85" width="23.0" height="15.0" fill="rgb(226,51,43)" rx="2" ry="2" />
+<text text-anchor="" x="1045.37" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >M..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.&lt;init&gt;(Charset, float, float, byte[]):198 (34 samples, 0.29%)</title><rect x="911.3" y="69" width="3.5" height="15.0" fill="rgb(225,205,32)" rx="2" ry="2" />
+<text text-anchor="" x="914.33" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.get(byte[], int, int):149 (26 samples, 0.22%)</title><rect x="1071.6" y="85" width="2.6" height="15.0" fill="rgb(217,53,53)" rx="2" ry="2" />
+<text text-anchor="" x="1074.60" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Blackhole.consume(Object):308 (35 samples, 0.30%)</title><rect x="16.2" y="293" width="3.5" height="15.0" fill="rgb(240,93,32)" rx="2" ry="2" />
+<text text-anchor="" x="19.17" y="303.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BitVector.isEmpty():52 (31 samples, 0.27%)</title><rect x="120.5" y="101" width="3.2" height="15.0" fill="rgb(237,93,54)" rx="2" ry="2" />
+<text text-anchor="" x="123.52" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.duplicate():111 (125 samples, 1.07%)</title><rect x="1006.5" y="101" width="12.6" height="15.0" fill="rgb(219,17,33)" rx="2" ry="2" />
+<text text-anchor="" x="1009.48" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharBuffer.wrap(CharSequence):487 (444 samples, 3.80%)</title><rect x="928.8" y="133" width="44.9" height="15.0" fill="rgb(221,92,7)" rx="2" ry="2" />
+<text text-anchor="" x="931.82" y="143.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Char..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>RESPCodecs$$anon$2.encode(Object):233 (953 samples, 8.17%)</title><rect x="58.7" y="149" width="96.4" height="15.0" fill="rgb(244,202,14)" rx="2" ry="2" />
+<text text-anchor="" x="61.74" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >RESPCodecs$..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>UTF_8$Encoder.implReplaceWith(byte[]):698 (25 samples, 0.21%)</title><rect x="220.9" y="53" width="2.6" height="15.0" fill="rgb(232,206,41)" rx="2" ry="2" />
+<text text-anchor="" x="223.92" y="63.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCodec.encode(String):15 (636 samples, 5.45%)</title><rect x="160.1" y="165" width="64.3" height="15.0" fill="rgb(247,14,46)" rx="2" ry="2" />
+<text text-anchor="" x="163.05" y="175.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >StringC..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Buffer.nextPutIndex():520 (138 samples, 1.18%)</title><rect x="750.3" y="69" width="13.9" height="15.0" fill="rgb(223,2,7)" rx="2" ry="2" />
+<text text-anchor="" x="753.26" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>BenchmarkHandler$BenchmarkTask.call():453 (11,655 samples, 99.87%)</title><rect x="10.0" y="389" width="1178.5" height="15.0" fill="rgb(230,99,52)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="399.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >BenchmarkHandler$BenchmarkTask.call():453</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>String.charAt(int):657 (20 samples, 0.17%)</title><rect x="1145.7" y="53" width="2.0" height="15.0" fill="rgb(250,68,28)" rx="2" ry="2" />
+<text text-anchor="" x="1148.71" y="63.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ThreadPoolExecutor$Worker.run():624 (11,655 samples, 99.87%)</title><rect x="10.0" y="485" width="1178.5" height="15.0" fill="rgb(251,59,47)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="495.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >ThreadPoolExecutor$Worker.run():624</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>HeapByteBuffer.&lt;init&gt;(int, int):57 (317 samples, 2.72%)</title><rect x="624.3" y="117" width="32.0" height="15.0" fill="rgb(235,11,48)" rx="2" ry="2" />
+<text text-anchor="" x="627.27" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >He..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>DelegatingMethodAccessorImpl.invoke(Object, Object[]):43 (11,655 samples, 99.87%)</title><rect x="10.0" y="357" width="1178.5" height="15.0" fill="rgb(249,100,41)" rx="2" ry="2" />
+<text text-anchor="" x="13.00" y="367.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >DelegatingMethodAccessorImpl.invoke(Object, Object[]):43</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>package$$anon$16.$anonfun$encode$4(package$$anon$16, BitVector):1430 (382 samples, 3.27%)</title><rect x="855.7" y="149" width="38.6" height="15.0" fill="rgb(250,188,30)" rx="2" ry="2" />
+<text text-anchor="" x="858.72" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >pac..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>NativeMethodAccessorImpl.invoke(Object, Object[]):62 (3,500 samples, 29.99%)</title><rect x="834.6" y="341" width="353.9" height="15.0" fill="rgb(225,90,31)" rx="2" ry="2" />
+<text text-anchor="" x="837.58" y="351.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >NativeMethodAccessorImpl.invoke(Object, Object[..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.&lt;init&gt;(Charset, float, float, byte[]):198 (63 samples, 0.54%)</title><rect x="196.9" y="85" width="6.3" height="15.0" fill="rgb(217,150,1)" rx="2" ry="2" />
+<text text-anchor="" x="199.86" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCodec.encode(String):16 (467 samples, 4.00%)</title><rect x="926.5" y="149" width="47.2" height="15.0" fill="rgb(238,176,44)" rx="2" ry="2" />
+<text text-anchor="" x="929.50" y="159.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  >Stri..</text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>StringCharBuffer.&lt;init&gt;(CharSequence, int, int):38 (26 samples, 0.22%)</title><rect x="946.7" y="101" width="2.6" height="15.0" fill="rgb(245,192,16)" rx="2" ry="2" />
+<text text-anchor="" x="949.72" y="111.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>Attempt$.successful(Object):73 (85 samples, 0.73%)</title><rect x="64.9" y="117" width="8.6" height="15.0" fill="rgb(205,59,31)" rx="2" ry="2" />
+<text text-anchor="" x="67.90" y="127.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>ByteBuffer.&lt;init&gt;(int, int, int, int, byte[], int):281 (43 samples, 0.37%)</title><rect x="1014.4" y="69" width="4.3" height="15.0" fill="rgb(251,168,25)" rx="2" ry="2" />
+<text text-anchor="" x="1017.37" y="79.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+<g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)">
+<title>CharsetEncoder.&lt;init&gt;(Charset, float, float, byte[]):207 (153 samples, 1.31%)</title><rect x="208.0" y="85" width="15.5" height="15.0" fill="rgb(211,77,21)" rx="2" ry="2" />
+<text text-anchor="" x="210.98" y="95.5" font-size="12" font-family="Verdana" fill="rgb(0,0,0)"  ></text>
+</g>
+</svg>

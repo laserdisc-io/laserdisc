@@ -1,0 +1,116 @@
+import java.{lang => j}
+
+import eu.timepit.refined.W
+import eu.timepit.refined.api.{RefType, Refined, RefinedTypeOps, Validate}
+import eu.timepit.refined.boolean.{And, Not, Or, True}
+import eu.timepit.refined.char.Whitespace
+import eu.timepit.refined.collection.{Forall, MinSize, NonEmpty}
+import eu.timepit.refined.generic.Equal
+import eu.timepit.refined.macros.RefineMacro
+import eu.timepit.refined.numeric.Interval.{Closed => ClosedInterval}
+import eu.timepit.refined.string.{IPv4, MatchesRegex}
+import eu.timepit.refined.types.net.PrivateNetworks._
+import shapeless.nat._
+
+package object laserdisc {
+
+  //type forwarders
+  final type Protocol   = protocol.Protocol
+  final type Read[A, B] = protocol.Read[A, B]
+  final type RESP       = protocol.RESP
+  final type Show[A]    = protocol.Show[A]
+
+  //object forwarders
+  final val Protocol = protocol.Protocol
+  final val Read     = protocol.Read
+  final val Show     = protocol.Show
+
+  final type Maybe[A] = Either[Throwable, A]
+  final type XString  = String with Singleton
+
+  private[this] final type Loopback = IPv4 And Equal[W.`"127.0.0.1"`.T]
+  private[this] final type RFC1123HostName = MatchesRegex[
+    W.`"""^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])(\\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]))*$"""`.T]
+
+  implicit final val nanValidator: Validate.Plain[Double, NaN] =
+    Validate.fromPredicate(j.Double.isNaN, d => s"($d == NaN)", NaN())
+
+  private[this] final type NonNaN  = Not[NaN]
+  private[this] final type NonZero = Not[Equal[_0]]
+
+  //shadowed types
+  final type Key        = eu.timepit.refined.types.string.NonEmptyString
+  final type NonNegInt  = eu.timepit.refined.types.numeric.NonNegInt
+  final type NonNegLong = eu.timepit.refined.types.numeric.NonNegLong
+  final type Port       = eu.timepit.refined.types.net.UserPortNumber
+  final type PosInt     = eu.timepit.refined.types.numeric.PosInt
+  final type PosLong    = eu.timepit.refined.types.numeric.PosLong
+
+  //shadowed types' ops (dispatchers)
+  final val Key        = eu.timepit.refined.types.string.NonEmptyString
+  final val NonNegInt  = eu.timepit.refined.types.numeric.NonNegInt
+  final val NonNegLong = eu.timepit.refined.types.numeric.NonNegLong
+  final val Port       = eu.timepit.refined.types.net.UserPortNumber
+  final val PosInt     = eu.timepit.refined.types.numeric.PosInt
+  final val PosLong    = eu.timepit.refined.types.numeric.PosLong
+
+  //new types
+  final type ConnectionName = String Refined (NonEmpty And Forall[Not[Whitespace]])
+  final type DbIndex        = Int Refined ClosedInterval[_0, _15]
+  final type GlobPattern    = String Refined MatchesRegex[W.`"(\\\\[?[\\\\w\\\\*\\\\?]+\\\\]?)+"`.T] //TODO good enough but needs regex' TLC
+  final type Host =
+    String Refined (RFC1123HostName Or Loopback Or Rfc1918PrivateSpec Or Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec)
+  final type Index                      = Long Refined True
+  final type NonZeroDouble              = Double Refined (NonNaN And NonZero)
+  final type NonZeroInt                 = Int Refined NonZero
+  final type NonZeroLong                = Long Refined NonZero
+  final type OneOrMore[A]               = List[A] Refined NonEmpty
+  final type OneOrMoreKeys              = OneOrMore[Key]
+  final type RangeOffset                = Int Refined ClosedInterval[_0, W.`536870911`.T]
+  final type SingletonKey[A <: XString] = A Refined NonEmpty
+  final type StringLength               = Long Refined ClosedInterval[_0, W.`4294967295L`.T]
+  final type TwoOrMoreKeys              = List[Key] Refined MinSize[_2]
+  final type TwoOrMoreWeightedKeys      = List[(Key, ValidDouble)] Refined MinSize[_2]
+  final type ValidDouble                = Double Refined NonNaN
+
+  //new types' ops
+  final object SingletonKey {
+    import scala.language.experimental.macros
+
+    def apply[A <: XString](t: A)(
+        implicit ev: Refined[A, NonEmpty] =:= SingletonKey[A],
+        rt: RefType[Refined],
+        v: Validate[A, NonEmpty]
+    ): SingletonKey[A] = macro RefineMacro.implApplyRef[SingletonKey[A], Refined, A, NonEmpty]
+  }
+
+  final object ConnectionName        extends RefinedTypeOps[ConnectionName, String]
+  final object DbIndex               extends RefinedTypeOps[DbIndex, Int]
+  final object GlobPattern           extends RefinedTypeOps[GlobPattern, String]
+  final object Host                  extends RefinedTypeOps[Host, String]
+  final object Index                 extends RefinedTypeOps[Index, Long]
+  final object NonZeroDouble         extends RefinedTypeOps[NonZeroDouble, Double]
+  final object NonZeroInt            extends RefinedTypeOps[NonZeroInt, Int]
+  final object NonZeroLong           extends RefinedTypeOps[NonZeroLong, Long]
+  final object OneOrMoreKeys         extends RefinedTypeOps[OneOrMoreKeys, List[Key]]
+  final object RangeOffset           extends RefinedTypeOps[RangeOffset, Int]
+  final object StringLength          extends RefinedTypeOps[StringLength, Long]
+  final object TwoOrMoreKeys         extends RefinedTypeOps[TwoOrMoreKeys, List[Key]]
+  final object TwoOrMoreWeightedKeys extends RefinedTypeOps[TwoOrMoreWeightedKeys, List[(Key, ValidDouble)]]
+  final object ValidDouble           extends RefinedTypeOps[ValidDouble, Double]
+
+  final object ToInt {
+    def unapply(l: Long): Option[Int] =
+      try { Some(j.Math.toIntExact(l)) } catch { case _: ArithmeticException => None }
+    def unapply(s: String): Option[Int] =
+      try { Some(j.Integer.parseInt(s)) } catch { case _: NumberFormatException => None }
+  }
+  final object ToLong {
+    def unapply(s: String): Option[Long] =
+      try { Some(j.Long.parseLong(s)) } catch { case _: NumberFormatException => None }
+  }
+  final object ToDouble {
+    def unapply(s: String): Option[Double] =
+      try { Some(j.Double.parseDouble(s)) } catch { case _: NumberFormatException => None }
+  }
+}

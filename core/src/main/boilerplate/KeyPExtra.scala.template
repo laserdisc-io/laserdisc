@@ -1,0 +1,24 @@
+package laserdisc
+package protocol
+
+trait KeyPExtra { this: KeyP =>
+  //DEL
+  [#final def del([#key1: Key#]): Protocol.Aux[NonNegInt] =
+    del(OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil))#
+  ]
+
+  //EXISTS
+  [#final def exists([#key1: Key#]): Protocol.Aux[Option[PosInt]] =
+    exists(OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil))#
+  ]
+
+  //TOUCH
+  [#final def touch([#key1: Key#]): Protocol.Aux[NonNegInt] =
+    touch(OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil))#
+  ]
+
+  //UNLINK
+  [#final def unlink([#key1: Key#]): Protocol.Aux[NonNegInt] =
+    unlink(OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil))#
+  ]
+}

@@ -1,0 +1,32 @@
+package laserdisc
+package protocol
+
+trait HashPExtra { this: HashP =>
+  import Read.==>
+  import shapeless._
+
+  //HDEL
+  [..21#final def hdel(key: Key, [#field1: Key#]): Protocol.Aux[NonNegInt] =
+    hdel(key, OneOrMoreKeys.unsafeFrom([#field1# :: ] :: Nil))#
+  ]
+
+  //HMGET
+  final def hmget[A1](key: Key, field1: Key)(
+      implicit ev: NonNilArray ==> (A1 :: HNil)
+  ): Protocol.Aux[A1] =
+    hmget[A1 :: HNil](key, OneOrMoreKeys.unsafeFrom(field1 :: Nil)).map(_.head)
+  [2..21#final def hmget[[#A1#]](key: Key, [#field1: Key#])(
+      implicit ev0: NonNilArray ==> ([#A1# :: ] :: HNil),
+      ev1: ops.hlist.Tupler.Aux[[#A1# :: ] :: HNil, ([#A1#])]
+  ): Protocol.Aux[([#A1#])] =
+    hmget[[#A1# :: ] :: HNil](key, OneOrMoreKeys.unsafeFrom([#field1# :: ] :: Nil)).map(_.tupled)#
+  ]
+
+  //HMSET
+  [..21#final def hmset[[#A1 <: XString, B1: Show#]](key: Key, [#field1: SingletonKey[A1], value1: B1#]): Protocol.Aux["OK"] = {
+    [#val tagged1 = tag[A1](Symbol(field1.value))#
+    ]
+    hmset(key, [#labelled.field[tagged1.type](value1)# :: ] :: HNil)
+  }#
+  ]
+}

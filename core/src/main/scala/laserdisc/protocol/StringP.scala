@@ -168,6 +168,9 @@ trait StringP {
       ev3: RESPParamWrite[L]
   ): Protocol.Aux["OK"] = Protocol("MSET", gen.to(product)).as[SimpleString, "OK"]
 
+  final def mset[A: Show](values: OneOrMore[(Key, A)]): Protocol.Aux["OK"] =
+    Protocol("MSET", values.value).as[SimpleString, "OK"]
+
   final def msetnx[L <: HList: RESPParamWrite, N <: Nat](l: L)(
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1,
@@ -181,6 +184,9 @@ trait StringP {
       ev2: LUBConstraint[L, FieldType[_, _]],
       ev3: RESPParamWrite[L]
   ): Protocol.Aux[Boolean] = Protocol("MSETNX", gen.to(product)).as[Integer, Boolean]
+
+  final def msetnx[A: Show](values: OneOrMore[(Key, A)]): Protocol.Aux[Boolean] =
+    Protocol("MSETNX", values.value).as[Integer, Boolean]
 
   final def psetex[A: Show](key: Key, milliseconds: PosLong, value: A): Protocol.Aux["OK"] =
     Protocol("PSETEX", key :: milliseconds :: value :: HNil).as[SimpleString, "OK"]

@@ -1,7 +1,7 @@
 import java.{lang => j}
 
 import eu.timepit.refined.W
-import eu.timepit.refined.api.{RefType, Refined, RefinedTypeOps, Validate}
+import eu.timepit.refined.api._
 import eu.timepit.refined.boolean.{And, Not, Or, True}
 import eu.timepit.refined.char.Whitespace
 import eu.timepit.refined.collection.{Forall, MinSize, NonEmpty}
@@ -74,6 +74,13 @@ package object laserdisc {
   final type ValidDouble                = Double Refined NonNaN
 
   //new types' ops
+  final object OneOrMore {
+    def from[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): Either[String, OneOrMore[A]] =
+      rt.refine(l)
+    def unapply[A](l: List[A]): Option[OneOrMore[A]] = from(l).right.toOption
+    def unsafeFrom[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): OneOrMore[A] =
+      rt.unsafeRefine(l)
+  }
   final object SingletonKey {
     import scala.language.experimental.macros
 

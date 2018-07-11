@@ -5,42 +5,41 @@ import java.nio.channels.AsynchronousChannelGroup
 import java.nio.channels.AsynchronousChannelGroup.withThreadPool
 import java.util.concurrent.Executors.{newFixedThreadPool, newScheduledThreadPool}
 
-import cats.effect._
-import cats.syntax.all._
-import _root_.fs2._
 import _root_.fs2.Scheduler.fromScheduledExecutorService
 import _root_.fs2.StreamApp.ExitCode
+import _root_.fs2._
+import cats.effect._
+import cats.syntax.all._
+import log.effect.LogWriter
+import log.effect.fs2.Fs2LogWriter._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
-object CLI extends StreamApp[IO] {
+sealed trait CliApp[F[_]] extends StreamApp[F] { self =>
 
-  implicit val scheduler: Scheduler                        = fromScheduledExecutorService(newScheduledThreadPool(4))
-  implicit val asyncChannelGroup: AsynchronousChannelGroup = withThreadPool(newFixedThreadPool(8))
-  implicit val logger: Logger[IO] = new Logger[IO] {
-    final def log(level: Logger.Level, msg: => String, maybeT: Logger.MaybeT): IO[Unit] = IO {
-      println(f"[${level.value}%-5s]: $msg")
-      maybeT.foreach(_.printStackTrace())
-    }
-  }
+  def logStream: Stream[F, LogWriter[F]]
+  implicit def F: Effect[F]
+  implicit def scheduler: Scheduler
+  implicit def asyncChannelGroup: AsynchronousChannelGroup
 
-  override final def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, ExitCode] = {
+  override final def stream(args: List[String], requestShutdown: F[Unit]): Stream[F, ExitCode] = {
     val maybeHost = args.headOption.flatMap(Host.from(_).toOption)
     val maybePort = args.tail.headOption.flatMap(s => Try(s.toInt).toEither.flatMap(Port.from).toOption)
     (maybeHost, maybePort) match {
-      case (Some(ip), Some(port)) => impl.mkStream[IO](ip, port)
+      case (Some(ip), Some(port)) => impl.mkStream(ip, port)
       case _                      => Stream.emit(ExitCode.Error)
     }
   }
 
   private[fs2] final object impl {
+
     import scala.reflect.runtime.universe
     import scala.tools.reflect.ToolBox
 
-    private val tb = universe.runtimeMirror(CLI.getClass.getClassLoader).mkToolBox()
+    private val tb = universe.runtimeMirror(self.getClass.getClassLoader).mkToolBox()
 
-    def mkStream[F[_]: Logger](host: Host, port: Port)(implicit F: Effect[F]): Stream[F, ExitCode] = {
+    def mkStream(host: Host, port: Port): Stream[F, ExitCode] = {
       val promptStream: Stream[F, String] = Stream.emit(s"$host:$port> ").repeat
 
       val emptyPrompt: F[Unit] = promptStream.head.through(text.utf8Encode).to(io.stdout).compile.drain
@@ -81,28 +80,37 @@ object CLI extends StreamApp[IO] {
         }
       }
 
-      RedisClient(Set(RedisAddress(host, port))).evalMap { redisClient =>
-        emptyPrompt.flatMap { _ =>
-          io.stdin(10 * 1024)
-            .through(text.utf8Decode)
-            .through(text.lines)
-            .through(toProtocol)
-            .evalMap { protocol =>
-              for {
-                startTime             <- F.delay(System.nanoTime())
-                maybeProtocolResponse <- redisClient.send1(protocol.asInstanceOf[Protocol.Aux[protocol.A]])
-                endTime               <- F.delay(System.nanoTime())
-              } yield maybeProtocolResponse.asInstanceOf[Maybe[Any]] -> (endTime - startTime)
-            }
-            .evalMap {
-              case (Left(t), ToMillis(ms))         => prompt(f"<<< ERROR ${t.getLocalizedMessage} - [$ms%.2fms]\n")
-              case (Right(response), ToMillis(ms)) => prompt(f"<<< $response - [$ms%.2fms]\n")
-            }
-            .compile
-            .drain
-            .map(_ => ExitCode.Success)
+      logStream flatMap (implicit l =>
+        RedisClient(Set(RedisAddress(host, port))).evalMap { redisClient =>
+          emptyPrompt.flatMap { _ =>
+            io.stdin(10 * 1024)
+              .through(text.utf8Decode)
+              .through(text.lines)
+              .through(toProtocol)
+              .evalMap { protocol =>
+                for {
+                  startTime             <- F.delay(System.nanoTime())
+                  maybeProtocolResponse <- redisClient.send1(protocol.asInstanceOf[Protocol.Aux[protocol.A]])
+                  endTime               <- F.delay(System.nanoTime())
+                } yield maybeProtocolResponse.asInstanceOf[Maybe[Any]] -> (endTime - startTime)
+              }
+              .evalMap {
+                case (Left(t), ToMillis(ms))         => prompt(f"<<< ERROR ${t.getLocalizedMessage} - [$ms%.2fms]\n")
+                case (Right(response), ToMillis(ms)) => prompt(f"<<< $response - [$ms%.2fms]\n")
+              }
+              .compile
+              .drain
+              .map(_ => ExitCode.Success)
+          }
         }
-      }
+      )
     }
   }
+}
+
+object CLI extends CliApp[IO] {
+  val F = Effect[IO]
+  val logStream = consoleLogStream[IO]
+  val scheduler = fromScheduledExecutorService(newScheduledThreadPool(4))
+  val asyncChannelGroup = withThreadPool(newFixedThreadPool(8))
 }

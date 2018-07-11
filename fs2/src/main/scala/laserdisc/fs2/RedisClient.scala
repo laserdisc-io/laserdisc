@@ -7,6 +7,7 @@ import _root_.fs2._
 import _root_.fs2.async.Ref.Change
 import cats.effect.{Effect, Sync}
 import cats.syntax.all._
+import log.effect.LogWriter
 import shapeless._
 import shapeless.ops.hlist._
 import shapeless.ops.sized.ToHList
@@ -14,6 +15,7 @@ import shapeless.ops.sized.ToHList
 import scala.collection.LinearSeq
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import log.effect.fs2.syntax._
 
 trait RedisClient[F[_]] {
   import Protocol.Aux
@@ -54,7 +56,7 @@ trait RedisClient[F[_]] {
 }
 
 object RedisClient {
-  final def apply[F[_]: Effect: Logger](
+  final def apply[F[_]: Effect: LogWriter](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
@@ -94,7 +96,7 @@ object RedisClient {
       ): F[Out]
     }
 
-    def mkClient[F[_]: Effect: Logger](connection: F[Connection[F]])(
+    def mkClient[F[_]: Effect: LogWriter](connection: F[Connection[F]])(
         implicit ec: ExecutionContext,
         scheduler: Scheduler
     ): F[(RedisClient[F], F[Unit])] = mkPublisher(connection).map { publisher =>
@@ -146,7 +148,7 @@ object RedisClient {
 
     def connection[F[_]](redisConnection: RedisAddress => Pipe[F, RESP, RESP], leader: F[Option[RedisAddress]])(
         implicit F: Effect[F],
-        logger: Logger[F],
+        logger: LogWriter[F],
         scheduler: Scheduler,
         ec: ExecutionContext
     ): F[Connection[F]] = async.signalOf[F, Boolean](initialValue = false).flatMap { termSignal =>
@@ -212,7 +214,7 @@ object RedisClient {
                     // and runner is rerun to switch likely to serverUnavailable.
                     // as the last action runner is restarted
                     serverAvailable(address).handleErrorWith { failure =>
-                      logger.errorS(s"Failure of publishing connection to $address", Some(failure)) >>
+                      logger.errorS(s"Failure of publishing connection to $address", failure) >>
                         runner(serverStream, Some(address))
                     }
                 }

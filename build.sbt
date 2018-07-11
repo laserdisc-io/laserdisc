@@ -1,29 +1,31 @@
 import sbtcrossproject.{CrossType, crossProject}
 
 val V = new {
-  val cats             = "1.1.0"
-  val fs2              = "0.10.5"
-  val `kind-projector` = "0.9.7"
-  val kittens          = "1.1.0"
-  val refined          = "0.8.7" //FIXME can't upgrade see https://gist.github.com/sirocchj/64a00a28f5cc5776140c776c7db4e2e3
-  val scalacheck       = "1.13.5"
-  val scalatest        = "3.0.5"
-  val `scodec-bits`    = "1.1.5"
-  val `scodec-core`    = "1.10.3"
-  val `scodec-stream`  = "1.1.0"
-  val shapeless        = "2.3.3"
+  val cats              = "1.1.0"
+  val fs2               = "0.10.5"
+  val `kind-projector`  = "0.9.7"
+  val kittens           = "1.1.0"
+  val refined           = "0.8.7" //FIXME can't upgrade see https://gist.github.com/sirocchj/64a00a28f5cc5776140c776c7db4e2e3
+  val scalacheck        = "1.13.5"
+  val scalatest         = "3.0.5"
+  val `scodec-bits`     = "1.1.5"
+  val `scodec-core`     = "1.10.3"
+  val `scodec-stream`   = "1.1.0"
+  val shapeless         = "2.3.3"
+  val `log-effect-fs2`  = "0.1.1"
 }
 
-val `fs2-core`      = Def.setting("co.fs2"         %%% "fs2-core"      % V.fs2)
-val `fs2-io`        = Def.setting("co.fs2"         %% "fs2-io"         % V.fs2)
-val kittens         = Def.setting("org.typelevel"  %%% "kittens"       % V.kittens)
-val refined         = Def.setting("eu.timepit"     %%% "refined"       % V.refined)
-val `scodec-bits`   = Def.setting("org.scodec"     %%% "scodec-bits"   % V.`scodec-bits`)
-val `scodec-core`   = Def.setting("org.scodec"     %%% "scodec-core"   % V.`scodec-core`)
-val `scodec-stream` = Def.setting("org.scodec"     %%% "scodec-stream" % V.`scodec-stream`)
-val shapeless       = Def.setting("com.chuusai"    %%% "shapeless"     % V.shapeless)
-val scalacheck      = Def.setting("org.scalacheck" %%% "scalacheck"    % V.scalacheck % Test)
-val scalatest       = Def.setting("org.scalatest"  %%% "scalatest"     % V.scalatest % Test)
+val `fs2-core`        = Def.setting("co.fs2"          %%% "fs2-core"        % V.fs2)
+val `fs2-io`          = Def.setting("co.fs2"          %% "fs2-io"           % V.fs2)
+val kittens           = Def.setting("org.typelevel"   %%% "kittens"         % V.kittens)
+val refined           = Def.setting("eu.timepit"      %%% "refined"         % V.refined)
+val `scodec-bits`     = Def.setting("org.scodec"      %%% "scodec-bits"     % V.`scodec-bits`)
+val `scodec-core`     = Def.setting("org.scodec"      %%% "scodec-core"     % V.`scodec-core`)
+val `scodec-stream`   = Def.setting("org.scodec"      %%% "scodec-stream"   % V.`scodec-stream`)
+val shapeless         = Def.setting("com.chuusai"     %%% "shapeless"       % V.shapeless)
+val `log-effect-fs2`  = Def.setting("io.laserdisc"    %%% "log-effect-fs2"  % V.`log-effect-fs2`)
+val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck        % Test)
+val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest         % Test)
 
 val `kind-projector-compiler-plugin` = Def.setting {
   compilerPlugin("org.spire-math" % "kind-projector" % V.`kind-projector` cross CrossVersion.binary)
@@ -37,7 +39,16 @@ val coreDeps = Def.Initialize.join {
 }
 
 val fs2Deps = Def.Initialize.join {
-  Seq(`fs2-core`, `fs2-io`, `kind-projector-compiler-plugin`, kittens, `scodec-stream`, scalacheck, scalatest)
+  Seq(
+    `fs2-core`,
+    `fs2-io`,
+    `kind-projector-compiler-plugin`,
+    kittens,
+    `scodec-stream`,
+    `log-effect-fs2`,
+    scalacheck,
+    scalatest
+  )
 }
 
 val externalApiMappings = Def.task {

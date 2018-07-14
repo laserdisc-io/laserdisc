@@ -12,7 +12,7 @@ val V = new {
   val `scodec-core`     = "1.10.3"
   val `scodec-stream`   = "1.1.0"
   val shapeless         = "2.3.3"
-  val `log-effect-fs2`  = "0.1.1"
+  val `log-effect-fs2`  = "0.1.5"
 }
 
 val `fs2-core`        = Def.setting("co.fs2"          %%% "fs2-core"        % V.fs2)
@@ -24,8 +24,8 @@ val `scodec-core`     = Def.setting("org.scodec"      %%% "scodec-core"     % V.
 val `scodec-stream`   = Def.setting("org.scodec"      %%% "scodec-stream"   % V.`scodec-stream`)
 val shapeless         = Def.setting("com.chuusai"     %%% "shapeless"       % V.shapeless)
 val `log-effect-fs2`  = Def.setting("io.laserdisc"    %%% "log-effect-fs2"  % V.`log-effect-fs2`)
-val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck        % Test)
-val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest         % Test)
+val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
+val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
 
 val `kind-projector-compiler-plugin` = Def.setting {
   compilerPlugin("org.spire-math" % "kind-projector" % V.`kind-projector` cross CrossVersion.binary)

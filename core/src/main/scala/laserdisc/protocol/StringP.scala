@@ -127,7 +127,8 @@ trait StringP {
 
   final def get[A](key: Key)(
       implicit ev: NonNullBulkString ==> A
-  ): Protocol.Aux[Option[A]] = Protocol("GET", key).asC[NullBulkString :+: NonNullBulkString :+: CNil, Option[A]]
+  ): Protocol.Aux[Option[A]] =
+    Protocol("GET", key).asC[NullBulkString :+: NonNullBulkString :+: CNil, Option[A]]
 
   final def getbit(key: Key, offset: PosLong): Protocol.Aux[Bit] =
     Protocol("GETBIT", key :: offset :: HNil).as[Integer, Bit]

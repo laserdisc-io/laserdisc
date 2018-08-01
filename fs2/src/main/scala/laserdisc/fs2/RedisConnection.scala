@@ -4,11 +4,12 @@ package fs2
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
 
-import _root_.fs2.io.tcp
 import _root_.fs2._
+import _root_.fs2.io.tcp
 import cats.Applicative
 import cats.effect.Effect
 import cats.syntax.all._
+import laserdisc.protocol.RESP
 import log.effect.LogWriter
 import scodec.Codec
 import scodec.bits.BitVector
@@ -38,6 +39,7 @@ object RedisConnection {
     }
 
   private[fs2] final object impl {
+
     def send[F[_]: Applicative](sink: Sink[F, Byte])(implicit log: LogWriter[F]): Sink[F, RESP] =
       _.evalMap(resp => log.debug(s"sending $resp") *> resp.pure)
         .through(streamEncoder.encode)
@@ -45,20 +47,59 @@ object RedisConnection {
         .to(sink)
 
     def receive[F[_]: Effect](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
-      def toBitVector: Pipe[F, Byte, BitVector] = {
-        def go(stream: Stream[F, Byte]): Pull[F, BitVector, Unit] = stream.pull.unconsChunk.flatMap {
-          case Some((chunk, rest)) => Pull.output1(BitVector.view(chunk.toByteBuffer)) >> go(rest)
-          case _                   => Pull.done
-        }
 
-        stream =>
-          go(stream).stream
+      def toBitVector: Pipe[F, Byte, Frame] = {
+
+        def go(stream: Stream[F, Byte], previous: Frame): Pull[F, Frame, Unit] =
+          stream.pull.unconsChunk flatMap {
+            case Some((chunk, rest)) =>
+              previous.append(chunk).fold(
+                ex => Pull.raiseError(ex),
+                {
+                  case frame@Complete(_)                => Pull.output1(frame) >> go(rest, Empty)
+                  case frame@(Empty | Incomplete(_, _)) => go(rest, frame)
+                }
+              )
+            case _ => Pull.done
+          }
+
+        stream => go(stream, Empty).stream
       }
 
-      _.through(toBitVector)
-        .flatMap(streamDecoder.decode(_))
-        .evalMap(resp => log.debug(s"receiving $resp") *> resp.pure)
+      _.through(toBitVector) flatMap {
+        case Complete(v)      => streamDecoder.decode(v)
+        case Empty            => Stream.empty
+        case Incomplete(v, _) => Stream.raiseError(
+          new Exception(s"Trying to decode an incomplete frame. Content: ${v.toByteArray.map(_.toChar).mkString}")
+        )
+      } evalMap (
+        resp => log.debug(s"receiving $resp") *> resp.pure
+      )
     }
   }
 
+}
+
+sealed trait Frame {
+
+  def append(chunk: Chunk[Byte]): Exception | Frame =
+    nextFrame(BitVector.view(chunk.toByteBuffer))
+
+  protected final def nextFrame(bits: BitVector): Exception | Frame =
+    RESP.stillToReceive(bits) map {
+      n => if (n > 0) Incomplete(bits, n) else Complete(bits)
+    } leftMap (new Exception(_))
+}
+
+case object Empty extends Frame
+final case class Complete(full: BitVector) extends Frame
+final case class Incomplete(partial: BitVector, neededBits: Long) extends Frame {
+
+  override def append(chunk: Chunk[Byte]): Exception | Frame = {
+    val newBits = BitVector.view(chunk.toByteBuffer)
+
+    //  Saves some size inspections
+    if (neededBits == newBits.size) Right(Complete(partial ++ newBits))
+    else nextFrame(partial ++ newBits)
+  }
 }

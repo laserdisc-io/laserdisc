@@ -1,7 +1,6 @@
 import sbtcrossproject.{CrossType, crossProject}
 
 val V = new {
-  val cats              = "1.1.0"
   val fs2               = "0.10.5"
   val `kind-projector`  = "0.9.7"
   val kittens           = "1.1.0"

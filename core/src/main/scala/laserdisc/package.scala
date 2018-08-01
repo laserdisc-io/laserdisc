@@ -14,6 +14,8 @@ import shapeless.nat._
 
 package object laserdisc {
 
+  type |[A, B] = Either[A, B]
+
   //type forwarders
   final type Protocol   = protocol.Protocol
   final type Read[A, B] = protocol.Read[A, B]

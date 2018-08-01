@@ -90,7 +90,7 @@ final class RESPCodecsSpec extends WordSpec with MustMatchers with PropertyCheck
 
     "handling unknown protocol type" must {
       "fail with correct error message" in forAll { invalidDiscriminator: InvalidDiscriminator =>
-        s"$invalidDiscriminator".RESP.left.value.messageWithContext mustBe s"unidentified RESP type ${invalidDiscriminator.toHex}"
+        s"$invalidDiscriminator".RESP.left.value.messageWithContext mustBe s"unidentified RESP type (Hex: ${invalidDiscriminator.toHex})"
       }
     }
 

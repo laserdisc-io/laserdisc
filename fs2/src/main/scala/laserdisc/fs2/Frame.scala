@@ -2,8 +2,8 @@ package laserdisc.fs2
 
 import cats.syntax.either._
 import fs2.Chunk
-import laserdisc.protocol.RESP
 import laserdisc.protocol.BitVectorDecoding._
+import laserdisc.protocol.RESP
 import laserdisc.|
 import scodec.bits.BitVector
 
@@ -22,9 +22,7 @@ sealed trait Frame extends Product with Serializable {
 }
 
 sealed trait NonEmptyFrame extends Product with Serializable
-
 case object Empty extends Frame
-
 final case class Complete(full: BitVector) extends Frame with NonEmptyFrame
 final case class Decoded(resp: RESP) extends Frame with NonEmptyFrame
 final case class Incomplete(partial: BitVector, bitsToComplete: Long) extends Frame with NonEmptyFrame {

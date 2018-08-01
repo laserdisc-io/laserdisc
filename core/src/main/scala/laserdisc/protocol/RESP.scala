@@ -1,9 +1,9 @@
-package laserdisc.protocol
+package laserdisc
+package protocol
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.{lang => j}
 
-import laserdisc.|
 import scodec.Decoder.decodeCollect
 import scodec.Encoder.encodeSeq
 import scodec.bits.{BitVector, _}

@@ -32,23 +32,23 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
   override def beforeAll(): Unit = super.beforeAll()
   override def afterAll(): Unit = super.afterAll()
 
+  val asyncChannelGroup: AsynchronousChannelGroup =
+        withThreadPool(newFixedThreadPool(8))
+
+  val redisClientPool: ExecutionContext =
+    ExecutionContext.fromExecutor(new ForkJoinPool())
+
+  def clientUnderTest[F[_]](implicit F: Effect[F]): Stream[F, RedisClient[F]] =
+    (noOpLogStream[F] zip Scheduler[F](corePoolSize = 4)) flatMap {
+      case (l, sch) => RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))(F, l, asyncChannelGroup, redisClientPool, sch)
+    }
+
   "an fs2 redis client" ignore {
 
-    "handle correctly hundreds of read requests in parallel for a bulk text payload" in {
-
-      val asyncChannelGroup: AsynchronousChannelGroup =
-        withThreadPool(newFixedThreadPool(16))
-
-      val redisClientPool: ExecutionContext =
-        ExecutionContext.fromExecutor(new ForkJoinPool())
+    "handle correctly hundreds of read requests in parallel for a large bulk text payload" in {
 
       val testKey     = Key.unsafeFrom("test-key")
       val testPayload = (1 to 1000).toList map (_ => "test text") mkString " - "
-
-      def clientUnderTest[F[_]](implicit F: Effect[F]): Stream[F, RedisClient[F]] =
-        (noOpLogStream[F] zip Scheduler[F](corePoolSize = 4)) flatMap {
-          case (l, sch) => RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))(F, l, asyncChannelGroup, redisClientPool, sch)
-        }
 
       def testPreset[F[_]](cl: RedisClient[F])(implicit F: Monad[F]): F[Unit] =
         cl.send1(strings.set(testKey, testPayload)) flatMap (_ => F.unit)
@@ -77,19 +77,8 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
 
     "handle correctly some read requests in a row for a bulk text payload" in {
 
-      val asyncChannelGroup: AsynchronousChannelGroup =
-        withThreadPool(newFixedThreadPool(16))
-
-      val redisClientPool: ExecutionContext =
-        ExecutionContext.fromExecutor(new ForkJoinPool())
-
       val testKey     = Key.unsafeFrom("test-key")
       val testPayload = (1 to 1000).toList map (_ => "test text") mkString " - "
-
-      def clientUnderTest[F[_]](implicit F: Effect[F]): Stream[F, RedisClient[F]] =
-        (noOpLogStream[F] zip Scheduler[F](corePoolSize = 4)) flatMap {
-          case (l, sch) => RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))(F, l, asyncChannelGroup, redisClientPool, sch)
-        }
 
       def testPreset[F[_]](cl: RedisClient[F])(implicit F: Monad[F]): F[Unit] =
         cl.send1(strings.set(testKey, testPayload)) flatMap (_ => F.unit)
@@ -114,25 +103,44 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       testResponses map (_ should be (testPayload))
     }
 
+    "handle correctly hundreds of read requests in parallel for a small bulk text payload" in {
+
+      val testKey     = Key.unsafeFrom("test-key")
+      val testPayload = "test text"
+
+      def testPreset[F[_]](cl: RedisClient[F])(implicit F: Monad[F]): F[Unit] =
+        cl.send1(strings.set(testKey, testPayload)) flatMap (_ => F.unit)
+
+      def testRequests[F[_]](cl: RedisClient[F])(implicit F: Concurrent[F]): F[List[String]] =
+        (((1 to 1000) map { _ =>
+          F.start { cl.send1(strings.get[String](testKey)) }
+        }).par map { ioFib =>
+          ioFib flatMap (_.join.attempt)
+        } map {
+          _.map(
+            _.fold(_ => "", _.fold(_ => "", _.getOrElse("")))
+          )
+        }).toList.sequence
+
+      val testResponses =
+        (clientUnderTest[IO] evalMap {
+          cl => testPreset(cl) *> testRequests(cl)
+        }).compile.last map (
+          _ getOrElse Nil
+        ) unsafeRunSync()
+
+      testResponses.size should be (1000)
+      testResponses map (_ should be (testPayload))
+    }
+
     "handle correctly hundreds of read requests in parallel for an array payload" in {
 
       implicit object myShow1 extends Show[List[String]] {
         final def show(a: List[String]): String = a mkString ","
       }
 
-      val asyncChannelGroup: AsynchronousChannelGroup =
-        withThreadPool(newFixedThreadPool(16))
-
-      val redisClientPool: ExecutionContext =
-        ExecutionContext.fromExecutor(new ForkJoinPool())
-
       val testKey  = Key.unsafeFrom("test-key-list")
       val testBulk = (1 to 1000).toList map (_ => "test text") mkString " - "
-
-      def clientUnderTest[F[_]](implicit F: Effect[F]): Stream[F, RedisClient[F]] =
-        (noOpLogStream[F] zip Scheduler[F](corePoolSize = 4)) flatMap {
-          case (l, sch) => RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))(F, l, asyncChannelGroup, redisClientPool, sch)
-        }
 
       def testCleanup[F[_]](cl: RedisClient[F])(implicit F: Monad[F]): F[Unit] =
         cl.send1(lists.lrem(testKey, 0L, testBulk)) flatMap (_ => F.unit)

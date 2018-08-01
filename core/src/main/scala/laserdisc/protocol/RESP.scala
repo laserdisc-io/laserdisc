@@ -424,10 +424,10 @@ sealed trait RESPFunctions { this: RESPCodecs =>
       res => Right(res)
     )
 
-  private sealed trait Sized
-  private final case object Bulk extends Sized
-  private final case object Multi extends Sized
-  private final case object No extends Sized
+  private sealed trait SizedContentType
+  private final case object Bulk extends SizedContentType
+  private final case object Multi extends SizedContentType
+  private final case object No extends SizedContentType
 }
 
 object BitVectorDecoding {

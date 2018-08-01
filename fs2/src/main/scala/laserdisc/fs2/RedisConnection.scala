@@ -56,9 +56,8 @@ object RedisConnection {
               previous.append(chunk) match {
                 case Left(ex) => Pull.raiseError(ex)
                 case Right(f) => f match {
-                  case frame: Complete   => Pull.output1(frame) >> go(rest, Empty)
-                  case frame: Decoded    => Pull.output1(frame) >> go(rest, Empty)
-                  case frame: Incomplete => go(rest, frame)
+                  case frame @ (Complete(_) | Decoded(_)) => Pull.output1(frame) >> go(rest, Empty)
+                  case frame: Incomplete                  => go(rest, frame)
                 }
               }
 

@@ -3,7 +3,7 @@ package laserdisc.fs2
 import cats.syntax.either._
 import fs2.Chunk
 import laserdisc.protocol.RESP
-import laserdisc.protocol.aaa._
+import laserdisc.protocol.BitVectorDecoding._
 import laserdisc.|
 import scodec.bits.BitVector
 

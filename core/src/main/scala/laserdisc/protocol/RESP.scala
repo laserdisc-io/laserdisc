@@ -389,7 +389,7 @@ sealed trait RESPCodecs { this: RESPBuilders =>
 
 sealed trait RESPFunctions { this: RESPCodecs =>
 
-  import aaa._
+  import BitVectorDecoding._
 
   final def stateOf: BitVector => String | BitVectorState =
     bits => bits.consume(BitsInByte) {
@@ -430,9 +430,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
   private final case object No extends Sized
 }
 
-object RESP extends RESPBuilders with RESPCodecs with RESPFunctions
-
-object aaa {
+object BitVectorDecoding {
 
   sealed trait BitVectorState extends Product with Serializable
   final case class MissingBits(stillToReceive: Long) extends BitVectorState
@@ -440,3 +438,5 @@ object aaa {
   final case object IncompleteVector extends BitVectorState
   final case object CompleteVector extends BitVectorState
 }
+
+object RESP extends RESPBuilders with RESPCodecs with RESPFunctions

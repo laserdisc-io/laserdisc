@@ -12,7 +12,6 @@ import cats.syntax.all._
 import laserdisc.protocol.RESP
 import log.effect.LogWriter
 import scodec.Codec
-import scodec.bits.BitVector
 import scodec.stream.{decode, encode}
 
 import scala.concurrent.ExecutionContext
@@ -58,6 +57,7 @@ object RedisConnection {
                 case Left(ex) => Pull.raiseError(ex)
                 case Right(f) => f match {
                   case frame: Complete   => Pull.output1(frame) >> go(rest, Empty)
+                  case frame: Decoded    => Pull.output1(frame) >> go(rest, Empty)
                   case frame: Incomplete => go(rest, frame)
                 }
               }
@@ -70,6 +70,7 @@ object RedisConnection {
 
       _.through(toBitVector) flatMap {
         case Complete(v)      => streamDecoder.decode(v)
+        case Decoded(s)       => Stream(s)
         case Incomplete(v, _) => Stream.raiseError(
           new Exception(s"Trying to decode an incomplete frame. Content: ${v.toByteArray.map(_.toChar).mkString}")
         )
@@ -79,30 +80,4 @@ object RedisConnection {
     }
   }
 
-  sealed trait Frame extends Product with Serializable {
-
-    def append(chunk: Chunk[Byte]): Exception | NonEmptyFrame =
-      nextFrame(BitVector.view(chunk.toByteBuffer))
-
-    protected final def nextFrame(bits: BitVector): Exception | NonEmptyFrame =
-      RESP.areAllReceived(bits) map {
-        case (complete, n) => if (!complete) Incomplete(bits, n) else Complete(bits)
-      } leftMap (new Exception(_))
-  }
-  sealed trait NonEmptyFrame extends Product with Serializable
-
-  final type Empty = Empty.type
-  final case object Empty extends Frame
-
-  final case class Complete(full: BitVector) extends Frame with NonEmptyFrame
-  final case class Incomplete(partial: BitVector, bitsToComplete: Long) extends Frame with NonEmptyFrame {
-
-    override def append(chunk: Chunk[Byte]): Exception | NonEmptyFrame = {
-      val newBits = BitVector.view(chunk.toByteBuffer)
-
-      //  Saves some size inspections
-      if (bitsToComplete == newBits.size) Right(Complete(partial ++ newBits))
-      else nextFrame(partial ++ newBits)
-    }
-  }
 }

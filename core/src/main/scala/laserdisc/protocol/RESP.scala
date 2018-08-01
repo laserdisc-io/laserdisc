@@ -1,7 +1,7 @@
 package laserdisc.protocol
 
-import java.{lang => j}
 import java.nio.charset.StandardCharsets.UTF_8
+import java.{lang => j}
 
 import laserdisc.|
 import scodec.Decoder.decodeCollect
@@ -389,7 +389,9 @@ sealed trait RESPCodecs { this: RESPBuilders =>
 
 sealed trait RESPFunctions { this: RESPCodecs =>
 
-  final def areAllReceived: BitVector => String | (Boolean, Long) =
+  import aaa._
+
+  final def stateOf: BitVector => String | BitVectorState =
     bits => bits.consume(BitsInByte) {
       case `plus`
            | `minus`
@@ -402,18 +404,18 @@ sealed trait RESPFunctions { this: RESPCodecs =>
       case (remainder, Bulk) =>
         evalWithSizeDecodedFrom(remainder) {
           ds =>
-            if (ds.value >= 0 && ds.remainder.size == (crlf.size + (ds.value * BitsInByte))) true -> 0L // Complete: expected size
-            else if (ds.value == -1) true -> 0L // Complete: empty bulk
-            else false -> ((crlf.size + (ds.value * BitsInByte)) - ds.remainder.size)
+            if (ds.value >= 0 && ds.remainder.size == (crlf.size + (ds.value * BitsInByte))) CompleteVector // Complete: expected size
+            else if (ds.value == -1) CompleteVector // Complete: empty bulk
+            else MissingBits((crlf.size + (ds.value * BitsInByte)) - ds.remainder.size)
         }
 
       case (remainder, Multi) =>
         arrayCodec.decode(remainder).fold(
-          _ => Right(false -> -1L),
-          _ => Right(true -> 0L)
+          _ => Right(IncompleteVector),
+          r => Right(CompleteAndDecoded(r))
         )
 
-      case (_, No)    => Right(true -> 0L)
+      case (_, No)    => Right(CompleteVector)
     }
 
   private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: DecodeResult[Long] => A): String | A =
@@ -423,9 +425,18 @@ sealed trait RESPFunctions { this: RESPCodecs =>
     )
 
   private sealed trait Sized
-  private case object Bulk extends Sized
-  private case object Multi extends Sized
-  private case object No extends Sized
+  private final case object Bulk extends Sized
+  private final case object Multi extends Sized
+  private final case object No extends Sized
 }
 
 object RESP extends RESPBuilders with RESPCodecs with RESPFunctions
+
+object aaa {
+
+  sealed trait BitVectorState extends Product with Serializable
+  final case class MissingBits(stillToReceive: Long) extends BitVectorState
+  final case class CompleteAndDecoded(serial: DecodeResult[RESP]) extends BitVectorState
+  final case object IncompleteVector extends BitVectorState
+  final case object CompleteVector extends BitVectorState
+}

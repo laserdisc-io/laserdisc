@@ -85,7 +85,7 @@ object RedisConnection {
       nextFrame(BitVector.view(chunk.toByteBuffer))
 
     protected final def nextFrame(bits: BitVector): Exception | NonEmptyFrame =
-      RESP.receivedAll(bits) map {
+      RESP.areAllReceived(bits) map {
         case (complete, n) => if (!complete) Incomplete(bits, n) else Complete(bits)
       } leftMap (new Exception(_))
   }
@@ -93,7 +93,7 @@ object RedisConnection {
 
   final type Empty = Empty.type
   final case object Empty extends Frame
-  
+
   final case class Complete(full: BitVector) extends Frame with NonEmptyFrame
   final case class Incomplete(partial: BitVector, bitsToComplete: Long) extends Frame with NonEmptyFrame {
 

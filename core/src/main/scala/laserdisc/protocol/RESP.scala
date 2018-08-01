@@ -315,7 +315,7 @@ sealed trait RESPCodecs { this: RESPBuilders =>
     override final def toString: String                                             = "bulk-string"
   }
 
-  private final val arrayCodec: Codec[Array] = new Codec[Array] {
+  protected final val arrayCodec: Codec[Array] = new Codec[Array] {
 
     private final val nilArrayBits   = minusOne ++ crlf
 
@@ -389,7 +389,7 @@ sealed trait RESPCodecs { this: RESPBuilders =>
 
 sealed trait RESPFunctions { this: RESPCodecs =>
 
-  final def receivedAll: BitVector => String | (Boolean, Long) =
+  final def areAllReceived: BitVector => String | (Boolean, Long) =
     bits => bits.consume(BitsInByte) {
       case `plus`
            | `minus`
@@ -400,7 +400,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
     }
     .flatMap {
       case (remainder, Bulk) =>
-        withSizeIn(remainder) {
+        evalWithSizeDecodedFrom(remainder) {
           ds =>
             if (ds.value >= 0 && ds.remainder.size == (crlf.size + (ds.value * BitsInByte))) true -> 0L // Complete: expected size
             else if (ds.value == -1) true -> 0L // Complete: empty bulk
@@ -408,14 +408,15 @@ sealed trait RESPFunctions { this: RESPCodecs =>
         }
 
       case (remainder, Multi) =>
-        withSizeIn(remainder) {
-          ds => true -> 0L
-        }
+        arrayCodec.decode(remainder).fold(
+          _ => Right(false -> -1L),
+          _ => Right(true -> 0L)
+        )
 
       case (_, No)    => Right(true -> 0L)
     }
 
-  private final def withSizeIn[A](bits: BitVector)(f: DecodeResult[Long] => A): String | A =
+  private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: DecodeResult[Long] => A): String | A =
     (longAsCRLFTerminatedString.decode(bits) map f).fold (
       err => Left(err.message),
       res => Right(res)

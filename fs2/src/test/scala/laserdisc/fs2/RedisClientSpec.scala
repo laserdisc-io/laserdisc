@@ -23,12 +23,16 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
 import scala.concurrent.ExecutionContext
 
+/**
+  * This test will be enabled back when the docker support
+  * for the CI tests will be complete
+  */
 final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
 
   override def beforeAll(): Unit = super.beforeAll()
   override def afterAll(): Unit = super.afterAll()
 
-  "an fs2 redis client" should {
+  "an fs2 redis client" ignore {
 
     "handle correctly hundreds of read requests in parallel for a bulk text payload" in {
 

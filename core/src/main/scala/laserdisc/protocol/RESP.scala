@@ -389,7 +389,7 @@ sealed trait RESPCodecs { this: RESPBuilders =>
 
 sealed trait RESPFunctions { this: RESPCodecs =>
 
-  final def stillToReceive: BitVector => String | Long =
+  final def receivedAll: BitVector => String | (Boolean, Long) =
     bits => bits.consume(BitsInByte) {
       case `plus`
            | `minus`
@@ -402,17 +402,17 @@ sealed trait RESPFunctions { this: RESPCodecs =>
       case (remainder, Bulk) =>
         withSizeIn(remainder) {
           ds =>
-            if (ds.value >= 0 && ds.remainder.size == (crlf.size + (ds.value * BitsInByte))) 0L // Complete: expected size
-            else if (ds.value == -1) 0L // Complete: empty bulk
-            else (crlf.size + (ds.value * BitsInByte)) - ds.remainder.size
+            if (ds.value >= 0 && ds.remainder.size == (crlf.size + (ds.value * BitsInByte))) true -> 0L // Complete: expected size
+            else if (ds.value == -1) true -> 0L // Complete: empty bulk
+            else false -> ((crlf.size + (ds.value * BitsInByte)) - ds.remainder.size)
         }
 
       case (remainder, Multi) =>
         withSizeIn(remainder) {
-          ds => 0L
+          ds => true -> 0L
         }
 
-      case (_, No)    => Right(0L)
+      case (_, No)    => Right(true -> 0L)
     }
 
   private final def withSizeIn[A](bits: BitVector)(f: DecodeResult[Long] => A): String | A =

@@ -48,18 +48,20 @@ object RedisConnection {
 
     def receive[F[_]: Effect](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
 
-      def toBitVector: Pipe[F, Byte, Frame] = {
+      def toBitVector: Pipe[F, Byte, NonEmptyFrame] = {
 
-        def go(stream: Stream[F, Byte], previous: Frame): Pull[F, Frame, Unit] =
+        def go(stream: Stream[F, Byte], previous: Frame): Pull[F, NonEmptyFrame, Unit] =
           stream.pull.unconsChunk flatMap {
+
             case Some((chunk, rest)) =>
-              previous.append(chunk).fold(
-                ex => Pull.raiseError(ex),
-                {
-                  case frame@Complete(_)                => Pull.output1(frame) >> go(rest, Empty)
-                  case frame@(Empty | Incomplete(_, _)) => go(rest, frame)
+              previous.append(chunk) match {
+                case Left(ex) => Pull.raiseError(ex)
+                case Right(f) => f match {
+                  case frame: Complete   => Pull.output1(frame) >> go(rest, Empty)
+                  case frame: Incomplete => go(rest, frame)
                 }
-              )
+              }
+
             case _ => Pull.done
           }
 
@@ -68,7 +70,6 @@ object RedisConnection {
 
       _.through(toBitVector) flatMap {
         case Complete(v)      => streamDecoder.decode(v)
-        case Empty            => Stream.empty
         case Incomplete(v, _) => Stream.raiseError(
           new Exception(s"Trying to decode an incomplete frame. Content: ${v.toByteArray.map(_.toChar).mkString}")
         )
@@ -78,28 +79,30 @@ object RedisConnection {
     }
   }
 
-}
+  sealed trait Frame extends Product with Serializable {
 
-sealed trait Frame {
+    def append(chunk: Chunk[Byte]): Exception | NonEmptyFrame =
+      nextFrame(BitVector.view(chunk.toByteBuffer))
 
-  def append(chunk: Chunk[Byte]): Exception | Frame =
-    nextFrame(BitVector.view(chunk.toByteBuffer))
+    protected final def nextFrame(bits: BitVector): Exception | NonEmptyFrame =
+      RESP.receivedAll(bits) map {
+        case (complete, n) => if (!complete) Incomplete(bits, n) else Complete(bits)
+      } leftMap (new Exception(_))
+  }
+  sealed trait NonEmptyFrame extends Product with Serializable
 
-  protected final def nextFrame(bits: BitVector): Exception | Frame =
-    RESP.stillToReceive(bits) map {
-      n => if (n > 0) Incomplete(bits, n) else Complete(bits)
-    } leftMap (new Exception(_))
-}
+  final type Empty = Empty.type
+  final case object Empty extends Frame
+  
+  final case class Complete(full: BitVector) extends Frame with NonEmptyFrame
+  final case class Incomplete(partial: BitVector, bitsToComplete: Long) extends Frame with NonEmptyFrame {
 
-case object Empty extends Frame
-final case class Complete(full: BitVector) extends Frame
-final case class Incomplete(partial: BitVector, neededBits: Long) extends Frame {
+    override def append(chunk: Chunk[Byte]): Exception | NonEmptyFrame = {
+      val newBits = BitVector.view(chunk.toByteBuffer)
 
-  override def append(chunk: Chunk[Byte]): Exception | Frame = {
-    val newBits = BitVector.view(chunk.toByteBuffer)
-
-    //  Saves some size inspections
-    if (neededBits == newBits.size) Right(Complete(partial ++ newBits))
-    else nextFrame(partial ++ newBits)
+      //  Saves some size inspections
+      if (bitsToComplete == newBits.size) Right(Complete(partial ++ newBits))
+      else nextFrame(partial ++ newBits)
+    }
   }
 }

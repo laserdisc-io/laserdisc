@@ -46,17 +46,17 @@ object RedisConnection {
 
     def receive[F[_]: Effect](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
 
-      def framing: Pipe[F, Byte, NonEmptyFrame] = {
+      def framing: Pipe[F, Byte, CompleteFrame] = {
 
-        def go(stream: Stream[F, Byte], previous: Frame): Pull[F, NonEmptyFrame, Unit] =
+        def go(stream: Stream[F, Byte], previous: Frame): Pull[F, CompleteFrame, Unit] =
           stream.pull.unconsChunk flatMap {
 
             case Some((chunk, rest)) =>
               previous.append(chunk) match {
                 case Left(ex) => Pull.raiseError(ex)
                 case Right(f) => f match {
-                  case frame @ (Complete(_) | Decoded(_)) => Pull.output1(frame) >> go(rest, EmptyFrame)
-                  case frame: Incomplete                  => go(rest, frame)
+                  case frame: CompleteFrame => Pull.output1(frame) >> go(rest, EmptyFrame)
+                  case frame: Incomplete    => go(rest, frame)
                 }
               }
 
@@ -69,13 +69,9 @@ object RedisConnection {
       _.through(framing) flatMap {
         case Complete(v)      => streamDecoder.decode(v)
         case Decoded(s)       => Stream.emit(s)
-        case Incomplete(v, _) => Stream.raiseError(
-          new Exception(s"Trying to decode an incomplete frame. Content: ${v.toByteArray.map(_.toChar).mkString}")
-        )
       } evalMap (
         resp => log.debug(s"receiving $resp") *> resp.pure
       )
     }
   }
-
 }

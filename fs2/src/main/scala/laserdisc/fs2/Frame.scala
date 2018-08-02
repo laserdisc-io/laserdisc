@@ -22,10 +22,11 @@ sealed trait Frame extends Product with Serializable {
 }
 
 sealed trait NonEmptyFrame extends Product with Serializable
+sealed trait CompleteFrame extends Product with Serializable
 
 case object EmptyFrame extends Frame
-final case class Complete(full: BitVector) extends Frame with NonEmptyFrame
-final case class Decoded(resp: RESP) extends Frame with NonEmptyFrame
+final case class Complete(full: BitVector) extends Frame with NonEmptyFrame with CompleteFrame
+final case class Decoded(resp: RESP) extends Frame with NonEmptyFrame with CompleteFrame
 final case class Incomplete(partial: BitVector, bitsToComplete: Long) extends Frame with NonEmptyFrame {
 
   override def append(chunk: Chunk[Byte]): Exception | NonEmptyFrame = {

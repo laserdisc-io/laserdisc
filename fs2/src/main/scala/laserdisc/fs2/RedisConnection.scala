@@ -9,7 +9,6 @@ import _root_.fs2.io.tcp
 import cats.Applicative
 import cats.effect.Effect
 import cats.syntax.all._
-import laserdisc.protocol.RESP
 import log.effect.LogWriter
 import scodec.Codec
 import scodec.stream.{decode, encode}
@@ -47,7 +46,7 @@ object RedisConnection {
 
     def receive[F[_]: Effect](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
 
-      def toBitVector: Pipe[F, Byte, NonEmptyFrame] = {
+      def framing: Pipe[F, Byte, NonEmptyFrame] = {
 
         def go(stream: Stream[F, Byte], previous: Frame): Pull[F, NonEmptyFrame, Unit] =
           stream.pull.unconsChunk flatMap {
@@ -56,7 +55,7 @@ object RedisConnection {
               previous.append(chunk) match {
                 case Left(ex) => Pull.raiseError(ex)
                 case Right(f) => f match {
-                  case frame @ (Complete(_) | Decoded(_)) => Pull.output1(frame) >> go(rest, Empty)
+                  case frame @ (Complete(_) | Decoded(_)) => Pull.output1(frame) >> go(rest, EmptyFrame)
                   case frame: Incomplete                  => go(rest, frame)
                 }
               }
@@ -64,12 +63,12 @@ object RedisConnection {
             case _ => Pull.done
           }
 
-        stream => go(stream, Empty).stream
+        stream => go(stream, EmptyFrame).stream
       }
 
-      _.through(toBitVector) flatMap {
+      _.through(framing) flatMap {
         case Complete(v)      => streamDecoder.decode(v)
-        case Decoded(s)       => Stream(s)
+        case Decoded(s)       => Stream.emit(s)
         case Incomplete(v, _) => Stream.raiseError(
           new Exception(s"Trying to decode an incomplete frame. Content: ${v.toByteArray.map(_.toChar).mkString}")
         )

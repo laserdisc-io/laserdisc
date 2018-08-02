@@ -14,7 +14,6 @@ import log.effect.LogWriter
 import log.effect.fs2.Fs2LogWriter._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.Try
 
 sealed trait CliApp[F[_]] extends StreamApp[F] { self =>
 
@@ -24,11 +23,17 @@ sealed trait CliApp[F[_]] extends StreamApp[F] { self =>
   implicit def asyncChannelGroup: AsynchronousChannelGroup
 
   override final def stream(args: List[String], requestShutdown: F[Unit]): Stream[F, ExitCode] = {
-    val maybeHost = args.headOption.flatMap(Host.from(_).toOption)
-    val maybePort = args.tail.headOption.flatMap(s => Try(s.toInt).toEither.flatMap(Port.from).toOption)
-    (maybeHost, maybePort) match {
-      case (Some(ip), Some(port)) => impl.mkStream(ip, port)
-      case _                      => Stream.emit(ExitCode.Error)
+    args match {
+      case arg1 :: arg2 :: Nil =>
+        val maybeHost = Host.from(arg1).toOption
+        val maybePort = Either.catchNonFatal(arg2.toInt).flatMap(Port.from).toOption
+
+        (maybeHost, maybePort) match {
+          case (Some(ip), Some(port)) => impl.mkStream(ip, port)
+          case _                      => Stream.emit(ExitCode.Error)
+        }
+
+      case _ => Stream.emit(ExitCode.Error)
     }
   }
 

@@ -1,7 +1,8 @@
-package laserdisc.protocol
+package laserdisc
+package protocol
 
-import java.{lang => j}
 import java.nio.charset.StandardCharsets.UTF_8
+import java.{lang => j}
 
 import scodec.Decoder.decodeCollect
 import scodec.Encoder.encodeSeq
@@ -219,7 +220,7 @@ object NonNilArray {
   final def unapply(nonEmptyArray: NonNilArray): Option[Vector[RESP]] = Some(nonEmptyArray.elements)
 }
 
-trait RESPBuilders {
+sealed trait RESPBuilders {
   final def str(value: String): SimpleString = new SimpleString(value)
 
   final def err(message: String): Error = new Error(message)
@@ -234,17 +235,18 @@ trait RESPBuilders {
   final def arr(xs: Seq[RESP]): NonNilArray          = new NonNilArray(xs.toVector)
 }
 
-trait RESPCodecs { this: RESPBuilders =>
-  private final val utf8       = new LenientStringCodec(UTF_8)
-  private final val BitsInByte = 8L
-  private final val plus :: minus :: colon :: dollar :: star :: crlf :: minusOne :: zero :: Nil =
+sealed trait RESPCodecs { this: RESPBuilders =>
+
+  protected final val utf8       = new LenientStringCodec(UTF_8)
+  protected final val BitsInByte = 8L
+  protected final val plus :: minus :: colon :: dollar :: star :: crlf :: minusOne :: zero :: Nil =
     (hex"2b" :: hex"2d" :: hex"3a" :: hex"24" :: hex"2a" :: hex"0d0a" :: hex"2d31" :: hex"30" :: Nil)
       .map(_.bits)
   private final val crlfSize      = crlf.size
   private final val crlfBytes     = crlf.bytes
   private final val crlfBytesSize = crlfBytes.size
 
-  private final def crlfTerminatedStringOfSize(size: Long) =
+  private final def crlfTerminatedStringOfSize(size: Long): Codec[String] =
     filtered(
       utf8,
       new Codec[BitVector] {
@@ -257,9 +259,11 @@ trait RESPCodecs { this: RESPBuilders =>
           }
       }
     ).withToString("crlf-terminated string")
+
   private final val crlfTerminatedString = crlfTerminatedStringOfSize(0)
-  private final val longAsCRLFTerminatedString = crlfTerminatedString
-    .narrow[Long](
+
+  protected final val longAsCRLFTerminatedString =
+    crlfTerminatedString.narrow[Long](
       s =>
         try Attempt.successful(j.Long.parseLong(s))
         catch { case _: NumberFormatException => Attempt.failure(Err(s"Expected long but found $s")) },
@@ -269,42 +273,58 @@ trait RESPCodecs { this: RESPBuilders =>
 
   private final val simpleStringCodec: Codec[SimpleString] =
     crlfTerminatedString.xmap[SimpleString](str, _.value).withToString("simple-string")
+
   private final val errorCodec: Codec[Error] =
     crlfTerminatedString.xmap[Error](err, _.message).withToString("error")
+
   private final val integerCodec: Codec[Integer] =
     longAsCRLFTerminatedString.xmap[Integer](int, _.value).withToString("integer")
+
   private final val bulkStringCodec: Codec[BulkString] = new Codec[BulkString] {
+
     private final val nullBulkStringBits = minusOne ++ crlf
+
     private final val decoder = longAsCRLFTerminatedString.flatMap {
       case -1                => Decoder.point(NullBulkString)
       case size if size >= 0 => fixedSizeBytes(size + crlfBytesSize, crlfTerminatedStringOfSize(size)).map(bulk)
       case negSize           => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
     }
+
     private final def failDec(negSize: Long) =
       Err.General(s"failed to decode bulk-string of size $negSize", List("size"))
+
     private final def failEnc(bulkString: BulkString, err: Err) =
       Err.General(s"failed to encode size of [$bulkString]: ${err.messageWithContext}", List("size"))
 
     override final def sizeBound: SizeBound = SizeBound.unknown
-    override final def encode(bulkString: BulkString): Attempt[BitVector] = bulkString match {
-      case NullBulkString => Attempt.successful(nullBulkStringBits)
-      case NonNullBulkString(s) =>
-        crlfTerminatedString.encode(s).flatMap { bits =>
-          longAsCRLFTerminatedString
-            .encode(bits.size / BitsInByte - crlfBytesSize)
-            .mapErr(failEnc(bulkString, _))
-            .map(_ ++ bits)
-        }
-    }
+
+    override final def encode(bulkString: BulkString): Attempt[BitVector] =
+      bulkString match {
+        case NullBulkString => Attempt.successful(nullBulkStringBits)
+        case NonNullBulkString(s) =>
+          crlfTerminatedString.encode(s).flatMap { bits =>
+            longAsCRLFTerminatedString
+              .encode(bits.size / BitsInByte - crlfBytesSize)
+              .mapErr(failEnc(bulkString, _))
+              .map(_ ++ bits)
+          }
+      }
+
     override final def decode(buffer: BitVector): Attempt[DecodeResult[BulkString]] = decoder.decode(buffer)
+
     override final def toString: String                                             = "bulk-string"
   }
-  private final val arrayCodec: Codec[Array] = new Codec[Array] {
+
+  protected final val arrayCodec: Codec[Array] = new Codec[Array] {
+
     private final val nilArrayBits   = minusOne ++ crlf
+
     private final val emptyArrayBits = zero ++ crlf
+
     private final def checkSize(v: Vector[RESP], expectedSize: Long) =
       if (v.size == expectedSize) Attempt.successful(v)
       else Attempt.failure(Err(s"Insufficient number of elements: decoded ${v.size} instead of $expectedSize"))
+
     private final val decoder = longAsCRLFTerminatedString.flatMap {
       case -1 => Decoder.point(NilArray)
       case 0  => Decoder.point(arr(Seq.empty))
@@ -314,12 +334,15 @@ trait RESPCodecs { this: RESPBuilders =>
           .map(arr(_))
       case negSize => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
     }
+
     private final def failDec(negSize: Long) =
       Err.General(s"failed to decode array of size $negSize", List("size"))
+
     private final def failEnc(array: Array, err: Err) =
       Err.General(s"failed to encode size of [$array]: ${err.messageWithContext}", List("size"))
 
     override final def sizeBound: SizeBound = SizeBound.unknown
+
     override final def encode(array: Array): Attempt[BitVector] = array match {
       case NilArray                    => Attempt.successful(nilArrayBits)
       case NonNilArray(v) if v.isEmpty => Attempt.successful(emptyArrayBits)
@@ -334,14 +357,17 @@ trait RESPCodecs { this: RESPBuilders =>
   }
 
   implicit final val respCodec: Codec[RESP] = new Codec[RESP] {
+
     override final def sizeBound: SizeBound = SizeBound.unknown
+
     override final def encode(value: RESP): Attempt[BitVector] = value match {
-      case simpleString: SimpleString => simpleStringCodec.encode(simpleString).map(plus ++ _)
-      case error: Error               => errorCodec.encode(error).map(minus ++ _)
-      case integer: Integer           => integerCodec.encode(integer).map(colon ++ _)
-      case bulkString: BulkString     => bulkStringCodec.encode(bulkString).map(dollar ++ _)
-      case array: Array               => arrayCodec.encode(array).map(star ++ _)
+      case simpleString : SimpleString  => simpleStringCodec.encode(simpleString).map(plus ++ _)
+      case error        : Error         => errorCodec.encode(error).map(minus ++ _)
+      case integer      : Integer       => integerCodec.encode(integer).map(colon ++ _)
+      case bulkString   : BulkString    => bulkStringCodec.encode(bulkString).map(dollar ++ _)
+      case array        : Array         => arrayCodec.encode(array).map(star ++ _)
     }
+
     override final def decode(bits: BitVector): Attempt[DecodeResult[RESP]] =
       bits
         .consume(BitsInByte) {
@@ -350,13 +376,67 @@ trait RESPCodecs { this: RESPBuilders =>
           case `colon`  => Right(integerCodec)
           case `dollar` => Right(bulkStringCodec)
           case `star`   => Right(arrayCodec)
-          case other    => Left(s"unidentified RESP type ${other.toHex}")
+          case other    => Left(s"unidentified RESP type (Hex: ${other.toHex})")
         }
         .fold(
-          error => Attempt.failure(Err(error)), { case (remainder, codec) => codec.decode(remainder) }
+          error => Attempt.failure(Err(error)),
+          { case (remainder, codec) => codec.decode(remainder) }
         )
+
     override final def toString: String = "RESP"
   }
 }
 
-object RESP extends RESPBuilders with RESPCodecs
+sealed trait RESPFunctions { this: RESPCodecs =>
+
+  import BitVectorDecoding._
+
+  final def stateOf: BitVector => String | BitVectorState =
+    bits => bits.consume(BitsInByte) {
+      case `plus`
+           | `minus`
+           | `colon` => Right(No)
+      case `dollar`  => Right(Bulk)
+      case `star`    => Right(Multi)
+      case other     => Left(s"unidentified RESP type (Hex: ${other.toHex})")
+    }
+    .flatMap {
+      case (remainder, Bulk) =>
+        evalWithSizeDecodedFrom(remainder) {
+          ds =>
+            if (ds.value >= 0 && ds.remainder.size == (crlf.size + (ds.value * BitsInByte))) CompleteVector // Complete: expected size
+            else if (ds.value == -1) CompleteVector // Complete: empty bulk
+            else MissingBits((crlf.size + (ds.value * BitsInByte)) - ds.remainder.size)
+        }
+
+      case (remainder, Multi) =>
+        arrayCodec.decode(remainder).fold(
+          _ => Right(IncompleteVector),
+          r => Right(CompleteAndDecoded(r))
+        )
+
+      case (_, No)    => Right(CompleteVector)
+    }
+
+  private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: DecodeResult[Long] => A): String | A =
+    (longAsCRLFTerminatedString.decode(bits) map f).fold (
+      err => Left(err.message),
+      res => Right(res)
+    )
+
+  private sealed trait SizedContentType
+  private final case object Bulk extends SizedContentType
+  private final case object Multi extends SizedContentType
+  private final case object No extends SizedContentType
+}
+
+object BitVectorDecoding {
+
+  sealed trait BitVectorState extends Product with Serializable
+  final case class MissingBits(stillToReceive: Long) extends BitVectorState
+  final case class CompleteAndDecoded(serial: DecodeResult[RESP]) extends BitVectorState
+  final case object IncompleteVector extends BitVectorState
+  final case object CompleteVector extends BitVectorState
+}
+
+object RESP extends RESPBuilders with RESPCodecs with RESPFunctions

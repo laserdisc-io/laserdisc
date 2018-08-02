@@ -4,14 +4,13 @@ package fs2
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
 
-import _root_.fs2.io.tcp
 import _root_.fs2._
+import _root_.fs2.io.tcp
 import cats.Applicative
 import cats.effect.Effect
 import cats.syntax.all._
 import log.effect.LogWriter
 import scodec.Codec
-import scodec.bits.BitVector
 import scodec.stream.{decode, encode}
 
 import scala.concurrent.ExecutionContext
@@ -38,6 +37,7 @@ object RedisConnection {
     }
 
   private[fs2] final object impl {
+
     def send[F[_]: Applicative](sink: Sink[F, Byte])(implicit log: LogWriter[F]): Sink[F, RESP] =
       _.evalMap(resp => log.debug(s"sending $resp") *> resp.pure)
         .through(streamEncoder.encode)
@@ -45,20 +45,33 @@ object RedisConnection {
         .to(sink)
 
     def receive[F[_]: Effect](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
-      def toBitVector: Pipe[F, Byte, BitVector] = {
-        def go(stream: Stream[F, Byte]): Pull[F, BitVector, Unit] = stream.pull.unconsChunk.flatMap {
-          case Some((chunk, rest)) => Pull.output1(BitVector.view(chunk.toByteBuffer)) >> go(rest)
-          case _                   => Pull.done
-        }
 
-        stream =>
-          go(stream).stream
+      def framing: Pipe[F, Byte, CompleteFrame] = {
+
+        def go(stream: Stream[F, Byte], previous: Frame): Pull[F, CompleteFrame, Unit] =
+          stream.pull.unconsChunk flatMap {
+
+            case Some((chunk, rest)) =>
+              previous.append(chunk) match {
+                case Left(ex) => Pull.raiseError(ex)
+                case Right(f) => f match {
+                  case frame: CompleteFrame => Pull.output1(frame) >> go(rest, EmptyFrame)
+                  case frame: Incomplete    => go(rest, frame)
+                }
+              }
+
+            case _ => Pull.done
+          }
+
+        stream => go(stream, EmptyFrame).stream
       }
 
-      _.through(toBitVector)
-        .flatMap(streamDecoder.decode(_))
-        .evalMap(resp => log.debug(s"receiving $resp") *> resp.pure)
+      _.through(framing) flatMap {
+        case Complete(v)      => streamDecoder.decode(v)
+        case Decoded(s)       => Stream.emit(s)
+      } evalMap (
+        resp => log.debug(s"receiving $resp") *> resp.pure
+      )
     }
   }
-
 }

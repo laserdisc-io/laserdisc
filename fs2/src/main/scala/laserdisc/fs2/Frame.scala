@@ -18,7 +18,7 @@ sealed trait Frame extends Product with Serializable {
       case CompleteAndDecoded(r) => Decoded(r.value)
       case IncompleteVector      => Incomplete(bits, 0L)
       case CompleteVector        => Complete(bits)
-    } leftMap (new Exception(_))
+    } leftMap (e => new Exception(s"Error: $e - Vector content: ${bits.toByteArray map (_.toChar) mkString ""}"))
 }
 
 sealed trait NonEmptyFrame extends Product with Serializable

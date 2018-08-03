@@ -243,7 +243,7 @@ sealed trait RESPCodecs { this: RESPBuilders =>
     (hex"2b" :: hex"2d" :: hex"3a" :: hex"24" :: hex"2a" :: hex"0d0a" :: hex"2d31" :: hex"30" :: Nil)
       .map(_.bits)
   private final val crlfSize      = crlf.size
-  private final val crlfBytes     = crlf.bytes
+  protected final val crlfBytes   = crlf.bytes
   private final val crlfBytesSize = crlfBytes.size
 
   private final def crlfTerminatedStringOfSize(size: Long): Codec[String] =
@@ -403,7 +403,8 @@ sealed trait RESPFunctions { this: RESPCodecs =>
     .flatMap {
       case (remainder, Bulk) =>
         evalWithSizeDecodedFrom(remainder) {
-          ds =>
+          case Left(_)   => IncompleteVector
+          case Right(ds) =>
             if (ds.value >= 0 && ds.remainder.size == (crlf.size + (ds.value * BitsInByte))) CompleteVector // Complete: expected size
             else if (ds.value == -1) CompleteVector // Complete: empty bulk
             else MissingBits((crlf.size + (ds.value * BitsInByte)) - ds.remainder.size)
@@ -418,8 +419,9 @@ sealed trait RESPFunctions { this: RESPCodecs =>
       case (_, No)    => Right(CompleteVector)
     }
 
-  private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: DecodeResult[Long] => A): String | A =
-    (longAsCRLFTerminatedString.decode(bits) map f).fold (
+  private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: (IncompleteVector | DecodeResult[Long]) => A): String | A =
+    if (bits.bytes.indexOfSlice(crlfBytes, 0L) == -1) Right(f(Left(IncompleteVector)))
+    else (longAsCRLFTerminatedString.decode(bits) map (r => f(Right(r)))).fold (
       err => Left(err.message),
       res => Right(res)
     )
@@ -431,6 +433,9 @@ sealed trait RESPFunctions { this: RESPCodecs =>
 }
 
 object BitVectorDecoding {
+
+  type IncompleteVector = IncompleteVector.type
+  type CompleteVector = CompleteVector.type
 
   sealed trait BitVectorState extends Product with Serializable
   final case class MissingBits(stillToReceive: Long) extends BitVectorState

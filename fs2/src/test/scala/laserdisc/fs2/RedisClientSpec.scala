@@ -133,6 +133,30 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       testResponses map (_ should be (testPayload))
     }
 
+    "handle correctly hundreds of read requests in parallel for a null bulk payload" in {
+
+      val testKey = Key.unsafeFrom("non-existent-test-key")
+
+      def testRequests[F[_]](cl: RedisClient[F])(implicit F: Concurrent[F]): F[List[String]] =
+        (((1 to 1000) map { _ =>
+          F.start { cl.send1(strings.get[String](testKey)) }
+        }).par map { ioFib =>
+          ioFib flatMap (_.join.attempt)
+        } map {
+          _.map(
+            _.fold(_ => "", _.fold(_ => "", _.getOrElse("Correct")))
+          )
+        }).toList.sequence
+
+      val testResponses =
+        (clientUnderTest[IO] evalMap (cl => testRequests(cl))).compile.last map (
+          _ getOrElse Nil
+        ) unsafeRunSync()
+
+      testResponses.size should be (1000)
+      testResponses map (_ should be ("Correct"))
+    }
+
     "handle correctly hundreds of read requests in parallel for an array payload" in {
 
       implicit object myShow1 extends Show[List[String]] {

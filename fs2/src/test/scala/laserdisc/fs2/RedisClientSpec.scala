@@ -43,7 +43,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       case (l, sch) => RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))(F, l, asyncChannelGroup, redisClientPool, sch)
     }
 
-  "an fs2 redis client" ignore {
+  "an fs2 redis client" should {
 
     "handle correctly hundreds of read requests in parallel for a large bulk text payload" in {
 

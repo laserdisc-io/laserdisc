@@ -48,22 +48,34 @@ object RedisConnection {
 
       def framing: Pipe[F, Byte, CompleteFrame] = {
 
-        def go(stream: Stream[F, Byte], previous: Frame): Pull[F, CompleteFrame, Unit] =
+        def produceMultipleRight[A](xs: List[A]): Pull[F, A, Unit] =
+          xs map Pull.output1[F, A] reduceRight (_ >> _)
+
+        def loopStream(stream: Stream[F, Byte], previous: Frame): Pull[F, CompleteFrame, Unit] =
           stream.pull.unconsChunk flatMap {
 
             case Some((chunk, rest)) =>
-              previous.append(chunk) match {
+              previous.append(chunk.toByteBuffer) match {
                 case Left(ex) => Pull.raiseError(ex)
                 case Right(f) => f match {
-                  case frame: CompleteFrame => Pull.output1(frame) >> go(rest, EmptyFrame)
-                  case frame: Incomplete    => go(rest, frame)
+                  case frame: CompleteFrame =>
+                    Pull.output1(frame) >> loopStream(rest, EmptyFrame)
+
+                  case frame: MoreThanOne =>
+                    produceMultipleRight(frame.complete) >> (
+                      if (frame.remainder.isEmpty) loopStream(rest, EmptyFrame)
+                      else loopStream(rest, Incomplete(frame.remainder, 0L))
+                    )
+
+                  case frame: Incomplete =>
+                    loopStream(rest, frame)
                 }
               }
 
             case _ => Pull.done
           }
 
-        stream => go(stream, EmptyFrame).stream
+        stream => loopStream(stream, EmptyFrame).stream
       }
 
       _.through(framing) flatMap {
@@ -73,5 +85,6 @@ object RedisConnection {
         resp => log.debug(s"receiving $resp") *> resp.pure
       )
     }
+    
   }
 }

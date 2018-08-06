@@ -69,5 +69,20 @@ final class FrameSpec extends WordSpecLike with Matchers {
       }
     }
 
+    "appending a bit vector with multiple different messages with the last not complete" should {
+      "produce MoreThanOne with a list of the complete ones in the inverted order and a remainder with the incomplete bits" in {
+        val inputVector = BitVector("$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes)
+        EmptyFrame.append(inputVector.toByteBuffer) should be(
+          Right( MoreThanOne(
+            Complete(BitVector("$18\r\nTest bulk string 4\r\n".getBytes())) ::
+              Complete(BitVector("$18\r\nTest bulk string 3\r\n".getBytes())) ::
+              Complete(BitVector("$18\r\nTest bulk string 2\r\n".getBytes())) ::
+              Complete(BitVector("$18\r\nTest bulk string 1\r\n".getBytes())) :: Nil,
+            BitVector("$18\r\nTest bulk".getBytes())
+          ) )
+        )
+      }
+    }
+
   }
 }

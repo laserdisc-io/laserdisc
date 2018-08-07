@@ -20,7 +20,7 @@ sealed trait RESPFrame extends Product with Serializable with EitherSyntax with 
       case IncompleteVector            => Incomplete(bits, 0L).asRight
       case CompleteVector              => Complete(bits).asRight
       case CompleteWithRemainder(c, r) => consumeRemainder(MoreThanOne(Complete(c) :: Nil, r).asRight)
-    } leftMap (e => new Exception(s"Error: $e - Content: ${bits.print}"))
+    } leftMap (e => new Exception(s"Error: $e. Content: ${bits.print}"))
 
   @tailrec
   private final def consumeRemainder(current: String | MoreThanOne): String | MoreThanOne =

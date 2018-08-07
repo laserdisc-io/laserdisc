@@ -8,7 +8,9 @@ import _root_.fs2._
 import _root_.fs2.io.tcp
 import cats.Applicative
 import cats.effect.Effect
-import cats.syntax.all._
+import cats.syntax.applicative._
+import cats.syntax.apply._
+import laserdisc.protocol.{Complete, CompleteRESPFrame, Decoded, EmptyFrame, Incomplete, MoreThanOne, RESPFrame}
 import log.effect.LogWriter
 import scodec.Codec
 import scodec.stream.{decode, encode}
@@ -46,24 +48,33 @@ object RedisConnection {
 
     def receive[F[_]: Effect](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
 
-      def framing: Pipe[F, Byte, CompleteFrame] = {
+      def framing: Pipe[F, Byte, CompleteRESPFrame] = {
 
-        def go(stream: Stream[F, Byte], previous: Frame): Pull[F, CompleteFrame, Unit] =
+        def loopStream(stream: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteRESPFrame, Unit] =
           stream.pull.unconsChunk flatMap {
 
             case Some((chunk, rest)) =>
-              previous.append(chunk) match {
+              previous.append(chunk.toByteBuffer) match {
                 case Left(ex) => Pull.raiseError(ex)
                 case Right(f) => f match {
-                  case frame: CompleteFrame => Pull.output1(frame) >> go(rest, EmptyFrame)
-                  case frame: Incomplete    => go(rest, frame)
+                  case frame: CompleteRESPFrame =>
+                    Pull.output1(frame) >> loopStream(rest, EmptyFrame)
+
+                  case frame: MoreThanOne =>
+                    Pull.outputChunk(Chunk.vector(frame.complete)) >> (
+                      if (frame.remainder.isEmpty) loopStream(rest, EmptyFrame)
+                      else loopStream(rest, Incomplete(frame.remainder, 0L))
+                    )
+
+                  case frame: Incomplete =>
+                    loopStream(rest, frame)
                 }
               }
 
             case _ => Pull.done
           }
 
-        stream => go(stream, EmptyFrame).stream
+        stream => loopStream(stream, EmptyFrame).stream
       }
 
       _.through(framing) flatMap {
@@ -73,5 +84,6 @@ object RedisConnection {
         resp => log.debug(s"receiving $resp") *> resp.pure
       )
     }
+    
   }
 }

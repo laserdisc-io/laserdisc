@@ -3,7 +3,7 @@ package laserdisc.protocol
 import org.scalatest.{Matchers, WordSpecLike}
 import scodec.bits.BitVector
 
-final class FrameSpec extends WordSpecLike with Matchers {
+final class RESPFrameSpec extends WordSpecLike with Matchers {
 
   "An empty Frame" when {
 

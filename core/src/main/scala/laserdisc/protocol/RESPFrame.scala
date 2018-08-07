@@ -25,18 +25,18 @@ sealed trait RESPFrame extends Product with Serializable with EitherSyntax with 
   @tailrec
   private final def consumeRemainder(current: String | MoreThanOne): String | MoreThanOne =
     current match {
-      case Left(e)  => Left(e)
+      case Left(e)  => e.asLeft
       case Right(s) => RESP.stateOf(s.remainder) match {
-        case Left(ee)  => Left(ee)
+        case Left(ee)  => ee.asLeft
         case Right(rs) => rs match {
           case CompleteWithRemainder(c, r) =>
-            consumeRemainder(Right(MoreThanOne(Complete(c) :: s.invertedComplete, r)))
+            consumeRemainder(MoreThanOne(Complete(c) :: s.invertedComplete, r).asRight)
 
           case CompleteVector | CompleteAndDecoded(_) =>
-            Right(MoreThanOne(Complete(s.remainder) :: s.invertedComplete, BitVector.empty))
+            MoreThanOne(Complete(s.remainder) :: s.invertedComplete, BitVector.empty).asRight
 
           case MissingBits(_) | IncompleteVector =>
-            Right(MoreThanOne(s.invertedComplete, s.remainder))
+            MoreThanOne(s.invertedComplete, s.remainder).asRight
 
         }
       }
@@ -47,9 +47,10 @@ sealed trait NonEmptyRESPFrame extends Product with Serializable
 sealed trait CompleteRESPFrame extends Product with Serializable
 
 case object EmptyFrame extends RESPFrame
+
 final case class Complete(full: BitVector) extends RESPFrame with NonEmptyRESPFrame with CompleteRESPFrame
 final case class Decoded(resp: RESP) extends RESPFrame with NonEmptyRESPFrame with CompleteRESPFrame
-final case class MoreThanOne(invertedComplete: List[Complete], remainder: BitVector) extends RESPFrame with NonEmptyRESPFrame { self =>
+final case class MoreThanOne(private[protocol] val invertedComplete: List[Complete], remainder: BitVector) extends RESPFrame with NonEmptyRESPFrame { self =>
   def complete: Vector[Complete] =
     invertedComplete.foldRight(Vector.empty[Complete])((c, v) => v :+ c)
 }
@@ -60,7 +61,7 @@ final case class Incomplete(partial: BitVector, bitsToComplete: Long) extends RE
     val newBits = BitVector.view(bytes)
 
     //  Saves some size checks
-    if (bitsToComplete > 0 && bitsToComplete == newBits.size) Right(Complete(partial ++ newBits))
+    if (bitsToComplete > 0 && bitsToComplete == newBits.size) Complete(partial ++ newBits).asRight
     else nextFrame(partial ++ newBits)
   }
 }

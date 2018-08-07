@@ -6,7 +6,7 @@ private[protocol] trait EitherSyntax {
   implicit def eitherSyntax[A, B](eab: Either[A, B]) = new EitherSyntaxOps(eab)
 }
 
-final private[laserdisc] class EitherValuesSyntaxOps[A](private val a: A) extends AnyVal {
+final private[protocol] class EitherValuesSyntaxOps[A](private val a: A) extends AnyVal {
   def asLeft[B]: Either[A, B] =
     Left(a).asInstanceOf[Either[A, B]]
 
@@ -14,7 +14,7 @@ final private[laserdisc] class EitherValuesSyntaxOps[A](private val a: A) extend
     Right(a).asInstanceOf[Either[B, A]]
 }
 
-final private[laserdisc] class EitherSyntaxOps[A, B](private val eab: Either[A, B]) extends AnyVal {
+final private[protocol] class EitherSyntaxOps[A, B](private val eab: Either[A, B]) extends AnyVal {
   def leftMap[C](f: A => C): Either[C, B] =
     eab match {
       case Left(a)      => Left(f(a))

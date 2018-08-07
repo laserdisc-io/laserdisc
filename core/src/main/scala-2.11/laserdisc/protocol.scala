@@ -11,4 +11,10 @@ final private[laserdisc] class EitherSyntaxBaseOps[A, B](private val eab: Either
       case left @ Left(_) => left.asInstanceOf[Either[A, C]]
       case Right(b)       => f(b)
     }
+
+  def getOrElse(default: =>B): B =
+    eab match {
+      case Left(_)  => default
+      case Right(b) => b
+    }
 }

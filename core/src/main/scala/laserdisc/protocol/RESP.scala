@@ -235,7 +235,7 @@ sealed trait RESPBuilders {
   final def arr(xs: Seq[RESP]): NonNilArray          = new NonNilArray(xs.toVector)
 }
 
-sealed trait RESPCodecs { this: RESPBuilders =>
+sealed trait RESPCodecs extends BitVectorSyntax { this: RESPBuilders =>
 
   protected final val utf8       = new LenientStringCodec(UTF_8)
   protected final val BitsInByte = 8L
@@ -254,7 +254,7 @@ sealed trait RESPCodecs { this: RESPBuilders =>
         override final def encode(bits: BitVector): Attempt[BitVector] = Attempt.successful(bits ++ crlf)
         override final def decode(bits: BitVector): Attempt[DecodeResult[BitVector]] =
           bits.bytes.indexOfSlice(crlfBytes, size) match {
-            case -1 => Attempt.failure(Err(s"Does not contain 'CRLF' termination bytes. Vector content: ${bits.toByteArray map (_.toChar) mkString ""}"))
+            case -1 => Attempt.failure(Err(s"Does not contain 'CRLF' termination bytes. Content: ${bits.print}"))
             case i  => Attempt.successful(DecodeResult(bits.take(i * BitsInByte), bits.drop(i * BitsInByte + crlfSize)))
           }
       }
@@ -433,9 +433,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
           r => Right(CompleteAndDecoded(r))
         )
 
-      case (_, SimpleString)
-           | (_, Integer)
-           | (_, Error) => Right(CompleteVector)
+      case (_, SimpleString | Integer | Error) => Right(CompleteVector)
     }
 
   private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: (IncompleteVector | DecodeResult[Long]) => A): String | A =

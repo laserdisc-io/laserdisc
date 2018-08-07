@@ -1,4 +1,4 @@
-package laserdisc.fs2
+package laserdisc.protocol
 
 import org.scalatest.{Matchers, WordSpecLike}
 import scodec.bits.BitVector
@@ -70,6 +70,7 @@ final class FrameSpec extends WordSpecLike with Matchers {
     }
 
     "appending a bit vector with multiple different messages with the last not complete" should {
+
       "produce MoreThanOne with a list of the complete ones in the inverted order and a remainder with the incomplete bits" in {
         val inputVector = BitVector("$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes)
         EmptyFrame.append(inputVector.toByteBuffer) should be(
@@ -80,6 +81,22 @@ final class FrameSpec extends WordSpecLike with Matchers {
               Complete(BitVector("$18\r\nTest bulk string 1\r\n".getBytes())) :: Nil,
             BitVector("$18\r\nTest bulk".getBytes())
           ) )
+        )
+      }
+
+      "produce MoreThanOne where the call to invertedComplete should give complete ones in the original order" in {
+        val inputVector = BitVector("$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes)
+        EmptyFrame.append(inputVector.toByteBuffer).fold(
+          err => fail(s"expected a result but failed with $err"),
+          {
+            case r@MoreThanOne(_, _) => r.complete shouldBe Vector(
+                Complete(BitVector("$18\r\nTest bulk string 1\r\n".getBytes())),
+                Complete(BitVector("$18\r\nTest bulk string 2\r\n".getBytes())),
+                Complete(BitVector("$18\r\nTest bulk string 3\r\n".getBytes())),
+                Complete(BitVector("$18\r\nTest bulk string 4\r\n".getBytes()))
+              )
+            case _ => fail(s"expected a MoreThanOne type")
+          }
         )
       }
     }

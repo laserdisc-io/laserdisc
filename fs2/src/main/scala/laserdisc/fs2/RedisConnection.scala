@@ -8,7 +8,9 @@ import _root_.fs2._
 import _root_.fs2.io.tcp
 import cats.Applicative
 import cats.effect.Effect
-import cats.syntax.all._
+import cats.syntax.applicative._
+import cats.syntax.apply._
+import laserdisc.protocol.{Complete, CompleteFrame, Decoded, EmptyFrame, Incomplete, MoreThanOne, RESPFrame}
 import log.effect.LogWriter
 import scodec.Codec
 import scodec.stream.{decode, encode}
@@ -48,10 +50,7 @@ object RedisConnection {
 
       def framing: Pipe[F, Byte, CompleteFrame] = {
 
-        def produceMultipleRight[A](xs: List[A]): Pull[F, A, Unit] =
-          xs map Pull.output1[F, A] reduceRight (_ >> _)
-
-        def loopStream(stream: Stream[F, Byte], previous: Frame): Pull[F, CompleteFrame, Unit] =
+        def loopStream(stream: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteFrame, Unit] =
           stream.pull.unconsChunk flatMap {
 
             case Some((chunk, rest)) =>
@@ -62,7 +61,7 @@ object RedisConnection {
                     Pull.output1(frame) >> loopStream(rest, EmptyFrame)
 
                   case frame: MoreThanOne =>
-                    produceMultipleRight(frame.complete) >> (
+                    Pull.outputChunk(Chunk.vector(frame.complete)) >> (
                       if (frame.remainder.isEmpty) loopStream(rest, EmptyFrame)
                       else loopStream(rest, Incomplete(frame.remainder, 0L))
                     )

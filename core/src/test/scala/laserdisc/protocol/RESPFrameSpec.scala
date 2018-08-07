@@ -84,7 +84,7 @@ final class RESPFrameSpec extends WordSpecLike with Matchers {
         )
       }
 
-      "produce MoreThanOne where the call to invertedComplete should give complete ones in the original order" in {
+      "produce MoreThanOne where the call to complete should give a vector with the complete ones in the original order" in {
         val inputVector = BitVector("$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes)
         EmptyFrame.append(inputVector.toByteBuffer).fold(
           err => fail(s"expected a result but failed with $err"),

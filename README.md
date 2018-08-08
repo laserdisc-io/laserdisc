@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/laserdisc-io/laserdisc.svg?branch=master)](https://travis-ci.org/laserdisc-io/laserdisc)
 [![Join the chat at https://gitter.im/laserdisc-io/laserdisc](https://badges.gitter.im/laserdisc-io/laserdisc.svg)](https://gitter.im/laserdisc-io/laserdisc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <br>
 [![Latest core version](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core/latest.svg?color=orange&v=1)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
 [![Javadocs](https://javadoc.io/badge/io.laserdisc/laserdisc-core_2.12.svg?color=orange&label=laserdisc-core-docs)](https://javadoc.io/doc/io.laserdisc/laserdisc-core_2.12)
@@ -71,6 +72,7 @@ import fs2.{Scheduler, Stream, StreamApp}
 import laserdisc._
 import laserdisc.auto._
 import laserdisc.fs2._
+import log.effect.fs2.Fs2LogWriter
 
 import scala.concurrent.ExecutionContext
 
@@ -78,36 +80,35 @@ object Main extends StreamApp[IO] {
 
   implicit final val ec: ExecutionContext          = ExecutionContext.global
   implicit final val asg: AsynchronousChannelGroup = AsynchronousChannelGroup.withThreadPool(newFixedThreadPool(2))
-  implicit final val logger: Logger[IO]            = new Logger[IO] {
-    override def log(level: Logger.Level, msg: => String, maybeT: Logger.MaybeT): IO[Unit] = IO {
-      println(s">>> $msg")
-    }
-  }
 
   override final def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, StreamApp.ExitCode] =
-    Scheduler[IO](corePoolSize = 1).flatMap { implicit scheduler =>
-      RedisClient[IO](Set(RedisAddress("localhost", 6379))).evalMap { client =>
-        client.send2(string.set("a", 23), string.get[PosInt]("a")).flatMap {
-          case (Right("OK"), Right(Some(getResponse))) if getResponse.value == 23 => logger.info("yay!") *> IO.pure(StreamApp.ExitCode.Success)
-          case other => logger.error(s"something went terribly wrong $other") *> IO.raiseError(new RuntimeException("boom"))
+    Fs2LogWriter.consoleLogStream[IO].flatMap { implicit logger =>
+      Scheduler[IO](corePoolSize = 1).flatMap { implicit scheduler =>
+        RedisClient[IO](Set(RedisAddress("localhost", 6379))).evalMap { client =>
+          client.send2(strings.set("a", 23), strings.get[PosInt]("a")).flatMap {
+            case (Right("OK"), Right(Some(getResponse))) if getResponse.value == 23 =>
+              logger.info("yay!") *> IO.pure(StreamApp.ExitCode.Success)
+            case other =>
+              logger.error(s"something went terribly wrong $other") *> IO.raiseError(new RuntimeException("boom"))
+          }
         }
       }
     }
-    .onFinalize(IO(asg.shutdown))
+    .onFinalize(IO(asg.shutdown()))
 }
 ```
 
-This should produce the following output:
+This should produce an output similar to the following one:
 ```bash
->>> Starting connection
->>> Server available for publishing: localhost:6379
->>> sending Array(BulkString(SET),BulkString(a),BulkString(23))
->>> receiving SimpleString(OK)
->>> sending Array(BulkString(GET),BulkString(a))
->>> receiving BulkString(23)
->>> yay!
->>> Shutting down connection
->>> Connection terminated: Left(java.nio.channels.ShutdownChannelGroupException)
+[info] - [scala-execution-context-global-13] Starting connection
+[info] - [scala-execution-context-global-18] Server available for publishing: localhost:6379
+[debug] - [scala-execution-context-global-14] sending Array(BulkString(SET),BulkString(a),BulkString(23))
+[debug] - [scala-execution-context-global-13] receiving SimpleString(OK)
+[debug] - [scala-execution-context-global-18] sending Array(BulkString(GET),BulkString(a))
+[debug] - [scala-execution-context-global-19] receiving BulkString(23)
+[info] - [scala-execution-context-global-19] yay!
+[info] - [scala-execution-context-global-19] Shutting down connection
+[info] - [scala-execution-context-global-13] Connection terminated: Left(java.nio.channels.ShutdownChannelGroupException)
 ```
 
 ## License

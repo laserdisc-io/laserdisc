@@ -37,7 +37,6 @@ sealed trait RESPFrame extends Product with Serializable with EitherSyntax with 
 
           case MissingBits(_) | IncompleteVector =>
             MoreThanOne(s.invertedComplete, s.remainder).asRight
-
         }
       }
     }
@@ -50,7 +49,7 @@ case object EmptyFrame extends RESPFrame
 
 final case class Complete(full: BitVector) extends RESPFrame with NonEmptyRESPFrame with CompleteRESPFrame
 final case class Decoded(resp: RESP) extends RESPFrame with NonEmptyRESPFrame with CompleteRESPFrame
-final case class MoreThanOne(private[protocol] val invertedComplete: List[Complete], remainder: BitVector) extends RESPFrame with NonEmptyRESPFrame { self =>
+final case class MoreThanOne(private[protocol] val invertedComplete: List[Complete], remainder: BitVector) extends RESPFrame with NonEmptyRESPFrame {
   def complete: Vector[Complete] =
     invertedComplete.foldRight(Vector.empty[Complete])((c, v) => v :+ c)
 }

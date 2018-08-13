@@ -393,15 +393,15 @@ sealed trait RESPFunctions { this: RESPCodecs =>
 
   final def stateOf: BitVector => String | BitVectorState =
     bits => bits.consume(BitsInByte) {
-      case `plus`   => Right(SimpleString)
-      case `minus`  => Right(Error)
-      case `colon`  => Right(Integer)
-      case `dollar` => Right(BulkString)
-      case `star`   => Right(RedisArray)
-      case other    => Left(s"unidentified RESP type (Hex: ${other.toHex})")
+      case `plus`
+           | `minus`
+           | `colon` => Right(NoSize)
+      case `dollar`  => Right(BulkSize)
+      case `star`    => Right(CollectionSize)
+      case other     => Left(s"unidentified RESP type (Hex: ${other.toHex})")
     }
     .flatMap {
-      case (remainder, BulkString) =>
+      case (remainder, BulkSize) =>
         evalWithSizeDecodedFrom(remainder) {
           case Left(_)   => IncompleteVector
           case Right(ds) =>
@@ -427,13 +427,26 @@ sealed trait RESPFunctions { this: RESPCodecs =>
               MissingBits(expectedBulkSize - ds.remainder.size)
         }
 
-      case (remainder, RedisArray) =>
-        arrayCodec.decode(remainder).fold(
-          _ => Right(IncompleteVector),
-          r => Right(CompleteAndDecoded(r))
-        )
+      case (remainder, CollectionSize) =>
+        evalWithSizeDecodedFrom(remainder) {
+          case Left(_) => IncompleteVector
+          case Right(_) => CompleteVector
+        }
 
-      case (_, SimpleString | Integer | Error) => Right(CompleteVector)
+      case (_, NoSize) => {
+        val endOfMessageByte = bits.bytes.indexOfSlice(crlfBytes, 0L)
+        val completeMessageSize = endOfMessageByte * BitsInByte + crlf.size
+
+        if (endOfMessageByte == -1)
+          Right(IncompleteVector)
+        else if (completeMessageSize < bits.size)
+          Right( CompleteWithRemainder(
+            bits.take(completeMessageSize),
+            bits.drop(completeMessageSize)
+          ))
+        else
+          Right(CompleteVector)
+      }
     }
 
   private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: (IncompleteVector | DecodeResult[Long]) => A): String | A =
@@ -443,12 +456,10 @@ sealed trait RESPFunctions { this: RESPCodecs =>
       res => Right(res)
     )
 
-  private sealed trait ContentType
-  private final case object BulkString extends ContentType
-  private final case object RedisArray extends ContentType
-  private final case object SimpleString extends ContentType
-  private final case object Integer extends ContentType
-  private final case object Error extends ContentType
+  private sealed trait SizeType
+  private final case object BulkSize extends SizeType
+  private final case object CollectionSize extends SizeType
+  private final case object NoSize extends SizeType
 }
 
 object BitVectorDecoding {
@@ -457,11 +468,13 @@ object BitVectorDecoding {
   type CompleteVector = CompleteVector.type
 
   sealed trait BitVectorState extends Product with Serializable
-  final case class MissingBits(stillToReceive: Long) extends BitVectorState
-  final case class CompleteAndDecoded(serial: DecodeResult[RESP]) extends BitVectorState
-  final case class CompleteWithRemainder(complete: BitVector, remainder: BitVector) extends BitVectorState
-  final case object IncompleteVector extends BitVectorState
-  final case object CompleteVector extends BitVectorState
+  sealed trait BitVectorInternalState extends Product with Serializable
+  final case class MissingBits(stillToReceive: Long) extends BitVectorState with BitVectorInternalState
+  final case class CompleteAndDecoded(serial: DecodeResult[RESP]) extends BitVectorState with BitVectorInternalState
+  final case class CompleteWithRemainder(complete: BitVector, remainder: BitVector) extends BitVectorState with BitVectorInternalState
+  final case class CollectionOf(items: Long, itemsBits: BitVector) extends BitVectorInternalState
+  final case object IncompleteVector extends BitVectorState with BitVectorInternalState
+  final case object CompleteVector extends BitVectorState with BitVectorInternalState
 }
 
 object RESP extends RESPBuilders with RESPCodecs with RESPFunctions

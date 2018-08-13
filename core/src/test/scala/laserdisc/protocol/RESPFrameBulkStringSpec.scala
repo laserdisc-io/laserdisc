@@ -3,7 +3,7 @@ package laserdisc.protocol
 import org.scalatest.{Matchers, WordSpecLike}
 import scodec.bits.BitVector
 
-final class RESPFrameSpec extends WordSpecLike with Matchers {
+final class RESPFrameBulkStringSpec extends WordSpecLike with Matchers {
 
   "An empty BulkString Frame" when {
 
@@ -16,8 +16,8 @@ final class RESPFrameSpec extends WordSpecLike with Matchers {
 
     "appending a bit vector that's not complete" should {
       "produce Incomplete with the correct partial and the correct missing count" in {
-        val inputVector = BitVector("$16\r\nTest bulk str".getBytes)
-        EmptyFrame.append(inputVector.toByteBuffer) should be(Right(Incomplete(inputVector, 40)))
+        val inputVector = BitVector("$16\r\nTest bulk string".getBytes)
+        EmptyFrame.append(inputVector.toByteBuffer) should be(Right(Incomplete(inputVector, 16)))
       }
     }
 
@@ -208,6 +208,5 @@ final class RESPFrameSpec extends WordSpecLike with Matchers {
         )
       }
     }
-
   }
 }

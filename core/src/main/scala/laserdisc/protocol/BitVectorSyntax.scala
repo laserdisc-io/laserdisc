@@ -10,7 +10,7 @@ private[protocol] trait BitVectorSyntax {
 final private[protocol] class BitVectorSyntaxOps(private val bv: BitVector) extends AnyVal {
 
   def print: String = {
-    val printedSize = 16L * 8
+    val printedSize = 48L * 8
     bv.takeRight(printedSize).decodeUtf8 getOrElse "!! unable to represent the content as UTF8 string !!"
   }
 }

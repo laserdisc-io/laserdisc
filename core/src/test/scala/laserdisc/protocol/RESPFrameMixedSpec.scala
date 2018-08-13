@@ -66,12 +66,15 @@ final class RESPFrameMixedSpec extends WordSpecLike with Matchers with PropertyC
   "An empty Frame" when {
     "appending a random sequence of complete messages" should {
       "produce MoreThanOne with all the complete items" in {
-        forAll { content: OneOrMore[String] =>
-          EmptyFrame.append(BitVector(content.value.mkString.getBytes()).toByteBuffer).fold(
+        forAll { testSet: OneOrMore[String] =>
+
+          val vector = BitVector(testSet.value.mkString. getBytes())
+
+          EmptyFrame.append(vector.toByteBuffer).fold(
             err => fail(s"expected a result but failed with $err"),
             {
               case r@MoreThanOne(_, _) =>
-                r.complete shouldNot be (empty)
+                r.complete.size shouldBe testSet.value.size
                 r.remainder should be (empty)
               case _ => fail(s"expected a MoreThanOne type")
             }
@@ -83,7 +86,11 @@ final class RESPFrameMixedSpec extends WordSpecLike with Matchers with PropertyC
 
   private implicit def arbitraryNonEmptyString(implicit ev: Arbitrary[String]): Arbitrary[NonEmptyString] =
     Arbitrary {
-      ev.arbitrary.filter(_.length > 0) map NonEmptyString.unsafeFrom
+      ev.arbitrary
+        .map(s => s.replace("\r", ""))
+        .map(s => s.replace("\n", ""))
+        .filter(_.length > 0)
+        .map(xs => NonEmptyString.unsafeFrom(xs.mkString))
     }
 
   private implicit def arbitraryMessages(implicit ev1: Arbitrary[Int], ev2: Arbitrary[NonEmptyString]): Arbitrary[OneOrMore[String]] =
@@ -93,10 +100,9 @@ final class RESPFrameMixedSpec extends WordSpecLike with Matchers with PropertyC
         i  <- ev1.arbitrary map (n => s":$n\r\n")
         s  <- ev2.arbitrary map (st => s"+$st\r\n")
         e  <- ev2.arbitrary map (st => s"-$st\r\n")
-        bs <- ev2.arbitrary map (st => s"$$${st.value.length}\r\n$st\r\n")
         xs <- Gen.listOfN(n, Gen.oneOf(
                 Seq(
-                  //i, s, e, bs,
+                  i, s, e,
                   "$16\r\nTest bulk string\r\n",
                   "+OK\r\n",
                   "+a\r\n",
@@ -113,7 +119,7 @@ final class RESPFrameMixedSpec extends WordSpecLike with Matchers with PropertyC
                   "$21\r\nTest bulk string 1 11\r\n",
                   "$-1\r\n",
                   "-And an error message\r\n",
-                  "$21\r\nTest bulk string 1 11\r\n$17\r\nTest bulk string2\r\n$20\r\nTest bulk string 3 1\r\n$19\r\nTest bulk string 40\r\n"
+                  "$21\r\nTest bulk string 1 11\r\n"
                 )
               ))
       } yield xs) map (xs => OneOrMore.unsafeFrom(xs))

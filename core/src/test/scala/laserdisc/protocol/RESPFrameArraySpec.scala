@@ -131,5 +131,24 @@ final class RESPFrameArraySpec extends WordSpecLike with Matchers {
       }
     }
 
+    "appending a bit vector with multiple arrays containing nested arrays" should {
+      "produce as result of `complete` more than one frame with a list of the complete arrays in the correct order" in {
+        val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
+        val inputVector = BitVector("ing\r\n:100\r\n+A simple string\r\n*-1\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n*3\r\n$8\r\nAnother1\r\n*3\r\n*2\r\n+Simple string\r\n*2\r\n$3\r\nfoo\r\n-an error\r\n:13\r\n:12\r\n-An error\r\n*-1\r\n".getBytes)
+        nonEmptyFrame.append(inputVector.toByteBuffer).fold(
+          err => fail(s"expected a result but failed with $err"),
+          {
+            case r@MoreThanOneFrame(_, _) => r.complete shouldBe Vector(
+              CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
+              CompleteFrame(BitVector("*-1\r\n".getBytes)),
+              CompleteFrame(BitVector("*2\r\n$8\r\nAnother1\r\n-An error\r\n".getBytes)),
+              CompleteFrame(BitVector("*3\r\n$8\r\nAnother1\r\n*3\r\n*2\r\n+Simple string\r\n*2\r\n$3\r\nfoo\r\n-an error\r\n:13\r\n:12\r\n-An error\r\n".getBytes)),
+              CompleteFrame(BitVector("*-1\r\n".getBytes))
+            )
+            case _ => fail(s"expected a MoreThanOne type")
+          }
+        )
+      }
+    }
   }
 }

@@ -471,8 +471,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
           case Right(st) => st match {
 
             case CompleteWithRemainder(c, r) =>
-              if (stillMissing == 1) Right(CompleteWithRemainder(soFar ++ c, r))
-              else stateOfArray(stillMissing - 1, r, soFar ++ c)
+              stateOfArray(stillMissing - 1, r, soFar ++ c)
 
             case Complete =>
               if (stillMissing == 1) Right(Complete)

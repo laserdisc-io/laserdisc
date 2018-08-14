@@ -48,25 +48,25 @@ object RedisConnection {
 
     def receive[F[_]: Effect](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
 
-      def framing: Pipe[F, Byte, Complete] = {
+      def framing: Pipe[F, Byte, CompleteFrame] = {
 
-        def loopStream(stream: Stream[F, Byte], previous: RESPFrame): Pull[F, Complete, Unit] =
+        def loopStream(stream: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteFrame, Unit] =
           stream.pull.unconsChunk flatMap {
 
             case Some((chunk, rest)) =>
               previous.append(chunk.toByteBuffer) match {
                 case Left(ex) => Pull.raiseError(ex)
                 case Right(f) => f match {
-                  case frame: Complete =>
+                  case frame: CompleteFrame =>
                     Pull.output1(frame) >> loopStream(rest, EmptyFrame)
 
-                  case frame: MoreThanOne =>
+                  case frame: MoreThanOneFrame =>
                     Pull.outputChunk(Chunk.vector(frame.complete)) >> (
                       if (frame.remainder.isEmpty) loopStream(rest, EmptyFrame)
-                      else loopStream(rest, Incomplete(frame.remainder, 0L))
+                      else loopStream(rest, IncompleteFrame(frame.remainder, 0L))
                     )
 
-                  case frame: Incomplete =>
+                  case frame: IncompleteFrame =>
                     loopStream(rest, frame)
                 }
               }
@@ -78,7 +78,7 @@ object RedisConnection {
       }
 
       _.through(framing) flatMap ( complete =>
-        streamDecoder.decode(complete.full)
+        streamDecoder.decode(complete.bits)
       ) evalMap (
         resp => log.debug(s"receiving $resp") *> resp.pure
       )

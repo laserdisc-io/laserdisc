@@ -405,12 +405,12 @@ sealed trait RESPFunctions { this: RESPCodecs =>
     .flatMap {
       case (remainder, BulkSize) =>
         evalWithSizeDecodedFrom(remainder) {
-          case Left(_)   => IncompleteVector
+          case Left(_)   => Incomplete
           case Right(ds) =>
             val expectedBulkSize = (ds.value * BitsInByte) + crlf.size
 
             if (ds.value >= 0 && ds.remainder.size == expectedBulkSize)
-              CompleteVector // Complete: expected size
+              Complete // Complete: expected size
 
             else if (ds.value >= 0 && ds.remainder.size > expectedBulkSize) {
               val completeBulkSize = bits.bytes.indexOfSlice(crlfBytes, 0L) * BitsInByte + crlf.size + expectedBulkSize
@@ -418,7 +418,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
             }
 
             else if (ds.value == -1 && ds.remainder.size == 0)
-              CompleteVector // Complete: empty bulk
+              Complete // Complete: empty bulk
 
             else if (ds.value == -1 && ds.remainder.size > 0) {
               val completeBulkSize = 3 * BitsInByte + crlf.size
@@ -431,10 +431,8 @@ sealed trait RESPFunctions { this: RESPCodecs =>
 
       case (remainder, CollectionSize) =>
         failingEvalWithSizeDecodedFrom(remainder) {
-          case Left(_)  => Right(IncompleteVector)
-          case Right(s) =>
-            val sizePrefixBitsCount = bits.bytes.indexOfSlice(crlfBytes, 0L) * BitsInByte + crlf.size
-            stateOfArray(s.value, s.remainder, bits.take(sizePrefixBitsCount))
+          case Left(_)  => Right(Incomplete)
+          case Right(s) => stateOfArray(s.value, s.remainder, unsafeTakeUpToCrLf(bits))
         }
 
       case (_, NoSize) =>
@@ -442,14 +440,14 @@ sealed trait RESPFunctions { this: RESPCodecs =>
         val completeMessageSize = endOfMessageByte * BitsInByte + crlf.size
 
         if (endOfMessageByte == -1)
-          Right(IncompleteVector)
+          Right(Incomplete)
         else if (completeMessageSize < bits.size)
           Right( CompleteWithRemainder(
             bits.take(completeMessageSize),
             bits.drop(completeMessageSize)
           ))
         else
-          Right(CompleteVector)
+          Right(Complete)
     }
 
   @tailrec
@@ -462,27 +460,36 @@ sealed trait RESPFunctions { this: RESPCodecs =>
           if (stillMissing == 1) Right(CompleteWithRemainder(soFar ++ c, r))
           else stateOfArray(stillMissing - 1, r, soFar ++ c)
 
-        case CompleteVector =>
-          if (stillMissing == 1) Right(CompleteVector)
-          else Right(IncompleteVector)
+        case Complete =>
+          if (stillMissing == 1) Right(Complete)
+          else Right(Incomplete)
 
-        case incomplete @ (MissingBits(_) | IncompleteVector) =>
+        case incomplete @ (MissingBits(_) | Incomplete) =>
           Right(incomplete)
       }
     }
 
-  private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: (IncompleteVector | DecodeResult[Long]) => A): String | A =
-    if (bits.bytes.indexOfSlice(crlfBytes, 0L) == -1) Right(f(Left(IncompleteVector)))
+  private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: (Incomplete | DecodeResult[Long]) => A): String | A =
+    if (bits.bytes.indexOfSlice(crlfBytes, 0L) == -1) Right(f(Left(Incomplete)))
     else (longAsCRLFTerminatedString.decode(bits) map (r => f(Right(r)))).fold (
       err => Left(err.message),
       res => Right(res)
     )
 
-  private final def failingEvalWithSizeDecodedFrom[A](bits: BitVector)(f: (IncompleteVector | DecodeResult[Long]) => String | A): String | A =
-    if (bits.bytes.indexOfSlice(crlfBytes, 0L) == -1) f(Left(IncompleteVector))
+  private final def failingEvalWithSizeDecodedFrom[A](bits: BitVector)(f: (Incomplete | DecodeResult[Long]) => String | A): String | A =
+    if (bits.bytes.indexOfSlice(crlfBytes, 0L) == -1) f(Left(Incomplete))
     else (longAsCRLFTerminatedString.decode(bits) map (r => f(Right(r)))).fold (
       err => Left(err.message),
       res => res
+    )
+
+  /**
+    * Named unsafe as it doesn't check that `bits` actually contain `crlfBytes`
+    * The check needs to be done outside before using it
+    */
+  private final def unsafeTakeUpToCrLf: BitVector => BitVector =
+    bits => bits.take(
+      bits.bytes.indexOfSlice(crlfBytes, 0L) * BitsInByte + crlf.size
     )
 
   private sealed trait SizeType
@@ -493,14 +500,14 @@ sealed trait RESPFunctions { this: RESPCodecs =>
 
 object BitVectorDecoding {
 
-  type IncompleteVector = IncompleteVector.type
-  type CompleteVector = CompleteVector.type
+  type Incomplete = Incomplete.type
+  type Complete = Complete.type
 
   sealed trait BitVectorState extends Product with Serializable
   final case class MissingBits(stillToReceive: Long) extends BitVectorState
   final case class CompleteWithRemainder(complete: BitVector, remainder: BitVector) extends BitVectorState
-  final case object IncompleteVector extends BitVectorState
-  final case object CompleteVector extends BitVectorState
+  final case object Incomplete extends BitVectorState
+  final case object Complete extends BitVectorState
 }
 
 object RESP extends RESPBuilders with RESPCodecs with RESPFunctions

@@ -14,6 +14,13 @@ final class RESPFrameBulkStringSpec extends WordSpecLike with Matchers {
       }
     }
 
+    "appending a bit vector that represent an empty bulk" should {
+      "produce Complete with a empty content" in {
+        val inputVector = BitVector("$0\r\n\r\n".getBytes)
+        EmptyFrame.append(inputVector.toByteBuffer) should be(Right(Complete(inputVector)))
+      }
+    }
+
     "appending a bit vector that's not complete" should {
       "produce Incomplete with the correct partial and the correct missing count" in {
         val inputVector = BitVector("$16\r\nTest bulk string".getBytes)

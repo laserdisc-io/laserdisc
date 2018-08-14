@@ -10,6 +10,8 @@ import scodec.bits.{BitVector, _}
 import scodec.codecs.{filtered, fixedSizeBytes}
 import scodec.{Attempt, Codec, DecodeResult, Decoder, Err, SizeBound}
 
+import scala.annotation.tailrec
+
 /** [[https://redis.io/topics/protocol Redis Protocol Specification]]
   *
   * This sealed trait represents the entire Redis Serialization Protocol algebra
@@ -398,7 +400,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
            | `colon` => Right(NoSize)
       case `dollar`  => Right(BulkSize)
       case `star`    => Right(CollectionSize)
-      case other     => Left(s"unidentified RESP type (Hex: ${other.toHex})")
+      case other     => Left(s"unidentified RESP type when checking the state: unexpected value ${other.print} (Hex: ${other.toHex})")
     }
     .flatMap {
       case (remainder, BulkSize) =>
@@ -428,12 +430,14 @@ sealed trait RESPFunctions { this: RESPCodecs =>
         }
 
       case (remainder, CollectionSize) =>
-        evalWithSizeDecodedFrom(remainder) {
-          case Left(_) => IncompleteVector
-          case Right(_) => CompleteVector
+        failingEvalWithSizeDecodedFrom(remainder) {
+          case Left(_)  => Right(IncompleteVector)
+          case Right(s) =>
+            val sizePrefixBitsCount = bits.bytes.indexOfSlice(crlfBytes, 0L) * BitsInByte + crlf.size
+            stateOfArray(s.value, s.remainder, bits.take(sizePrefixBitsCount))
         }
 
-      case (_, NoSize) => {
+      case (_, NoSize) =>
         val endOfMessageByte = bits.bytes.indexOfSlice(crlfBytes, 0L)
         val completeMessageSize = endOfMessageByte * BitsInByte + crlf.size
 
@@ -446,6 +450,24 @@ sealed trait RESPFunctions { this: RESPCodecs =>
           ))
         else
           Right(CompleteVector)
+    }
+
+  @tailrec
+  private final def stateOfArray(stillMissing: Long, remainder: BitVector, soFar: BitVector): String | BitVectorState =
+    stateOf(remainder) match {
+      case Left(e)   => Left(e)
+      case Right(st) => st match {
+
+        case CompleteWithRemainder(c, r) =>
+          if (stillMissing == 1) Right(CompleteWithRemainder(soFar ++ c, r))
+          else stateOfArray(stillMissing - 1, r, soFar ++ c)
+
+        case CompleteVector =>
+          if (stillMissing == 1) Right(CompleteVector)
+          else Right(IncompleteVector)
+
+        case incomplete @ (MissingBits(_) | IncompleteVector) =>
+          Right(incomplete)
       }
     }
 
@@ -454,6 +476,13 @@ sealed trait RESPFunctions { this: RESPCodecs =>
     else (longAsCRLFTerminatedString.decode(bits) map (r => f(Right(r)))).fold (
       err => Left(err.message),
       res => Right(res)
+    )
+
+  private final def failingEvalWithSizeDecodedFrom[A](bits: BitVector)(f: (IncompleteVector | DecodeResult[Long]) => String | A): String | A =
+    if (bits.bytes.indexOfSlice(crlfBytes, 0L) == -1) f(Left(IncompleteVector))
+    else (longAsCRLFTerminatedString.decode(bits) map (r => f(Right(r)))).fold (
+      err => Left(err.message),
+      res => res
     )
 
   private sealed trait SizeType
@@ -468,13 +497,10 @@ object BitVectorDecoding {
   type CompleteVector = CompleteVector.type
 
   sealed trait BitVectorState extends Product with Serializable
-  sealed trait BitVectorInternalState extends Product with Serializable
-  final case class MissingBits(stillToReceive: Long) extends BitVectorState with BitVectorInternalState
-  final case class CompleteAndDecoded(serial: DecodeResult[RESP]) extends BitVectorState with BitVectorInternalState
-  final case class CompleteWithRemainder(complete: BitVector, remainder: BitVector) extends BitVectorState with BitVectorInternalState
-  final case class CollectionOf(items: Long, itemsBits: BitVector) extends BitVectorInternalState
-  final case object IncompleteVector extends BitVectorState with BitVectorInternalState
-  final case object CompleteVector extends BitVectorState with BitVectorInternalState
+  final case class MissingBits(stillToReceive: Long) extends BitVectorState
+  final case class CompleteWithRemainder(complete: BitVector, remainder: BitVector) extends BitVectorState
+  final case object IncompleteVector extends BitVectorState
+  final case object CompleteVector extends BitVectorState
 }
 
 object RESP extends RESPBuilders with RESPCodecs with RESPFunctions

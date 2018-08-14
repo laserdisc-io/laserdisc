@@ -10,7 +10,7 @@ import cats.Applicative
 import cats.effect.Effect
 import cats.syntax.applicative._
 import cats.syntax.apply._
-import laserdisc.protocol.{Complete, CompleteRESPFrame, Decoded, EmptyFrame, Incomplete, MoreThanOne, RESPFrame}
+import laserdisc.protocol._
 import log.effect.LogWriter
 import scodec.Codec
 import scodec.stream.{decode, encode}
@@ -48,16 +48,16 @@ object RedisConnection {
 
     def receive[F[_]: Effect](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
 
-      def framing: Pipe[F, Byte, CompleteRESPFrame] = {
+      def framing: Pipe[F, Byte, Complete] = {
 
-        def loopStream(stream: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteRESPFrame, Unit] =
+        def loopStream(stream: Stream[F, Byte], previous: RESPFrame): Pull[F, Complete, Unit] =
           stream.pull.unconsChunk flatMap {
 
             case Some((chunk, rest)) =>
               previous.append(chunk.toByteBuffer) match {
                 case Left(ex) => Pull.raiseError(ex)
                 case Right(f) => f match {
-                  case frame: CompleteRESPFrame =>
+                  case frame: Complete =>
                     Pull.output1(frame) >> loopStream(rest, EmptyFrame)
 
                   case frame: MoreThanOne =>
@@ -77,10 +77,9 @@ object RedisConnection {
         stream => loopStream(stream, EmptyFrame).stream
       }
 
-      _.through(framing) flatMap {
-        case Complete(v)      => streamDecoder.decode(v)
-        case Decoded(s)       => Stream.emit(s)
-      } evalMap (
+      _.through(framing) flatMap ( complete =>
+        streamDecoder.decode(complete.full)
+      ) evalMap (
         resp => log.debug(s"receiving $resp") *> resp.pure
       )
     }

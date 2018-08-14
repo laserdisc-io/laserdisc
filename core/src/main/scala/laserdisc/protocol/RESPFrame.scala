@@ -16,11 +16,10 @@ sealed trait RESPFrame extends Product with Serializable with EitherSyntax with 
   protected final def nextFrame(bits: BitVector): Exception | NonEmptyRESPFrame =
     RESP.stateOf(bits) flatMap {
       case MissingBits(n)              => Incomplete(bits, n).asRight
-      case CompleteAndDecoded(r)       => Decoded(r.value).asRight
       case IncompleteVector            => Incomplete(bits, 0L).asRight
       case CompleteVector              => Complete(bits).asRight
       case CompleteWithRemainder(c, r) => consumeRemainder(MoreThanOne(Complete(c) :: Nil, r).asRight)
-    } leftMap (e => new Exception(s"Error: $e. Content: ${bits.print}"))
+    } leftMap (e => new Exception(s"Error building the frame: $e. Content: ${bits.print}"))
 
   @tailrec
   private final def consumeRemainder(current: String | MoreThanOne): String | MoreThanOne =
@@ -29,26 +28,25 @@ sealed trait RESPFrame extends Product with Serializable with EitherSyntax with 
       case Right(s) => RESP.stateOf(s.remainder) match {
         case Left(ee)  => ee.asLeft
         case Right(rs) => rs match {
+
           case CompleteWithRemainder(c, r) =>
             consumeRemainder(MoreThanOne(Complete(c) :: s.invertedComplete, r).asRight)
 
-          case CompleteVector | CompleteAndDecoded(_) =>
+          case CompleteVector =>
             MoreThanOne(Complete(s.remainder) :: s.invertedComplete, BitVector.empty).asRight
 
           case MissingBits(_) | IncompleteVector =>
-            MoreThanOne(s.invertedComplete, s.remainder).asRight
+            s.asRight
         }
       }
     }
 }
 
 sealed trait NonEmptyRESPFrame extends Product with Serializable
-sealed trait CompleteRESPFrame extends Product with Serializable
 
 case object EmptyFrame extends RESPFrame
 
-final case class Complete(full: BitVector) extends RESPFrame with NonEmptyRESPFrame with CompleteRESPFrame
-final case class Decoded(resp: RESP) extends RESPFrame with NonEmptyRESPFrame with CompleteRESPFrame
+final case class Complete(full: BitVector) extends RESPFrame with NonEmptyRESPFrame
 final case class MoreThanOne(private[protocol] val invertedComplete: List[Complete], remainder: BitVector) extends RESPFrame with NonEmptyRESPFrame {
   def complete: Vector[Complete] =
     invertedComplete.foldRight(Vector.empty[Complete])((c, v) => v :+ c)

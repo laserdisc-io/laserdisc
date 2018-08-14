@@ -410,7 +410,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
             val expectedBulkSize = (ds.value * BitsInByte) + crlf.size
 
             if (ds.value >= 0 && ds.remainder.size == expectedBulkSize)
-              Complete // Complete: expected size
+              Complete
 
             else if (ds.value >= 0 && ds.remainder.size > expectedBulkSize) {
               val completeBulkSize = bits.bytes.indexOfSlice(crlfBytes, 0L) * BitsInByte + crlf.size + expectedBulkSize
@@ -418,21 +418,29 @@ sealed trait RESPFunctions { this: RESPCodecs =>
             }
 
             else if (ds.value == -1 && ds.remainder.size == 0)
-              Complete // Complete: empty bulk
+              Complete
 
             else if (ds.value == -1 && ds.remainder.size > 0) {
               val completeBulkSize = 3 * BitsInByte + crlf.size
               CompleteWithRemainder(bits.take(completeBulkSize), bits.drop(completeBulkSize)) // Complete plus some remainder
             }
 
-            else
-              MissingBits(expectedBulkSize - ds.remainder.size)
+            else MissingBits(expectedBulkSize - ds.remainder.size)
         }
 
       case (remainder, CollectionSize) =>
         failingEvalWithSizeDecodedFrom(remainder) {
-          case Left(_)  => Right(Incomplete)
-          case Right(s) => stateOfArray(s.value, s.remainder, unsafeTakeUpToCrLf(bits))
+          case Left(_)  =>
+            Right(Incomplete)
+
+          case Right(ds) =>
+            if (ds.value == -1 && ds.remainder.size == 0)
+              Right(Complete)
+
+            else if (ds.value == -1 && ds.remainder.size > 0)
+              Right(CompleteWithRemainder(unsafeTakeUpToCrLf(bits), unsafeDropUpToCrLf(bits)))
+
+            else stateOfArray(ds.value, ds.remainder, unsafeTakeUpToCrLf(bits))
         }
 
       case (_, NoSize) =>
@@ -452,21 +460,28 @@ sealed trait RESPFunctions { this: RESPCodecs =>
 
   @tailrec
   private final def stateOfArray(stillMissing: Long, remainder: BitVector, soFar: BitVector): String | BitVectorState =
-    stateOf(remainder) match {
-      case Left(e)   => Left(e)
-      case Right(st) => st match {
+    stillMissing match {
+      case 0L =>
+        if (remainder.isEmpty) Right(Complete)
+        else Right(CompleteWithRemainder(soFar, remainder))
 
-        case CompleteWithRemainder(c, r) =>
-          if (stillMissing == 1) Right(CompleteWithRemainder(soFar ++ c, r))
-          else stateOfArray(stillMissing - 1, r, soFar ++ c)
+      case _ =>
+        stateOf(remainder) match {
+          case Left(e)   => Left(e)
+          case Right(st) => st match {
 
-        case Complete =>
-          if (stillMissing == 1) Right(Complete)
-          else Right(Incomplete)
+            case CompleteWithRemainder(c, r) =>
+              if (stillMissing == 1) Right(CompleteWithRemainder(soFar ++ c, r))
+              else stateOfArray(stillMissing - 1, r, soFar ++ c)
 
-        case incomplete @ (MissingBits(_) | Incomplete) =>
-          Right(incomplete)
-      }
+            case Complete =>
+              if (stillMissing == 1) Right(Complete)
+              else Right(Incomplete)
+
+            case incomplete @ (MissingBits(_) | Incomplete) =>
+              Right(incomplete)
+          }
+        }
     }
 
   private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: (Incomplete | DecodeResult[Long]) => A): String | A =
@@ -484,11 +499,17 @@ sealed trait RESPFunctions { this: RESPCodecs =>
     )
 
   /**
-    * Named unsafe as it doesn't check that `bits` actually contain `crlfBytes`
-    * The check needs to be done outside before using it
+    * Both the below named unsafe as they don't check that
+    * `bits` actually contain `crlfBytes`. The check needs
+    * to be performed outside before using it
     */
   private final def unsafeTakeUpToCrLf: BitVector => BitVector =
     bits => bits.take(
+      bits.bytes.indexOfSlice(crlfBytes, 0L) * BitsInByte + crlf.size
+    )
+
+  private final def unsafeDropUpToCrLf: BitVector => BitVector =
+    bits => bits.drop(
       bits.bytes.indexOfSlice(crlfBytes, 0L) * BitsInByte + crlf.size
     )
 

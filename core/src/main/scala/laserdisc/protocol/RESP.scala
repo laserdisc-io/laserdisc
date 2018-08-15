@@ -6,6 +6,7 @@ import java.{lang => j}
 
 import scodec.Decoder.decodeCollect
 import scodec.Encoder.encodeSeq
+import scodec.Err.MatchingDiscriminatorNotFound
 import scodec.bits.{BitVector, _}
 import scodec.codecs.{filtered, fixedSizeBytes}
 import scodec.{Attempt, Codec, DecodeResult, Decoder, Err, SizeBound}
@@ -222,6 +223,8 @@ object NonNilArray {
   final def unapply(nonEmptyArray: NonNilArray): Option[Vector[RESP]] = Some(nonEmptyArray.elements)
 }
 
+private[protocol] final case class BitsDecoded[A](decoded: A, bitsDecoded: BitVector)
+
 sealed trait RESPBuilders {
   final def str(value: String): SimpleString = new SimpleString(value)
 
@@ -248,23 +251,50 @@ sealed trait RESPCodecs extends BitVectorSyntax { this: RESPBuilders =>
   protected final val crlfBytes   = crlf.bytes
   private final val crlfBytesSize = crlfBytes.size
 
-  private final def crlfTerminatedStringOfSize(size: Long): Codec[String] =
+  private final def crlfTerminatedAOfSize[A](size: Long)(codecOfA: Codec[A]): Codec[A] =
     filtered(
-      utf8,
+      codecOfA,
       new Codec[BitVector] {
         override final def sizeBound: SizeBound                        = SizeBound.unknown
         override final def encode(bits: BitVector): Attempt[BitVector] = Attempt.successful(bits ++ crlf)
         override final def decode(bits: BitVector): Attempt[DecodeResult[BitVector]] =
           bits.bytes.indexOfSlice(crlfBytes, size) match {
-            case -1 => Attempt.failure(Err(s"Does not contain 'CRLF' termination bytes. Content: ${bits.print}"))
+            case -1 => Attempt.failure(new MatchingDiscriminatorNotFound(s"Does not contain 'CRLF' termination bytes. Content: ${bits.tailToUtf8()}"))
             case i  => Attempt.successful(DecodeResult(bits.take(i * BitsInByte), bits.drop(i * BitsInByte + crlfSize)))
           }
       }
     ).withToString("crlf-terminated string")
 
-  private final val crlfTerminatedString = crlfTerminatedStringOfSize(0)
+  private final val crlfTerminatedString: Codec[String] = crlfTerminatedAOfSize(0L)(utf8)
 
-  protected final val longAsCRLFTerminatedString =
+  protected final val asCRLFTerminated: Codec[BitsDecoded[String]] =
+    new Codec[BitsDecoded[String]] {
+      final override def sizeBound: SizeBound =
+        SizeBound.unknown
+
+      final override def encode(bd: BitsDecoded[String]): Attempt[BitVector] =
+        utf8.encode(bd.decoded) map (_ ++ crlf)
+
+      final override def decode(bits: BitVector): Attempt[DecodeResult[BitsDecoded[String]]] =
+        utf8.decode(bits) map { res => res map (BitsDecoded(_, bits)) }
+    }
+
+  private final val crlfTerminatedBitsDecoded: Codec[BitsDecoded[String]] = crlfTerminatedAOfSize(0L)(asCRLFTerminated)
+
+  protected final val crlfTerminatedBitsDecodedSize: Codec[BitsDecoded[Long]] =
+    crlfTerminatedBitsDecoded.narrow[BitsDecoded[Long]](
+      bds =>
+        try Attempt.successful(
+          BitsDecoded(j.Long.parseLong(bds.decoded), bds.bitsDecoded)
+        )
+        catch {
+          case _: NumberFormatException => Attempt.failure(Err(s"Expected long but found ${bds.decoded}"))
+        },
+      bdl => BitsDecoded(bdl.decoded.toString, bdl.bitsDecoded)
+    )
+    .withToString("crlf-terminated string repr of long and the decoded bits")
+
+  protected final val longAsCRLFTerminatedString: Codec[Long] =
     crlfTerminatedString.narrow[Long](
       s =>
         try Attempt.successful(j.Long.parseLong(s))
@@ -288,7 +318,7 @@ sealed trait RESPCodecs extends BitVectorSyntax { this: RESPBuilders =>
 
     private final val decoder = longAsCRLFTerminatedString.flatMap {
       case -1                => Decoder.point(NullBulkString)
-      case size if size >= 0 => fixedSizeBytes(size + crlfBytesSize, crlfTerminatedStringOfSize(size)).map(bulk)
+      case size if size >= 0 => fixedSizeBytes(size + crlfBytesSize, crlfTerminatedAOfSize(size)(utf8)).map(bulk)
       case negSize           => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
     }
 
@@ -393,37 +423,35 @@ sealed trait RESPFunctions { this: RESPCodecs =>
 
   import BitVectorDecoding._
 
-  final def stateOf: BitVector => String | BitVectorState =
+  final val stateOf: BitVector => String | BitVectorState =
     bits => bits.consume(BitsInByte) {
       case `plus`
            | `minus`
            | `colon` => Right(NoSize)
       case `dollar`  => Right(BulkSize)
       case `star`    => Right(CollectionSize)
-      case other     => Left(s"unidentified RESP type when checking the state: unexpected value ${other.print} (Hex: ${other.toHex})")
+      case other     => Left(s"unidentified RESP type when checking the state: unexpected value ${other.toUtf8} (Hex: ${other.toHex})")
     }
     .flatMap {
       case (remainder, BulkSize) =>
         evalWithSizeDecodedFrom(remainder) {
           case Left(_)   => Incomplete
           case Right(ds) =>
-            val expectedBulkSize = (ds.value * BitsInByte) + crlf.size
+            val decodedSize = BitsInByte + ds.value.bitsDecoded.size + crlf.size
+            val expectedBulkSize = (ds.value.decoded * BitsInByte) + crlf.size
+            val completeBulkSize = decodedSize + expectedBulkSize
 
-            if (ds.value >= 0 && ds.remainder.size == expectedBulkSize)
+            if (ds.value.decoded >= 0 && ds.remainder.size == expectedBulkSize)
               Complete
 
-            else if (ds.value >= 0 && ds.remainder.size > expectedBulkSize) {
-              val completeBulkSize = bits.bytes.indexOfSlice(crlfBytes, 0L) * BitsInByte + crlf.size + expectedBulkSize
-              CompleteWithRemainder(bits.take(completeBulkSize), bits.drop(completeBulkSize)) // Complete plus some remainder
-            }
+            else if (ds.value.decoded >= 0 && ds.remainder.size > expectedBulkSize)
+              CompleteWithRemainder(bits.take(completeBulkSize), bits.drop(completeBulkSize))
 
-            else if (ds.value == -1 && ds.remainder.size == 0)
+            else if (ds.value.decoded == -1 && ds.remainder.size == 0)
               Complete
 
-            else if (ds.value == -1 && ds.remainder.size > 0) {
-              val completeBulkSize = 3 * BitsInByte + crlf.size
-              CompleteWithRemainder(bits.take(completeBulkSize), bits.drop(completeBulkSize)) // Complete plus some remainder
-            }
+            else if (ds.value.decoded == -1 && ds.remainder.size > 0)
+              CompleteWithRemainder(bits.take(decodedSize), bits.drop(decodedSize))
 
             else MissingBits(expectedBulkSize - ds.remainder.size)
         }
@@ -434,13 +462,15 @@ sealed trait RESPFunctions { this: RESPCodecs =>
             Right(Incomplete)
 
           case Right(ds) =>
-            if (ds.value == -1 && ds.remainder.size == 0)
+            val decodedSize = BitsInByte + ds.value.bitsDecoded.size + crlf.size
+
+            if (ds.value.decoded == -1 && ds.remainder.size == 0)
               Right(Complete)
 
-            else if (ds.value == -1 && ds.remainder.size > 0)
-              Right(CompleteWithRemainder(unsafeTakeUpToCrLf(bits), unsafeDropUpToCrLf(bits)))
+            else if (ds.value.decoded == -1 && ds.remainder.size > 0)
+              Right(CompleteWithRemainder(bits.take(decodedSize), bits.drop(decodedSize)))
 
-            else stateOfArray(ds.value, ds.remainder, unsafeTakeUpToCrLf(bits))
+            else stateOfArray(ds.value.decoded, ds.remainder, bits.take(decodedSize))
         }
 
       case (_, NoSize) =>
@@ -483,34 +513,18 @@ sealed trait RESPFunctions { this: RESPCodecs =>
         }
     }
 
-  private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: (Incomplete | DecodeResult[Long]) => A): String | A =
-    if (bits.bytes.indexOfSlice(crlfBytes, 0L) == -1) Right(f(Left(Incomplete)))
-    else (longAsCRLFTerminatedString.decode(bits) map (r => f(Right(r)))).fold (
-      err => Left(err.message),
-      res => Right(res)
-    )
+  private final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: (Incomplete | DecodeResult[BitsDecoded[Long]]) => A): String | A =
+    failingEvalWithSizeDecodedFrom(bits)(x => Right(f(x)))
 
-  private final def failingEvalWithSizeDecodedFrom[A](bits: BitVector)(f: (Incomplete | DecodeResult[Long]) => String | A): String | A =
-    if (bits.bytes.indexOfSlice(crlfBytes, 0L) == -1) f(Left(Incomplete))
-    else (longAsCRLFTerminatedString.decode(bits) map (r => f(Right(r)))).fold (
-      err => Left(err.message),
-      res => res
-    )
-
-  /**
-    * Both the below named unsafe as they don't check that
-    * `bits` actually contain `crlfBytes`. The check needs
-    * to be performed outside before using it
-    */
-  private final def unsafeTakeUpToCrLf: BitVector => BitVector =
-    bits => bits.take(
-      bits.bytes.indexOfSlice(crlfBytes, 0L) * BitsInByte + crlf.size
-    )
-
-  private final def unsafeDropUpToCrLf: BitVector => BitVector =
-    bits => bits.drop(
-      bits.bytes.indexOfSlice(crlfBytes, 0L) * BitsInByte + crlf.size
-    )
+  private final def failingEvalWithSizeDecodedFrom[A](bits: BitVector)(f: (Incomplete | DecodeResult[BitsDecoded[Long]]) => String | A): String | A =
+    crlfTerminatedBitsDecodedSize.decode(bits)
+      .fold (
+        {
+          case MatchingDiscriminatorNotFound(_, _) => f(Left(Incomplete))
+          case error                               => Left(error.message)
+        },
+        res => f(Right(res))
+      )
 
   private sealed trait SizeType
   private final case object BulkSize extends SizeType

@@ -19,7 +19,7 @@ sealed trait RESPFrame extends Product with Serializable with EitherSyntax with 
       case Incomplete                  => IncompleteFrame(bits, 0L).asRight
       case Complete                    => CompleteFrame(bits).asRight
       case CompleteWithRemainder(c, r) => consumeRemainder(MoreThanOneFrame(CompleteFrame(c) :: Nil, r).asRight)
-    } leftMap (e => new Exception(s"Error building the frame: $e. Content: ${bits.print}"))
+    } leftMap (e => new Exception(s"Error building the frame: $e. Content: ${bits.tailToUtf8()}"))
 
   @tailrec
   private final def consumeRemainder(current: String | MoreThanOneFrame): String | MoreThanOneFrame =

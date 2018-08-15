@@ -401,19 +401,19 @@ sealed trait RESPCodecs extends BitVectorSyntax { this: RESPBuilders =>
     }
 
     override final def decode(bits: BitVector): Attempt[DecodeResult[RESP]] =
-      bits
-        .consume(BitsInByte) {
-          case `plus`   => Right(simpleStringCodec)
-          case `minus`  => Right(errorCodec)
-          case `colon`  => Right(integerCodec)
-          case `dollar` => Right(bulkStringCodec)
-          case `star`   => Right(arrayCodec)
-          case other    => Left(s"unidentified RESP type (Hex: ${other.toHex})")
+      bits.consumeThen(BitsInByte)(
+        error => Attempt.failure(Err(error)),
+        {
+          case (taken, remainder) => (taken match {
+            case `plus`   => Attempt.successful(simpleStringCodec)
+            case `minus`  => Attempt.successful(errorCodec)
+            case `colon`  => Attempt.successful(integerCodec)
+            case `dollar` => Attempt.successful(bulkStringCodec)
+            case `star`   => Attempt.successful(arrayCodec)
+            case other    => Attempt.failure(Err(s"unidentified RESP type (Hex: ${other.toHex})"))
+          }) flatMap (_.decode(remainder))
         }
-        .fold(
-          error => Attempt.failure(Err(error)),
-          { case (remainder, codec) => codec.decode(remainder) }
-        )
+      )
 
     override final def toString: String = "RESP"
   }
@@ -424,69 +424,73 @@ sealed trait RESPFunctions { this: RESPCodecs =>
   import BitVectorDecoding._
 
   final val stateOf: BitVector => String | BitVectorState =
-    bits => bits.consume(BitsInByte) {
-      case `plus`
-           | `minus`
-           | `colon` => Right(NoSize)
-      case `dollar`  => Right(BulkSize)
-      case `star`    => Right(CollectionSize)
-      case other     => Left(s"unidentified RESP type when checking the state: unexpected value ${other.toUtf8} (Hex: ${other.toHex})")
-    }
-    .flatMap {
-      case (remainder, BulkSize) =>
-        evalWithSizeDecodedFrom(remainder) {
-          case Left(_)   => Incomplete
-          case Right(ds) =>
-            val decodedSize = BitsInByte + ds.value.bitsDecoded.size + crlf.size
-            val expectedBulkSize = (ds.value.decoded * BitsInByte) + crlf.size
-            val completeBulkSize = decodedSize + expectedBulkSize
+    bits => bits.consumeThen(BitsInByte)(
+      error => Left(error),
+      {
+        case (typeToken, payload) => (typeToken match {
+          case `plus`
+               | `minus`
+               | `colon` => Right(NoSize)
+          case `dollar`  => Right(BulkSize)
+          case `star`    => Right(CollectionSize)
+          case other     => Left(s"unidentified RESP type when checking the state: unexpected value ${other.toUtf8} (Hex: ${other.toHex})")
+        }) flatMap {
+          case BulkSize =>
+            evalWithSizeDecodedFrom(payload) {
+              case Left(_) => Incomplete
+              case Right(DecodeResult(value, remainder)) =>
+                val decodedSize = BitsInByte + value.bitsDecoded.size + crlf.size
+                val expectedBulkSize = (value.decoded * BitsInByte) + crlf.size
+                val completeBulkSize = decodedSize + expectedBulkSize
 
-            if (ds.value.decoded >= 0 && ds.remainder.size == expectedBulkSize)
-              Complete
+                if (value.decoded >= 0 && remainder.size == expectedBulkSize)
+                  Complete
 
-            else if (ds.value.decoded >= 0 && ds.remainder.size > expectedBulkSize)
-              CompleteWithRemainder(bits.take(completeBulkSize), bits.drop(completeBulkSize))
+                else if (value.decoded >= 0 && remainder.size > expectedBulkSize)
+                  CompleteWithRemainder(bits.take(completeBulkSize), bits.drop(completeBulkSize))
 
-            else if (ds.value.decoded == -1 && ds.remainder.size == 0)
-              Complete
+                else if (value.decoded == -1 && remainder.size == 0)
+                  Complete
 
-            else if (ds.value.decoded == -1 && ds.remainder.size > 0)
-              CompleteWithRemainder(bits.take(decodedSize), bits.drop(decodedSize))
+                else if (value.decoded == -1 && remainder.size > 0)
+                  CompleteWithRemainder(bits.take(decodedSize), bits.drop(decodedSize))
 
-            else MissingBits(expectedBulkSize - ds.remainder.size)
-        }
+                else MissingBits(expectedBulkSize - remainder.size)
+            }
 
-      case (remainder, CollectionSize) =>
-        failingEvalWithSizeDecodedFrom(remainder) {
-          case Left(_)  =>
-            Right(Incomplete)
+          case CollectionSize =>
+            failingEvalWithSizeDecodedFrom(payload) {
+              case Left(_)  =>
+                Right(Incomplete)
 
-          case Right(ds) =>
-            val decodedSize = BitsInByte + ds.value.bitsDecoded.size + crlf.size
+              case Right(DecodeResult(value, remainder)) =>
+                val decodedSize = BitsInByte + value.bitsDecoded.size + crlf.size
 
-            if (ds.value.decoded == -1 && ds.remainder.size == 0)
+                if (value.decoded == -1 && remainder.size == 0)
+                  Right(Complete)
+
+                else if (value.decoded == -1 && remainder.size > 0)
+                  Right(CompleteWithRemainder(bits.take(decodedSize), bits.drop(decodedSize)))
+
+                else stateOfArray(value.decoded, remainder, bits.take(decodedSize))
+            }
+
+          case NoSize =>
+            val endOfMessageByte = bits.bytes.indexOfSlice(crlfBytes, 0L)
+            val completeMessageSize = endOfMessageByte * BitsInByte + crlf.size
+
+            if (endOfMessageByte == -1)
+              Right(Incomplete)
+            else if (completeMessageSize < bits.size)
+              Right( CompleteWithRemainder(
+                bits.take(completeMessageSize),
+                bits.drop(completeMessageSize)
+              ))
+            else
               Right(Complete)
-
-            else if (ds.value.decoded == -1 && ds.remainder.size > 0)
-              Right(CompleteWithRemainder(bits.take(decodedSize), bits.drop(decodedSize)))
-
-            else stateOfArray(ds.value.decoded, ds.remainder, bits.take(decodedSize))
         }
-
-      case (_, NoSize) =>
-        val endOfMessageByte = bits.bytes.indexOfSlice(crlfBytes, 0L)
-        val completeMessageSize = endOfMessageByte * BitsInByte + crlf.size
-
-        if (endOfMessageByte == -1)
-          Right(Incomplete)
-        else if (completeMessageSize < bits.size)
-          Right( CompleteWithRemainder(
-            bits.take(completeMessageSize),
-            bits.drop(completeMessageSize)
-          ))
-        else
-          Right(Complete)
-    }
+      }
+    )
 
   @tailrec
   private final def stateOfArray(stillMissing: Long, remainder: BitVector, soFar: BitVector): String | BitVectorState =
@@ -498,7 +502,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
       case _ =>
         stateOf(remainder) match {
           case Left(e)   => Left(e)
-          case Right(st) => st match {
+          case Right(state) => state match {
 
             case CompleteWithRemainder(c, r) =>
               stateOfArray(stillMissing - 1, r, soFar ++ c)

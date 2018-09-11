@@ -163,7 +163,8 @@ lazy val publishSettings = Seq(
   Test / publishArtifact := false,
   pomIncludeRepository := (_ => false),
   developers := List(
-    Developer("sirocchi", "Julien Sirocchi", "julien.sirocchi@gmail.com", url("https://github.com/sirocchj"))
+    Developer("sirocchi", "Julien Sirocchi", "julien.sirocchi@gmail.com", url("https://github.com/sirocchj")),
+    Developer("barambani", "Filippo Mariotti", "", url("https://github.com/barambani"))
   ),
   scmInfo := Some(
     ScmInfo(

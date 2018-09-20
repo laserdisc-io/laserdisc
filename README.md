@@ -99,7 +99,7 @@ object Main extends StreamApp[IO] {
 ```
 
 This should produce an output similar to the following one:
-```bash
+```
 [info] - [scala-execution-context-global-13] Starting connection
 [info] - [scala-execution-context-global-18] Server available for publishing: localhost:6379
 [debug] - [scala-execution-context-global-14] sending Array(BulkString(SET),BulkString(a),BulkString(23))

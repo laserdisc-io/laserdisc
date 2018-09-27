@@ -3,19 +3,18 @@ package fs2
 
 import java.nio.channels.AsynchronousChannelGroup
 
-import _root_.fs2._
-import _root_.fs2.async.Ref.Change
-import cats.effect.{Effect, Sync}
+import cats.effect.{ConcurrentEffect, Sync, Timer}
+import cats.effect.concurrent.Ref
+import cats.instances.option.catsStdInstancesForOption
 import cats.syntax.all._
 import log.effect.LogWriter
+import log.effect.fs2.syntax._
 import shapeless._
 import shapeless.ops.hlist._
 import shapeless.ops.sized.ToHList
 
 import scala.collection.LinearSeq
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import log.effect.fs2.syntax._
 
 trait RedisClient[F[_]] {
   import Protocol.Aux
@@ -63,14 +62,12 @@ trait RedisClient[F[_]] {
 }
 
 object RedisClient {
-  final def apply[F[_]: Effect: LogWriter](
+  final def apply[F[_]: ConcurrentEffect: Timer: LogWriter](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
   )(
-      implicit acg: AsynchronousChannelGroup,
-      ec: ExecutionContext,
-      scheduler: Scheduler
+      implicit acg: AsynchronousChannelGroup
   ): Stream[F, RedisClient[F]] = {
 
     def redisConnection(address: RedisAddress): Pipe[F, RESP, RESP] =
@@ -82,10 +79,7 @@ object RedisClient {
     def connection: F[impl.Connection[F]] =
       impl.connection(redisConnection, impl.currentServer(addresses.toSeq))
 
-    Stream.bracket(impl.mkClient(connection))(
-      { case (client, _)   => Stream.emit(client) },
-      { case (_, shutdown) => shutdown }
-    )
+    Stream.bracket(impl.mkClient(connection))({ case (_, shutdown) => shutdown }).map({ case (client, _) => client })
   }
 
   private[laserdisc] final object impl {
@@ -105,10 +99,7 @@ object RedisClient {
       ): F[Out]
     }
 
-    def mkClient[F[_]: Effect: LogWriter](connection: F[Connection[F]])(
-        implicit ec: ExecutionContext,
-        scheduler: Scheduler
-    ): F[(RedisClient[F], F[Unit])] =
+    def mkClient[F[_]: ConcurrentEffect: Timer: LogWriter](connection: F[Connection[F]]): F[(RedisClient[F], F[Unit])] =
       mkPublisher(connection).map { publisher =>
         new RedisClient[F] {
           import Protocol.Aux
@@ -166,26 +157,23 @@ object RedisClient {
     def currentServer[F[_]: Sync](addresses: Seq[RedisAddress]): F[Option[RedisAddress]] =
       Stream.emits(addresses).covary[F].compile.last //FIXME yeah, well...
 
-    def connection[F[_]](redisConnection: RedisAddress => Pipe[F, RESP, RESP], leader: F[Option[RedisAddress]])(
-        implicit F: Effect[F],
-        logger: LogWriter[F],
-        scheduler: Scheduler,
-        ec: ExecutionContext
+    def connection[F[_]: ConcurrentEffect: Timer](
+        redisConnection: RedisAddress => Pipe[F, RESP, RESP],
+        leader: F[Option[RedisAddress]]
+    )(
+        implicit logger: LogWriter[F]
     ): F[Connection[F]] =
-      async.signalOf[F, Boolean](initialValue = false).flatMap { termSignal =>
-        async.unboundedQueue[F, Request[F]].flatMap { queue =>
-          async.refOf[F, Vector[Request[F]]](Vector.empty).map { inFlight =>
-
-            def push(req: Request[F]): F[RESP] =
-              inFlight.modify2(in => (in :+ req) -> req.protocol.encode).map(_._2)
+      Signal[F, Boolean](false).flatMap { termSignal =>
+        Queue.unbounded[F, Request[F]].flatMap { queue =>
+          Ref.of[F, Vector[Request[F]]](Vector.empty).map { inFlight =>
+            def push(req: Request[F]): F[RESP] = inFlight.modify(in => (in :+ req) -> req.protocol.encode)
 
             def pop: F[Option[Request[F]]] =
               inFlight
-                .modify2 {
+                .modify {
                   case h +: t => t     -> Some(h)
                   case other  => other -> None
                 }
-                .map(_._2)
 
             def serverAvailable(address: RedisAddress): Stream[F, Unit] =
               logger.infoS(s"Server available for publishing: $address") >> {
@@ -194,10 +182,10 @@ object RedisClient {
                   .through(redisConnection(address))
                   .flatMap { resp =>
                     Stream.eval(pop).flatMap {
-                      case None                        => Stream.raiseError[Unit](NoInflightRequest(resp))
+                      case None                        => Stream.raiseError(NoInflightRequest(resp))
                       case Some(Request(protocol, cb)) => Stream.eval_(cb(Right(protocol.decode(resp))))
                     }
-                  } ++ Stream.raiseError[Unit](ServerTerminatedConnection(address))
+                  } ++ Stream.raiseError(ServerTerminatedConnection(address))
               }
 
             val serverStream: Stream[F, Option[RedisAddress]] =
@@ -205,10 +193,10 @@ object RedisClient {
 
             def serverUnavailable: Stream[F, RedisAddress] =
               logger.errorS("Server unavailable for publishing") >>
-                Stream.eval(async.signalOf[F, Option[RedisAddress]](None)).flatMap { serverSignal =>
+                Stream.eval(Signal[F, Option[RedisAddress]](None)).flatMap { serverSignal =>
                   val cancelIncoming = queue.dequeue.evalMap(_.callback(Left(ServerUnavailable))).drain
-                  val queryLeader = (scheduler.awakeEvery(3.seconds) >> serverStream) //FIXME magic number
-                    .evalMap(maybeAddress => serverSignal.modify(_ => maybeAddress))
+                  val queryLeader = (Stream.awakeEvery[F](3.seconds) >> serverStream) //FIXME magic number
+                    .evalMap(maybeAddress => serverSignal.update(_ => maybeAddress))
                     .drain
 
                   cancelIncoming
@@ -264,10 +252,7 @@ object RedisClient {
         }
       }
 
-    def mkPublisher[F[_]](createPublisher: => F[Connection[F]])(
-        implicit F: Effect[F],
-        ec: ExecutionContext
-    ): F[Publisher[F]] = {
+    def mkPublisher[F[_]: ConcurrentEffect](createPublisher: => F[Connection[F]]): F[Publisher[F]] = {
 
       final case class State(hasShutdown: Boolean, maybeConnection: Option[Connection[F]]) {
         def maybeSwapConnection(connection: Connection[F]): State =
@@ -277,27 +262,29 @@ object RedisClient {
 
       val emptyState = State(hasShutdown = false, None)
 
-      async.refOf(emptyState).map { state =>
+      Ref.of(emptyState).map { state =>
         new Publisher[F] {
-          def shutdown: F[Unit] = state.modify(_.shutdown).flatMap {
-            case Change(p, _) =>
-              import cats.instances.option.catsStdInstancesForOption
-              p.maybeConnection.traverse_(_.shutdown)
-          }
+          val shutdown: F[Unit] =
+            state
+              .modify(currentState => (currentState.shutdown, currentState))
+              .flatMap(_.maybeConnection.traverse_(_.shutdown))
 
           def publish[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
-              implicit protocolHandler: ProtocolHandler.Aux[F, In, Out]
+              implicit ev: ProtocolHandler.Aux[F, In, Out]
           ): F[Out] =
             state.get.map(_.maybeConnection).flatMap {
               case Some(connection) => connection.send(in, timeout)
               case None =>
                 createPublisher.flatMap { connection =>
                   state
-                    .modify(_.maybeSwapConnection(connection))
+                    .modify { currentState =>
+                      val newState = currentState.maybeSwapConnection(connection)
+                      (newState, (currentState, newState))
+                    }
                     .flatMap {
-                      case Change(p, _) if p.hasShutdown => F.raiseError[Out](ClientTerminated)
-                      case Change(p, n) if p != n        => async.start(connection.run) >> publish(in, timeout)
-                      case _                             => publish(in, timeout)
+                      case (p, _) if p.hasShutdown => ConcurrentEffect[F].raiseError[Out](ClientTerminated)
+                      case (p, n) if p != n        => ConcurrentEffect[F].start(connection.run) >> publish(in, timeout)
+                      case _                       => publish(in, timeout)
                     }
                 }
             }

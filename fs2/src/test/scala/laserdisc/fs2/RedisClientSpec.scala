@@ -50,7 +50,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
         }
       }
 
-  "an fs2 redis client" should {
+  "an fs2 redis client" ignore {
 
     "handle correctly hundreds of read requests in parallel for a large bulk text payload" in {
 

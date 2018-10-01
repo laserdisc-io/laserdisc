@@ -259,10 +259,10 @@ object RedisClient {
 
     def mkPublisher[F[_]](createPublisher: => F[Connection[F]])(implicit F: ConcurrentEffect[F]): F[Publisher[F]] = {
 
-      final case class State(hasShutdown: Boolean, maybeConnection: Option[Connection[F]]) {
+      final class State(val hasShutdown: Boolean, val maybeConnection: Option[Connection[F]]) {
         def maybeSwapConnection(connection: Connection[F]): State =
-          if (hasShutdown) this else copy(maybeConnection = Some(connection))
-        def shutdown: State = copy(hasShutdown = true)
+          if (hasShutdown) this else new State(hasShutdown, Some(connection))
+        def shutdown: State = new State(hasShutdown = true, maybeConnection)
       }
 
       final object State {

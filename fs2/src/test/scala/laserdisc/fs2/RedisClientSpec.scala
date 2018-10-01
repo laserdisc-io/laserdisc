@@ -34,6 +34,10 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
   implicit val timer: Timer[IO]               = IO.timer(ec)
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
+  private[this] final val testKey  = Key("test-key")
+  private[this] final val testText = "test text"
+  private[this] final val correct  = "correct"
+
   def clientUnderTest[F[_]: Timer](implicit F: ConcurrentEffect[F]): Stream[F, RedisClient[F]] =
     Stream
       .resource(MkResource(F.delay(withThreadPool(newFixedThreadPool(8)))))
@@ -47,8 +51,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
 
     "handle correctly hundreds of read requests in parallel for a large bulk text payload" in {
 
-      val testKey     = Key("test-key")
-      val testPayload = (1 to 1000).toList map (_ => "test text") mkString " - "
+      val testPayload = (1 to 1000).toList map (_ => testText) mkString " - "
 
       def testPreset[F[_]](cl: RedisClient[F])(implicit F: Monad[F]): F[Unit] =
         cl.send1(strings.set(testKey, testPayload)) flatMap (_ => F.unit)
@@ -83,8 +86,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
 
     "handle correctly some read requests in a row for a bulk text payload" in {
 
-      val testKey     = Key("test-key")
-      val testPayload = (1 to 1000).toList map (_ => "test text") mkString " - "
+      val testPayload = (1 to 1000).toList map (_ => testText) mkString " - "
 
       def testPreset[F[_]](cl: RedisClient[F])(implicit F: Monad[F]): F[Unit] =
         cl.send1(strings.set(testKey, testPayload)) flatMap (_ => F.unit)
@@ -117,7 +119,6 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
 
     "handle correctly hundreds of read requests in parallel for a small bulk text payload" in {
 
-      val testKey     = Key("test-key")
       val testPayload = "test text"
 
       def testPreset[F[_]](cl: RedisClient[F])(implicit F: Monad[F]): F[Unit] =
@@ -166,7 +167,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
               _ => "",
               _.fold(
                 _ => "",
-                _.getOrElse("Correct")
+                _.getOrElse(correct)
               )
             )
           )
@@ -178,7 +179,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
         ) unsafeRunSync ()
 
       testResponses.size should be(1000)
-      testResponses map (_ should be("Correct"))
+      testResponses map (_ should be(correct))
     }
 
     "handle correctly hundreds of read requests in parallel for an array payload" in {
@@ -188,7 +189,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       }
 
       val testKey  = Key("test-key-list")
-      val testBulk = (1 to 1000).toList map (_ => "test text") mkString " - "
+      val testBulk = (1 to 1000).toList map (_ => testText) mkString " - "
 
       def testCleanup[F[_]](cl: RedisClient[F])(implicit F: Monad[F]): F[Unit] =
         cl.send1(lists.lrem(testKey, 0L, testBulk)) flatMap (_ => F.unit)

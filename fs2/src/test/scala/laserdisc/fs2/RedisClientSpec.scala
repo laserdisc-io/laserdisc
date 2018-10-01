@@ -1,9 +1,9 @@
 package laserdisc
 package fs2
 
-import java.nio.channels.AsynchronousChannelGroup
+import java.nio.channels.AsynchronousChannelGroup.withThreadPool
 import java.util.concurrent.Executors.newFixedThreadPool
-import java.util.concurrent.{ForkJoinPool, TimeUnit}
+import java.util.concurrent.ForkJoinPool
 
 import cats.Monad
 import cats.effect._
@@ -19,6 +19,7 @@ import log.effect.fs2.Fs2LogWriter.noOpLogStream
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.fromExecutor
 
 /**
   * This test will be enabled back when the docker support
@@ -29,21 +30,13 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
   override def beforeAll(): Unit = super.beforeAll()
   override def afterAll(): Unit  = super.afterAll()
 
-  implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(new ForkJoinPool())
-  implicit val timer: Timer[IO] = IO.timer(ec)
+  implicit val ec: ExecutionContext           = fromExecutor(new ForkJoinPool())
+  implicit val timer: Timer[IO]               = IO.timer(ec)
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
   def clientUnderTest[F[_]: Timer](implicit F: ConcurrentEffect[F]): Stream[F, RedisClient[F]] =
     Stream
-      .resource {
-        Resource.make(F.delay(AsynchronousChannelGroup.withThreadPool(newFixedThreadPool(8)))) { acg =>
-          F.delay {
-            acg.shutdown()
-            acg.awaitTermination(10, TimeUnit.SECONDS)
-            ()
-          }
-        }
-      }
+      .resource(MkResource(F.delay(withThreadPool(newFixedThreadPool(8)))))
       .flatMap { implicit acg =>
         noOpLogStream[F].flatMap { implicit log =>
           RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))
@@ -67,7 +60,13 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
           ioFib flatMap (_.join.attempt)
         } map {
           _.map(
-            _.fold(_ => "", _.fold(_ => "", _.getOrElse("")))
+            _.fold(
+              _ => "",
+              _.fold(
+                _ => "",
+                _.getOrElse("")
+              )
+            )
           )
         }).toList.sequence
 
@@ -93,12 +92,16 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       def testRequests[F[_]](cl: RedisClient[F])(implicit F: Concurrent[F]): F[List[String]] =
         ((1 to 50) map { _ =>
           cl.send1(strings.get[String](testKey)) map (
-            _.fold(_ => "",
-                   _.getOrElse(""))
+            _.fold(
+              _ => "",
+              _.getOrElse("")
+            )
           )
         }).toList.sequence.attempt map (
-          _.fold(_ => Nil,
-                 identity)
+          _.fold(
+            _ => Nil,
+            identity
+          )
         )
 
       val testResponses =
@@ -127,7 +130,13 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
           ioFib flatMap (_.join.attempt)
         } map {
           _.map(
-            _.fold(_ => "", _.fold(_ => "", _.getOrElse("")))
+            _.fold(
+              _ => "",
+              _.fold(
+                _ => "",
+                _.getOrElse("")
+              )
+            )
           )
         }).toList.sequence
 
@@ -153,7 +162,13 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
           ioFib flatMap (_.join.attempt)
         } map {
           _.map(
-            _.fold(_ => "", _.fold(_ => "", _.getOrElse("Correct")))
+            _.fold(
+              _ => "",
+              _.fold(
+                _ => "",
+                _.getOrElse("Correct")
+              )
+            )
           )
         }).toList.sequence
 
@@ -188,7 +203,13 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
           ioFib flatMap (_.join.attempt)
         } map {
           _.map(
-            _.fold(_ => Nil, _.fold(_ => Nil, _.toList))
+            _.fold(
+              _ => Nil,
+              _.fold(
+                _ => Nil,
+                _.toList
+              )
+            )
           )
         }).toList.sequence map (_.flatten)
 

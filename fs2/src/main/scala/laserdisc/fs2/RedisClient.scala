@@ -3,9 +3,12 @@ package fs2
 
 import java.nio.channels.AsynchronousChannelGroup
 
+import cats.Eq
 import cats.effect.{ConcurrentEffect, Sync, Timer}
 import cats.effect.concurrent.Ref
 import cats.instances.option.catsStdInstancesForOption
+import cats.instances.option.catsKernelStdEqForOption
+import cats.instances.boolean.catsKernelStdOrderForBoolean
 import cats.syntax.all._
 import log.effect.LogWriter
 import log.effect.fs2.syntax._
@@ -19,15 +22,17 @@ import scala.concurrent.duration._
 trait RedisClient[F[_]] {
   import Protocol.Aux
 
-  def send1[A](pA: Aux[A], timeout: FiniteDuration = 20.seconds): F[Maybe[A]]
+  def defaultTimeout: FiniteDuration = 20.seconds
 
-  def send2[A, B](pA: Aux[A], pB: Aux[B], timeout: FiniteDuration = 20.seconds): F[(Maybe[A], Maybe[B])]
+  def send1[A](pA: Aux[A], timeout: FiniteDuration = defaultTimeout): F[Maybe[A]]
+
+  def send2[A, B](pA: Aux[A], pB: Aux[B], timeout: FiniteDuration = defaultTimeout): F[(Maybe[A], Maybe[B])]
 
   def send3[A, B, C](
       pA: Aux[A],
       pB: Aux[B],
       pC: Aux[C],
-      timeout: FiniteDuration = 20.seconds
+      timeout: FiniteDuration = defaultTimeout
   ): F[(Maybe[A], Maybe[B], Maybe[C])]
 
   def send4[A, B, C, D](
@@ -35,7 +40,7 @@ trait RedisClient[F[_]] {
       pB: Aux[B],
       pC: Aux[C],
       pD: Aux[D],
-      timeout: FiniteDuration = 20.seconds
+      timeout: FiniteDuration = defaultTimeout
   ): F[(Maybe[A], Maybe[B], Maybe[C], Maybe[D])]
 
   def send5[A, B, C, D, E](
@@ -44,16 +49,16 @@ trait RedisClient[F[_]] {
       pC: Aux[C],
       pD: Aux[D],
       pE: Aux[E],
-      timeout: FiniteDuration = 20.seconds
+      timeout: FiniteDuration = defaultTimeout
   ): F[(Maybe[A], Maybe[B], Maybe[C], Maybe[D], Maybe[E])]
 
-  def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration = 20.seconds)(
+  def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration = defaultTimeout)(
       implicit protocolHandler: ProtocolHandler.Aux[F, In, Out]
   ): F[Out]
 
   def sendN[CC[_] <: LinearSeq[_], A, N <: Nat, In <: HList, Out <: HList](
       sizedSeq: Sized[CC[Aux[A]], N],
-      timeout: FiniteDuration = 20.seconds
+      timeout: FiniteDuration = defaultTimeout
   )(
       implicit toHList: ToHList.Aux[CC[Aux[A]], N, In],
       protocolHandler: ProtocolHandler.Aux[F, In, Out],
@@ -182,8 +187,8 @@ object RedisClient {
                   .through(redisConnection(address))
                   .flatMap { resp =>
                     Stream.eval(pop).flatMap {
-                      case None                        => Stream.raiseError(NoInflightRequest(resp))
-                      case Some(Request(protocol, cb)) => Stream.eval_(cb(Right(protocol.decode(resp))))
+                      case None                        => Stream.raiseError(NoInFlightRequest(resp))
+                      case Some(Request(protocol, cb)) => Stream.eval_(cb(protocol.decode(resp)))
                     }
                   } ++ Stream.raiseError(ServerTerminatedConnection(address))
               }
@@ -216,7 +221,7 @@ object RedisClient {
 
                 case Some(address) =>
                   lastFailedServer match {
-                    case Some(failedAddress) if address == failedAddress =>
+                    case Some(failedAddress) if address === failedAddress =>
                       // this indicates that cluster sill thinks the address is same as the one that failed us, for that reason
                       // we have to suspend execution for while and retry in FiniteDuration
                       logger.warnS(s"New server is same like the old one ($address): currently unavailable") >>
@@ -252,7 +257,7 @@ object RedisClient {
         }
       }
 
-    def mkPublisher[F[_]: ConcurrentEffect](createPublisher: => F[Connection[F]]): F[Publisher[F]] = {
+    def mkPublisher[F[_]](createPublisher: => F[Connection[F]])(implicit F: ConcurrentEffect[F]): F[Publisher[F]] = {
 
       final case class State(hasShutdown: Boolean, maybeConnection: Option[Connection[F]]) {
         def maybeSwapConnection(connection: Connection[F]): State =
@@ -260,9 +265,15 @@ object RedisClient {
         def shutdown: State = copy(hasShutdown = true)
       }
 
-      val emptyState = State(hasShutdown = false, None)
+      final object State {
+        val empty: State                                           = new State(hasShutdown = false, None)
+        private[this] implicit val connectionEq: Eq[Connection[F]] = Eq.fromUniversalEquals
+        implicit val stateEq: Eq[State] = Eq.instance { (s1, s2) =>
+          s1.hasShutdown === s2.hasShutdown && s1.maybeConnection === s2.maybeConnection
+        }
+      }
 
-      Ref.of(emptyState).map { state =>
+      Ref.of(State.empty).map { state =>
         new Publisher[F] {
           val shutdown: F[Unit] =
             state
@@ -271,23 +282,22 @@ object RedisClient {
 
           def publish[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
               implicit ev: ProtocolHandler.Aux[F, In, Out]
-          ): F[Out] =
-            state.get.map(_.maybeConnection).flatMap {
-              case Some(connection) => connection.send(in, timeout)
-              case None =>
-                createPublisher.flatMap { connection =>
-                  state
-                    .modify { currentState =>
-                      val newState = currentState.maybeSwapConnection(connection)
-                      (newState, (currentState, newState))
-                    }
-                    .flatMap {
-                      case (p, _) if p.hasShutdown => ConcurrentEffect[F].raiseError[Out](ClientTerminated)
-                      case (p, n) if p != n        => ConcurrentEffect[F].start(connection.run) >> publish(in, timeout)
-                      case _                       => publish(in, timeout)
-                    }
-                }
-            }
+          ): F[Out] = state.get.map(_.maybeConnection).flatMap {
+            case Some(connection) => connection.send(in, timeout)
+            case None =>
+              createPublisher.flatMap { connection =>
+                state
+                  .modify { currentState =>
+                    val newState = currentState.maybeSwapConnection(connection)
+                    (newState, (currentState, newState))
+                  }
+                  .flatMap {
+                    case (p, _) if p.hasShutdown => F.raiseError(ClientTerminated)
+                    case (p, n) if p =!= n       => F.start(connection.run) >> publish(in, timeout)
+                    case _                       => publish(in, timeout)
+                  }
+              }
+          }
         }
       }
     }

@@ -13,7 +13,7 @@ package object fs2 {
   final val Stream = _root_.fs2.Stream
 
   implicit final class RichTry[+T](val self: Try[T]) extends AnyVal {
-    @inline def toEither: Either[Throwable, T] = self match {
+    @inline def toEither: Throwable | T = self match {
       case Success(t) => Right(t)
       case Failure(t) => Left(t)
     }

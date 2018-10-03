@@ -1,4 +1,5 @@
-package laserdisc.protocol
+package laserdisc
+package protocol
 
 import java.nio.charset.StandardCharsets.UTF_8
 
@@ -40,7 +41,7 @@ object RESPCodecsSpec extends EitherValues {
   }
 
   implicit final class RichString(private val underlying: String) extends AnyVal {
-    def RESP: Either[Err, RESP] = functions.stringToRESPAttempt(underlying).toEither
+    def RESP: Err | RESP = functions.stringToRESPAttempt(underlying).toEither
     def asRESP: RESP            = RESP.right.value
     def bytesLength: Int        = functions.stringToBytesLength(underlying)
   }

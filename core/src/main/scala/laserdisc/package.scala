@@ -27,7 +27,7 @@ package object laserdisc {
   final val Read     = protocol.Read
   final val Show     = protocol.Show
 
-  final type Maybe[A] = Either[Throwable, A]
+  final type Maybe[A] = Throwable | A
   final type XString  = String with Singleton
 
   private[this] final type Loopback = IPv4 And Equal[W.`"127.0.0.1"`.T]
@@ -77,7 +77,7 @@ package object laserdisc {
 
   //new types' ops
   final object OneOrMore {
-    def from[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): Either[String, OneOrMore[A]] =
+    def from[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): String | OneOrMore[A] =
       rt.refine(l)
     def unapply[A](l: List[A]): Option[OneOrMore[A]] = from(l).right.toOption
     def unsafeFrom[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): OneOrMore[A] =
@@ -121,5 +121,20 @@ package object laserdisc {
   final object ToDouble {
     def unapply(s: String): Option[Double] =
       try { Some(j.Double.parseDouble(s)) } catch { case _: NumberFormatException => None }
+  }
+
+  implicit final class WidenOps1[F[_], A](private val fa: F[A]) extends AnyVal {
+    def widen[AA >: A]: F[AA] = fa.asInstanceOf[F[AA]]
+  }
+
+  implicit final class WidenOps2[F[_, _], A, B](private val fab: F[A, B]) extends AnyVal {
+    def widenLeft[AA >: A]: F[AA, B]                                                 = fab.asInstanceOf[F[AA, B]]
+    def widenRight[BB >: B]: F[A, BB]                                                = fab.asInstanceOf[F[A, BB]]
+    def widenAsRightOf[AA, FF[_, _]](implicit ev: F[AA, B] <:< FF[AA, B]): FF[AA, B] = fab.asInstanceOf[FF[AA, B]]
+    def widenAsLeftOf[FF[_, _], AA](implicit ev: F[A, AA] <:< FF[A, AA]): FF[A, AA]  = fab.asInstanceOf[FF[A, AA]]
+  }
+
+  implicit final class WidenOps3[F[_[_], _], G[_], A](private val fga: F[G, A]) extends AnyVal {
+    def widenRight[AA >: A]: F[G, AA] = fga.asInstanceOf[F[G, AA]]
   }
 }

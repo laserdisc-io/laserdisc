@@ -61,7 +61,7 @@ object CLI extends IOApp.WithContext { self =>
       |""".stripMargin
 
   override final protected val executionContextResource: Resource[SyncIO, ExecutionContext] =
-    MkResource(SyncIO(fromExecutorService(newWorkStealingPool()))).asInstanceOf[Resource[SyncIO, ExecutionContext]]
+    MkResource(SyncIO(fromExecutorService(newWorkStealingPool()))).widenRight[ExecutionContext]
 
   override final def run(args: List[String]): IO[ExitCode] = args match {
     case arg1 :: arg2 :: Nil =>

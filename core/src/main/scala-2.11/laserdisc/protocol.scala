@@ -1,20 +1,18 @@
 package laserdisc
 
 package object protocol {
-  implicit def eitherSyntaxBase[A, B](eab: Either[A, B]) = new EitherSyntaxBaseOps(eab)
+  implicit def eitherSyntaxBase[A, B](aOrB: A | B): EitherSyntaxBaseOps[A, B] = new EitherSyntaxBaseOps(aOrB)
 }
 
-final private[laserdisc] class EitherSyntaxBaseOps[A, B](private val eab: Either[A, B]) extends AnyVal {
+final private[laserdisc] class EitherSyntaxBaseOps[A, B](private val aOrB: A | B) extends AnyVal {
 
-  def flatMap[C](f: B => Either[A, C]): Either[A, C] =
-    eab match {
-      case left @ Left(_) => left.asInstanceOf[Either[A, C]]
-      case Right(b)       => f(b)
-    }
+  def flatMap[C](f: B => A | C): A | C = aOrB match {
+    case left @ Left(_) => left.widenAsLeftOf[|, C]
+    case Right(b)       => f(b)
+  }
 
-  def getOrElse[BB >: B](default: =>BB): BB =
-    eab match {
-      case Left(_)  => default
-      case Right(b) => b
-    }
+  def getOrElse[BB >: B](default: => BB): BB = aOrB match {
+    case Left(_)  => default
+    case Right(b) => b
+  }
 }

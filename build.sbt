@@ -1,15 +1,15 @@
 import sbtcrossproject.{CrossType, crossProject}
 
 val V = new {
-  val fs2               = "1.0.0-RC1"
-  val `kind-projector`  = "0.9.7"
+  val fs2               = "1.0.0-RC2"
+  val `kind-projector`  = "0.9.8"
   val kittens           = "1.1.1"
   val refined           = "0.8.7" //FIXME can't upgrade see https://gist.github.com/sirocchj/64a00a28f5cc5776140c776c7db4e2e3
   val scalacheck        = "1.13.5"
   val scalatest         = "3.0.5"
   val `scodec-bits`     = "1.1.6"
   val `scodec-core`     = "1.10.3"
-  val `scodec-stream`   = "1.2.0-SNAPSHOT"
+  val `scodec-stream`   = "1.2.0-RC2"
   val shapeless         = "2.3.3"
   val `log-effect-fs2`  = "0.3.5"
 }
@@ -236,8 +236,7 @@ lazy val fs2 = project
   .settings(allSettings)
   .settings(
     name := "laserdisc-fs2",
-    libraryDependencies ++= fs2Deps.value,
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    libraryDependencies ++= fs2Deps.value
   )
 
 lazy val `core-bench` = project

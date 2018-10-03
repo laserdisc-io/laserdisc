@@ -102,7 +102,7 @@ object CLI extends IOApp.WithContext { self =>
                 def unapply(nanos: Long): Option[Double] = Some(nanos.toDouble / 1000000d)
               }
 
-              val toProtocol: Pipe[IO, String, Protocol] = {
+              val protocol: Pipe[IO, String, Protocol] = {
                 def mkProtocol(code: String): IO[Maybe[Protocol]] =
                   IO.delay {
                     tb.eval {
@@ -120,8 +120,8 @@ object CLI extends IOApp.WithContext { self =>
                   }.attempt
 
                 _.evalMap(mkProtocol).flatMap {
-                  case Left(t)         => Stream.eval_(prompt(s"${t.getLocalizedMessage}\n"))
-                  case Right(protocol) => Stream.emit(protocol)
+                  case Left(t)  => Stream.eval_(prompt(s"${t.getLocalizedMessage}\n"))
+                  case Right(p) => Stream.emit(p)
                 }
               }
 
@@ -129,7 +129,7 @@ object CLI extends IOApp.WithContext { self =>
                 io.stdin[IO](bufSize = 10 * 1024, blockingEC)
                   .through(text.utf8Decode)
                   .through(text.lines)
-                  .through(toProtocol)
+                  .through(protocol)
                   .evalMap { protocol =>
                     for {
                       startTime             <- IO(System.nanoTime())

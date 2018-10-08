@@ -7,13 +7,13 @@ private[protocol] trait EitherSyntax {
 }
 
 final private[protocol] class EitherValuesSyntaxOps[A](private val a: A) extends AnyVal {
-  def asLeft[B]: A | B  = Left(a).widenAsLeftOf[|, B]
-  def asRight[B]: B | A = Right(a).widenAsRightOf[B, |]
+  def asLeft[B]: A | B  = Left(a).widenAsRightOf[|, B]
+  def asRight[B]: B | A = Right(a).widenAsLeftOf[B, |]
 }
 
 final private[protocol] class EitherSyntaxOps[A, B](private val aOrB: A | B) extends AnyVal {
   def leftMap[C](f: A => C): C | B = aOrB match {
     case Left(a)      => Left(f(a))
-    case r @ Right(_) => r.widenAsRightOf[C, |]
+    case r @ Right(_) => r.widenAsLeftOf[C, |]
   }
 }

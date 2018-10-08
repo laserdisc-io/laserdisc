@@ -1,7 +1,7 @@
 import sbtcrossproject.{CrossType, crossProject}
 
 val V = new {
-  val fs2               = "1.0.0-RC2"
+  val fs2               = "1.0.0"
   val `kind-projector`  = "0.9.8"
   val kittens           = "1.1.1"
   val refined           = "0.8.7" //FIXME can't upgrade see https://gist.github.com/sirocchj/64a00a28f5cc5776140c776c7db4e2e3

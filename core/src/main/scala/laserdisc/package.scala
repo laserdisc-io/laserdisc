@@ -10,6 +10,7 @@ import eu.timepit.refined.macros.RefineMacro
 import eu.timepit.refined.numeric.Interval.{Closed => ClosedInterval}
 import eu.timepit.refined.string.{IPv4, MatchesRegex}
 import eu.timepit.refined.types.net.PrivateNetworks._
+import shapeless._
 import shapeless.nat._
 
 package object laserdisc {
@@ -124,17 +125,17 @@ package object laserdisc {
   }
 
   implicit final class WidenOps1[F[_], A](private val fa: F[A]) extends AnyVal {
-    def widen[AA >: A]: F[AA] = fa.asInstanceOf[F[AA]]
+    def widen[AA](implicit ev1: A <:< AA, ev2: A =:!= AA): F[AA] = fa.asInstanceOf[F[AA]]
   }
 
   implicit final class WidenOps2[F[_, _], A, B](private val fab: F[A, B]) extends AnyVal {
-    def widenLeft[AA >: A]: F[AA, B]                                                 = fab.asInstanceOf[F[AA, B]]
-    def widenRight[BB >: B]: F[A, BB]                                                = fab.asInstanceOf[F[A, BB]]
-    def widenAsRightOf[AA, FF[_, _]](implicit ev: F[AA, B] <:< FF[AA, B]): FF[AA, B] = fab.asInstanceOf[FF[AA, B]]
-    def widenAsLeftOf[FF[_, _], AA](implicit ev: F[A, AA] <:< FF[A, AA]): FF[A, AA]  = fab.asInstanceOf[FF[A, AA]]
+    def widenLeft[AA](implicit ev1: A <:< AA, ev2: A =:!= AA): F[AA, B]              = fab.asInstanceOf[F[AA, B]]
+    def widenRight[BB](implicit ev1: B <:< BB, ev2: B =:!= BB): F[A, BB]             = fab.asInstanceOf[F[A, BB]]
+    def widenAsLeftOf[AA, FF[_, _]](implicit ev: F[AA, B] <:< FF[AA, B]): FF[AA, B] = fab.asInstanceOf[FF[AA, B]]
+    def widenAsRightOf[FF[_, _], BB](implicit ev: F[A, BB] <:< FF[A, BB]): FF[A, BB]  = fab.asInstanceOf[FF[A, BB]]
   }
 
   implicit final class WidenOps3[F[_[_], _], G[_], A](private val fga: F[G, A]) extends AnyVal {
-    def widenRight[AA >: A]: F[G, AA] = fga.asInstanceOf[F[G, AA]]
+    def widenRight[AA](implicit ev1: A <:< AA, ev2: A =:!= AA): F[G, AA] = fga.asInstanceOf[F[G, AA]]
   }
 }

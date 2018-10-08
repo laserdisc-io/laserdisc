@@ -89,16 +89,16 @@ final class RESPFrameMixedSpec extends WordSpecLike with Matchers with PropertyC
     }
   }
 
-  private implicit def arbitraryNonEmptyString(implicit ev: Arbitrary[String]): Arbitrary[NonEmptyString] =
+  private[this] implicit def arbitraryNonEmptyString(implicit ev: Arbitrary[String]): Arbitrary[NonEmptyString] =
     Arbitrary {
       ev.arbitrary
         .map(s => s.replace("\r", ""))
         .map(s => s.replace("\n", ""))
-        .filter(_.length > 0)
+        .filter(_.nonEmpty)
         .map(xs => NonEmptyString.unsafeFrom(xs.mkString))
     }
 
-  private implicit def arbitraryMessages(implicit ev1: Arbitrary[Int], ev2: Arbitrary[NonEmptyString]): Arbitrary[OneOrMore[String]] =
+  private[this] implicit def arbitraryMessages(implicit ev1: Arbitrary[Int], ev2: Arbitrary[NonEmptyString]): Arbitrary[OneOrMore[String]] =
     Arbitrary {
       (for {
         n  <- Gen.choose(2, 1000)

@@ -65,11 +65,12 @@ libraryDependencies += "io.laserdisc" %% "laserdisc-core" % latestVersion
 With a running Redis instance on `localhost:6379` try running the following:
 ```scala
 import java.nio.channels.AsynchronousChannelGroup
-import java.util.concurrent.Executors.newFixedThreadPool
+import java.util.concurrent.Executors
 
-import cats.effect.IO
+import cats.effect._
 import cats.syntax.apply._
-import fs2.{Scheduler, Stream, StreamApp}
+import cats.syntax.functor._
+import fs2.Stream
 import laserdisc._
 import laserdisc.auto._
 import laserdisc.fs2._
@@ -77,39 +78,47 @@ import log.effect.fs2.Fs2LogWriter
 
 import scala.concurrent.ExecutionContext
 
-object Main extends StreamApp[IO] {
+object Main extends IOApp.WithContext {
 
-  implicit final val ec: ExecutionContext          = ExecutionContext.global
-  implicit final val asg: AsynchronousChannelGroup = AsynchronousChannelGroup.withThreadPool(newFixedThreadPool(2))
+  override final protected val executionContextResource: Resource[SyncIO, ExecutionContext] =
+    MkResource(SyncIO(ExecutionContext.fromExecutorService(Executors.newWorkStealingPool())))
+      .widenRight[ExecutionContext]
 
-  override final def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, StreamApp.ExitCode] =
-    Fs2LogWriter.consoleLogStream[IO].flatMap { implicit logger =>
-      Scheduler[IO](corePoolSize = 1).flatMap { implicit scheduler =>
+  private[this] final val asynchronousChannelGroupResource: Resource[IO, AsynchronousChannelGroup] =
+    MkResource(IO(AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(2))))
+
+  override final def run(args: List[String]): IO[ExitCode] =
+    Stream.resource(asynchronousChannelGroupResource).flatMap { implicit acg =>
+      Fs2LogWriter.consoleLogStream[IO].flatMap { implicit logger =>
         RedisClient[IO](Set(RedisAddress("localhost", 6379))).evalMap { client =>
           client.send2(strings.set("a", 23), strings.get[PosInt]("a")).flatMap {
             case (Right("OK"), Right(Some(getResponse))) if getResponse.value == 23 =>
-              logger.info("yay!") *> IO.pure(StreamApp.ExitCode.Success)
+              logger.info("yay!")
             case other =>
-              logger.error(s"something went terribly wrong $other") *> IO.raiseError(new RuntimeException("boom"))
+              logger.error(s"something went terribly wrong $other") *>
+                IO.raiseError(new RuntimeException("boom"))
           }
         }
       }
     }
-    .onFinalize(IO(asg.shutdown()))
+    .compile
+    .drain
+    .as(ExitCode.Success)
 }
 ```
 
 This should produce an output similar to the following one:
 ```
-[info] - [scala-execution-context-global-13] Starting connection
-[info] - [scala-execution-context-global-18] Server available for publishing: localhost:6379
-[debug] - [scala-execution-context-global-14] sending Array(BulkString(SET),BulkString(a),BulkString(23))
-[debug] - [scala-execution-context-global-13] receiving SimpleString(OK)
-[debug] - [scala-execution-context-global-18] sending Array(BulkString(GET),BulkString(a))
-[debug] - [scala-execution-context-global-19] receiving BulkString(23)
-[info] - [scala-execution-context-global-19] yay!
-[info] - [scala-execution-context-global-19] Shutting down connection
-[info] - [scala-execution-context-global-13] Connection terminated: Left(java.nio.channels.ShutdownChannelGroupException)
+[info] Running Main
+[info] - [ForkJoinPool-3-worker-2] Starting connection
+[info] - [ForkJoinPool-3-worker-2] Server available for publishing: localhost:6379
+[debug] - [ForkJoinPool-3-worker-5] sending Array(BulkString(SET),BulkString(a),BulkString(23))
+[debug] - [ForkJoinPool-3-worker-0] receiving SimpleString(OK)
+[debug] - [ForkJoinPool-3-worker-1] sending Array(BulkString(GET),BulkString(a))
+[debug] - [ForkJoinPool-3-worker-5] receiving BulkString(23)
+[info] - [ForkJoinPool-3-worker-2] yay!
+[info] - [ForkJoinPool-3-worker-2] Shutting down connection
+[info] - [ForkJoinPool-3-worker-0] Connection terminated: Right(())
 ```
 
 ## License

@@ -1,5 +1,6 @@
 ## LaserDisc
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/d548a2d7facc4e42b422940dbf5c8382)](https://app.codacy.com/app/barambani/laserdisc?utm_source=github.com&utm_medium=referral&utm_content=laserdisc-io/laserdisc&utm_campaign=Badge_Grade_Settings)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/d548a2d7facc4e42b422940dbf5c8382)](https://app.codacy.com/app/barambani/laserdisc?utm_source=github.com&utm_medium=referral&utm_content=laserdisc-io/laserdisc&utm_campaign=Badge_Grade_Dashboard)
 [![Build Status](https://travis-ci.org/laserdisc-io/laserdisc.svg?branch=master)](https://travis-ci.org/laserdisc-io/laserdisc)
 [![Join the chat at https://gitter.im/laserdisc-io/laserdisc](https://badges.gitter.im/laserdisc-io/laserdisc.svg)](https://gitter.im/laserdisc-io/laserdisc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)

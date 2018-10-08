@@ -18,10 +18,10 @@ object RESPCodecsSpec extends EitherValues {
     override val toString: String = s"$c"
   }
 
-  private final object functions {
-    private final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
-    private final val requireEncode = (resp: RESP) => Codec[RESP].encode(resp).require
-    private final val stringToBytes = (s: String) => s.getBytes(UTF_8)
+  private[this] final object functions {
+    private[this] final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
+    private[this] final val requireEncode = (resp: RESP) => Codec[RESP].encode(resp).require
+    private[this] final val stringToBytes = (s: String) => s.getBytes(UTF_8)
 
     final val stringToBytesLength = stringToBytes andThen (bytes => bytes.length)
 
@@ -60,32 +60,32 @@ final class RESPCodecsSpec extends WordSpec with MustMatchers with PropertyCheck
   import RESPCodecsSpec._
   import RESP._
 
-  private val smallListSize = chooseNum(0, 20)
-  private implicit def invalidProtocolDiscriminator: Gen[InvalidDiscriminator] = {
+  private[this] val smallListSize = chooseNum(0, 20)
+  private[this] implicit def invalidProtocolDiscriminator: Gen[InvalidDiscriminator] = {
     val exclusions = List('+', '-', ':', '$', '*')
     Gen.choose[Char](0, 127).suchThat(!exclusions.contains(_)).map(InvalidDiscriminator)
   }
-  private implicit val _                                  = Gen.choose(Char.MinValue, Char.MaxValue).filter(Character.isDefined)
-  private implicit val genSimpleString: Gen[SimpleString] = arbitrary[String].map(str)
-  private implicit val genError: Gen[Error]               = arbitrary[String].map(err)
-  private implicit val genInteger: Gen[Integer]           = arbitrary[Long].map(int)
-  private implicit val genBulkString: Gen[BulkString] = arbitrary[Option[String]].map {
+  private[this] implicit val _                                  = Gen.choose(Char.MinValue, Char.MaxValue).filter(Character.isDefined)
+  private[this] implicit val genSimpleString: Gen[SimpleString] = arbitrary[String].map(str)
+  private[this] implicit val genError: Gen[Error]               = arbitrary[String].map(err)
+  private[this] implicit val genInteger: Gen[Integer]           = arbitrary[Long].map(int)
+  private[this] implicit val genBulkString: Gen[BulkString] = arbitrary[Option[String]].map {
     case None    => NullBulkString
     case Some(s) => bulk(s)
   }
-  private implicit def genArray: Gen[Array] = smallListSize.flatMap { size =>
+  private[this] implicit def genArray: Gen[Array] = smallListSize.flatMap { size =>
     option(listOfN(size, genRESP)).map {
       case None    => NilArray
       case Some(v) => arr(v)
     }
   }
-  private implicit def genRESP: Gen[RESP] =
+  private[this] implicit def genRESP: Gen[RESP] =
     genOneOf(genSimpleString, genError, genInteger, genBulkString, genArray)
-  private implicit def genOptionListRESP: Gen[Option[List[RESP]]] = smallListSize.flatMap { size =>
+  private[this] implicit def genOptionListRESP: Gen[Option[List[RESP]]] = smallListSize.flatMap { size =>
     option(listOfN(size, genRESP))
   }
 
-  private implicit def arb[A](implicit A: Gen[A]): Arbitrary[A] = Arbitrary(A)
+  private[this] implicit def arb[A](implicit A: Gen[A]): Arbitrary[A] = Arbitrary(A)
 
   "A RESP codec" when {
 

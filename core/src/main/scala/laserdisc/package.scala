@@ -10,6 +10,7 @@ import eu.timepit.refined.macros.RefineMacro
 import eu.timepit.refined.numeric.Interval.{Closed => ClosedInterval}
 import eu.timepit.refined.string.{IPv4, MatchesRegex}
 import eu.timepit.refined.types.net.PrivateNetworks._
+import shapeless._
 import shapeless.nat._
 
 package object laserdisc {
@@ -27,7 +28,7 @@ package object laserdisc {
   final val Read     = protocol.Read
   final val Show     = protocol.Show
 
-  final type Maybe[A] = Either[Throwable, A]
+  final type Maybe[A] = Throwable | A
   final type XString  = String with Singleton
 
   private[this] final type Loopback = IPv4 And Equal[W.`"127.0.0.1"`.T]
@@ -77,7 +78,7 @@ package object laserdisc {
 
   //new types' ops
   final object OneOrMore {
-    def from[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): Either[String, OneOrMore[A]] =
+    def from[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): String | OneOrMore[A] =
       rt.refine(l)
     def unapply[A](l: List[A]): Option[OneOrMore[A]] = from(l).right.toOption
     def unsafeFrom[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): OneOrMore[A] =
@@ -121,5 +122,20 @@ package object laserdisc {
   final object ToDouble {
     def unapply(s: String): Option[Double] =
       try { Some(j.Double.parseDouble(s)) } catch { case _: NumberFormatException => None }
+  }
+
+  implicit final class WidenOps1[F[_], A](private val fa: F[A]) extends AnyVal {
+    def widen[AA](implicit ev1: A <:< AA, ev2: A =:!= AA): F[AA] = fa.asInstanceOf[F[AA]]
+  }
+
+  implicit final class WidenOps2[F[_, _], A, B](private val fab: F[A, B]) extends AnyVal {
+    def widenLeft[AA](implicit ev1: A <:< AA, ev2: A =:!= AA): F[AA, B]              = fab.asInstanceOf[F[AA, B]]
+    def widenRight[BB](implicit ev1: B <:< BB, ev2: B =:!= BB): F[A, BB]             = fab.asInstanceOf[F[A, BB]]
+    def widenAsLeftOf[AA, FF[_, _]](implicit ev: F[AA, B] <:< FF[AA, B]): FF[AA, B] = fab.asInstanceOf[FF[AA, B]]
+    def widenAsRightOf[FF[_, _], BB](implicit ev: F[A, BB] <:< FF[A, BB]): FF[A, BB]  = fab.asInstanceOf[FF[A, BB]]
+  }
+
+  implicit final class WidenOps3[F[_[_], _], G[_], A](private val fga: F[G, A]) extends AnyVal {
+    def widenRight[AA](implicit ev1: A <:< AA, ev2: A =:!= AA): F[G, AA] = fga.asInstanceOf[F[G, AA]]
   }
 }

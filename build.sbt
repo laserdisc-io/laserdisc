@@ -11,7 +11,7 @@ val V = new {
   val `scodec-core`     = "1.10.3"
   val `scodec-stream`   = "1.2.0"
   val shapeless         = "2.3.3"
-  val `log-effect-fs2`  = "0.3.5"
+  val `log-effect-fs2`  = "0.4.0"
 }
 
 val `fs2-core`        = Def.setting("co.fs2"          %%% "fs2-core"        % V.fs2)

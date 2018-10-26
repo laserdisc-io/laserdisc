@@ -12,6 +12,7 @@ val V = new {
   val `scodec-stream`   = "1.2.0"
   val shapeless         = "2.3.3"
   val `log-effect-fs2`  = "0.4.0"
+  val silencer          = "1.2.1"
 }
 
 val `fs2-core`        = Def.setting("co.fs2"          %%% "fs2-core"        % V.fs2)
@@ -23,6 +24,7 @@ val `scodec-core`     = Def.setting("org.scodec"      %%% "scodec-core"     % V.
 val `scodec-stream`   = Def.setting("org.scodec"      %%% "scodec-stream"   % V.`scodec-stream`)
 val shapeless         = Def.setting("com.chuusai"     %%% "shapeless"       % V.shapeless)
 val `log-effect-fs2`  = Def.setting("io.laserdisc"    %%% "log-effect-fs2"  % V.`log-effect-fs2`)
+val silencer          = Def.setting("com.github.ghik" %% "silencer-lib"     % V.silencer)
 val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
 val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
 
@@ -32,9 +34,22 @@ val `kind-projector-compiler-plugin` = Def.setting {
 val `scalajs-compiler-plugin` = Def.setting {
   compilerPlugin("org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.patch)
 }
+val `silencer-compiler-plugin` = Def.setting {
+  compilerPlugin("com.github.ghik" %% "silencer-plugin" % V.silencer)
+}
 
 val coreDeps = Def.Initialize.join {
-  Seq(`kind-projector-compiler-plugin`, refined, `scodec-bits`, `scodec-core`, shapeless, scalacheck, scalatest)
+  Seq(
+    `kind-projector-compiler-plugin`,
+    `silencer-compiler-plugin`,
+    refined, 
+    `scodec-bits`, 
+    `scodec-core`, 
+    shapeless, 
+    scalacheck, 
+    scalatest,
+    silencer
+  )
 }
 
 val fs2Deps = Def.Initialize.join {

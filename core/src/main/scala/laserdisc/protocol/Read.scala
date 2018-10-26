@@ -1,6 +1,7 @@
 package laserdisc
 package protocol
 
+import com.github.ghik.silencer.silent
 import shapeless._
 import shapeless.labelled._
 
@@ -165,7 +166,7 @@ trait LowPriorityReadInstances extends LowerPriorityReadInstances {
 
   implicit final def nonNilArray2Tuple2Read[A, B](
       implicit RA: NonNullBulkString ==> A,
-      RB: NonNullBulkString ==> B,
+      RB: NonNullBulkString ==> B
   ): NonNilArray ==> (A, B) = Read.instancePF {
     case NonNilArray(RA(key) +: RB(value) +: Seq()) => key -> value
   }
@@ -243,14 +244,15 @@ trait LowPriorityReadInstances extends LowerPriorityReadInstances {
   }
 
   implicit final def nonNilArray2HCons[H, T <: HList](
-      implicit ev: H <:!< FieldType[_, _],
-      RH: NonNullBulkString ==> H,
-      RT: NonNilArray ==> T
+    implicit
+    ev: H <:!< FieldType[_, _],
+    RH: NonNullBulkString ==> H,
+    RT: NonNilArray ==> T
   ): NonNilArray ==> (H :: T) = Read.instance {
     case NonNilArray(RH(h) +: rest) => RT.read(RESP.arr(rest)).map(h :: _)
   }
 
-  implicit final val nonNilArray2HNil: NonNilArray ==> HNil = Read.instancePF {
+  @silent implicit final val nonNilArray2HNil: NonNilArray ==> HNil = Read.instancePF {
     case NonNilArray(Seq()) => HNil
   }
 }

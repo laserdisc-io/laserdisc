@@ -226,6 +226,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
       |""".stripMargin
   )
   .jsSettings(scalaJsTLSSettings: _*)
+  .jsSettings(coverageEnabled := false)
 
 lazy val coreJVM = core.jvm.enablePlugins(BoilerplatePlugin)
 lazy val coreJS  = core.js.enablePlugins(BoilerplatePlugin)

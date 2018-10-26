@@ -1,4 +1,5 @@
-package laserdisc.cli
+package laserdisc
+package cli
 
 import java.nio.channels.AsynchronousChannelGroup.withThreadPool
 import java.util.concurrent.Executors._
@@ -13,7 +14,6 @@ import scala.concurrent.ExecutionContext.fromExecutorService
 import scala.reflect.runtime.universe
 import scala.tools.reflect.ToolBox
 
-import laserdisc._
 import laserdisc.fs2._
 
 object CLI extends IOApp.WithContext { self =>

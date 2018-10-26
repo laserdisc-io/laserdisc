@@ -72,8 +72,8 @@ trait LowPriorityReadInstances extends LowerPriorityReadInstances {
   implicit final val simpleString2StringRead: SimpleString ==> String = Read.instance {
     case SimpleString(s) => Some(s)
   }
-  implicit final val simpleString2OKRead: SimpleString ==> "OK" = Read.instancePF {
-    case SimpleString("OK") => "OK"
+  implicit final val simpleString2OKRead: SimpleString ==> OK = Read.instancePF {
+    case SimpleString("OK") => OK
   }
   implicit final val simpleString2KeyRead: SimpleString ==> Key = Read.instancePF {
     case SimpleString(Key(s)) => s

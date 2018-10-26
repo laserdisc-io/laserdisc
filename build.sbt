@@ -136,8 +136,6 @@ val versionDependantScalacOptions = Def.setting {
     "-Ywarn-nullary-override", // Warn when non-nullary `def f()' overrides nullary `def f'.
     "-Ywarn-nullary-unit", // Warn when nullary methods return Unit.
     "-Ywarn-numeric-widen", // Warn when numerics are widened.
-    "-Yinduction-heuristics", // Nobody wants recursive implicit searches that last forever, we need TLS for this
-    "-Yliteral-types" // Allow inferring singleton types, we need TLS for this in 2.12
   )
 
   versionDependent(scalaVersion.value, flags)
@@ -146,13 +144,12 @@ val versionDependantScalacOptions = Def.setting {
 inThisBuild {
   Def.settings(
     organization := "io.laserdisc",
-    scalaOrganization := "org.typelevel",
-    scalaVersion := "2.12.4-bin-typelevel-4"
+    scalaVersion := "2.12.7"
   )
 }
 
 lazy val commonSettings = Seq(
-  crossScalaVersions := Seq("2.11.11-bin-typelevel-4", "2.12.4-bin-typelevel-4"),
+  crossScalaVersions := Seq("2.11.12", "2.12.7"),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value

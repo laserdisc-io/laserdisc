@@ -13,7 +13,7 @@ trait HyperLogLogPExtra { this: HyperLogLogP =>
   ]
 
   //PFMERGE
-  [..20#final def pfmerge(sourceKey##1: Key, [#sourceKey2: Key#], destinationKey: Key): Protocol.Aux["OK"] =
+  [..20#final def pfmerge(sourceKey##1: Key, [#sourceKey2: Key#], destinationKey: Key): Protocol.Aux[OK] =
     pfmerge(TwoOrMoreKeys.unsafeFrom(sourceKey##1 :: [#sourceKey2# :: ] :: Nil), destinationKey)#
   ]
 }

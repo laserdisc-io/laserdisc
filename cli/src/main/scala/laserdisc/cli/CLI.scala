@@ -1,5 +1,5 @@
 package laserdisc
-package fs2
+package cli
 
 import java.nio.channels.AsynchronousChannelGroup.withThreadPool
 import java.util.concurrent.Executors._
@@ -13,6 +13,8 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutorService
 import scala.reflect.runtime.universe
 import scala.tools.reflect.ToolBox
+
+import laserdisc.fs2._
 
 object CLI extends IOApp.WithContext { self =>
 
@@ -76,7 +78,7 @@ object CLI extends IOApp.WithContext { self =>
     case _ => IO(println("please supply host and port (space separated)")).as(ExitCode.Error)
   }
 
-  private[fs2] final object impl {
+  private[cli] final object impl {
     private[this] val tb = universe.runtimeMirror(self.getClass.getClassLoader).mkToolBox()
 
     def mkStream(host: Host, port: Port): Stream[IO, ExitCode] =

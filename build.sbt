@@ -260,9 +260,18 @@ lazy val `core-bench` = project
     publishArtifact := false
   )
 
+lazy val cli = project
+  .in(file("cli"))
+  .dependsOn(fs2)
+  .settings(allSettings)
+  .settings(
+    name := "laserdisc-cli",
+    libraryDependencies ++= fs2Deps.value
+  )
+
 lazy val laserdisc = project
   .in(file("."))
-  .aggregate(coreJVM, coreJS, fs2)
+  .aggregate(coreJVM, coreJS, fs2, cli)
   .settings(publishSettings)
   .settings(
     publishArtifact := false

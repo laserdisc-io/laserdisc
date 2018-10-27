@@ -1,10 +1,15 @@
-import sbtcrossproject.{CrossType, crossProject}
+import sbtcrossproject.CrossPlugin.autoImport.crossProject
+import sbtcrossproject.CrossType
+
+val `scala 211` = "2.11.11-bin-typelevel-4"
+val `scala 212` = "2.12.7"
 
 val V = new {
   val fs2               = "1.0.0"
   val `kind-projector`  = "0.9.8"
   val kittens           = "1.2.0"
-  val refined           = "0.8.7" //FIXME can't upgrade see https://gist.github.com/sirocchj/64a00a28f5cc5776140c776c7db4e2e3
+  val refined           = "0.9.2"
+  val refined211        = "0.8.7"
   val scalacheck        = "1.13.5"
   val scalatest         = "3.0.5"
   val `scodec-bits`     = "1.1.6"
@@ -12,19 +17,18 @@ val V = new {
   val `scodec-stream`   = "1.2.0"
   val shapeless         = "2.3.3"
   val `log-effect-fs2`  = "0.4.0"
-  val silencer          = "1.2.1"
 }
 
 val `fs2-core`        = Def.setting("co.fs2"          %%% "fs2-core"        % V.fs2)
 val `fs2-io`          = Def.setting("co.fs2"          %% "fs2-io"           % V.fs2)
 val kittens           = Def.setting("org.typelevel"   %%% "kittens"         % V.kittens)
 val refined           = Def.setting("eu.timepit"      %%% "refined"         % V.refined)
+val refined211        = Def.setting("eu.timepit"      %%% "refined"         % V.refined211)
 val `scodec-bits`     = Def.setting("org.scodec"      %%% "scodec-bits"     % V.`scodec-bits`)
 val `scodec-core`     = Def.setting("org.scodec"      %%% "scodec-core"     % V.`scodec-core`)
 val `scodec-stream`   = Def.setting("org.scodec"      %%% "scodec-stream"   % V.`scodec-stream`)
 val shapeless         = Def.setting("com.chuusai"     %%% "shapeless"       % V.shapeless)
 val `log-effect-fs2`  = Def.setting("io.laserdisc"    %%% "log-effect-fs2"  % V.`log-effect-fs2`)
-val silencer          = Def.setting("com.github.ghik" %% "silencer-lib"     % V.silencer)
 val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
 val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
 
@@ -34,21 +38,15 @@ val `kind-projector-compiler-plugin` = Def.setting {
 val `scalajs-compiler-plugin` = Def.setting {
   compilerPlugin("org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.patch)
 }
-val `silencer-compiler-plugin` = Def.setting {
-  compilerPlugin("com.github.ghik" %% "silencer-plugin" % V.silencer)
-}
 
 val coreDeps = Def.Initialize.join {
   Seq(
-    `kind-projector-compiler-plugin`,
-    `silencer-compiler-plugin`,
-    refined, 
+    `kind-projector-compiler-plugin`, 
     `scodec-bits`, 
     `scodec-core`, 
     shapeless, 
     scalacheck, 
-    scalatest,
-    silencer
+    scalatest
   )
 }
 
@@ -63,6 +61,13 @@ val fs2Deps = Def.Initialize.join {
     scalacheck,
     scalatest
   )
+}
+
+val refinedDep = Def.setting {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 11)) => refined211.value
+    case _             => refined.value
+  }
 }
 
 val externalApiMappings = Def.task {
@@ -90,29 +95,30 @@ val externalApiMappings = Def.task {
     }
   }
 
-  (coreDeps.value :+ (scalaOrganization.value % "scala-library" % scalaVersion.value))
+  (coreDeps.value :+ refinedDep.value :+ (scalaOrganization.value % "scala-library" % scalaVersion.value))
     .flatMap(JavaDocIo.maybeDocsFor)
     .toMap
 }
 
 val versionDependantScalacOptions = Def.setting {
-  def versionDependent(scalaVersion: String, flags: Seq[String]) = CrossVersion.partialVersion(scalaVersion) match {
-    case Some((2, major)) if major >= 12 =>
-      flags ++ Seq(
-        "-Xlint:constant", // Evaluation of a constant arithmetic expression results in an error.
-        "-Ywarn-extra-implicit", // Warn when more than one implicit parameter section is defined.
-        "-Ywarn-unused:explicits", // Warn if a parameter is unused.
-        "-Ywarn-unused:imports", // Warn if an import selector is not referenced.
-        "-Ywarn-unused:locals", // Warn if a local definition is unused.
-        "-Ywarn-unused:patvars", // Warn if a variable bound in a pattern is unused.
-        "-Ywarn-unused:privates", // Warn if a private member is unused.
-        "-Ywarn-value-discard" // Warn when non-Unit expression results are unused.
-      )
-    case _ =>
-      flags
-        .filterNot(_ == "-Xlint:missing-interpolator") //@implicitNotFound uses ${A} syntax w/o need for s interpolator
-  }
-
+  def versionDependent(scalaVersion: String, flags: Seq[String]) = 
+    CrossVersion.partialVersion(scalaVersion) match {
+      case Some((2, major)) if major >= 12 =>
+        flags ++ Seq(
+          "-Xlint:constant", // Evaluation of a constant arithmetic expression results in an error.
+          "-Ywarn-extra-implicit", // Warn when more than one implicit parameter section is defined.
+          "-Ywarn-unused:explicits", // Warn if a parameter is unused.
+          "-Ywarn-unused:imports", // Warn if an import selector is not referenced.
+          "-Ywarn-unused:locals", // Warn if a local definition is unused.
+          "-Ywarn-unused:patvars", // Warn if a variable bound in a pattern is unused.
+          "-Ywarn-unused:privates", // Warn if a private member is unused.
+          "-Ywarn-value-discard" // Warn when non-Unit expression results are unused.
+        )
+      case _ =>
+        (flags ++ Seq("-Yinduction-heuristics", "-Yliteral-types"))
+          .filterNot(_ == "-Xlint:missing-interpolator") //@implicitNotFound uses ${A} syntax w/o need for s interpolator
+    }
+  
   val flags = Seq(
     "-deprecation", // Emit warning and location for usages of deprecated APIs.
     "-encoding",
@@ -159,12 +165,17 @@ val versionDependantScalacOptions = Def.setting {
 inThisBuild {
   Def.settings(
     organization := "io.laserdisc",
-    scalaVersion := "2.12.7"
+    scalaVersion := `scala 212`
   )
 }
 
 lazy val commonSettings = Seq(
-  crossScalaVersions := Seq("2.11.12", "2.12.7"),
+  scalaOrganization := 
+    (CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, 11)) => "org.typelevel"
+      case _             => "org.scala-lang" 
+    }),
+  crossScalaVersions := Seq(`scala 211`, `scala 212`),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value
@@ -224,7 +235,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(allSettings)
   .settings(
     name := "laserdisc-core",
-    libraryDependencies ++= coreDeps.value,
+    libraryDependencies ++= coreDeps.value :+ refinedDep.value,
     Compile / boilerplateSource := baseDirectory.value.getParentFile / "src" / "main" / "boilerplate"
   )
   .jvmSettings(

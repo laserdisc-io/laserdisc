@@ -168,29 +168,29 @@ trait ServerP {
     final val flag = ShutdownFlag
   }
 
-  final val bgrewriteaof: Protocol.Aux["OK"] = Protocol("BGREWRITEAOF", Nil).as[SimpleString, "OK"]
+  final val bgrewriteaof: Protocol.Aux[OK] = Protocol("BGREWRITEAOF", Nil).as[SimpleString, OK]
 
-  final val bgsave: Protocol.Aux["OK"] = Protocol("BGSAVE", Nil).as[SimpleString, "OK"]
+  final val bgsave: Protocol.Aux[OK] = Protocol("BGSAVE", Nil).as[SimpleString, OK]
 
   final object client {
     val getname: Protocol.Aux[Option[ConnectionName]] =
       Protocol("CLIENT", "GETNAME").asC[NullBulkString :+: NonNullBulkString :+: CNil, Option[ConnectionName]]
 
     //FIXME other variations of kill
-    def kill(host: Host, port: Port): Protocol.Aux["OK"] =
+    def kill(host: Host, port: Port): Protocol.Aux[OK] =
       Protocol("CLIENT", "KILL" :: s"${Show.hostShow.show(host)}:${Show.portShow.show(port)}" :: Nil)
-        .as[SimpleString, "OK"]
+        .as[SimpleString, OK]
 
     val list: Protocol.Aux[ConnectedClients] =
       Protocol("CLIENT", "LIST").as[NonNullBulkString, ConnectedClients]
 
-    def pause(milliseconds: PosLong): Protocol.Aux["OK"] =
-      Protocol("CLIENT", "PAUSE" :: milliseconds :: HNil).as[SimpleString, "OK"]
+    def pause(milliseconds: PosLong): Protocol.Aux[OK] =
+      Protocol("CLIENT", "PAUSE" :: milliseconds :: HNil).as[SimpleString, OK]
 
-    def setname(connectionName: ConnectionName): Protocol.Aux["OK"] =
-      Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[SimpleString, "OK"]
+    def setname(connectionName: ConnectionName): Protocol.Aux[OK] =
+      Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[SimpleString, OK]
 
-    val unsetname: Protocol.Aux["OK"] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[SimpleString, "OK"]
+    val unsetname: Protocol.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[SimpleString, OK]
   }
 
   //TODO command?
@@ -199,23 +199,23 @@ trait ServerP {
     def get(parameter: GlobPattern): Protocol.Aux[Configuration] =
       Protocol("CONFIG", "GET" :: parameter.value :: Nil).as[NonNilArray, Configuration]
 
-    val resetstat: Protocol.Aux["OK"] = Protocol("CONFIG", "RESETSTAT").as[SimpleString, "OK"]
+    val resetstat: Protocol.Aux[OK] = Protocol("CONFIG", "RESETSTAT").as[SimpleString, OK]
 
-    val rewrite: Protocol.Aux["OK"] = Protocol("CONFIG", "REWRITE").as[SimpleString, "OK"]
+    val rewrite: Protocol.Aux[OK] = Protocol("CONFIG", "REWRITE").as[SimpleString, OK]
 
-    def set[A: Show](parameter: Key, value: A): Protocol.Aux["OK"] =
-      Protocol("CONFIG", "SET" :: parameter :: value :: HNil).as[SimpleString, "OK"]
+    def set[A: Show](parameter: Key, value: A): Protocol.Aux[OK] =
+      Protocol("CONFIG", "SET" :: parameter :: value :: HNil).as[SimpleString, OK]
   }
 
   final val dbsize: Protocol.Aux[NonNegLong] = Protocol("DBSIZE", Nil).as[Integer, NonNegLong]
 
-  final val flushall: Protocol.Aux["OK"] = Protocol("FLUSHALL", Nil).as[SimpleString, "OK"]
+  final val flushall: Protocol.Aux[OK] = Protocol("FLUSHALL", Nil).as[SimpleString, OK]
 
-  final val flushallasync: Protocol.Aux["OK"] = Protocol("FLUSHALL", "ASYNC").as[SimpleString, "OK"]
+  final val flushallasync: Protocol.Aux[OK] = Protocol("FLUSHALL", "ASYNC").as[SimpleString, OK]
 
-  final val flushdb: Protocol.Aux["OK"] = Protocol("FLUSHDB", Nil).as[SimpleString, "OK"]
+  final val flushdb: Protocol.Aux[OK] = Protocol("FLUSHDB", Nil).as[SimpleString, OK]
 
-  final val flushdbasync: Protocol.Aux["OK"] = Protocol("FLUSHDB", "ASYNC").as[SimpleString, "OK"]
+  final val flushdbasync: Protocol.Aux[OK] = Protocol("FLUSHDB", "ASYNC").as[SimpleString, OK]
 
   final val info: Protocol.Aux[Info] = info(servers.info.default)
 
@@ -225,16 +225,16 @@ trait ServerP {
 
   final val role: Protocol.Aux[Role] = Protocol("ROLE", Nil).as[NonNilArray, Role]
 
-  final val save: Protocol.Aux["OK"] = Protocol("SAVE", Nil).as[SimpleString, "OK"]
+  final val save: Protocol.Aux[OK] = Protocol("SAVE", Nil).as[SimpleString, OK]
 
-  final val shutdown: Protocol.Aux["OK"] = Protocol("SHUTDOWN", Nil).as[SimpleString, "OK"]
+  final val shutdown: Protocol.Aux[OK] = Protocol("SHUTDOWN", Nil).as[SimpleString, OK]
 
-  final def shutdown(flag: ShutdownFlag): Protocol.Aux["OK"] = Protocol("SHUTDOWN", flag).as[SimpleString, "OK"]
+  final def shutdown(flag: ShutdownFlag): Protocol.Aux[OK] = Protocol("SHUTDOWN", flag).as[SimpleString, OK]
 
-  final def slaveof(host: Host, port: Port): Protocol.Aux["OK"] =
-    Protocol("SLAVEOF", host :: port :: HNil).as[SimpleString, "OK"]
+  final def slaveof(host: Host, port: Port): Protocol.Aux[OK] =
+    Protocol("SLAVEOF", host :: port :: HNil).as[SimpleString, OK]
 
-  final val slaveofnoone: Protocol.Aux["OK"] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[SimpleString, "OK"]
+  final val slaveofnoone: Protocol.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[SimpleString, OK]
 
   //TODO slowlog? sync?
 

@@ -72,8 +72,8 @@ trait LowPriorityReadInstances extends LowerPriorityReadInstances {
   implicit final val simpleString2StringRead: SimpleString ==> String = Read.instance {
     case SimpleString(s) => Some(s)
   }
-  implicit final val simpleString2OKRead: SimpleString ==> "OK" = Read.instancePF {
-    case SimpleString("OK") => "OK"
+  implicit final val simpleString2OKRead: SimpleString ==> OK = Read.instancePF {
+    case SimpleString("OK") => OK
   }
   implicit final val simpleString2KeyRead: SimpleString ==> Key = Read.instancePF {
     case SimpleString(Key(s)) => s
@@ -165,7 +165,7 @@ trait LowPriorityReadInstances extends LowerPriorityReadInstances {
 
   implicit final def nonNilArray2Tuple2Read[A, B](
       implicit RA: NonNullBulkString ==> A,
-      RB: NonNullBulkString ==> B,
+      RB: NonNullBulkString ==> B
   ): NonNilArray ==> (A, B) = Read.instancePF {
     case NonNilArray(RA(key) +: RB(value) +: Seq()) => key -> value
   }
@@ -243,9 +243,10 @@ trait LowPriorityReadInstances extends LowerPriorityReadInstances {
   }
 
   implicit final def nonNilArray2HCons[H, T <: HList](
-      implicit ev: H <:!< FieldType[_, _],
-      RH: NonNullBulkString ==> H,
-      RT: NonNilArray ==> T
+    implicit
+    ev: H <:!< FieldType[_, _],
+    RH: NonNullBulkString ==> H,
+    RT: NonNilArray ==> T
   ): NonNilArray ==> (H :: T) = Read.instance {
     case NonNilArray(RH(h) +: rest) => RT.read(RESP.arr(rest)).map(h :: _)
   }

@@ -22,8 +22,6 @@ val V = new {
 val `fs2-core`        = Def.setting("co.fs2"          %%% "fs2-core"        % V.fs2)
 val `fs2-io`          = Def.setting("co.fs2"          %% "fs2-io"           % V.fs2)
 val kittens           = Def.setting("org.typelevel"   %%% "kittens"         % V.kittens)
-val refined           = Def.setting("eu.timepit"      %%% "refined"         % V.refined)
-val refined211        = Def.setting("eu.timepit"      %%% "refined"         % V.refined211)
 val `scodec-bits`     = Def.setting("org.scodec"      %%% "scodec-bits"     % V.`scodec-bits`)
 val `scodec-core`     = Def.setting("org.scodec"      %%% "scodec-core"     % V.`scodec-core`)
 val `scodec-stream`   = Def.setting("org.scodec"      %%% "scodec-stream"   % V.`scodec-stream`)
@@ -31,6 +29,13 @@ val shapeless         = Def.setting("com.chuusai"     %%% "shapeless"       % V.
 val `log-effect-fs2`  = Def.setting("io.laserdisc"    %%% "log-effect-fs2"  % V.`log-effect-fs2`)
 val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
 val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
+val refined           = Def.setting {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 11)) => "eu.timepit" %%% "refined" % V.refined211
+    case _             => "eu.timepit" %%% "refined" % V.refined
+  }
+}
+
 
 val `kind-projector-compiler-plugin` = Def.setting {
   compilerPlugin("org.spire-math" % "kind-projector" % V.`kind-projector` cross CrossVersion.binary)
@@ -42,10 +47,11 @@ val `scalajs-compiler-plugin` = Def.setting {
 val coreDeps = Def.Initialize.join {
   Seq(
     `kind-projector-compiler-plugin`, 
-    `scodec-bits`, 
-    `scodec-core`, 
-    shapeless, 
-    scalacheck, 
+    `scodec-bits`,
+    `scodec-core`,
+    shapeless,
+    refined,
+    scalacheck,
     scalatest
   )
 }
@@ -61,13 +67,6 @@ val fs2Deps = Def.Initialize.join {
     scalacheck,
     scalatest
   )
-}
-
-val refinedDep = Def.setting {
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, 11)) => refined211.value
-    case _             => refined.value
-  }
 }
 
 val externalApiMappings = Def.task {
@@ -95,7 +94,7 @@ val externalApiMappings = Def.task {
     }
   }
 
-  (coreDeps.value :+ refinedDep.value :+ (scalaOrganization.value % "scala-library" % scalaVersion.value))
+  (coreDeps.value :+ (scalaOrganization.value % "scala-library" % scalaVersion.value))
     .flatMap(JavaDocIo.maybeDocsFor)
     .toMap
 }
@@ -235,7 +234,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(allSettings)
   .settings(
     name := "laserdisc-core",
-    libraryDependencies ++= coreDeps.value :+ refinedDep.value,
+    libraryDependencies ++= coreDeps.value,
     Compile / boilerplateSource := baseDirectory.value.getParentFile / "src" / "main" / "boilerplate"
   )
   .jvmSettings(

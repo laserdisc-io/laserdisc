@@ -159,7 +159,7 @@ trait StringP {
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1,
       ev2: LUBConstraint[L, FieldType[_, _]]
-  ): Protocol.Aux["OK"] = Protocol("MSET", l).as[SimpleString, "OK"]
+  ): Protocol.Aux[OK] = Protocol("MSET", l).as[SimpleString, OK]
 
   final def mset[P <: Product, L <: HList, N <: Nat](product: P)(
       implicit gen: LabelledGeneric.Aux[P, L],
@@ -167,10 +167,10 @@ trait StringP {
       ev1: N >= _1,
       ev2: LUBConstraint[L, FieldType[_, _]],
       ev3: RESPParamWrite[L]
-  ): Protocol.Aux["OK"] = Protocol("MSET", gen.to(product)).as[SimpleString, "OK"]
+  ): Protocol.Aux[OK] = Protocol("MSET", gen.to(product)).as[SimpleString, OK]
 
-  final def mset[A: Show](values: OneOrMore[(Key, A)]): Protocol.Aux["OK"] =
-    Protocol("MSET", values.value).as[SimpleString, "OK"]
+  final def mset[A: Show](values: OneOrMore[(Key, A)]): Protocol.Aux[OK] =
+    Protocol("MSET", values.value).as[SimpleString, OK]
 
   final def msetnx[L <: HList: RESPParamWrite, N <: Nat](l: L)(
       implicit ev0: Length.Aux[L, N],
@@ -189,27 +189,27 @@ trait StringP {
   final def msetnx[A: Show](values: OneOrMore[(Key, A)]): Protocol.Aux[Boolean] =
     Protocol("MSETNX", values.value).as[Integer, Boolean]
 
-  final def psetex[A: Show](key: Key, milliseconds: PosLong, value: A): Protocol.Aux["OK"] =
-    Protocol("PSETEX", key :: milliseconds :: value :: HNil).as[SimpleString, "OK"]
+  final def psetex[A: Show](key: Key, milliseconds: PosLong, value: A): Protocol.Aux[OK] =
+    Protocol("PSETEX", key :: milliseconds :: value :: HNil).as[SimpleString, OK]
 
-  final def set[A: Show](key: Key, value: A): Protocol.Aux["OK"] =
-    Protocol("SET", key :: value :: HNil).as[SimpleString, "OK"]
+  final def set[A: Show](key: Key, value: A): Protocol.Aux[OK] =
+    Protocol("SET", key :: value :: HNil).as[SimpleString, OK]
 
-  final def set[A: Show](key: Key, value: A, expiry: Expiry): Protocol.Aux["OK"] =
-    Protocol("SET", key :: value :: expiry.unit :: expiry.value :: HNil).as[SimpleString, "OK"]
+  final def set[A: Show](key: Key, value: A, expiry: Expiry): Protocol.Aux[OK] =
+    Protocol("SET", key :: value :: expiry.unit :: expiry.value :: HNil).as[SimpleString, OK]
 
-  final def set[A: Show](key: Key, value: A, flag: Flag): Protocol.Aux[Option["OK"]] =
-    Protocol("SET", key :: value :: flag :: HNil).asC[NullBulkString :+: SimpleString :+: CNil, Option["OK"]]
+  final def set[A: Show](key: Key, value: A, flag: Flag): Protocol.Aux[Option[OK]] =
+    Protocol("SET", key :: value :: flag :: HNil).asC[NullBulkString :+: SimpleString :+: CNil, Option[OK]]
 
-  final def set[A: Show](key: Key, value: A, expiry: Expiry, flag: Flag): Protocol.Aux[Option["OK"]] =
+  final def set[A: Show](key: Key, value: A, expiry: Expiry, flag: Flag): Protocol.Aux[Option[OK]] =
     Protocol("SET", key :: value :: flag :: expiry.unit :: expiry.value :: HNil)
-      .asC[NullBulkString :+: SimpleString :+: CNil, Option["OK"]]
+      .asC[NullBulkString :+: SimpleString :+: CNil, Option[OK]]
 
   final def setbit(key: Key, offset: StringLength, bit: Bit): Protocol.Aux[Bit] =
     Protocol("SETBIT", key :: offset :: bit :: HNil).as[Integer, Bit]
 
-  final def setex[A: Show](key: Key, value: A, seconds: PosLong): Protocol.Aux["OK"] =
-    Protocol("SETEX", key :: seconds :: value :: HNil).as[SimpleString, "OK"]
+  final def setex[A: Show](key: Key, value: A, seconds: PosLong): Protocol.Aux[OK] =
+    Protocol("SETEX", key :: seconds :: value :: HNil).as[SimpleString, OK]
 
   final def setnx[A: Show](key: Key, value: A): Protocol.Aux[Boolean] =
     Protocol("SETNX", key :: value :: HNil).as[Integer, Boolean]

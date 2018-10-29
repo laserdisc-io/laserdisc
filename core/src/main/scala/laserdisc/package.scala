@@ -1,6 +1,7 @@
 import java.{lang => j}
 
 import eu.timepit.refined.W
+import eu.timepit.refined.auto._
 import eu.timepit.refined.api._
 import eu.timepit.refined.boolean.{And, Not, Or, True}
 import eu.timepit.refined.char.Whitespace
@@ -22,6 +23,12 @@ package object laserdisc {
   final type Read[A, B] = protocol.Read[A, B]
   final type RESP       = protocol.RESP
   final type Show[A]    = protocol.Show[A]
+
+  final type OK   = String Refined Equal[W.`"OK"`.T]
+  final type PONG = String Refined Equal[W.`"PONG"`.T]
+
+  final val OK: OK     = "OK"
+  final val PONG: PONG = "PONG"
 
   //object forwarders
   final val Protocol = protocol.Protocol

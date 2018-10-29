@@ -42,7 +42,7 @@ trait HashP {
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1,
       ev2: LUBConstraint[L, FieldType[_, _]]
-  ): Protocol.Aux["OK"] = Protocol("HMSET", key :: l).as[SimpleString, "OK"]
+  ): Protocol.Aux[OK] = Protocol("HMSET", key :: l).as[SimpleString, OK]
 
   final def hmset[P <: Product, L <: HList, N <: Nat](key: Key, product: P)(
       implicit gen: LabelledGeneric.Aux[P, L],
@@ -50,7 +50,7 @@ trait HashP {
       ev1: N >= _1,
       ev2: LUBConstraint[L, FieldType[_, _]],
       ev3: RESPParamWrite[L]
-  ): Protocol.Aux["OK"] = Protocol("HMSET", key :: gen.to(product)).as[SimpleString, "OK"]
+  ): Protocol.Aux[OK] = Protocol("HMSET", key :: gen.to(product)).as[SimpleString, OK]
 
   final def hscan(key: Key, cursor: NonNegLong): Protocol.Aux[ScanKV] =
     Protocol("HSCAN", key :: cursor :: HNil).as[NonNilArray, ScanKV]

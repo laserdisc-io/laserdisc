@@ -23,7 +23,7 @@ trait HashPExtra { this: HashP =>
   ]
 
   //HMSET
-  [..21#final def hmset[[#A1 <: XString, B1: Show#]](key: Key, [#field1: SingletonKey[A1], value1: B1#]): Protocol.Aux["OK"] = {
+  [..21#final def hmset[[#A1 <: XString, B1: Show#]](key: Key, [#field1: SingletonKey[A1], value1: B1#]): Protocol.Aux[OK] = {
     [#val tagged1 = tag[A1](Symbol(field1.value))#
     ]
     hmset(key, [#labelled.field[tagged1.type](value1)# :: ] :: HNil)

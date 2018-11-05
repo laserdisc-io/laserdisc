@@ -30,6 +30,7 @@ val `scodec-core`     = Def.setting("org.scodec"      %%% "scodec-core"     % V.
 val `scodec-stream`   = Def.setting("org.scodec"      %%% "scodec-stream"   % V.`scodec-stream`)
 val shapeless         = Def.setting("com.chuusai"     %%% "shapeless"       % V.shapeless)
 val `log-effect-fs2`  = Def.setting("io.laserdisc"    %%% "log-effect-fs2"  % V.`log-effect-fs2`)
+val `circe-generic`   = Def.setting("io.circe"        %%% "circe-generic"   % V.circe      % Test)
 val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
 val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
 val refined           = Def.setting {
@@ -72,7 +73,15 @@ val fs2Deps = Def.Initialize.join {
   )
 }
 
-val circeDeps = Def.Initialize.join(Seq(`circe-core`, `circe-parser`))
+val circeDeps = Def.Initialize.join {
+  Seq(
+    `circe-core`,
+    `circe-parser`,
+    `circe-generic`,
+    scalacheck,
+    scalatest
+  )
+}
 
 val externalApiMappings = Def.task {
   val fullClassPath = (Compile / fullClasspath).value

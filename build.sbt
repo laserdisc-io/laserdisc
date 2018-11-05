@@ -220,7 +220,14 @@ lazy val scaladocSettings = Seq(
   apiMappings ++= externalApiMappings.value
 )
 
-lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings
+lazy val scoverageSettings = Seq(
+  coverageMinimum := 80,
+  coverageFailOnMinimum := true,
+  coverageHighlighting := true
+)
+
+
+lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 
 lazy val scalaJsTLSSettings = Seq(
   libraryDependencies := `scalajs-compiler-plugin`.value +:

@@ -7,10 +7,11 @@ scala:
 jdk:
 - oraclejdk8
 script:
-- sbt -Dfile.encoding=UTF8 ++$TRAVIS_SCALA_VERSION test
+- sbt clean -Dfile.encoding=UTF8 ++$TRAVIS_SCALA_VERSION coverage test coverageReport
 after_success:
 - if [[ -n "${TRAVIS_TAG}" && "${TRAVIS_PULL_REQUEST}" = "false" ]]; then sbt ++$TRAVIS_SCALA_VERSION releaseEarly;
   fi
+- bash <(curl -s https://codecov.io/bash)
 before_cache:
 - find $HOME/.sbt -name "*.lock" | xargs rm
 - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm

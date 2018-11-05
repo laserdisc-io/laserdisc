@@ -21,6 +21,7 @@ val V = new {
 }
 
 val `circe-core`      = Def.setting("io.circe"        %%% "circe-core"      % V.circe)
+val `circe-parser`    = Def.setting("io.circe"        %%% "circe-parser"    % V.circe)
 val `fs2-core`        = Def.setting("co.fs2"          %%% "fs2-core"        % V.fs2)
 val `fs2-io`          = Def.setting("co.fs2"          %% "fs2-io"           % V.fs2)
 val kittens           = Def.setting("org.typelevel"   %%% "kittens"         % V.kittens)
@@ -71,7 +72,7 @@ val fs2Deps = Def.Initialize.join {
   )
 }
 
-val circeDeps = Def.Initialize.join(Seq(`circe-core`))
+val circeDeps = Def.Initialize.join(Seq(`circe-core`, `circe-parser`))
 
 val externalApiMappings = Def.task {
   val fullClassPath = (Compile / fullClasspath).value

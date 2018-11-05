@@ -60,6 +60,17 @@ If you only need protocols (i.e. Redis commands and RESP wire format), you may s
 libraryDependencies += "io.laserdisc" %% "laserdisc-core" % latestVersion
 ```
 
+Interop with existing libraries is available via dedicated dependencies:
+```
+libraryDependecies ++= Seq(
+  "io.laserdisc" %% "laserdisc-circe" % latestVersion, // Encoder[A] => Show[A] _and_ Decoder[A] => Read[String, A]
+)
+```
+then, to use you should be able to just:
+```scala
+import laserdisc.interop.circe._
+```
+
 ### Example usage
 With a running Redis instance on `localhost:6379` try running the following:
 ```scala

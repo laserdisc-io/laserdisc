@@ -1,11 +1,16 @@
-import sbtcrossproject.{CrossType, crossProject}
+import sbtcrossproject.CrossPlugin.autoImport.crossProject
+import sbtcrossproject.CrossType
+
+val `scala 211` = "2.11.11-bin-typelevel-4"
+val `scala 212` = "2.12.7"
 
 val V = new {
   val circe             = "0.10.1"
   val fs2               = "1.0.0"
   val `kind-projector`  = "0.9.8"
   val kittens           = "1.2.0"
-  val refined           = "0.8.7" //FIXME can't upgrade see https://gist.github.com/sirocchj/64a00a28f5cc5776140c776c7db4e2e3
+  val refined           = "0.9.3"
+  val refined211        = "0.8.7"
   val scalacheck        = "1.13.5"
   val scalatest         = "3.0.5"
   val `scodec-bits`     = "1.1.6"
@@ -19,7 +24,6 @@ val `circe-core`      = Def.setting("io.circe"        %%% "circe-core"      % V.
 val `fs2-core`        = Def.setting("co.fs2"          %%% "fs2-core"        % V.fs2)
 val `fs2-io`          = Def.setting("co.fs2"          %% "fs2-io"           % V.fs2)
 val kittens           = Def.setting("org.typelevel"   %%% "kittens"         % V.kittens)
-val refined           = Def.setting("eu.timepit"      %%% "refined"         % V.refined)
 val `scodec-bits`     = Def.setting("org.scodec"      %%% "scodec-bits"     % V.`scodec-bits`)
 val `scodec-core`     = Def.setting("org.scodec"      %%% "scodec-core"     % V.`scodec-core`)
 val `scodec-stream`   = Def.setting("org.scodec"      %%% "scodec-stream"   % V.`scodec-stream`)
@@ -27,6 +31,13 @@ val shapeless         = Def.setting("com.chuusai"     %%% "shapeless"       % V.
 val `log-effect-fs2`  = Def.setting("io.laserdisc"    %%% "log-effect-fs2"  % V.`log-effect-fs2`)
 val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
 val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
+val refined           = Def.setting {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 11)) => "eu.timepit" %%% "refined" % V.refined211
+    case _             => "eu.timepit" %%% "refined" % V.refined
+  }
+}
+
 
 val `kind-projector-compiler-plugin` = Def.setting {
   compilerPlugin("org.spire-math" % "kind-projector" % V.`kind-projector` cross CrossVersion.binary)
@@ -36,7 +47,15 @@ val `scalajs-compiler-plugin` = Def.setting {
 }
 
 val coreDeps = Def.Initialize.join {
-  Seq(`kind-projector-compiler-plugin`, refined, `scodec-bits`, `scodec-core`, shapeless, scalacheck, scalatest)
+  Seq(
+    `kind-projector-compiler-plugin`, 
+    `scodec-bits`,
+    `scodec-core`,
+    shapeless,
+    refined,
+    scalacheck,
+    scalatest
+  )
 }
 
 val fs2Deps = Def.Initialize.join {
@@ -85,23 +104,24 @@ val externalApiMappings = Def.task {
 }
 
 val versionDependantScalacOptions = Def.setting {
-  def versionDependent(scalaVersion: String, flags: Seq[String]) = CrossVersion.partialVersion(scalaVersion) match {
-    case Some((2, major)) if major >= 12 =>
-      flags ++ Seq(
-        "-Xlint:constant", // Evaluation of a constant arithmetic expression results in an error.
-        "-Ywarn-extra-implicit", // Warn when more than one implicit parameter section is defined.
-        "-Ywarn-unused:explicits", // Warn if a parameter is unused.
-        "-Ywarn-unused:imports", // Warn if an import selector is not referenced.
-        "-Ywarn-unused:locals", // Warn if a local definition is unused.
-        "-Ywarn-unused:patvars", // Warn if a variable bound in a pattern is unused.
-        "-Ywarn-unused:privates", // Warn if a private member is unused.
-        "-Ywarn-value-discard" // Warn when non-Unit expression results are unused.
-      )
-    case _ =>
-      flags
-        .filterNot(_ == "-Xlint:missing-interpolator") //@implicitNotFound uses ${A} syntax w/o need for s interpolator
-  }
-
+  def versionDependent(scalaVersion: String, flags: Seq[String]) = 
+    CrossVersion.partialVersion(scalaVersion) match {
+      case Some((2, major)) if major >= 12 =>
+        flags ++ Seq(
+          "-Xlint:constant", // Evaluation of a constant arithmetic expression results in an error.
+          "-Ywarn-extra-implicit", // Warn when more than one implicit parameter section is defined.
+          "-Ywarn-unused:explicits", // Warn if a parameter is unused.
+          "-Ywarn-unused:imports", // Warn if an import selector is not referenced.
+          "-Ywarn-unused:locals", // Warn if a local definition is unused.
+          "-Ywarn-unused:patvars", // Warn if a variable bound in a pattern is unused.
+          "-Ywarn-unused:privates", // Warn if a private member is unused.
+          "-Ywarn-value-discard" // Warn when non-Unit expression results are unused.
+        )
+      case _ =>
+        (flags ++ Seq("-Yinduction-heuristics", "-Yliteral-types"))
+          .filterNot(_ == "-Xlint:missing-interpolator") //@implicitNotFound uses ${A} syntax w/o need for s interpolator
+    }
+  
   val flags = Seq(
     "-deprecation", // Emit warning and location for usages of deprecated APIs.
     "-encoding",
@@ -140,8 +160,6 @@ val versionDependantScalacOptions = Def.setting {
     "-Ywarn-nullary-override", // Warn when non-nullary `def f()' overrides nullary `def f'.
     "-Ywarn-nullary-unit", // Warn when nullary methods return Unit.
     "-Ywarn-numeric-widen", // Warn when numerics are widened.
-    "-Yinduction-heuristics", // Nobody wants recursive implicit searches that last forever, we need TLS for this
-    "-Yliteral-types" // Allow inferring singleton types, we need TLS for this in 2.12
   )
 
   versionDependent(scalaVersion.value, flags)
@@ -150,13 +168,17 @@ val versionDependantScalacOptions = Def.setting {
 inThisBuild {
   Def.settings(
     organization := "io.laserdisc",
-    scalaOrganization := "org.typelevel",
-    scalaVersion := "2.12.4-bin-typelevel-4"
+    scalaVersion := `scala 212`
   )
 }
 
 lazy val commonSettings = Seq(
-  crossScalaVersions := Seq("2.11.11-bin-typelevel-4", "2.12.4-bin-typelevel-4"),
+  scalaOrganization := 
+    (CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, 11)) => "org.typelevel"
+      case _             => "org.scala-lang" 
+    }),
+  crossScalaVersions := Seq(`scala 211`, `scala 212`),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value

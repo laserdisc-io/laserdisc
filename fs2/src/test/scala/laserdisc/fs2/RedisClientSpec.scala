@@ -14,7 +14,6 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.traverse._
 import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric._
 import log.effect.fs2.Fs2LogWriter.noOpLogStream
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 

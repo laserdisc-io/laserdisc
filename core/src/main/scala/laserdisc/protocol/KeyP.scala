@@ -135,11 +135,11 @@ trait KeyP {
   final def renamenx(key: Key, newKey: Key): Protocol.Aux[Boolean] =
     Protocol("RENAMENX", key :: newKey :: Nil).as[Integer, Boolean]
 
-  final def restore(key: Key, ttl: NonNegLong, serializedValue: NonNullBulkString): Protocol.Aux["OK"] =
-    Protocol("RESTORE", key :: ttl :: serializedValue :: HNil).as[SimpleString, "OK"]
+  final def restore(key: Key, ttl: NonNegLong, serializedValue: NonNullBulkString): Protocol.Aux[OK] =
+    Protocol("RESTORE", key :: ttl :: serializedValue :: HNil).as[SimpleString, OK]
 
-  final def restorereplace(key: Key, ttl: NonNegLong, serializedValue: NonNullBulkString): Protocol.Aux["OK"] =
-    Protocol("RESTORE", key :: ttl :: serializedValue :: "REPLACE" :: HNil).as[SimpleString, "OK"]
+  final def restorereplace(key: Key, ttl: NonNegLong, serializedValue: NonNullBulkString): Protocol.Aux[OK] =
+    Protocol("RESTORE", key :: ttl :: serializedValue :: "REPLACE" :: HNil).as[SimpleString, OK]
 
   final def scan(cursor: NonNegLong): Protocol.Aux[Scan[Key]] = Protocol("SCAN", cursor).as[NonNilArray, Scan[Key]]
 

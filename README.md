@@ -80,7 +80,7 @@ then, to make use of them, at call site it should be sufficient to just:
 import laserdisc.interop.circe._
 ```
 
-_Note_: the derived `Show[A]` instance uses the most compact string representation
+*Note*: the derived `Show[A]` instance uses the most compact string representation
 of the JSON data structure, i.e. no spacing is used
 
 ### Example usage

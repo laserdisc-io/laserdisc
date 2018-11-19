@@ -40,7 +40,6 @@ val refined           = Def.setting {
   }
 }
 
-
 val `kind-projector-compiler-plugin` = Def.setting {
   compilerPlugin("org.spire-math" % "kind-projector" % V.`kind-projector` cross CrossVersion.binary)
 }
@@ -50,7 +49,7 @@ val `scalajs-compiler-plugin` = Def.setting {
 
 val coreDeps = Def.Initialize.join {
   Seq(
-    `kind-projector-compiler-plugin`, 
+    `kind-projector-compiler-plugin`,
     `scodec-bits`,
     `scodec-core`,
     shapeless,
@@ -298,10 +297,12 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure) 
   .in(file("circe"))
   .dependsOn(core)
+  .settings(allSettings)
   .settings(
     name := "laserdisc-circe",
     libraryDependencies := circeDeps.value
   )
+  .jsSettings(scalaJsTLSSettings: _*)
 
 lazy val circeJVM = circe.jvm
 lazy val circeJS  = circe.js

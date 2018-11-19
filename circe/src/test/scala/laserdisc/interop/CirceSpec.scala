@@ -10,19 +10,24 @@ import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{MustMatchers, OptionValues, WordSpec}
 
+sealed trait Foo                        extends Product with Serializable
+final case class Bar(x: Int)            extends Foo
+final case class Baz(y: String, z: Foo) extends Foo
+
+object Foo {
+  implicit val decoder: Decoder[Foo] = deriveDecoder
+  implicit val encoder: Encoder[Foo] = deriveEncoder
+}
+object Bar {
+  implicit val decoder: Decoder[Bar] = deriveDecoder
+  implicit val encoder: Encoder[Bar] = deriveEncoder
+}
+object Baz {
+  implicit val decoder: Decoder[Baz] = deriveDecoder
+  implicit val encoder: Encoder[Baz] = deriveEncoder
+}
+
 final class CirceSpec extends WordSpec with MustMatchers with PropertyChecks with OptionValues {
-
-  private[this] sealed trait Foo                        extends Product with Serializable
-  private[this] final case class Bar(x: Int)            extends Foo
-  private[this] final case class Baz(y: String, z: Foo) extends Foo
-
-  private[this] implicit val barDecoder: Decoder[Bar] = deriveDecoder
-  private[this] implicit val barEncoder: Encoder[Bar] = deriveEncoder
-  private[this] implicit val bazDecoder: Decoder[Baz] = deriveDecoder
-  private[this] implicit val bazEncoder: Encoder[Baz] = deriveEncoder
-  private[this] implicit val fooDecoder: Decoder[Foo] = deriveDecoder
-  private[this] implicit val fooEncoder: Encoder[Foo] = deriveEncoder
-
   private[this] val barGen: Gen[Bar] = Arbitrary.arbitrary[Int].map(Bar.apply)
   private[this] val bazGen: Gen[Baz] = for {
     s   <- Arbitrary.arbitrary[String]

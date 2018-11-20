@@ -2,7 +2,7 @@
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/d548a2d7facc4e42b422940dbf5c8382)](https://app.codacy.com/app/barambani/laserdisc?utm_source=github.com&utm_medium=referral&utm_content=laserdisc-io/laserdisc&utm_campaign=Badge_Grade_Dashboard)
 [![Build Status](https://travis-ci.org/laserdisc-io/laserdisc.svg?branch=master)](https://travis-ci.org/laserdisc-io/laserdisc)
-[![codecov.io](https://codecov.io/gh/laserdisc-io/laserdisc/branch/master/graphs/badge.svg?branch=master)](https://codecov.io/gh/laserdisc-io/laserdisc?branch=master)
+[![codecov.io](https://codecov.io/github/laserdisc-io/laserdisc/coverage.svg?branch=master)](https://codecov.io/github/laserdisc-io/laserdisc?branch=master)
 [![Join the chat at https://gitter.im/laserdisc-io/laserdisc](https://badges.gitter.im/laserdisc-io/laserdisc.svg)](https://gitter.im/laserdisc-io/laserdisc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <br>

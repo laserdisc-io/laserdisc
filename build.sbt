@@ -239,7 +239,6 @@ lazy val scoverageSettings = Seq(
   coverageHighlighting := true
 )
 
-
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 
 lazy val scalaJsTLSSettings = Seq(

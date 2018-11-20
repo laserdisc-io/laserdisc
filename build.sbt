@@ -242,6 +242,7 @@ lazy val scoverageSettings = Seq(
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 
 lazy val scalaJsTLSSettings = Seq(
+  coverageEnabled := false,
   libraryDependencies := `scalajs-compiler-plugin`.value +:
     libraryDependencies.value.filterNot(_.name == `scalajs-compiler-plugin`.value.name)
 )
@@ -267,7 +268,6 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
       |""".stripMargin
   )
   .jsSettings(scalaJsTLSSettings: _*)
-  .jsSettings(coverageEnabled := false)
 
 lazy val coreJVM = core.jvm.enablePlugins(BoilerplatePlugin)
 lazy val coreJS  = core.js.enablePlugins(BoilerplatePlugin)

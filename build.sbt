@@ -234,8 +234,8 @@ lazy val scaladocSettings = Seq(
 )
 
 lazy val scoverageSettings = Seq(
-  coverageMinimum := 0,
-  coverageFailOnMinimum := true,
+  coverageMinimum := 60,
+  coverageFailOnMinimum := false,
   coverageHighlighting := true
 )
 

@@ -307,7 +307,7 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
   .settings(allSettings)
   .settings(
     name := "laserdisc-circe",
-    libraryDependencies := circeDeps.value
+    libraryDependencies ++= circeDeps.value
   )
   .jsSettings(scalaJsTLSSettings: _*)
 

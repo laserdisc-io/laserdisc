@@ -7,7 +7,7 @@ scala:
 jdk:
 - oraclejdk8
 script:
-- sbt clean -Dfile.encoding=UTF8 ++$TRAVIS_SCALA_VERSION coverage test coverageReport
+- sbt -Dfile.encoding=UTF8 ++$TRAVIS_SCALA_VERSION clean coverage test coverageReport
 after_success:
 - if [[ -n "${TRAVIS_TAG}" && "${TRAVIS_PULL_REQUEST}" = "false" ]]; then sbt ++$TRAVIS_SCALA_VERSION releaseEarly;
   fi

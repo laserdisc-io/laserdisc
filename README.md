@@ -60,6 +60,29 @@ If you only need protocols (i.e. Redis commands and RESP wire format), you may s
 libraryDependencies += "io.laserdisc" %% "laserdisc-core" % latestVersion
 ```
 
+### Interoperability modules
+
+Support for existing libraries is available via dedicated dependencies.
+
+#### [Circe](https://circe.github.io/circe/)
+
+When an `io.circe.Decoder[A]` and a `io.circe.Encoder[A]` are implicilty available,
+instances of `Show[A]` and `Read[NonNullBulkString, A]` can be derived for free,
+just add the following in your `build.sbt`:
+
+```
+libraryDependecies += "io.laserdisc" %% "laserdisc-circe" % latestVersion 
+```
+
+then, to make use of them, at call site it should be sufficient to just:
+
+```scala
+import laserdisc.interop.circe._
+```
+
+*Note*: the derived `Show[A]` instance uses the most compact string representation
+of the JSON data structure, i.e. no spacing is used
+
 ### Example usage
 With a running Redis instance on `localhost:6379` try running the following:
 ```scala

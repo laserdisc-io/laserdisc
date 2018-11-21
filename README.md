@@ -114,7 +114,7 @@ object Main extends IOApp.WithContext {
       Fs2LogWriter.consoleLogStream[IO].flatMap { implicit logger =>
         RedisClient[IO](Set(RedisAddress("localhost", 6379))).evalMap { client =>
           client.send2(strings.set("a", 23), strings.get[PosInt]("a")).flatMap {
-            case (Right("OK"), Right(Some(getResponse))) if getResponse.value == 23 =>
+            case (Right(OK), Right(Some(getResponse))) if getResponse.value == 23 =>
               logger.info("yay!")
             case other =>
               logger.error(s"something went terribly wrong $other") *>

@@ -5,35 +5,35 @@ val `scala 211` = "2.11.11-bin-typelevel-4"
 val `scala 212` = "2.12.7"
 
 val V = new {
-  val circe             = "0.10.1"
-  val fs2               = "1.0.0"
-  val `kind-projector`  = "0.9.9"
-  val kittens           = "1.2.0"
-  val refined           = "0.9.3"
-  val refined211        = "0.8.7"
-  val scalacheck        = "1.13.5"
-  val scalatest         = "3.0.5"
-  val `scodec-bits`     = "1.1.7"
-  val `scodec-core`     = "1.10.3"
-  val `scodec-stream`   = "1.2.0"
-  val shapeless         = "2.3.3"
-  val `log-effect-fs2`  = "0.4.1"
+  val circe            = "0.10.1"
+  val fs2              = "1.0.0"
+  val `kind-projector` = "0.9.9"
+  val kittens          = "1.2.0"
+  val refined          = "0.9.3"
+  val refined211       = "0.8.7"
+  val scalacheck       = "1.13.5"
+  val scalatest        = "3.0.5"
+  val `scodec-bits`    = "1.1.7"
+  val `scodec-core`    = "1.10.3"
+  val `scodec-stream`  = "1.2.0"
+  val shapeless        = "2.3.3"
+  val `log-effect-fs2` = "0.4.1"
 }
 
-val `circe-core`      = Def.setting("io.circe"        %%% "circe-core"      % V.circe)
-val `circe-parser`    = Def.setting("io.circe"        %%% "circe-parser"    % V.circe)
-val `fs2-core`        = Def.setting("co.fs2"          %%% "fs2-core"        % V.fs2)
-val `fs2-io`          = Def.setting("co.fs2"          %% "fs2-io"           % V.fs2)
-val kittens           = Def.setting("org.typelevel"   %%% "kittens"         % V.kittens)
-val `scodec-bits`     = Def.setting("org.scodec"      %%% "scodec-bits"     % V.`scodec-bits`)
-val `scodec-core`     = Def.setting("org.scodec"      %%% "scodec-core"     % V.`scodec-core`)
-val `scodec-stream`   = Def.setting("org.scodec"      %%% "scodec-stream"   % V.`scodec-stream`)
-val shapeless         = Def.setting("com.chuusai"     %%% "shapeless"       % V.shapeless)
-val `log-effect-fs2`  = Def.setting("io.laserdisc"    %%% "log-effect-fs2"  % V.`log-effect-fs2`)
-val `circe-generic`   = Def.setting("io.circe"        %%% "circe-generic"   % V.circe      % Test)
-val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
-val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
-val refined           = Def.setting {
+val `circe-core`     = Def.setting("io.circe"       %%% "circe-core"     % V.circe)
+val `circe-parser`   = Def.setting("io.circe"       %%% "circe-parser"   % V.circe)
+val `fs2-core`       = Def.setting("co.fs2"         %%% "fs2-core"       % V.fs2)
+val `fs2-io`         = Def.setting("co.fs2"         %% "fs2-io"          % V.fs2)
+val kittens          = Def.setting("org.typelevel"  %%% "kittens"        % V.kittens)
+val `scodec-bits`    = Def.setting("org.scodec"     %%% "scodec-bits"    % V.`scodec-bits`)
+val `scodec-core`    = Def.setting("org.scodec"     %%% "scodec-core"    % V.`scodec-core`)
+val `scodec-stream`  = Def.setting("org.scodec"     %%% "scodec-stream"  % V.`scodec-stream`)
+val shapeless        = Def.setting("com.chuusai"    %%% "shapeless"      % V.shapeless)
+val `log-effect-fs2` = Def.setting("io.laserdisc"   %%% "log-effect-fs2" % V.`log-effect-fs2`)
+val `circe-generic`  = Def.setting("io.circe"       %%% "circe-generic"  % V.circe % Test)
+val scalacheck       = Def.setting("org.scalacheck" %%% "scalacheck"     % V.scalacheck % Test)
+val scalatest        = Def.setting("org.scalatest"  %%% "scalatest"      % V.scalatest % Test)
+val refined = Def.setting {
   CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, 11)) => "eu.timepit" %%% "refined" % V.refined211
     case _             => "eu.timepit" %%% "refined" % V.refined
@@ -113,7 +113,7 @@ val externalApiMappings = Def.task {
 }
 
 val versionDependantScalacOptions = Def.setting {
-  def versionDependent(scalaVersion: String, flags: Seq[String]) = 
+  def versionDependent(scalaVersion: String, flags: Seq[String]) =
     CrossVersion.partialVersion(scalaVersion) match {
       case Some((2, major)) if major >= 12 =>
         flags ++ Seq(
@@ -130,7 +130,7 @@ val versionDependantScalacOptions = Def.setting {
         (flags ++ Seq("-Yinduction-heuristics", "-Yliteral-types"))
           .filterNot(_ == "-Xlint:missing-interpolator") //@implicitNotFound uses ${A} syntax w/o need for s interpolator
     }
-  
+
   val flags = Seq(
     "-deprecation", // Emit warning and location for usages of deprecated APIs.
     "-encoding",
@@ -182,10 +182,10 @@ inThisBuild {
 }
 
 lazy val commonSettings = Seq(
-  scalaOrganization := 
+  scalaOrganization :=
     (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 11)) => "org.typelevel"
-      case _             => "org.scala-lang" 
+      case _             => "org.scala-lang"
     }),
   crossScalaVersions := Seq(`scala 211`, `scala 212`),
   scalacOptions ++= versionDependantScalacOptions.value,
@@ -294,7 +294,7 @@ lazy val cli = project
 
 lazy val circe = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .crossType(CrossType.Pure) 
+  .crossType(CrossType.Pure)
   .in(file("circe"))
   .dependsOn(core)
   .settings(allSettings)

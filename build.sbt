@@ -304,12 +304,9 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
   )
   .jsSettings(scalaJsTLSSettings: _*)
 
-lazy val circeJVM = circe.jvm
-lazy val circeJS  = circe.js
-
 lazy val laserdisc = project
   .in(file("."))
-  .aggregate(coreJVM, coreJS, fs2, cli, circeJVM, circeJS)
+  .aggregate(coreJVM, coreJS, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
     publishArtifact := false

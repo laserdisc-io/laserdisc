@@ -1,5 +1,5 @@
-import sbtcrossproject.CrossPlugin.autoImport.crossProject
-import sbtcrossproject.CrossType
+// shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 val `scala 211` = "2.11.11-bin-typelevel-4"
 val `scala 212` = "2.12.7"

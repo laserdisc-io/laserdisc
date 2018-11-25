@@ -168,7 +168,7 @@ val versionDependantScalacOptions = Def.setting {
     "-Ywarn-infer-any", // Warn when a type argument is inferred to be `Any`.
     "-Ywarn-nullary-override", // Warn when non-nullary `def f()' overrides nullary `def f'.
     "-Ywarn-nullary-unit", // Warn when nullary methods return Unit.
-    "-Ywarn-numeric-widen", // Warn when numerics are widened.
+    "-Ywarn-numeric-widen" // Warn when numerics are widened.
   )
 
   versionDependent(scalaVersion.value, flags)

@@ -18,6 +18,7 @@ val V = new {
   val `scodec-stream`   = "1.2.0"
   val shapeless         = "2.3.3"
   val `log-effect-fs2`  = "0.4.1"
+  val ciris            = "0.12.0"
 }
 
 val `circe-core`      = Def.setting("io.circe"        %%% "circe-core"      % V.circe)
@@ -33,6 +34,7 @@ val `log-effect-fs2`  = Def.setting("io.laserdisc"    %%% "log-effect-fs2"  % V.
 val `circe-generic`   = Def.setting("io.circe"        %%% "circe-generic"   % V.circe      % Test)
 val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
 val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
+val `ciris-core`      = Def.setting("is.cir"          %%%  "ciris-core"   % V.ciris)
 val refined           = Def.setting {
   CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, 11)) => "eu.timepit" %%% "refined" % V.refined211
@@ -80,6 +82,10 @@ val circeDeps = Def.Initialize.join {
     scalacheck,
     scalatest
   )
+}
+
+val cirisDeps = Def.Initialize.join {
+  Seq(`ciris-core`, scalacheck, scalatest)
 }
 
 val externalApiMappings = Def.task {
@@ -274,6 +280,15 @@ lazy val fs2 = project
     libraryDependencies ++= fs2Deps.value
   )
 
+lazy val ciris = project
+  .in(file("ciris"))
+  .dependsOn(coreJVM)
+  .settings(allSettings)
+  .settings(
+    name := "laserdisc-ciris",
+    libraryDependencies ++= cirisDeps.value
+  )
+
 lazy val `core-bench` = project
   .in(file("benchmarks/core"))
   .dependsOn(coreJVM)
@@ -309,7 +324,7 @@ lazy val circeJS  = circe.js
 
 lazy val laserdisc = project
   .in(file("."))
-  .aggregate(coreJVM, coreJS, fs2, cli, circeJVM, circeJS)
+  .aggregate(coreJVM, coreJS, fs2, cli, circeJVM, circeJS, ciris)
   .settings(publishSettings)
   .settings(
     publishArtifact := false

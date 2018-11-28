@@ -236,8 +236,20 @@ lazy val scaladocSettings = Seq(
 lazy val scoverageSettings = Seq(
   coverageMinimum := 60,
   coverageFailOnMinimum := false,
-  coverageHighlighting := true
+  coverageHighlighting := true,
+  coverageEnabled := {
+    if (is_2_12(scalaVersion.value))
+      coverageEnabled.value
+    else
+      false
+  }
 )
+
+def is_2_12(scalaVersion: String): Boolean =
+  CrossVersion.partialVersion(scalaVersion) match {
+    case Some((2, 12)) => true
+    case Some((2, _))  => false
+  }
 
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 

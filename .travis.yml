@@ -11,7 +11,7 @@ script:
 after_success:
 - if [[ -n "${TRAVIS_TAG}" && "${TRAVIS_PULL_REQUEST}" = "false" ]]; then sbt ++$TRAVIS_SCALA_VERSION releaseEarly;
   fi
-- if [ "$TRAVIS_SCALA_VERSION" = "2.12.7" ]; then curl -s https://codecov.io/bash;
+- if [[ "$TRAVIS_SCALA_VERSION" = "2.12.7" ]]; then bash <(curl -s https://codecov.io/bash);
   fi
 before_cache:
 - find $HOME/.sbt -name "*.lock" | xargs rm

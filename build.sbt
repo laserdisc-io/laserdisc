@@ -34,9 +34,9 @@ val `circe-generic`   = Def.setting("io.circe"        %%% "circe-generic"   % V.
 val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
 val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
 val refined           = Def.setting {
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, 11)) => "eu.timepit" %%% "refined" % V.refined211
-    case _             => "eu.timepit" %%% "refined" % V.refined
+  is211.value match {
+    case true => "eu.timepit" %%% "refined" % V.refined211
+    case _    => "eu.timepit" %%% "refined" % V.refined
   }
 }
 
@@ -238,18 +238,16 @@ lazy val scoverageSettings = Seq(
   coverageFailOnMinimum := false,
   coverageHighlighting := true,
   coverageEnabled := {
-    if (is_2_12(scalaVersion.value))
-      coverageEnabled.value
-    else
-      false
+    if (is211.value) false else coverageEnabled.value
   }
 )
 
-def is_2_12(scalaVersion: String): Boolean =
-  CrossVersion.partialVersion(scalaVersion) match {
-    case Some((2, 12)) => true
-    case Some((2, _))  => false
+lazy val is211 = Def.setting {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 11)) => true
+    case _             => false
   }
+}
 
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 

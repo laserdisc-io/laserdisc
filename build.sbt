@@ -35,8 +35,8 @@ val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.
 val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
 val refined           = Def.setting {
   is211.value match {
-    case true => "eu.timepit" %%% "refined" % V.refined211
-    case _    => "eu.timepit" %%% "refined" % V.refined
+    case true  => "eu.timepit" %%% "refined" % V.refined211
+    case _     => "eu.timepit" %%% "refined" % V.refined
   }
 }
 

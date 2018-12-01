@@ -34,9 +34,9 @@ val `circe-generic`   = Def.setting("io.circe"        %%% "circe-generic"   % V.
 val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
 val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
 val refined           = Def.setting {
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, 11)) => "eu.timepit" %%% "refined" % V.refined211
-    case _             => "eu.timepit" %%% "refined" % V.refined
+  is211.value match {
+    case true  => "eu.timepit" %%% "refined" % V.refined211
+    case _     => "eu.timepit" %%% "refined" % V.refined
   }
 }
 
@@ -233,9 +233,26 @@ lazy val scaladocSettings = Seq(
   apiMappings ++= externalApiMappings.value
 )
 
-lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings
+lazy val scoverageSettings = Seq(
+  coverageMinimum := 60,
+  coverageFailOnMinimum := false,
+  coverageHighlighting := true,
+  coverageEnabled := {
+    if (is211.value) false else coverageEnabled.value
+  }
+)
+
+lazy val is211 = Def.setting {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 11)) => true
+    case _             => false
+  }
+}
+
+lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 
 lazy val scalaJsTLSSettings = Seq(
+  coverageEnabled := false,
   libraryDependencies := `scalajs-compiler-plugin`.value +:
     libraryDependencies.value.filterNot(_.name == `scalajs-compiler-plugin`.value.name)
 )
@@ -300,7 +317,7 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
   .settings(allSettings)
   .settings(
     name := "laserdisc-circe",
-    libraryDependencies := circeDeps.value
+    libraryDependencies ++= circeDeps.value
   )
   .jsSettings(scalaJsTLSSettings: _*)
 

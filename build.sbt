@@ -4,6 +4,13 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 val `scala 211` = "2.11.11-bin-typelevel-4"
 val `scala 212` = "2.12.7"
 
+val is211 = Def.setting {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 11)) => true
+    case _             => false
+  }
+}
+
 val V = new {
   val circe            = "0.10.1"
   val fs2              = "1.0.0"
@@ -34,10 +41,7 @@ val `circe-generic`  = Def.setting("io.circe"       %%% "circe-generic"  % V.cir
 val scalacheck       = Def.setting("org.scalacheck" %%% "scalacheck"     % V.scalacheck % Test)
 val scalatest        = Def.setting("org.scalatest"  %%% "scalatest"      % V.scalatest % Test)
 val refined = Def.setting {
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, 11)) => "eu.timepit" %%% "refined" % V.refined211
-    case _             => "eu.timepit" %%% "refined" % V.refined
-  }
+  if (is211.value) "eu.timepit" %%% "refined" % V.refined211 else "eu.timepit" %%% "refined" % V.refined
 }
 
 val `kind-projector-compiler-plugin` = Def.setting {
@@ -233,9 +237,19 @@ lazy val scaladocSettings = Seq(
   apiMappings ++= externalApiMappings.value
 )
 
-lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings
+lazy val scoverageSettings = Seq(
+  coverageMinimum := 60,
+  coverageFailOnMinimum := false,
+  coverageHighlighting := true,
+  coverageEnabled := {
+    if (is211.value) false else coverageEnabled.value
+  }
+)
+
+lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 
 lazy val scalaJsTLSSettings = Seq(
+  coverageEnabled := false,
   libraryDependencies := `scalajs-compiler-plugin`.value +:
     libraryDependencies.value.filterNot(_.name == `scalajs-compiler-plugin`.value.name)
 )
@@ -300,7 +314,7 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
   .settings(allSettings)
   .settings(
     name := "laserdisc-circe",
-    libraryDependencies := circeDeps.value
+    libraryDependencies ++= circeDeps.value
   )
   .jsSettings(scalaJsTLSSettings: _*)
 

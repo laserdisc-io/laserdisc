@@ -24,11 +24,13 @@ package object laserdisc {
   final type RESP       = protocol.RESP
   final type Show[A]    = protocol.Show[A]
 
-  final type OK   = String Refined Equal[W.`"OK"`.T]
-  final type PONG = String Refined Equal[W.`"PONG"`.T]
+  final type OK    = String Refined Equal[W.`"OK"`.T]
+  final type NOKEY = String Refined Equal[W.`"NOKEY"`.T]
+  final type PONG  = String Refined Equal[W.`"PONG"`.T]
 
-  final val OK: OK     = "OK"
-  final val PONG: PONG = "PONG"
+  final val OK: OK       = "OK"
+  final val NOKEY: NOKEY = "NOKEY"
+  final val PONG: PONG   = "PONG"
 
   //object forwarders
   final val Protocol = protocol.Protocol

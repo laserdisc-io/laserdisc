@@ -64,6 +64,11 @@ trait KeyP {
   import Read.==>
   import shapeless._
 
+  private[this] implicit final val simpleString2NOKEYOrOK: SimpleString ==> (NOKEY | OK) = Read.instancePF {
+    case SimpleString("NOKEY") => Left(NOKEY)
+    case SimpleString("OK")    => Right(OK)
+  }
+
   private[this] final val zeroIsNone = RESPRead.instance(Read.integerZeroIsNone[PosInt])
 
   private[this] implicit final val simpleString2OptionType: SimpleString ==> Option[Type] = Read.instancePF {
@@ -96,7 +101,78 @@ trait KeyP {
   final def keys(pattern: GlobPattern): Protocol.Aux[Seq[Key]] =
     Protocol("KEYS", pattern :: HNil).as[NonNilArray, Seq[Key]]
 
-  //FIXME add migrate
+  final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Protocol.Aux[NOKEY | OK] =
+    Protocol("MIGRATE", host :: port :: key :: dbIndex :: timeout :: HNil).as[SimpleString, NOKEY | OK]
+
+  final def migrate(
+      keys: TwoOrMoreKeys,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt
+  ): Protocol.Aux[NOKEY | OK] =
+    Protocol("MIGRATE", host :: port :: "\"\"" :: dbIndex :: timeout :: "KEYS" :: keys.value :: HNil)
+      .as[SimpleString, NOKEY | OK]
+
+  final def migratecopy(
+      key: Key,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt
+  ): Protocol.Aux[NOKEY | OK] =
+    Protocol("MIGRATE", host :: port :: key :: dbIndex :: timeout :: "COPY" :: HNil).as[SimpleString, NOKEY | OK]
+
+  final def migratecopy(
+      keys: TwoOrMoreKeys,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt
+  ): Protocol.Aux[NOKEY | OK] =
+    Protocol("MIGRATE", host :: port :: "\"\"" :: dbIndex :: timeout :: "COPY" :: "KEYS" :: keys.value :: HNil)
+      .as[SimpleString, NOKEY | OK]
+
+  final def migratereplace(
+      key: Key,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt
+  ): Protocol.Aux[NOKEY | OK] =
+    Protocol("MIGRATE", host :: port :: key :: dbIndex :: timeout :: "REPLACE" :: HNil).as[SimpleString, NOKEY | OK]
+
+  final def migratereplace(
+      keys: TwoOrMoreKeys,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt
+  ): Protocol.Aux[NOKEY | OK] =
+    Protocol("MIGRATE", host :: port :: "\"\"" :: dbIndex :: timeout :: "REPLACE" :: "KEYS" :: keys.value :: HNil)
+      .as[SimpleString, NOKEY | OK]
+
+  final def migratecopyreplace(
+      key: Key,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt
+  ): Protocol.Aux[NOKEY | OK] =
+    Protocol("MIGRATE", host :: port :: key :: dbIndex :: timeout :: "COPY" :: "REPLACE" :: HNil)
+      .as[SimpleString, NOKEY | OK]
+
+  final def migratecopyreplace(
+      keys: TwoOrMoreKeys,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt
+  ): Protocol.Aux[NOKEY | OK] =
+    Protocol(
+      "MIGRATE",
+      host :: port :: "\"\"" :: dbIndex :: timeout :: "COPY" :: "REPLACE" :: "KEYS" :: keys.value :: HNil
+    ).as[SimpleString, NOKEY | OK]
 
   final def move(key: Key, db: DbIndex): Protocol.Aux[Boolean] =
     Protocol("MOVE", key :: db :: HNil).as[Integer, Boolean]

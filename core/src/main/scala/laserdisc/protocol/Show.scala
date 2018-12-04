@@ -6,13 +6,19 @@ import eu.timepit.refined.api.Refined
 import scala.annotation.implicitNotFound
 
 @implicitNotFound(
-  "Implicit not found: Show[${A}].\n\n" +
-    "Try writing your own, for example:\n\n" +
-    "implicit final val myShow: Show[${A}] = new Show[${A}] {\n" +
-    "  override final def show(a: ${A}): String = ???\n" +
-    "}\n"
+  """Implicit not found Show[${A}].
+
+Try writing your own, for example:
+
+implicit final val myShow: Show[${A}] = new Show[${A}] {
+  override final def show(a: ${A}): String = ???
+}
+"""
 ) trait Show[A] {
+
   def show(a: A): String
+
+  final def contramap[B](f: B => A): Show[B] = Show.instance(show _ compose f)
 }
 
 object Show extends LowPriorityShowInstances {

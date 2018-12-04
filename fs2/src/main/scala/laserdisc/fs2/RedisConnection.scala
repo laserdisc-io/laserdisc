@@ -5,9 +5,9 @@ import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
 
 import _root_.fs2._
-import _root_.fs2.io.tcp
+import _root_.fs2.io.tcp.Socket
 import cats.Applicative
-import cats.effect.{ConcurrentEffect, Effect}
+import cats.effect.{ConcurrentEffect, ContextShift, Effect}
 import cats.syntax.applicative._
 import cats.syntax.apply._
 import laserdisc.protocol._
@@ -21,7 +21,7 @@ object RedisConnection {
   private[this] final val streamDecoder = decode.many(Codec[RESP])
   private[this] final val streamEncoder = encode.many(Codec[RESP])
 
-  final def apply[F[_]: ConcurrentEffect: LogWriter](
+  final def apply[F[_]: ConcurrentEffect: ContextShift: LogWriter](
       address: InetSocketAddress,
       writeTimeout: Option[FiniteDuration] = None,
       readMaxBytes: Int = 256 * 1024
@@ -29,7 +29,7 @@ object RedisConnection {
       implicit ev0: AsynchronousChannelGroup
   ): Pipe[F, RESP, RESP] =
     stream =>
-      Stream.resource(tcp.client(address)).flatMap { socket =>
+      Stream.resource(Socket.client(address)).flatMap { socket =>
         val send    = stream.through(impl.send(socket.writes(writeTimeout)))
         val receive = socket.reads(readMaxBytes).through(impl.receive)
 

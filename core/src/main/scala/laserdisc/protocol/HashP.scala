@@ -41,7 +41,7 @@ trait HashP {
   final def hmset[L <: HList: RESPParamWrite, N <: Nat](key: Key, l: L)(
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1,
-      ev2: LUBConstraint[L, FieldType[_, _]]
+      ev2: LUBConstraint[L, (Key, _)]
   ): Protocol.Aux[OK] = Protocol("HMSET", key :: l).as[SimpleString, OK]
 
   final def hmset[P <: Product, L <: HList, N <: Nat](key: Key, product: P)(

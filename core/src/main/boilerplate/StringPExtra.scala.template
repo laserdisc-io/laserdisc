@@ -19,18 +19,12 @@ trait StringPExtra { this: StringP =>
   ]
 
   //MSET
-  [#final def mset[[#A1 <: XString, B1: Show#]]([#key1: SingletonKey[A1], value1: B1#]): Protocol.Aux[OK] = {
-    [#val tagged1 = tag[A1](Symbol(key1.value))#
-    ]
-    mset([#labelled.field[tagged1.type](value1)# :: ] :: HNil)
-  }#
+  [#final def mset[[#A1: Show#]]([#key1: Key, value1: A1#]): Protocol.Aux[OK] =
+    mset([#(key1, value1)# :: ] :: HNil)#
   ]
 
   //MSETNX
-  [#final def msetnx[[#A1 <: XString, B1: Show#]]([#key1: SingletonKey[A1], value1: B1#]): Protocol.Aux[Boolean] = {
-    [#val tagged1 = tag[A1](Symbol(key1.value))#
-    ]
-    msetnx([#labelled.field[tagged1.type](value1)# :: ] :: HNil)
-  }#
+  [#final def msetnx[[#A1: Show#]]([#key1: Key, value1: A1#]): Protocol.Aux[Boolean] =
+    msetnx([#(key1, value1)# :: ] :: HNil)#
   ]
 }

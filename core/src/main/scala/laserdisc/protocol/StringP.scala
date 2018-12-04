@@ -158,7 +158,7 @@ trait StringP {
   final def mset[L <: HList: RESPParamWrite, N <: Nat](l: L)(
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1,
-      ev2: LUBConstraint[L, FieldType[_, _]]
+      ev2: LUBConstraint[L, (Key, _)]
   ): Protocol.Aux[OK] = Protocol("MSET", l).as[SimpleString, OK]
 
   final def mset[P <: Product, L <: HList, N <: Nat](product: P)(
@@ -175,7 +175,7 @@ trait StringP {
   final def msetnx[L <: HList: RESPParamWrite, N <: Nat](l: L)(
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1,
-      ev2: LUBConstraint[L, FieldType[_, _]]
+      ev2: LUBConstraint[L, (Key, _)]
   ): Protocol.Aux[Boolean] = Protocol("MSETNX", l).as[Integer, Boolean]
 
   final def msetnx[P <: Product, L <: HList, N <: Nat](product: P)(

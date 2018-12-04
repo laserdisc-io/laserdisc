@@ -29,7 +29,7 @@ object RESPParamWrite extends RESPParamWriteInstances {
   }
 }
 
-private[protocol] sealed abstract class RESPParamWriteInstances extends RESPParamWriteInstances1 {
+private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteInstances1 {
   implicit final def showRESPParamWrite[A](implicit A: Show[A]): RESPParamWrite[A] = RESPParamWrite.instance { a =>
     Seq(RESP.bulk(A.show(a)))
   }
@@ -47,7 +47,7 @@ private[protocol] sealed abstract class RESPParamWriteInstances extends RESPPara
   ): RESPParamWrite[FieldType[K, V]] = RESPParamWrite.instance(RESP.bulk(K.value.name) +: V.write(_))
 }
 
-private[protocol] sealed abstract class RESPParamWriteInstances1 {
+private[protocol] sealed trait RESPParamWriteInstances1 {
   implicit final val nilRESPParamWrite: RESPParamWrite[Nil.type] = RESPParamWrite.const(Seq.empty)
   implicit final val hNilRESPParamWrite: RESPParamWrite[HNil]    = RESPParamWrite.const(Seq.empty)
 

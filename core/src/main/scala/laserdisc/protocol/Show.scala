@@ -21,7 +21,7 @@ implicit final val myShow: Show[${A}] = new Show[${A}] {
   final def contramap[B](f: B => A): Show[B] = Show.instance(show _ compose f)
 }
 
-object Show extends LowPriorityShowInstances {
+object Show extends ShowInstances {
   @inline final def apply[A](implicit instance: Show[A]): Show[A] = instance
 
   final def const[A](s: => String): Show[A] = new Show[A] {
@@ -35,7 +35,7 @@ object Show extends LowPriorityShowInstances {
   }
 }
 
-trait LowPriorityShowInstances {
+private[protocol] sealed trait ShowInstances {
   private[this] final val refinedDoubleCases: PartialFunction[Refined[Double, _], String] = {
     case d if d.value == Double.NegativeInfinity => "-inf"
     case d if d.value == Double.PositiveInfinity => "+inf"

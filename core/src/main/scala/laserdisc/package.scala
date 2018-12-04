@@ -7,7 +7,6 @@ import eu.timepit.refined.boolean.{And, Not, Or, True}
 import eu.timepit.refined.char.Whitespace
 import eu.timepit.refined.collection.{Forall, MinSize, NonEmpty}
 import eu.timepit.refined.generic.Equal
-import eu.timepit.refined.macros.RefineMacro
 import eu.timepit.refined.numeric.Interval.{Closed => ClosedInterval}
 import eu.timepit.refined.string.{IPv4, MatchesRegex}
 import eu.timepit.refined.types.net.PrivateNetworks._
@@ -38,7 +37,6 @@ package object laserdisc {
   final val Show     = protocol.Show
 
   final type Maybe[A] = Throwable | A
-  final type XString  = String with Singleton
 
   private[this] final type Loopback = IPv4 And Equal[W.`"127.0.0.1"`.T]
   private[this] final type RFC1123HostName = MatchesRegex[
@@ -79,7 +77,6 @@ package object laserdisc {
   final type OneOrMore[A]               = List[A] Refined NonEmpty
   final type OneOrMoreKeys              = OneOrMore[Key]
   final type RangeOffset                = Int Refined ClosedInterval[_0, W.`536870911`.T]
-  final type SingletonKey[A <: XString] = A Refined NonEmpty
   final type StringLength               = Long Refined ClosedInterval[_0, W.`4294967295L`.T]
   final type TwoOrMoreKeys              = List[Key] Refined MinSize[_2]
   final type TwoOrMoreWeightedKeys      = List[(Key, ValidDouble)] Refined MinSize[_2]
@@ -92,15 +89,6 @@ package object laserdisc {
     def unapply[A](l: List[A]): Option[OneOrMore[A]] = from(l).right.toOption
     def unsafeFrom[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): OneOrMore[A] =
       rt.unsafeRefine(l)
-  }
-  final object SingletonKey {
-    import scala.language.experimental.macros
-
-    def apply[A <: XString](t: A)(
-        implicit ev: Refined[A, NonEmpty] =:= SingletonKey[A],
-        rt: RefType[Refined],
-        v: Validate[A, NonEmpty]
-    ): SingletonKey[A] = macro RefineMacro.implApplyRef[SingletonKey[A], Refined, A, NonEmpty]
   }
 
   final object ConnectionName        extends RefinedTypeOps[ConnectionName, String]

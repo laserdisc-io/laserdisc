@@ -51,5 +51,17 @@ final class CirceSpec extends WordSpec with MustMatchers with PropertyChecks wit
         Read[NonNullBulkString, Baz].read(bulk(Show[Baz].show(baz))).value mustBe baz
       }
     }
+
+    "handling a json that does not respect the contract" must {
+      "fail to decode" in {
+        Read[NonNullBulkString, Bar].read(bulk("""{"i": null}"""))
+      }
+    }
+
+    "handling an invalid json" must {
+      "fail to decode" in {
+        Read[NonNullBulkString, Bar].read(bulk("{"))
+      }
+    }
   }
 }

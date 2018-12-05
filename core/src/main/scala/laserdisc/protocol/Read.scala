@@ -7,37 +7,30 @@ import shapeless.labelled._
 import scala.annotation.implicitNotFound
 
 @implicitNotFound(
-  "Implicit not found: Read[${A}, ${B}].\n\n" +
-    "Try writing your own, for example:\n\n" +
-    "implicit final val myRead: Read[${A}, ${B}] = new Read[${A}, ${B}] {\n" +
-    "  override final def read(a: ${A}): Option[${B}] = ???\n" +
-    "}\n\n" +
-    "Note 1: you can use the factory method Read.instance[PF] instead of creating it manually as shown above\n" +
-    "Note 2: make sure to inspect the combinators as you may be able to leverage some other Read instance\n"
+  """Implicit not found Read[${A}, ${B}].
+
+Try writing your own, for example:
+
+implicit final val myRead: Read[${A}, ${B}] = new Read[${A}, ${B}] {
+  override final def read(a: ${A}): Option[${B}] = ???
+}
+
+Note 1: you can use the factory methods Read.instance / Read.instancePF instead of creating it manually as shown above
+Note 2: make sure to inspect the combinators as you may be able to leverage some other Read instance
+"""
 ) trait Read[A, B] { self =>
 
   def read(a: A): Option[B]
 
-  final def map[C](f: B => C): Read[A, C] = new Read[A, C] {
-    override final def read(a: A): Option[C] = self.read(a).map(f)
-  }
+  final def map[C](f: B => C): Read[A, C] = Read.instance(read(_).map(f))
 
-  final def flatMap[C](f: B => Read[A, C]): Read[A, C] = new Read[A, C] {
-    override final def read(a: A): Option[C] = self.read(a).flatMap(b => f(b).read(a))
-  }
+  final def flatMap[C](f: B => Read[A, C]): Read[A, C] = Read.instance(a => read(a).flatMap(f(_).read(a)))
 
-  final def contramap[C](f: C => A): Read[C, B] = new Read[C, B] {
-    override final def read(c: C): Option[B] = self.read(f(c))
-  }
+  final def contramap[C](f: C => A): Read[C, B] = Read.instance(read _ compose f)
 
-  final def zip[C, D](RC: Read[C, D]): Read[(A, C), (B, D)] = new Read[(A, C), (B, D)] {
-    override def read(ac: (A, C)): Option[(B, D)] = {
-      val (a, c) = ac
-      for {
-        b <- self.read(a)
-        d <- RC.read(c)
-      } yield b -> d
-    }
+  final def orElse[C](other: Read[A, C]): Read[A, B | C] = Read.instancePF {
+    case `self`(b)  => Left(b)
+    case `other`(c) => Right(c)
   }
 
   final def unapply(a: A): Option[B] = read(a)
@@ -243,10 +236,10 @@ trait LowPriorityReadInstances extends LowerPriorityReadInstances {
   }
 
   implicit final def nonNilArray2HCons[H, T <: HList](
-    implicit
-    ev: H <:!< FieldType[_, _],
-    RH: NonNullBulkString ==> H,
-    RT: NonNilArray ==> T
+      implicit
+      ev: H <:!< FieldType[_, _],
+      RH: NonNullBulkString ==> H,
+      RT: NonNilArray ==> T
   ): NonNilArray ==> (H :: T) = Read.instance {
     case NonNilArray(RH(h) +: rest) => RT.read(RESP.arr(rest)).map(h :: _)
   }

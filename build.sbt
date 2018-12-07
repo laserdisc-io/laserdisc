@@ -2,11 +2,11 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 import sbtcrossproject.CrossType
 
 val `scala 211` = "2.11.11-bin-typelevel-4"
-val `scala 212` = "2.12.7"
+val `scala 212` = "2.12.8"
 
 val V = new {
   val circe             = "0.10.1"
-  val fs2               = "1.0.0"
+  val fs2               = "1.0.2"
   val `kind-projector`  = "0.9.9"
   val kittens           = "1.2.0"
   val refined           = "0.9.3"

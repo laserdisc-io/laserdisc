@@ -26,10 +26,6 @@ On top of this, one or more clients can be implemented. The only one currently a
 more competing implementations can be added with limited effort. This implementation has found great inspiration from
 the excellent [fs2-kafka](https://github.com/Spinoco/fs2-kafka/) library.
 
-### *Disclaimer*
-
-:warning: Development is very much early stages and subject to frequent and breaking changes. :warning:
-
 What's there:
 - [x] Codecs for Redis' RESP wire format
 - [x] Fully-fledged protocol encapsulating request/response pairs for (almost) all Redis [commands](https://redis.io/commands)

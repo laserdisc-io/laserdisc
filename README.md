@@ -153,15 +153,15 @@ This should produce an output similar to the following one:
 
 <br>
 
-|      | Fs2 | Log Effect |
-| ----:| ---:| ----------:|
-| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.12.svg?label=laserdisc%20fs2&colorB=blue)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2) | 1.0.2 | 0.4.2 |
+|      | Fs2 | Log Effect | Laserdisc Core |
+| ----:| ---:| ----------:| --------------:|
+| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.12.svg?label=laserdisc%20fs2&colorB=blue)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2) | 1.0.2 | 0.4.2 | [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=%20&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) |
 
 <br>
 
-|      | Circe |
-| ----:| -----:|
-| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.12.svg?label=laserdisc%20circe&colorB=darkgreen)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe) | 0.10.1 |
+|      | Circe | Laserdisc Core |
+| ----:| -----:| --------------:|
+| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.12.svg?label=laserdisc%20circe&colorB=darkgreen)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe) | 0.10.1 | [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=%20&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) |
 
 ## License
 

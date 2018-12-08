@@ -7,12 +7,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <br>
 [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc-core&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc-core%20docs&colorB=orange)](https://javadoc.io/doc/io.laserdisc/laserdisc-core_2.12)
 [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.12.svg?label=laserdisc-fs2&colorB=blue)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.12.svg?label=laserdisc-fs2%20docs&colorB=blue)](https://javadoc.io/doc/io.laserdisc/laserdisc-core_2.12)
 [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.12.svg?label=laserdisc-circe&colorB=red)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.12.svg?label=laserdisc-circe%20docs&colorB=red)](https://javadoc.io/doc/io.laserdisc/laserdisc-core_2.12)
-<br>
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc%20docs&colorB=darkgreen)](https://javadoc.io/doc/io.laserdisc/laserdisc-core_2.12)
 [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.17.svg)](http://scala-js.org)
 
 LaserDisc is a(nother) Scala driver for [Redis](https://redis.io/), written in Scala from the ground up.

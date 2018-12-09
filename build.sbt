@@ -107,7 +107,7 @@ val externalApiMappings = Def.task {
     }
   }
 
-  (coreDeps.value :+ (scalaOrganization.value % "scala-library" % scalaVersion.value))
+  (coreDeps.value ++ fs2Deps.value ++ circeDeps.value :+ (scalaOrganization.value % "scala-library" % scalaVersion.value))
     .flatMap(JavaDocIo.maybeDocsFor)
     .toMap
 }

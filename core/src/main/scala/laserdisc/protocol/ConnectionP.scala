@@ -10,11 +10,13 @@ trait ConnectionP {
 
   final def auth(password: Key): Protocol.Aux[OK] = Protocol("AUTH", password).as[SimpleString, OK]
 
-  final def echo(message: Key): Protocol.Aux[Key] = Protocol("ECHO", message).as[NonNullBulkString, Key]
+  final def echo[A: Show: NonNullBulkString ==> ?](message: A): Protocol.Aux[A] =
+    Protocol("ECHO", message).as[NonNullBulkString, A]
 
   final val ping: Protocol.Aux[PONG] = Protocol("PING", Nil).as[SimpleString, PONG]
 
-  final def ping(message: Key): Protocol.Aux[Key] = Protocol("PING", message).as[NonNullBulkString, Key]
+  final def ping[A: Show: NonNullBulkString ==> ?](message: A): Protocol.Aux[A] =
+    Protocol("PING", message).as[NonNullBulkString, A]
 
   final val quit: Protocol.Aux[OK] = Protocol("QUIT", Nil).as[SimpleString, OK]
 

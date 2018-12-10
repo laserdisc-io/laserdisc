@@ -7,12 +7,16 @@ import shapeless.ops.coproduct._
 import scala.annotation.implicitNotFound
 
 @implicitNotFound(
-  "Implicit not found: RESPRead[${A}].\n\n" +
-    "You should not need to define one manually, as one will be derived for you automatically iff:\n" +
-    "- evidence of a Read instance from some sum/co-product to ${A} can be provided\n" +
-    "- this sum/co-product is a subset of the sum-co-product for RESP"
+  """Implicit not found RESPRead[${A}].
+
+You should not need to define one manually, as one will be derived for you automatically iff:
+- evidence of a Read instance from some sum/co-product to ${A} can be provided
+- this sum/co-product is a subset of the sum-co-product for RESP
+  """
 ) trait RESPRead[A] {
+
   type Sub
+
   def read(resp: RESP): Maybe[A]
 }
 
@@ -24,11 +28,7 @@ object RESPRead {
   final def apply[Sub, A](implicit instance: RESPRead.Aux[Sub, A]): RESPRead.Aux[Sub, A] = instance
 
   private[this] final type RESPCoproduct =
-    SimpleString :+:
-      Error :+:
-      Integer :+:
-      NullBulkString :+: NonNullBulkString :+:
-      NilArray :+: NonNilArray :+: CNil
+    SimpleString :+: Error :+: Integer :+: NullBulkString :+: NonNullBulkString :+: NilArray :+: NonNilArray :+: CNil
 
   private[this] implicit val respInject: Inject[RESPCoproduct, RESP] = new Inject[RESPCoproduct, RESP] {
     override def apply(resp: RESP): RESPCoproduct = resp match {
@@ -49,8 +49,10 @@ object RESPRead {
     override final type Sub = A
     override def read(resp: RESP): Maybe[B] = Coproduct[RESPCoproduct](resp).deembed match {
       case Right(R(b)) => Right(b)
-      case Right(_)    => Left(err(s"RESP type(s) matched but failed to deserialize correctly: $resp"))
-      case Left(rest)  => rest.select[Error].fold(Left(err(s"RESP type(s) did not match: $resp")))(Left(_))
+      case Right(_) =>
+        Left(err(s"RESP type(s) matched but failed to deserialize correctly: $resp")).widenLeft[Throwable]
+      case Left(rest) =>
+        rest.select[Error].fold(Left(err(s"RESP type(s) did not match: $resp")))(Left(_)).widenLeft[Throwable]
     }
   }
 

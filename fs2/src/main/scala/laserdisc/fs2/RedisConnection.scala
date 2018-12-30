@@ -6,7 +6,7 @@ import java.nio.channels.AsynchronousChannelGroup
 
 import _root_.fs2._
 import _root_.fs2.io.tcp.Socket
-import cats.{Applicative, FlatMap}
+import cats.Monad
 import cats.effect.{ConcurrentEffect, ContextShift, Effect}
 import cats.syntax.applicative._
 import cats.syntax.flatMap._
@@ -38,7 +38,7 @@ object RedisConnection {
 
   private[fs2] final object impl {
 
-    def send[F[_]: Applicative: FlatMap](sink: Sink[F, Byte])(implicit log: LogWriter[F]): Sink[F, RESP] =
+    def send[F[_]: Monad](sink: Sink[F, Byte])(implicit log: LogWriter[F]): Sink[F, RESP] =
       _.evalMap(resp => log.debug(s"sending $resp") >> resp.pure)
         .through(streamEncoder.encode)
         .flatMap(bits => Stream.chunk(Chunk.array(bits.toByteArray)))

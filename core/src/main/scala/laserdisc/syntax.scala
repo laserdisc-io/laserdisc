@@ -8,6 +8,7 @@ object lists       extends protocol.AllListP { object blocking extends protocol.
 object publish     extends protocol.PublishP
 object server      extends protocol.ServerP
 object sets        extends protocol.AllSetP
+object show        extends protocol.ShowSyntax
 object sortedsets  extends protocol.AllSortedSetP
 object strings     extends protocol.AllStringP
 
@@ -20,6 +21,7 @@ object all
     with protocol.PublishP
     with protocol.ServerP
     with protocol.AllSetP
+    with protocol.ShowSyntax
     with protocol.AllSortedSetP
     with protocol.AllStringP {
   final object blocking extends protocol.AllBListP

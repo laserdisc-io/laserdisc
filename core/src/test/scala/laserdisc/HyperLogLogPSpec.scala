@@ -1,32 +1,35 @@
 package laserdisc
 
-import org.scalatest.{Matchers, WordSpecLike}
+import laserdisc.all._
+import laserdisc.protocol.RESP._
 
-final class HyperLogLogPSpec extends WordSpecLike with Matchers {
+final class HyperLogLogPSpec extends BaseSpec {
 
-  "A HyperLogLogP" when {
+  "A HyperLogLogP with HyperLogLogPExtra" when {
 
     "using pfadd" should {
 
       "fail to compile" when {
         "given empty key" in {
-          """import auto._
-            |hyperloglog.pfadd("", "e")""".stripMargin shouldNot compile
+          """pfadd("", "e")""".stripMargin shouldNot compile
         }
         "given empty element" in {
-          """import auto._
-            |hyperloglog.pfadd("a", "")""".stripMargin shouldNot compile
+          """pfadd("a", "")""".stripMargin shouldNot compile
         }
       }
 
       "compile successfully" when {
-        "given non empty key and one non empty element" in {
-          """import auto._
-            |hyperloglog.pfadd("a", "e1")""".stripMargin should compile
+        "given non empty key and one non empty element" in forAll { (key: Key, el: Key, b: Boolean) =>
+          val protocol = pfadd(key, el)
+
+          protocol.encode shouldBe arr(bulk("PFADD"), bulk(key.show), bulk(el.show))
+          protocol.decode(int(if (b) 1 else 0)).right.value shouldBe b
         }
-        "given non empty key and two non empty elements" in {
-          """import auto._
-            |hyperloglog.pfadd("a", "e1", "e2")""".stripMargin should compile
+        "given non empty key and two non empty elements" in forAll { (key: Key, el1: Key, el2: Key, b: Boolean) =>
+          val protocol = pfadd(key, el1, el2)
+
+          protocol.encode shouldBe arr(bulk("PFADD"), bulk(key.show), bulk(el1.show), bulk(el2.show))
+          protocol.decode(int(if (b) 1 else 0)).right.value shouldBe b
         }
       }
 
@@ -36,23 +39,25 @@ final class HyperLogLogPSpec extends WordSpecLike with Matchers {
 
       "fail to compile" when {
         "given one empty key" in {
-          """import auto._
-            |hyperloglog.pfcount("")""".stripMargin shouldNot compile
+          """pfcount("")""".stripMargin shouldNot compile
         }
         "given two empty keys" in {
-          """import auto._
-            |hyperloglog.pfcount("", "")""".stripMargin shouldNot compile
+          """pfcount("", "")""".stripMargin shouldNot compile
         }
       }
 
       "compile successfully" when {
-        "given one non empty key" in {
-          """import auto._
-            |hyperloglog.pfcount("a")""".stripMargin should compile
+        "given one non empty key" in forAll { (key: Key, nni: NonNegInt) =>
+          val protocol = pfcount(key)
+
+          protocol.encode shouldBe arr(bulk("PFCOUNT"), bulk(key.show))
+          protocol.decode(int(nni.value.toLong)).right.value shouldBe nni
         }
-        "given two non empty keys" in {
-          """import auto._
-            |hyperloglog.pfcount("a", "b")""".stripMargin should compile
+        "given two non empty keys" in forAll { (key1: Key, key2: Key, nni: NonNegInt) =>
+          val protocol = pfcount(key1, key2)
+
+          protocol.encode shouldBe arr(bulk("PFCOUNT"), bulk(key1.show), bulk(key2.show))
+          protocol.decode(int(nni.value.toLong)).right.value shouldBe nni
         }
       }
 

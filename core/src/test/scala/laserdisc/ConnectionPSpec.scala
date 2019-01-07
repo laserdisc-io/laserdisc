@@ -1,8 +1,9 @@
 package laserdisc
 
-import org.scalatest.{Matchers, WordSpecLike}
+import laserdisc.all._
+import laserdisc.protocol.RESP._
 
-final class ConnectionPSpec extends WordSpecLike with Matchers {
+final class ConnectionPSpec extends BaseSpec {
 
   "A ConnectionP" when {
 
@@ -10,15 +11,16 @@ final class ConnectionPSpec extends WordSpecLike with Matchers {
 
       "fail to compile" when {
         "given empty password" in {
-          """import auto._
-            |connection.auth("")""".stripMargin shouldNot compile
+          """auth("")""".stripMargin shouldNot compile
         }
       }
 
       "compile successfully" when {
-        "given non empty password" in {
-          """import auto._
-            |connection.auth("a")""".stripMargin should compile
+        "given non empty password" in forAll { key: Key =>
+          val protocol = auth(key)
+
+          protocol.encode shouldBe arr(bulk("AUTH"), bulk(key.value))
+          protocol.decode(str("OK")).right.value shouldBe OK
         }
       }
 
@@ -26,17 +28,18 @@ final class ConnectionPSpec extends WordSpecLike with Matchers {
 
     "using echo" should {
 
-      "fail to compile" when {
-        "given empty message" in {
-          """import auto._
-            |connection.echo("")""".stripMargin shouldNot compile
-        }
-      }
-
       "compile successfully" when {
-        "given non empty message" in {
-          """import auto._
-            |connection.echo("a")""".stripMargin should compile
+        "given string message" in forAll { s: String =>
+          val protocol = echo(s)
+
+          protocol.encode shouldBe arr(bulk("ECHO"), bulk(s))
+          protocol.decode(bulk(s)).right.value shouldBe s
+        }
+        "given int message" in forAll { i: Int =>
+          val protocol = echo(i)
+
+          protocol.encode shouldBe arr(bulk("ECHO"), bulk(i.show))
+          protocol.decode(bulk(i.show)).right.value shouldBe i
         }
       }
 
@@ -44,20 +47,24 @@ final class ConnectionPSpec extends WordSpecLike with Matchers {
 
     "using ping" should {
 
-      "fail to compile" when {
-        "given empty message" in {
-          """import auto._
-            |connection.ping("")""".stripMargin shouldNot compile
-        }
-      }
-
       "compile successfully" when {
-        "given non empty message" in {
-          """import auto._
-            |connection.ping("a")""".stripMargin should compile
+        "given string message" in forAll { s: String =>
+          val protocol = ping(s)
+
+          protocol.encode shouldBe arr(bulk("PING"), bulk(s))
+          protocol.decode(bulk(s)).right.value shouldBe s
+        }
+        "given int message" in forAll { i: Int =>
+          val protocol = ping(i)
+
+          protocol.encode shouldBe arr(bulk("PING"), bulk(i.show))
+          protocol.decode(bulk(i.show)).right.value shouldBe i
         }
         "using val for empty message" in {
-          """connection.ping""".stripMargin should compile
+          val protocol = ping
+
+          protocol.encode shouldBe arr(bulk("PING"))
+          protocol.decode(str("PONG")).right.value shouldBe PONG
         }
       }
 
@@ -66,7 +73,10 @@ final class ConnectionPSpec extends WordSpecLike with Matchers {
     "using quit" should {
 
       "always compile" in {
-        """connection.quit""".stripMargin should compile
+        val protocol = quit
+
+        protocol.encode shouldBe arr(bulk("QUIT"))
+        protocol.decode(str("OK")).right.value shouldBe OK
       }
 
     }
@@ -75,23 +85,19 @@ final class ConnectionPSpec extends WordSpecLike with Matchers {
 
       "fail to compile" when {
         "given out of bounds index (less than min: -1)" in {
-          """import auto._
-            |connection.select(-1)""".stripMargin shouldNot compile
+          """select(-1)""".stripMargin shouldNot compile
         }
         "given out of bounds index (greater than max: 16)" in {
-          """import auto._
-            |connection.select(16)""".stripMargin shouldNot compile
+          """select(16)""".stripMargin shouldNot compile
         }
       }
 
       "compile successfully" when {
-        "given valid index (min: 0)" in {
-          """import auto._
-            |connection.select(0)""".stripMargin should compile
-        }
-        "given valid index (max: 15)" in {
-          """import auto._
-            |connection.select(15)""".stripMargin should compile
+        "given valid index" in forAll { dbIndex: DbIndex =>
+          val protocol = select(dbIndex)
+
+          protocol.encode shouldBe arr(bulk("SELECT"), bulk(dbIndex.show))
+          protocol.decode(str("OK")).right.value shouldBe OK
         }
       }
 
@@ -101,23 +107,19 @@ final class ConnectionPSpec extends WordSpecLike with Matchers {
 
       "fail to compile" when {
         "given out of bounds indexes (index1 less than min: -1, index2 greater than max: 16)" in {
-          """import auto._
-            |connection.swapdb(-1, 16)""".stripMargin shouldNot compile
+          """swapdb(-1, 16)""".stripMargin shouldNot compile
         }
         "given out of bounds indexes (index1 greater than max: 16, index2 less than min: -1)" in {
-          """import auto._
-            |connection.swapdb(16, -1)""".stripMargin shouldNot compile
+          """swapdb(16, -1)""".stripMargin shouldNot compile
         }
       }
 
       "compile successfully" when {
-        "given valid indexes (index1 min: 0, index2 max: 15)" in {
-          """import auto._
-            |connection.swapdb(0, 15)""".stripMargin should compile
-        }
-        "given valid indexes (index1 max: 15, index2 min: 0)" in {
-          """import auto._
-            |connection.swapdb(15, 0)""".stripMargin should compile
+        "given valid indexes" in forAll { (index1: DbIndex, index2: DbIndex) =>
+          val protocol = swapdb(index1, index2)
+
+          protocol.encode shouldBe arr(bulk("SWAPDB"), bulk(index1.show), bulk(index2.show))
+          protocol.decode(str("OK")).right.value shouldBe OK
         }
       }
 

@@ -177,6 +177,12 @@ trait LowPriorityReadInstances extends LowerPriorityReadInstances {
     case _ => None
   }
 
+  implicit final def nonNilArray2KV[A](
+      implicit R: NonNullBulkString ==> A
+  ): NonNilArray ==> KV[A] = Read.instancePF {
+    case NonNilArray(NonNullBulkString(Key(key)) +: R(a) +: Seq()) => KV(key, a)
+  }
+
   implicit final def nonNilArray2Scan[A](
       implicit R: NonNilArray ==> Seq[A]
   ): NonNilArray ==> Scan[A] = Read.instance {
@@ -216,13 +222,6 @@ trait LowPriorityReadInstances extends LowerPriorityReadInstances {
         NonNullBulkString(ToLong(NonNegLong(ts))) +: NonNullBulkString(ToLong(NonNegLong(em))) +: Seq()
         ) =>
       Time(ts, em)
-  }
-
-  implicit final def nonNilArrayToProduct[P <: Product, L <: HList](
-      implicit G: LabelledGeneric.Aux[P, L],
-      R: NonNilArray ==> L
-  ): NonNilArray ==> P = Read.instancePF {
-    case R(l) => G.from(l)
   }
 
   implicit final def nonNilArray2LabelledHCons[HK <: Symbol, HV, T <: HList](

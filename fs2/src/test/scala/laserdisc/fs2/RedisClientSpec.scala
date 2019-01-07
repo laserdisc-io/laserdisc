@@ -13,7 +13,7 @@ import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.traverse._
-import eu.timepit.refined.auto._
+import laserdisc.auto._
 import log.effect.fs2.Fs2LogWriter.noOpLogStream
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 

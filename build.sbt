@@ -1,44 +1,40 @@
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 import sbtcrossproject.CrossType
 
-val `scala 211` = "2.11.11-bin-typelevel-4"
-val `scala 212` = "2.12.8"
+val `scala 2.11` = "2.11.11-bin-typelevel-4"
+val `scala 2.12` = "2.12.8"
 
 val V = new {
-  val circe             = "0.10.1"
-  val fs2               = "1.0.2"
-  val `kind-projector`  = "0.9.9"
-  val kittens           = "1.2.0"
-  val refined           = "0.9.3"
-  val refined211        = "0.8.7"
-  val scalacheck        = "1.13.5"
-  val scalatest         = "3.0.5"
-  val `scodec-bits`     = "1.1.7"
-  val `scodec-core`     = "1.10.3"
-  val `scodec-stream`   = "1.2.0"
-  val shapeless         = "2.3.3"
-  val `log-effect-fs2`  = "0.4.1"
+  val circe            = "0.10.1"
+  val fs2              = "1.0.2"
+  val `kind-projector` = "0.9.9"
+  val kittens          = "1.2.0"
+  val `log-effect-fs2` = "0.4.1"
+  val refined          = "0.9.3"
+  val scalacheck       = "1.13.5"
+  val scalatest        = "3.0.5"
+  val `scodec-bits`    = "1.1.7"
+  val `scodec-core`    = "1.10.3"
+  val `scodec-stream`  = "1.2.0"
+  val shapeless        = "2.3.3"
 }
 
-val `circe-core`      = Def.setting("io.circe"        %%% "circe-core"      % V.circe)
-val `circe-parser`    = Def.setting("io.circe"        %%% "circe-parser"    % V.circe)
-val `fs2-core`        = Def.setting("co.fs2"          %%% "fs2-core"        % V.fs2)
-val `fs2-io`          = Def.setting("co.fs2"          %% "fs2-io"           % V.fs2)
-val kittens           = Def.setting("org.typelevel"   %%% "kittens"         % V.kittens)
-val `scodec-bits`     = Def.setting("org.scodec"      %%% "scodec-bits"     % V.`scodec-bits`)
-val `scodec-core`     = Def.setting("org.scodec"      %%% "scodec-core"     % V.`scodec-core`)
-val `scodec-stream`   = Def.setting("org.scodec"      %%% "scodec-stream"   % V.`scodec-stream`)
-val shapeless         = Def.setting("com.chuusai"     %%% "shapeless"       % V.shapeless)
-val `log-effect-fs2`  = Def.setting("io.laserdisc"    %%% "log-effect-fs2"  % V.`log-effect-fs2`)
-val `circe-generic`   = Def.setting("io.circe"        %%% "circe-generic"   % V.circe      % Test)
-val scalacheck        = Def.setting("org.scalacheck"  %%% "scalacheck"      % V.scalacheck % Test)
-val scalatest         = Def.setting("org.scalatest"   %%% "scalatest"       % V.scalatest  % Test)
-val refined           = Def.setting {
-  is211.value match {
-    case true  => "eu.timepit" %%% "refined" % V.refined211
-    case _     => "eu.timepit" %%% "refined" % V.refined
-  }
-}
+val `circe-core`     = Def.setting("io.circe"      %%% "circe-core"     % V.circe)
+val `circe-parser`   = Def.setting("io.circe"      %%% "circe-parser"   % V.circe)
+val `fs2-core`       = Def.setting("co.fs2"        %%% "fs2-core"       % V.fs2)
+val `fs2-io`         = Def.setting("co.fs2"        %% "fs2-io"          % V.fs2)
+val kittens          = Def.setting("org.typelevel" %%% "kittens"        % V.kittens)
+val `log-effect-fs2` = Def.setting("io.laserdisc"  %%% "log-effect-fs2" % V.`log-effect-fs2`)
+val refined          = Def.setting("eu.timepit"    %%% "refined"        % V.refined)
+val `scodec-bits`    = Def.setting("org.scodec"    %%% "scodec-bits"    % V.`scodec-bits`)
+val `scodec-core`    = Def.setting("org.scodec"    %%% "scodec-core"    % V.`scodec-core`)
+val `scodec-stream`  = Def.setting("org.scodec"    %%% "scodec-stream"  % V.`scodec-stream`)
+val shapeless        = Def.setting("com.chuusai"   %%% "shapeless"      % V.shapeless)
+
+val `circe-generic`      = Def.setting("io.circe"       %%% "circe-generic"           % V.circe      % Test)
+val `refined-scalacheck` = Def.setting("eu.timepit"     %%% "refined-scalacheck_1.13" % V.refined    % Test)
+val scalacheck           = Def.setting("org.scalacheck" %%% "scalacheck"              % V.scalacheck % Test)
+val scalatest            = Def.setting("org.scalatest"  %%% "scalatest"               % V.scalatest  % Test)
 
 val `kind-projector-compiler-plugin` = Def.setting {
   compilerPlugin("org.spire-math" % "kind-projector" % V.`kind-projector` cross CrossVersion.binary)
@@ -54,6 +50,7 @@ val coreDeps = Def.Initialize.join {
     `scodec-core`,
     shapeless,
     refined,
+    `refined-scalacheck`,
     scalacheck,
     scalatest
   )
@@ -65,8 +62,8 @@ val fs2Deps = Def.Initialize.join {
     `fs2-io`,
     `kind-projector-compiler-plugin`,
     kittens,
-    `scodec-stream`,
     `log-effect-fs2`,
+    `scodec-stream`,
     scalacheck,
     scalatest
   )
@@ -113,7 +110,7 @@ val externalApiMappings = Def.task {
 }
 
 val versionDependantScalacOptions = Def.setting {
-  def versionDependent(scalaVersion: String, flags: Seq[String]) = 
+  def versionDependent(scalaVersion: String, flags: Seq[String]) =
     CrossVersion.partialVersion(scalaVersion) match {
       case Some((2, major)) if major >= 12 =>
         flags ++ Seq(
@@ -127,10 +124,10 @@ val versionDependantScalacOptions = Def.setting {
           "-Ywarn-value-discard" // Warn when non-Unit expression results are unused.
         )
       case _ =>
-        (flags ++ Seq("-Yinduction-heuristics", "-Yliteral-types"))
+        (flags :+ "-Yinduction-heuristics")
           .filterNot(_ == "-Xlint:missing-interpolator") //@implicitNotFound uses ${A} syntax w/o need for s interpolator
     }
-  
+
   val flags = Seq(
     "-deprecation", // Emit warning and location for usages of deprecated APIs.
     "-encoding",
@@ -168,7 +165,7 @@ val versionDependantScalacOptions = Def.setting {
     "-Ywarn-infer-any", // Warn when a type argument is inferred to be `Any`.
     "-Ywarn-nullary-override", // Warn when non-nullary `def f()' overrides nullary `def f'.
     "-Ywarn-nullary-unit", // Warn when nullary methods return Unit.
-    "-Ywarn-numeric-widen", // Warn when numerics are widened.
+    "-Ywarn-numeric-widen" // Warn when numerics are widened.
   )
 
   versionDependent(scalaVersion.value, flags)
@@ -177,17 +174,17 @@ val versionDependantScalacOptions = Def.setting {
 inThisBuild {
   Def.settings(
     organization := "io.laserdisc",
-    scalaVersion := `scala 212`
+    scalaVersion := `scala 2.12`
   )
 }
 
 lazy val commonSettings = Seq(
-  scalaOrganization := 
+  scalaOrganization :=
     (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 11)) => "org.typelevel"
-      case _             => "org.scala-lang" 
+      case _             => "org.scala-lang"
     }),
-  crossScalaVersions := Seq(`scala 211`, `scala 212`),
+  crossScalaVersions := Seq(`scala 2.11`, `scala 2.12`),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value
@@ -238,16 +235,12 @@ lazy val scoverageSettings = Seq(
   coverageFailOnMinimum := false,
   coverageHighlighting := true,
   coverageEnabled := {
-    if (is211.value) false else coverageEnabled.value
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, 11)) => false
+      case _             => coverageEnabled.value
+    }
   }
 )
-
-lazy val is211 = Def.setting {
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, 11)) => true
-    case _             => false
-  }
-}
 
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 
@@ -265,7 +258,8 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(
     name := "laserdisc-core",
     libraryDependencies ++= coreDeps.value,
-    Compile / boilerplateSource := baseDirectory.value.getParentFile / "src" / "main" / "boilerplate"
+    Compile / boilerplateSource := baseDirectory.value.getParentFile / "src" / "main" / "boilerplate",
+    Test / boilerplateSource := baseDirectory.value.getParentFile / "src" / "test" / "boilerplate"
   )
   .jvmSettings(
     javaOptions += "-Djava.net.preferIPv4Stack=true",
@@ -311,7 +305,7 @@ lazy val cli = project
 
 lazy val circe = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .crossType(CrossType.Pure) 
+  .crossType(CrossType.Pure)
   .in(file("circe"))
   .dependsOn(core)
   .settings(allSettings)

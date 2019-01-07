@@ -5,18 +5,18 @@ val `scala 2.11` = "2.11.11-bin-typelevel-4"
 val `scala 2.12` = "2.12.8"
 
 val V = new {
-  val circe            = "0.10.1"
-  val fs2              = "1.0.2"
-  val `kind-projector` = "0.9.9"
-  val kittens          = "1.2.0"
-  val `log-effect-fs2` = "0.4.1"
-  val refined          = "0.9.3"
-  val scalacheck       = "1.13.5"
-  val scalatest        = "3.0.5"
-  val `scodec-bits`    = "1.1.7"
-  val `scodec-core`    = "1.10.3"
-  val `scodec-stream`  = "1.2.0"
-  val shapeless        = "2.3.3"
+  val circe             = "0.11.0"
+  val fs2               = "1.0.2"
+  val `kind-projector`  = "0.9.9"
+  val kittens           = "1.2.0"
+  val `log-effect-fs2`  = "0.4.3"
+  val refined           = "0.9.3"
+  val scalacheck        = "1.13.5"
+  val scalatest         = "3.0.5"
+  val `scodec-bits`     = "1.1.7"
+  val `scodec-core`     = "1.10.3"
+  val `scodec-stream`   = "1.2.0"
+  val shapeless         = "2.3.3"
 }
 
 val `circe-core`     = Def.setting("io.circe"      %%% "circe-core"     % V.circe)
@@ -104,7 +104,7 @@ val externalApiMappings = Def.task {
     }
   }
 
-  (coreDeps.value :+ (scalaOrganization.value % "scala-library" % scalaVersion.value))
+  (coreDeps.value ++ fs2Deps.value ++ circeDeps.value :+ (scalaOrganization.value % "scala-library" % scalaVersion.value))
     .flatMap(JavaDocIo.maybeDocsFor)
     .toMap
 }

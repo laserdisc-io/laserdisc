@@ -70,17 +70,17 @@ package object laserdisc {
   final type GlobPattern    = String Refined MatchesRegex[W.`"(\\\\[?[\\\\w\\\\*\\\\?]+\\\\]?)+"`.T] //TODO good enough but needs regex' TLC
   final type Host =
     String Refined (RFC1123HostName Or Loopback Or Rfc1918PrivateSpec Or Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec)
-  final type Index                      = Long Refined True
-  final type NonZeroDouble              = Double Refined (NonNaN And NonZero)
-  final type NonZeroInt                 = Int Refined NonZero
-  final type NonZeroLong                = Long Refined NonZero
-  final type OneOrMore[A]               = List[A] Refined NonEmpty
-  final type OneOrMoreKeys              = OneOrMore[Key]
-  final type RangeOffset                = Int Refined ClosedInterval[_0, W.`536870911`.T]
-  final type StringLength               = Long Refined ClosedInterval[_0, W.`4294967295L`.T]
-  final type TwoOrMoreKeys              = List[Key] Refined MinSize[_2]
-  final type TwoOrMoreWeightedKeys      = List[(Key, ValidDouble)] Refined MinSize[_2]
-  final type ValidDouble                = Double Refined NonNaN
+  final type Index                 = Long Refined True
+  final type NonZeroDouble         = Double Refined (NonNaN And NonZero)
+  final type NonZeroInt            = Int Refined NonZero
+  final type NonZeroLong           = Long Refined NonZero
+  final type OneOrMore[A]          = List[A] Refined NonEmpty
+  final type OneOrMoreKeys         = OneOrMore[Key]
+  final type RangeOffset           = Int Refined ClosedInterval[_0, W.`536870911`.T]
+  final type StringLength          = Long Refined ClosedInterval[_0, W.`4294967295L`.T]
+  final type TwoOrMoreKeys         = List[Key] Refined MinSize[_2]
+  final type TwoOrMoreWeightedKeys = List[(Key, ValidDouble)] Refined MinSize[_2]
+  final type ValidDouble           = Double Refined NonNaN
 
   //new types' ops
   final object OneOrMore {

@@ -241,13 +241,13 @@ object RedisClient {
 
             new Connection[F] {
               override final def run: F[Unit] =
-                logger.info("Starting connection") *>
+                logger.info("Starting connection") >>
                   runner(serverStream).interruptWhen(termSignal).compile.drain.attempt.flatMap { r =>
                     logger.info(s"Connection terminated: $r")
                   }
 
               override final def shutdown: F[Unit] =
-                logger.info("Shutting down connection") *> termSignal.set(true)
+                logger.info("Shutting down connection") >> termSignal.set(true)
 
               override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
                   implicit protocolHandler: ProtocolHandler.Aux[F, In, Out]

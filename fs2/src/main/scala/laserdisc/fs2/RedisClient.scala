@@ -4,7 +4,7 @@ package fs2
 import java.nio.channels.AsynchronousChannelGroup
 
 import cats.Eq
-import cats.effect.{ConcurrentEffect, Sync, Timer}
+import cats.effect.{ConcurrentEffect, ContextShift, Sync, Timer}
 import cats.effect.concurrent.Ref
 import cats.instances.option.catsStdInstancesForOption
 import cats.instances.option.catsKernelStdEqForOption
@@ -67,7 +67,7 @@ trait RedisClient[F[_]] {
 }
 
 object RedisClient {
-  final def apply[F[_]: ConcurrentEffect: Timer: LogWriter](
+  final def apply[F[_]: ConcurrentEffect: ContextShift: Timer: LogWriter](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
@@ -241,13 +241,13 @@ object RedisClient {
 
             new Connection[F] {
               override final def run: F[Unit] =
-                logger.info("Starting connection") *>
+                logger.info("Starting connection") >>
                   runner(serverStream).interruptWhen(termSignal).compile.drain.attempt.flatMap { r =>
                     logger.info(s"Connection terminated: $r")
                   }
 
               override final def shutdown: F[Unit] =
-                logger.info("Shutting down connection") *> termSignal.set(true)
+                logger.info("Shutting down connection") >> termSignal.set(true)
 
               override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
                   implicit protocolHandler: ProtocolHandler.Aux[F, In, Out]

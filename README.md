@@ -7,9 +7,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <br>
 [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc-core&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc-core-docs&colorB=orange)](https://javadoc.io/doc/io.laserdisc/laserdisc-core_2.12)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc-core%20docs&colorB=orange)](https://javadoc.io/doc/io.laserdisc/laserdisc-core_2.12)
 [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.12.svg?label=laserdisc-fs2&colorB=blue)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc-fs2-docs&colorB=blue)](https://javadoc.io/doc/io.laserdisc/laserdisc-fs2_2.12)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.12.svg?label=laserdisc-fs2%20docs&colorB=blue)](https://javadoc.io/doc/io.laserdisc/laserdisc-fs2_2.12)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.12.svg?label=laserdisc-circe&colorB=darkgreen)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.12.svg?label=laserdisc-circe%20docs&colorB=darkgreen)](https://javadoc.io/doc/io.laserdisc/laserdisc-circe_2.12)
+<br>
 [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.17.svg)](http://scala-js.org)
 
 LaserDisc is a(nother) Scala driver for [Redis](https://redis.io/), written in Scala from the ground up.
@@ -26,10 +29,6 @@ On top of this, one or more clients can be implemented. The only one currently a
 more competing implementations can be added with limited effort. This implementation has found great inspiration from
 the excellent [fs2-kafka](https://github.com/Spinoco/fs2-kafka/) library.
 
-### *Disclaimer*
-
-:warning: Development is very much early stages and subject to frequent and breaking changes. :warning:
-
 What's there:
 - [x] Codecs for Redis' RESP wire format
 - [x] Fully-fledged protocol encapsulating request/response pairs for (almost) all Redis [commands](https://redis.io/commands)
@@ -38,6 +37,8 @@ What's there:
 
 What's missing:
 - [ ] Everything else :)
+
+**Note:** the library is still evolving and more features will be added in the future. Even if the binary compatibility will not be guaranteed until version 1.0.0, the [semantic versioning](https://semver.org/) strategy will be observed in the process.
 
 ### Why the name
 
@@ -143,6 +144,24 @@ This should produce an output similar to the following one:
 [info] - [ForkJoinPool-3-worker-2] Shutting down connection
 [info] - [ForkJoinPool-3-worker-0] Connection terminated: Right(())
 ```
+
+## Dependencies
+
+|      | Shapeless |
+| ----:| ---------:|
+| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc%20core&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) | 2.3.3 |
+
+<br>
+
+|      | Fs2 | Log Effect | Laserdisc Core |
+| ----:| ---:| ----------:| --------------:|
+| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.12.svg?label=laserdisc%20fs2&colorB=blue)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2) | 1.0.2 | 0.4.2 | [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=%20&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) |
+
+<br>
+
+|      | Circe | Laserdisc Core |
+| ----:| -----:| --------------:|
+| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.12.svg?label=laserdisc%20circe&colorB=darkgreen)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe) | 0.10.1 | [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=%20&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) |
 
 ## License
 

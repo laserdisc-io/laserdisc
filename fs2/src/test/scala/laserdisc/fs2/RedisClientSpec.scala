@@ -37,7 +37,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
   private[this] final val testText = "test text"
   private[this] final val correct  = "correct"
 
-  def clientUnderTest[F[_]: Timer](implicit F: ConcurrentEffect[F]): Stream[F, RedisClient[F]] =
+  def clientUnderTest[F[_]: ContextShift: Timer](implicit F: ConcurrentEffect[F]): Stream[F, RedisClient[F]] =
     Stream
       .resource(MkResource(F.delay(withThreadPool(newFixedThreadPool(8)))))
       .flatMap { implicit acg =>

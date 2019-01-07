@@ -5,11 +5,11 @@ import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
 
 import _root_.fs2._
-import _root_.fs2.io.tcp
-import cats.Applicative
-import cats.effect.{ConcurrentEffect, Effect}
+import _root_.fs2.io.tcp.Socket
+import cats.Monad
+import cats.effect.{ConcurrentEffect, ContextShift, Effect}
 import cats.syntax.applicative._
-import cats.syntax.apply._
+import cats.syntax.flatMap._
 import laserdisc.protocol._
 import log.effect.LogWriter
 import scodec.Codec
@@ -21,7 +21,7 @@ object RedisConnection {
   private[this] final val streamDecoder = decode.many(Codec[RESP])
   private[this] final val streamEncoder = encode.many(Codec[RESP])
 
-  final def apply[F[_]: ConcurrentEffect: LogWriter](
+  final def apply[F[_]: ConcurrentEffect: ContextShift: LogWriter](
       address: InetSocketAddress,
       writeTimeout: Option[FiniteDuration] = None,
       readMaxBytes: Int = 256 * 1024
@@ -29,7 +29,7 @@ object RedisConnection {
       implicit ev0: AsynchronousChannelGroup
   ): Pipe[F, RESP, RESP] =
     stream =>
-      Stream.resource(tcp.client(address)).flatMap { socket =>
+      Stream.resource(Socket.client(address)).flatMap { socket =>
         val send    = stream.through(impl.send(socket.writes(writeTimeout)))
         val receive = socket.reads(readMaxBytes).through(impl.receive)
 
@@ -38,8 +38,8 @@ object RedisConnection {
 
   private[fs2] final object impl {
 
-    def send[F[_]: Applicative](sink: Sink[F, Byte])(implicit log: LogWriter[F]): Sink[F, RESP] =
-      _.evalMap(resp => log.debug(s"sending $resp") *> resp.pure)
+    def send[F[_]: Monad](sink: Sink[F, Byte])(implicit log: LogWriter[F]): Sink[F, RESP] =
+      _.evalMap(resp => log.debug(s"sending $resp") >> resp.pure)
         .through(streamEncoder.encode)
         .flatMap(bits => Stream.chunk(Chunk.array(bits.toByteArray)))
         .to(sink)
@@ -71,7 +71,7 @@ object RedisConnection {
 
       _.through(framing)
         .flatMap(complete => streamDecoder.decode(complete.bits))
-        .evalMap(resp => log.debug(s"receiving $resp") *> resp.pure)
+        .evalMap(resp => log.debug(s"receiving $resp") >> resp.pure)
     }
 
   }

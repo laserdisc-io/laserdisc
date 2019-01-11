@@ -1,5 +1,5 @@
-import sbtcrossproject.CrossPlugin.autoImport.crossProject
-import sbtcrossproject.CrossType
+// shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 val `scala 2.11` = "2.11.11-bin-typelevel-4"
 val `scala 2.12` = "2.12.8"
@@ -315,12 +315,9 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
   )
   .jsSettings(scalaJsTLSSettings: _*)
 
-lazy val circeJVM = circe.jvm
-lazy val circeJS  = circe.js
-
 lazy val laserdisc = project
   .in(file("."))
-  .aggregate(coreJVM, coreJS, fs2, cli, circeJVM, circeJS)
+  .aggregate(coreJVM, coreJS, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
     publishArtifact := false

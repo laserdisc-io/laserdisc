@@ -72,5 +72,5 @@ private[protocol] final class ShowOps[A](private val a: A) extends AnyVal {
 }
 
 trait ShowSyntax {
-  implicit final def toShowSyntax[A](a: A): ShowOps[A] = new ShowOps[A](a)
+  implicit final def toShowOps[A](a: A): ShowOps[A] = new ShowOps[A](a)
 }

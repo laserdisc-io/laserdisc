@@ -7,10 +7,10 @@ object BListPSpec {
 
 final class BListPSpec extends BaseSpec {
 
-  import BListPSpec._
-  import RESP._
   import auto._
+  import BListPSpec._
   import lists.blocking._
+  import RESP._
   import show._
 
   "AllBListP" when {
@@ -51,7 +51,13 @@ final class BListPSpec extends BaseSpec {
             val protocol = blpop[Int](ks, nni)
 
             protocol.encode shouldBe arr((bulk("BLPOP") :: ks.map(k => bulk(k.show))) :+ bulk(nni.show))
-            protocol.decode(arr(bulk(ks.head.show), bulk(i.show))).right.value.value shouldBe KV(ks.head, i)
+            protocol
+              .decode(
+                arr(bulk(ks.headOption.value.show), bulk(i.show))
+              )
+              .right
+              .value
+              .value shouldBe KV(ks.headOption.value, i)
           }
         }
         "given specific read instance" in {

@@ -5,8 +5,8 @@ import eu.timepit.refined.boolean.Not
 import eu.timepit.refined.generic.Equal
 import eu.timepit.refined.scalacheck.reftype.arbitraryRefType
 import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInstances, StringInstances}
-import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Gen.Choose
+import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import shapeless._0

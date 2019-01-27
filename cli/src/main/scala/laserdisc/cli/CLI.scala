@@ -71,7 +71,7 @@ object CLI extends IOApp.WithContext { self =>
       val maybePort = Either.catchNonFatal(arg2.toInt).flatMap(Port.from).toOption
 
       (maybeHost, maybePort) match {
-        case (Some(ip), Some(port)) => IO(println(logo)) *> impl.mkStream(ip, port).compile.drain.as(ExitCode.Success)
+        case (Some(ip), Some(port)) => IO(println(logo)) >> impl.mkStream(ip, port).compile.drain.as(ExitCode.Success)
         case _                      => IO(println("please supply valid host and port (space separated)")).as(ExitCode.Error)
       }
 

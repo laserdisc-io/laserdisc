@@ -1,33 +1,36 @@
 sudo: false
 dist: trusty
+
 language: scala
 scala:
 - 2.12.8
 - 2.11.11-bin-typelevel-4
+
 jdk:
 - oraclejdk8
-addons:
-  apt:
-    packages:
-    - oracle-java8-installer
+
 script:
 - sbt -Dfile.encoding=UTF8 ++$TRAVIS_SCALA_VERSION clean coverage test coverageReport
 after_success:
 - if [[ -n "${TRAVIS_TAG}" && "${TRAVIS_PULL_REQUEST}" = "false" ]]; then sbt ++$TRAVIS_SCALA_VERSION releaseEarly;
   fi
 - bash <(curl -s https://codecov.io/bash)
+
 before_cache:
 - find $HOME/.sbt -name "*.lock" | xargs rm
 - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
+
 cache:
   directories:
   - "$HOME/.coursier"
   - "$HOME/.ivy2/cache"
   - "$HOME/.sbt/boot/"
+
 before_install:
 - if [[ -n "${TRAVIS_TAG}" && "${TRAVIS_PULL_REQUEST}" = "false" ]]; then openssl aes-256-cbc -K $encrypted_d57b5eec735f_key
   -iv $encrypted_d57b5eec735f_iv -in .travis/secrets.tar.enc -out .travis/local.secrets.tar
   -d; tar xv -C .travis -f .travis/local.secrets.tar; fi
+
 env:
   global:
   - secure: Msrzp7tssXc1InD37lu2GXRBEgS9U7SGhS/7Us5GivwWnRrzpYhrGKg77sWYKeDHU5V8544T/1p3lNTeIOixmnwfHplSb8EifgE2QYItdgItwsthyH6kWVaR28WZe4u15Pl/ICGtO1Y41c6mH/LiE5X+4mZnpf66hG8GXcOCaLtTk/HD6ZjufaG8f/IidsV/dLFa4hSay1yvEcOwZhcxeaiKbXsOCwAARSNJ/oJhI4ERTNBgwjDueSbiYZHEf1kVMOH89FTSz9Viimw/hxMmW6Ouh6fAvgz5NRPHvNbNyCT9zxmGkregv8NhQwRzbfdWmhiG/MnpZ/FsxCNazMFPc/48OeUEAiEU/DKsYCy8etq6I2dfJ2AANazMUq0zfWAJzED+lARVl2TvSSuDJkRzGC0z5CsjuEDI40+LVHPsN53ARERygCX7ecmUBjQPdFQnSgYIdYgpGekB1ocXvVA7FKDJ5iFcJauIpGSNZha6kfjS0y49M5I6kjOhZV0c0J0GG8GTqpE/xe0nQhKbHN9Os5aY1WZb+JTYoQ5DrhAPlJcDyaT+5jrbgegowPnQxl5RLU5RT6NA95mo3EDM0xsYy03COl5GwANJcwJDaFkxJNgnmySlh0V5kuyxmdPnBYI4ATEyD3BbnpaN5AM7iNgS+mTbOHlsrqTAGKicHEJg40s=

@@ -6,10 +6,10 @@ import java.nio.channels.AsynchronousChannelGroup
 
 import _root_.fs2._
 import _root_.fs2.io.tcp.Socket
-import cats.Applicative
+import cats.Monad
 import cats.effect.{ConcurrentEffect, ContextShift, Effect}
 import cats.syntax.applicative._
-import cats.syntax.apply._
+import cats.syntax.flatMap._
 import laserdisc.protocol._
 import log.effect.LogWriter
 import scodec.Codec
@@ -38,8 +38,8 @@ object RedisConnection {
 
   private[fs2] final object impl {
 
-    def send[F[_]: Applicative](sink: Pipe[F, Byte, Unit])(implicit log: LogWriter[F]): Pipe[F, RESP, Unit] =
-      _.evalMap(resp => log.debug(s"sending $resp") *> resp.pure)
+    def send[F[_]: Monad](sink: Pipe[F, Byte, Unit])(implicit log: LogWriter[F]): Pipe[F, RESP, Unit] =
+      _.evalMap(resp => log.debug(s"sending $resp") >> resp.pure)
         .through(streamEncoder.encode)
         .flatMap(bits => Stream.chunk(Chunk.array(bits.toByteArray)))
         .through(sink)
@@ -71,7 +71,7 @@ object RedisConnection {
 
       _.through(framing)
         .flatMap(complete => streamDecoder.decode(complete.bits))
-        .evalMap(resp => log.debug(s"receiving $resp") *> resp.pure)
+        .evalMap(resp => log.debug(s"receiving $resp") >> resp.pure)
     }
 
   }

@@ -38,11 +38,11 @@ object RedisConnection {
 
   private[fs2] final object impl {
 
-    def send[F[_]: Applicative](sink: Sink[F, Byte])(implicit log: LogWriter[F]): Sink[F, RESP] =
+    def send[F[_]: Applicative](sink: Pipe[F, Byte, Unit])(implicit log: LogWriter[F]): Pipe[F, RESP, Unit] =
       _.evalMap(resp => log.debug(s"sending $resp") *> resp.pure)
         .through(streamEncoder.encode)
         .flatMap(bits => Stream.chunk(Chunk.array(bits.toByteArray)))
-        .to(sink)
+        .through(sink)
 
     def receive[F[_]: Effect](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
 

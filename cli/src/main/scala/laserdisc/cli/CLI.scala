@@ -89,14 +89,14 @@ object CLI extends IOApp.WithContext { self =>
               val promptStream: Stream[IO, String] = Stream.emit(s"$host:$port> ").repeat
 
               val emptyPrompt: IO[Unit] =
-                promptStream.head.through(text.utf8Encode).to(io.stdout(blockingEC)).compile.drain
+                promptStream.head.through(text.utf8Encode).through(io.stdout(blockingEC)).compile.drain
 
               def prompt(msg: String): IO[Unit] =
                 Stream
                   .emit(msg)
                   .append(promptStream.head)
                   .through(text.utf8Encode)
-                  .to(io.stdout(blockingEC))
+                  .through(io.stdout(blockingEC))
                   .compile
                   .drain
 

@@ -12,6 +12,7 @@ import scodec.codecs.{filtered, fixedSizeBytes}
 import scodec.{Attempt, Codec, DecodeResult, Decoder, Err, SizeBound}
 
 import scala.annotation.tailrec
+import scala.collection.compat.fromCanBuildFrom
 
 /** [[https://redis.io/topics/protocol Redis Protocol Specification]]
   *

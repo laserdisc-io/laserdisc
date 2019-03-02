@@ -15,7 +15,7 @@ val V = new {
   val scalatest         = "3.0.6"
   val `scodec-bits`     = "1.1.9"
   val `scodec-core`     = "1.11.2"
-  val `scodec-stream`   = "1.2.0"
+  val `scodec-stream`   = "1.2.1"
   val shapeless         = "2.3.3"
   val `log-effect-fs2`  = "0.4.4"
 }

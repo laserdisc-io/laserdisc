@@ -3,11 +3,11 @@ package laserdisc.protocol
 import eu.timepit.refined.types.string.NonEmptyString
 import laserdisc.OneOrMore
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, WordSpecLike}
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import scodec.bits.BitVector
 
-final class RESPFrameMixedSpec extends WordSpecLike with Matchers with PropertyChecks {
+final class RESPFrameMixedSpec extends WordSpecLike with Matchers with ScalaCheckPropertyChecks {
 
   "A non empty mixed Frame" when {
 

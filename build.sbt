@@ -6,16 +6,16 @@ val `scala 2.12` = "2.12.8"
 
 val V = new {
   val circe             = "0.11.1"
-  val fs2               = "1.0.3"
+  val fs2               = "1.0.4"
   val `kind-projector`  = "0.9.9"
   val kittens           = "1.2.1"
-  val `log-effect-fs2`  = "0.4.4"
+  val `log-effect-fs2`  = "0.4.5"
   val refined           = "0.9.4"
   val scalacheck        = "1.13.5"
-  val scalatest         = "3.0.5"
+  val scalatest         = "3.0.6"
   val `scodec-bits`     = "1.1.9"
-  val `scodec-core`     = "1.11.2"
-  val `scodec-stream`   = "1.2.0"
+  val `scodec-core`     = "1.11.3"
+  val `scodec-stream`   = "1.2.1"
   val shapeless         = "2.3.3"
 }
 

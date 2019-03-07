@@ -6,8 +6,8 @@ import java.nio.charset.StandardCharsets.UTF_8
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.{chooseNum, listOfN, option, oneOf => genOneOf}
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.prop.PropertyChecks
 import org.scalatest.{EitherValues, MustMatchers, WordSpec}
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import scodec.bits.BitVector
 import scodec.{Codec, Err}
 
@@ -56,9 +56,9 @@ object RESPCodecsSpec extends EitherValues {
   }
 }
 
-final class RESPCodecsSpec extends WordSpec with MustMatchers with PropertyChecks with EitherValues {
-  import RESPCodecsSpec._
+final class RESPCodecsSpec extends WordSpec with MustMatchers with ScalaCheckPropertyChecks with EitherValues {
   import RESP._
+  import RESPCodecsSpec._
 
   private[this] val smallListSize = chooseNum(0, 20)
   private[this] implicit def invalidProtocolDiscriminator: Gen[InvalidDiscriminator] = {

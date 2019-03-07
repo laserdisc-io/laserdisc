@@ -6,7 +6,7 @@ val `scala 212` = "2.12.8"
 
 val V = new {
   val circe             = "0.11.1"
-  val fs2               = "1.0.3"
+  val fs2               = "1.0.4"
   val `kind-projector`  = "0.9.9"
   val kittens           = "1.2.1"
   val refined           = "0.9.4"

@@ -7,8 +7,8 @@ import eu.timepit.refined.scalacheck.reftype.arbitraryRefType
 import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInstances, StringInstances}
 import org.scalacheck.Gen.Choose
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import shapeless._0
 
 abstract class BaseSpec
@@ -16,7 +16,7 @@ abstract class BaseSpec
     with Matchers
     with EitherValues
     with OptionValues
-    with GeneratorDrivenPropertyChecks
+    with ScalaCheckPropertyChecks
     with CollectionInstancesBinCompat1
     with NumericInstances
     with StringInstances {

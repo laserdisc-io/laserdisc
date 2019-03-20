@@ -16,7 +16,6 @@ object ListP {
 
 trait ListP {
   import ListP.Position
-  import Read.==>
   import shapeless._
 
   private[this] final val minusOneIsNone = RESPRead.instance(Read.integerMinusOneIsNone[PosInt])

@@ -2,7 +2,6 @@ package laserdisc
 package protocol
 
 trait SetP {
-  import Read.==>
   import shapeless._
 
   private[this] final val zeroIsNone = RESPRead.instance(Read.integerZeroIsNone[PosInt])

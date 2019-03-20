@@ -2,8 +2,6 @@ package laserdisc
 package protocol
 
 trait ConnectionP {
-  import Read.==>
-
   private[this] implicit final val pongRead: SimpleString ==> PONG = Read.instancePF {
     case SimpleString("PONG") => PONG
   }

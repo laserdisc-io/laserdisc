@@ -131,7 +131,6 @@ object SortedSetP {
 
 trait SortedSetP {
   import SortedSetP.{Aggregate, Flag, LexRange, ScoreRange}
-  import Read.==>
   import auto._
   import shapeless._
 
@@ -145,7 +144,7 @@ trait SortedSetP {
   }
 
   final def zadd[A: Show](key: Key, scoredMembers: OneOrMore[(A, ValidDouble)]): Protocol.Aux[NonNegInt] =
-    Protocol("ZADD", key :: scoredMembers.value.map(_.swap) :: HNil).as[Integer, NonNegInt]
+    Protocol("ZADD", key :: scoredMembers.map(_.swap) :: HNil).as[Integer, NonNegInt]
 
   final def zadd[A: Show](key: Key, flag: Flag, scoredMembers: OneOrMore[(A, ValidDouble)]): Protocol.Aux[NonNegInt] =
     Protocol("ZADD", key :: flag :: scoredMembers.map(_.swap) :: HNil).as[Integer, NonNegInt]

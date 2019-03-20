@@ -2,19 +2,6 @@ package laserdisc
 package protocol
 
 object KeyP {
-  import Read.==>
-
-  sealed trait Direction
-  final object Direction {
-    final object asc  extends Direction
-    final object desc extends Direction
-
-    implicit val directionShow: Show[Direction] = Show.instance {
-      case `asc`  => "ASC"
-      case `desc` => "DESC"
-    }
-  }
-
   sealed trait Encoding
   object Encoding {
     final case object raw        extends Encoding
@@ -60,8 +47,7 @@ object KeyP {
 }
 
 trait KeyP {
-  import KeyP.{Direction, Encoding, Type, TTLResponse}
-  import Read.==>
+  import KeyP.{Encoding, Type, TTLResponse}
   import shapeless._
 
   private[this] implicit final val simpleString2NOKEYOrOK: SimpleString ==> (NOKEY | OK) = Read.instancePF {

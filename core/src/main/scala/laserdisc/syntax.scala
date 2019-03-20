@@ -1,6 +1,7 @@
 package laserdisc
 
 object connection  extends protocol.ConnectionP
+object geo         extends protocol.AllGeoP
 object hashmaps    extends protocol.AllHashP
 object hyperloglog extends protocol.AllHyperLogLogP
 object keys        extends protocol.AllKeyP
@@ -14,6 +15,7 @@ object strings     extends protocol.AllStringP
 
 object all
     extends protocol.ConnectionP
+    with protocol.AllGeoP
     with protocol.AllHashP
     with protocol.AllHyperLogLogP
     with protocol.AllKeyP

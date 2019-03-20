@@ -8,6 +8,7 @@ import eu.timepit.refined.char.Whitespace
 import eu.timepit.refined.collection.{Forall, MinSize, NonEmpty}
 import eu.timepit.refined.generic.Equal
 import eu.timepit.refined.numeric.Interval.{Closed => ClosedInterval}
+import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.string.{IPv4, MatchesRegex}
 import eu.timepit.refined.types.net.PrivateNetworks._
 import shapeless._
@@ -18,10 +19,10 @@ package object laserdisc {
   type |[A, B] = Either[A, B]
 
   //type forwarders
-  final type Protocol   = protocol.Protocol
-  final type Read[A, B] = protocol.Read[A, B]
-  final type RESP       = protocol.RESP
-  final type Show[A]    = protocol.Show[A]
+  final type Protocol  = protocol.Protocol
+  final type ==>[A, B] = protocol.Read[A, B]
+  final type RESP      = protocol.RESP
+  final type Show[A]   = protocol.Show[A]
 
   final type OK    = String Refined Equal[W.`"OK"`.T]
   final type NOKEY = String Refined Equal[W.`"NOKEY"`.T]
@@ -67,10 +68,14 @@ package object laserdisc {
   //new types
   final type ConnectionName = String Refined (NonEmpty And Forall[Not[Whitespace]])
   final type DbIndex        = Int Refined ClosedInterval[_0, _15]
+  final type GeoHash        = String Refined MatchesRegex[W.`"[a-z0-9]{11}"`.T]
   final type GlobPattern    = String Refined MatchesRegex[W.`"(\\\\[?[\\\\w\\\\*\\\\?]+\\\\]?)+"`.T] //TODO good enough but needs regex' TLC
   final type Host =
     String Refined (RFC1123HostName Or Loopback Or Rfc1918PrivateSpec Or Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec)
   final type Index                 = Long Refined True
+  final type Latitude              = Double Refined ClosedInterval[W.`-85.05112878D`.T, W.`85.05112878D`.T]
+  final type Longitude             = Double Refined ClosedInterval[W.`-180.0D`.T, W.`180.0D`.T]
+  final type NonNegDouble          = Double Refined (NonNaN And Positive)
   final type NonZeroDouble         = Double Refined (NonNaN And NonZero)
   final type NonZeroInt            = Int Refined NonZero
   final type NonZeroLong           = Long Refined NonZero
@@ -93,9 +98,13 @@ package object laserdisc {
 
   final object ConnectionName        extends RefinedTypeOps[ConnectionName, String]
   final object DbIndex               extends RefinedTypeOps[DbIndex, Int]
+  final object GeoHash               extends RefinedTypeOps[GeoHash, String]
   final object GlobPattern           extends RefinedTypeOps[GlobPattern, String]
   final object Host                  extends RefinedTypeOps[Host, String]
   final object Index                 extends RefinedTypeOps[Index, Long]
+  final object Latitude              extends RefinedTypeOps[Latitude, Double]
+  final object Longitude             extends RefinedTypeOps[Longitude, Double]
+  final object NonNegDouble          extends RefinedTypeOps[NonNegDouble, Double]
   final object NonZeroDouble         extends RefinedTypeOps[NonZeroDouble, Double]
   final object NonZeroInt            extends RefinedTypeOps[NonZeroInt, Int]
   final object NonZeroLong           extends RefinedTypeOps[NonZeroLong, Long]

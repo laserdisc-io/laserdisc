@@ -21,7 +21,6 @@ You should not need to define one manually, as one will be derived for you autom
 }
 
 object RESPRead {
-  import Read.==>
   import RESP._
 
   final type Aux[Sub0, A] = RESPRead[A] { type Sub = Sub0 }

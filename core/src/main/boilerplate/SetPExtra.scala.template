@@ -2,7 +2,6 @@ package laserdisc
 package protocol
 
 trait SetPExtra { this: SetP =>
-  import Read.==>
   import eu.timepit.refined.api.RefinedType
 
   //SADD

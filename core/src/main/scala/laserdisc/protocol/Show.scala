@@ -54,6 +54,8 @@ private[protocol] sealed trait ShowInstances {
   implicit final val hostShow: Show[Host]                     = Show.unsafeFromToString
   implicit final val indexShow: Show[Index]                   = Show.unsafeFromToString
   implicit final val keyShow: Show[Key]                       = Show.unsafeFromToString
+  implicit final val latitudeShow: Show[Latitude]             = Show.unsafeFromToString
+  implicit final val longitudeShow: Show[Longitude]           = Show.unsafeFromToString
   implicit final val nonNegIntShow: Show[NonNegInt]           = Show.unsafeFromToString
   implicit final val nonNegLongShow: Show[NonNegLong]         = Show.unsafeFromToString
   implicit final val nonZeroDoubleShow: Show[NonZeroDouble]   = Show.instance(refinedDoubleCases)

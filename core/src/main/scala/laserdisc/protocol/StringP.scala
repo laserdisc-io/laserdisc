@@ -2,8 +2,6 @@ package laserdisc
 package protocol
 
 object StringP {
-  import Read.==>
-
   sealed trait Bit
   final object Bit {
     final object set   extends Bit
@@ -75,7 +73,6 @@ object StringP {
 
 trait StringP {
   import StringP.{Bit, Bitwise, Expiry, Flag, PartiallyAppliedGetSet}
-  import Read.==>
   import shapeless._
   import shapeless.labelled.FieldType
   import shapeless.nat._

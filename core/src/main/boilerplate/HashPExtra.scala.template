@@ -2,7 +2,6 @@ package laserdisc
 package protocol
 
 trait HashPExtra { this: HashP =>
-  import Read.==>
   import shapeless._
 
   //HDEL

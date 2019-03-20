@@ -87,7 +87,7 @@ final class HashPSpec extends BaseSpec {
           protocol.decode(bulk(s)).right.value.value shouldBe bulk(s)
         }
         "given specific read instance" in {
-          implicit val fooRead: Read[NonNullBulkString, Foo] = Read.instancePF {
+          implicit val fooRead: NonNullBulkString ==> Foo = Read.instancePF {
             case NonNullBulkString(ToInt(x)) => Foo(x)
           }
           forAll { (k: Key, f: Key, i: Int) =>

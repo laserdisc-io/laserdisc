@@ -2,7 +2,6 @@ package laserdisc
 package protocol
 
 trait HashP {
-  import Read.==>
   import shapeless._
   import shapeless.labelled.FieldType
   import shapeless.nat._1

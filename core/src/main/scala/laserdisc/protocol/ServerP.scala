@@ -2,8 +2,6 @@ package laserdisc
 package protocol
 
 object ServerP {
-  import Read.==>
-
   import scala.language.dynamics
 
   sealed trait InfoSection

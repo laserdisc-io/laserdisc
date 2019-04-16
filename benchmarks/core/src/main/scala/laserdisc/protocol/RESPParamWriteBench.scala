@@ -1,4 +1,5 @@
-package laserdisc.protocol
+package laserdisc
+package protocol
 
 import org.openjdk.jmh.annotations.{Benchmark, Scope, State}
 import shapeless._

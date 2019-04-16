@@ -51,12 +51,11 @@ object Read extends ReadInstances0 {
     case Inl(_)                    => None
   }
 
-  final def integerMinusOneIsNone[A](
-      implicit ev: Read[Integer, A]
-  ): Read[Integer :+: CNil, Option[A]] = lift2OptionWhen(_.value == -1L)
-  final def integerZeroIsNone[A](
-      implicit ev: Read[Integer, A]
-  ): Read[Integer :+: CNil, Option[A]] = lift2OptionWhen(_.value == 0L)
+  final def integerMinusOneIsNone[A: Read[Integer, ?]]: Read[Integer :+: CNil, Option[A]] =
+    lift2OptionWhen(_.value == -1L)
+
+  final def integerZeroIsNone[A: Read[Integer, ?]]: Read[Integer :+: CNil, Option[A]] =
+    lift2OptionWhen(_.value == 0L)
 }
 
 trait ReadInstances0 extends ReadInstances1 {

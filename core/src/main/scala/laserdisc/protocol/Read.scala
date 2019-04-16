@@ -36,7 +36,7 @@ Note 2: make sure to inspect the combinators as you may be able to leverage some
   final def unapply(a: A): Option[B] = read(a)
 }
 
-object Read extends LowPriorityReadInstances {
+object Read extends ReadInstances0 {
   @inline final def apply[A, B](implicit instance: Read[A, B]): Read[A, B] = instance
 
   final def instance[A, B](f: A => Option[B]): Read[A, B] = new Read[A, B] {
@@ -57,11 +57,13 @@ object Read extends LowPriorityReadInstances {
   final def integerZeroIsNone[A](
       implicit ev: Read[Integer, A]
   ): Read[Integer :+: CNil, Option[A]] = lift2OptionWhen(_.value == 0L)
-
-  implicit final def identity[A]: Read[A, A] = instance(Some(_))
 }
 
-trait LowPriorityReadInstances extends LowerPriorityReadInstances {
+trait ReadInstances0 extends ReadInstances1 {
+  implicit final def identity[A]: Read[A, A] = Read.instance(Some(_))
+}
+
+trait ReadInstances1 extends ReadInstances2 {
   implicit final val simpleString2StringRead: Read[SimpleString, String] = Read.instance {
     case SimpleString(s) => Some(s)
   }
@@ -300,7 +302,7 @@ trait LowPriorityReadInstances extends LowerPriorityReadInstances {
   }
 }
 
-sealed trait LowerPriorityReadInstances {
+sealed trait ReadInstances2 {
   implicit final def liftNonNullBulkString2Option[A, B](
       implicit R: Read[A, B]
   ): Read[NullBulkString :+: A :+: CNil, Option[B]] = Read.instancePF {

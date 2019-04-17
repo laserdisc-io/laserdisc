@@ -496,9 +496,9 @@ sealed trait RESPFunctions { this: RESPCodecs =>
     )
 
   @tailrec private[this] final def stateOfArray(
-    stillMissing: Long,
-    remainder: BitVector,
-    soFar: BitVector
+      stillMissing: Long,
+      remainder: BitVector,
+      soFar: BitVector
   ): String | BitVectorState =
     stillMissing match {
       case 0L =>

@@ -213,8 +213,7 @@ object RedisClient {
                   }
                 }
 
-            def runner(knownServer: Stream[F, Option[RedisAddress]],
-                       lastFailedServer: Option[RedisAddress] = None): Stream[F, Unit] =
+            def runner(knownServer: Stream[F, Option[RedisAddress]], lastFailedServer: Option[RedisAddress] = None): Stream[F, Unit] =
               knownServer.flatMap {
                 case None =>
                   serverUnavailable.flatMap(address => runner(Stream.emit(Some(address))))

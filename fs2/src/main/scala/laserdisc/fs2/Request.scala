@@ -8,8 +8,9 @@ sealed trait Request[F[_]] {
 }
 
 object Request {
-  sealed abstract case class Req[F[_], A0](protocol: Protocol.Aux[A0], callback: Maybe[A0] => F[Unit])
-      extends Request[F] { override type A = A0 }
+  sealed abstract case class Req[F[_], A0](protocol: Protocol.Aux[A0], callback: Maybe[A0] => F[Unit]) extends Request[F] {
+    override type A = A0
+  }
 
   def apply[F[_], A](protocol: Protocol.Aux[A], callback: Maybe[A] => F[Unit]): Request[F] =
     new Req[F, A](protocol, callback) {}

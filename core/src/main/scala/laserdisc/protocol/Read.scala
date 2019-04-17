@@ -64,45 +64,22 @@ trait ReadInstances0 extends ReadInstances1 {
 
 trait ReadInstances1 extends ReadInstances2 {
   implicit final val simpleString2StringRead: Read[SimpleString, String] = Read.instance(s => Some(s.value))
-  implicit final val simpleString2OKRead: Read[SimpleString, OK] = Read.instancePF {
-    case SimpleString("OK") => OK
-  }
-  implicit final val simpleString2KeyRead: Read[SimpleString, Key] = Read.instancePF {
-    case SimpleString(Key(s)) => s
-  }
+  implicit final val simpleString2OKRead: Read[SimpleString, OK]         = Read.instancePF { case SimpleString("OK") => OK }
+  implicit final val simpleString2KeyRead: Read[SimpleString, Key]       = Read.instancePF { case SimpleString(Key(s)) => s }
 
   implicit final val integer2BooleanRead: Read[Integer, Boolean] = Read.instancePF {
-    case Integer(0L) => false
-    case Integer(1L) => true
+    case Integer(0L) => false; case Integer(1L) => true
   }
-  implicit final val integer2IntRead: Read[Integer, Int] = Read.instancePF { //TODO: maybe useless
-    case Integer(ToInt(i)) => i
-  }
-  implicit final val integer2LongRead: Read[Integer, Long] = Read.instancePF {
-    case Integer(l) => l
-  }
-  implicit final val integer2NonNegIntRead: Read[Integer, NonNegInt] = Read.instancePF {
-    case Integer(ToInt(NonNegInt(i))) => i
-  }
-  implicit final val integer2NonNegLongRead: Read[Integer, NonNegLong] = Read.instancePF {
-    case Integer(NonNegLong(l)) => l
-  }
-  implicit final val integer2NonZeroIntRead: Read[Integer, NonZeroInt] = Read.instancePF {
-    case Integer(ToInt(NonZeroInt(i))) => i
-  }
-  implicit final val integer2NonZeroLongRead: Read[Integer, NonZeroLong] = Read.instancePF {
-    case Integer(NonZeroLong(l)) => l
-  }
-  implicit final val integer2PosIntRead: Read[Integer, PosInt] = Read.instancePF {
-    case Integer(ToInt(PosInt(i))) => i
-  }
-  implicit final val integer2PosLongRead: Read[Integer, PosLong] = Read.instancePF {
-    case Integer(PosLong(l)) => l
-  }
+  implicit final val integer2IntRead: Read[Integer, Int]                 = Read.instancePF { case Integer(ToInt(i))             => i }
+  implicit final val integer2LongRead: Read[Integer, Long]               = Read.instancePF { case Integer(l)                    => l }
+  implicit final val integer2NonNegIntRead: Read[Integer, NonNegInt]     = Read.instancePF { case Integer(ToInt(NonNegInt(i)))  => i }
+  implicit final val integer2NonNegLongRead: Read[Integer, NonNegLong]   = Read.instancePF { case Integer(NonNegLong(l))        => l }
+  implicit final val integer2NonZeroIntRead: Read[Integer, NonZeroInt]   = Read.instancePF { case Integer(ToInt(NonZeroInt(i))) => i }
+  implicit final val integer2NonZeroLongRead: Read[Integer, NonZeroLong] = Read.instancePF { case Integer(NonZeroLong(l))       => l }
+  implicit final val integer2PosIntRead: Read[Integer, PosInt]           = Read.instancePF { case Integer(ToInt(PosInt(i)))     => i }
+  implicit final val integer2PosLongRead: Read[Integer, PosLong]         = Read.instancePF { case Integer(PosLong(l))           => l }
 
-  implicit final val nonNullBulkString2StringRead: Read[NonNullBulkString, String] = Read.instance {
-    case NonNullBulkString(s) => Some(s)
-  }
+  implicit final val nonNullBulkString2StringRead: Read[NonNullBulkString, String] = Read.instance { case NonNullBulkString(s) => Some(s) }
   implicit final val nonNullBulkString2DoubleRead: Read[NonNullBulkString, Double] = Read.instancePF {
     case NonNullBulkString(ToDouble(d)) => d
   }
@@ -241,7 +218,7 @@ trait ReadInstances1 extends ReadInstances2 {
   implicit final val nonNilArray2Coordinates: Read[NonNilArray, Coordinates] = Read.instancePF {
     case NonNilArray(
         NonNullBulkString(ToDouble(Longitude(long))) +: NonNullBulkString(ToDouble(Latitude(lat))) +: Seq()
-    ) =>
+        ) =>
       Coordinates(lat, long)
   }
   implicit final val nonNilArray2Map: Read[NonNilArray, Map[Key, String]] = Read.instance {

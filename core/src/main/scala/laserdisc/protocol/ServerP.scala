@@ -67,8 +67,7 @@ object ServerP {
 
     implicit val roleRead: NonNilArray ==> Role = {
       val ClientRead: NonNilArray ==> Client = Read.instancePF {
-        case NonNilArray(
-            NonNullBulkString(Host(host)) +: NonNullBulkString(ToInt(Port(port))) +: NonNullBulkString(
+        case NonNilArray(NonNullBulkString(Host(host)) +: NonNullBulkString(ToInt(Port(port))) +: NonNullBulkString(
               ToLong(NonNegLong(offset))) +: Seq()) =>
           Client(host, port, offset)
       }
@@ -86,8 +85,7 @@ object ServerP {
             case ((vl, acc), _)                        => (vl + 1) -> acc
           }
           if (vLength == clientsLength) Some(Master(offset, clients.reverse)) else None
-        case NonNilArray(
-            NonNullBulkString("slave") +: NonNullBulkString(Host(host)) +: Integer(ToInt(Port(port))) +: ReplicaStatusRead(
+        case NonNilArray(NonNullBulkString("slave") +: NonNullBulkString(Host(host)) +: Integer(ToInt(Port(port))) +: ReplicaStatusRead(
               replicaStatus) +: Integer(NonNegLong(offset)) +: Seq()) =>
           Some(Slave(host, port, replicaStatus, offset))
         case NonNilArray(NonNullBulkString("sentinel") +: MastersRead(masters) +: Seq()) =>

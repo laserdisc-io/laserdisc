@@ -24,23 +24,25 @@ sealed trait RESPFrame extends Product with Serializable with EitherSyntax with 
   @tailrec
   private[this] final def consumeRemainder(current: String | MoreThanOneFrame): String | MoreThanOneFrame =
     current match {
-      case Left(e)  => e.asLeft
-      case Right(s) => RESP.stateOf(s.remainder) match {
-        case Left(ee)  => ee.asLeft
-        case Right(rs) => rs match {
+      case Left(e) => e.asLeft
+      case Right(s) =>
+        RESP.stateOf(s.remainder) match {
+          case Left(ee) => ee.asLeft
+          case Right(rs) =>
+            rs match {
 
-          case CompleteWithRemainder(c, r) =>
-            consumeRemainder(
-              MoreThanOneFrame(CompleteFrame(c) :: s.invertedComplete, r).asRight
-            )
+              case CompleteWithRemainder(c, r) =>
+                consumeRemainder(
+                  MoreThanOneFrame(CompleteFrame(c) :: s.invertedComplete, r).asRight
+                )
 
-          case Complete =>
-            MoreThanOneFrame(CompleteFrame(s.remainder) :: s.invertedComplete, BitVector.empty).asRight
+              case Complete =>
+                MoreThanOneFrame(CompleteFrame(s.remainder) :: s.invertedComplete, BitVector.empty).asRight
 
-          case MissingBits(_) | Incomplete =>
-            s.asRight
+              case MissingBits(_) | Incomplete =>
+                s.asRight
+            }
         }
-      }
     }
 }
 
@@ -49,7 +51,9 @@ private[protocol] sealed trait NonEmptyRESPFrame extends Product with Serializab
 case object EmptyFrame extends RESPFrame
 
 final case class CompleteFrame(bits: BitVector) extends RESPFrame with NonEmptyRESPFrame
-final case class MoreThanOneFrame(private[protocol] val invertedComplete: List[CompleteFrame], remainder: BitVector) extends RESPFrame with NonEmptyRESPFrame {
+final case class MoreThanOneFrame(private[protocol] val invertedComplete: List[CompleteFrame], remainder: BitVector)
+    extends RESPFrame
+    with NonEmptyRESPFrame {
   def complete: Vector[CompleteFrame] =
     invertedComplete.foldRight(Vector.empty[CompleteFrame])((c, v) => v :+ c)
 }

@@ -63,9 +63,7 @@ trait ReadInstances0 extends ReadInstances1 {
 }
 
 trait ReadInstances1 extends ReadInstances2 {
-  implicit final val simpleString2StringRead: Read[SimpleString, String] = Read.instance {
-    case SimpleString(s) => Some(s)
-  }
+  implicit final val simpleString2StringRead: Read[SimpleString, String] = Read.instance(s => Some(s.value))
   implicit final val simpleString2OKRead: Read[SimpleString, OK] = Read.instancePF {
     case SimpleString("OK") => OK
   }

@@ -6,7 +6,7 @@ import shapeless._
 
 @State(Scope.Benchmark)
 class ProtocolBench {
-  private final val protocol = Protocol("CUSTOM", _: Int :: String :: Long :: Double :: HNil).as[SimpleString, OK]
+  private final val protocol = Protocol("CUSTOM", _: Int :: String :: Long :: Double :: HNil).as[Str, OK]
 
   private final val request  = 0 :: "a" :: 1L :: 2.0d :: HNil
   private final val response = RESP.str("OK")

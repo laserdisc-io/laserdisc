@@ -12,7 +12,7 @@ trait StringPExtra { this: StringP =>
 
   //MGET
   [#final def mget[A]([#key1: Key#])(
-      implicit ev: NonNilArray ==> A
+      implicit ev: Arr ==> A
   ): Protocol.Aux[A] =
     mget[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil))#
   ]

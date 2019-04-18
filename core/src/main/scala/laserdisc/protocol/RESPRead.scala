@@ -27,23 +27,23 @@ object RESPRead {
   final def apply[Sub, A](implicit instance: RESPRead.Aux[Sub, A]): RESPRead.Aux[Sub, A] = instance
 
   private[this] final type RESPCoproduct =
-    SimpleString :+: Error :+: Integer :+: NullBulkString :+: NonNullBulkString :+: NilArray :+: NonNilArray :+: CNil
+    Str :+: Err :+: Num :+: NullBulk :+: Bulk :+: NilArr :+: Arr :+: CNil
 
   private[this] implicit val respInject: Inject[RESPCoproduct, RESP] = new Inject[RESPCoproduct, RESP] {
     override def apply(resp: RESP): RESPCoproduct = resp match {
-      case simpleString: SimpleString           => Inl(simpleString)
-      case error: Error                         => Inr(Inl(error))
-      case integer: Integer                     => Inr(Inr(Inl(integer)))
-      case NullBulkString                       => Inr(Inr(Inr(Inl(nullBulk))))
-      case nonNullBulkString: NonNullBulkString => Inr(Inr(Inr(Inr(Inl(nonNullBulkString)))))
-      case NilArray                             => Inr(Inr(Inr(Inr(Inr(Inl(nilArray))))))
-      case nonEmptyArray: NonNilArray           => Inr(Inr(Inr(Inr(Inr(Inr(Inl(nonEmptyArray)))))))
+      case str: Str   => Inl(str)
+      case err: Err   => Inr(Inl(err))
+      case num: Num   => Inr(Inr(Inl(num)))
+      case NullBulk   => Inr(Inr(Inr(Inl(nullBulk))))
+      case bulk: Bulk => Inr(Inr(Inr(Inr(Inl(bulk)))))
+      case NilArr     => Inr(Inr(Inr(Inr(Inr(Inl(nilArr))))))
+      case arr: Arr   => Inr(Inr(Inr(Inr(Inr(Inr(Inl(arr)))))))
     }
   }
 
   sealed abstract class DefaultRESPRead[A <: Coproduct, B, Rest <: Coproduct](R: A ==> B)(
       implicit ev0: Basis.Aux[RESPCoproduct, A, Rest],
-      ev1: Selector[Rest, Error]
+      ev1: Selector[Rest, Err]
   ) extends RESPRead[B] {
     override final type Sub = A
     override def read(resp: RESP): Maybe[B] = Coproduct[RESPCoproduct](resp).deembed match {
@@ -51,18 +51,18 @@ object RESPRead {
       case Right(_) =>
         Left(err(s"RESP type(s) matched but failed to deserialize correctly: $resp")).widenLeft[Throwable]
       case Left(rest) =>
-        rest.select[Error].fold(Left(err(s"RESP type(s) did not match: $resp")))(Left(_)).widenLeft[Throwable]
+        rest.select[Err].fold(Left(err(s"RESP type(s) did not match: $resp")))(Left(_)).widenLeft[Throwable]
     }
   }
 
   final def instance[A <: Coproduct, B, Rest <: Coproduct](R: A ==> B)(
       implicit ev0: Basis.Aux[RESPCoproduct, A, Rest],
-      ev1: Selector[Rest, Error]
+      ev1: Selector[Rest, Err]
   ): RESPRead.Aux[A, B] = new DefaultRESPRead(R) {}
 
   implicit final def derive[A <: Coproduct, B, Rest <: Coproduct](
       implicit R: A ==> B,
       basis: Basis.Aux[RESPCoproduct, A, Rest],
-      selector: Selector[Rest, Error]
+      selector: Selector[Rest, Err]
   ): RESPRead.Aux[A, B] = new DefaultRESPRead(R) {}
 }

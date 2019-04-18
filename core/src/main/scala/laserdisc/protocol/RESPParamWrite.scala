@@ -15,17 +15,17 @@ Normally you would not need to define one manually, as one will be derived for y
 """
 ) trait RESPParamWrite[A] {
 
-  def write(a: A): Seq[BulkString]
+  def write(a: A): Seq[GenBulk]
 }
 
 object RESPParamWrite extends RESPParamWriteInstances {
   @inline final def apply[A](implicit instance: RESPParamWrite[A]): RESPParamWrite[A] = instance
 
-  final def const[A](thunk: => Seq[BulkString]): RESPParamWrite[A] = new RESPParamWrite[A] {
-    override def write(a: A): Seq[BulkString] = thunk
+  final def const[A](thunk: => Seq[GenBulk]): RESPParamWrite[A] = new RESPParamWrite[A] {
+    override def write(a: A): Seq[GenBulk] = thunk
   }
-  final def instance[A](f: A => Seq[BulkString]): RESPParamWrite[A] = new RESPParamWrite[A] {
-    override def write(a: A): Seq[BulkString] = f(a)
+  final def instance[A](f: A => Seq[GenBulk]): RESPParamWrite[A] = new RESPParamWrite[A] {
+    override def write(a: A): Seq[GenBulk] = f(a)
   }
 }
 

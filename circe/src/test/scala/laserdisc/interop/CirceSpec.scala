@@ -4,7 +4,7 @@ package interop
 import io.circe.generic.semiauto._
 import io.circe.{Decoder, Encoder}
 import laserdisc.interop.circe._
-import laserdisc.protocol.NonNullBulkString
+import laserdisc.protocol.Bulk
 import laserdisc.protocol.RESP.bulk
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.{MustMatchers, OptionValues, WordSpec}
@@ -42,25 +42,25 @@ final class CirceSpec extends WordSpec with MustMatchers with ScalaCheckProperty
 
     "handling a simple type" must {
       "round-trip with no errors" in forAll { bar: Bar =>
-        Read[NonNullBulkString, Bar].read(bulk(Show[Bar].show(bar))).value mustBe bar
+        Read[Bulk, Bar].read(bulk(Show[Bar].show(bar))).value mustBe bar
       }
     }
 
     "handling a recursive type" must {
       "round-trip with no errors" in forAll { baz: Baz =>
-        Read[NonNullBulkString, Baz].read(bulk(Show[Baz].show(baz))).value mustBe baz
+        Read[Bulk, Baz].read(bulk(Show[Baz].show(baz))).value mustBe baz
       }
     }
 
     "handling a json that does not respect the contract" must {
       "fail to decode" in {
-        Read[NonNullBulkString, Bar].read(bulk("""{"i": null}"""))
+        Read[Bulk, Bar].read(bulk("""{"i": null}"""))
       }
     }
 
     "handling an invalid json" must {
       "fail to decode" in {
-        Read[NonNullBulkString, Bar].read(bulk("{"))
+        Read[Bulk, Bar].read(bulk("{"))
       }
     }
   }

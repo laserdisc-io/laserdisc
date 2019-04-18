@@ -69,7 +69,7 @@ Support for existing libraries is available via dedicated dependencies.
 #### [Circe](https://circe.github.io/circe/)
 
 When an `io.circe.Decoder[A]` and a `io.circe.Encoder[A]` are implicilty available,
-instances of `Show[A]` and `Read[NonNullBulkString, A]` can be derived for free,
+instances of `Show[A]` and `Read[Bulk, A]` can be derived for free,
 just add the following in your `build.sbt`:
 
 ```
@@ -136,10 +136,10 @@ This should produce an output similar to the following one:
 [info] Running Main
 [info] - [ForkJoinPool-3-worker-2] Starting connection
 [info] - [ForkJoinPool-3-worker-2] Server available for publishing: localhost:6379
-[debug] - [ForkJoinPool-3-worker-5] sending Array(BulkString(SET),BulkString(a),BulkString(23))
-[debug] - [ForkJoinPool-3-worker-0] receiving SimpleString(OK)
-[debug] - [ForkJoinPool-3-worker-1] sending Array(BulkString(GET),BulkString(a))
-[debug] - [ForkJoinPool-3-worker-5] receiving BulkString(23)
+[debug] - [ForkJoinPool-3-worker-5] sending Arr(Bulk(SET),Bulk(a),Bulk(23))
+[debug] - [ForkJoinPool-3-worker-0] receiving Str(OK)
+[debug] - [ForkJoinPool-3-worker-1] sending Arr(Bulk(GET),Bulk(a))
+[debug] - [ForkJoinPool-3-worker-5] receiving Bulk(23)
 [info] - [ForkJoinPool-3-worker-2] yay!
 [info] - [ForkJoinPool-3-worker-2] Shutting down connection
 [info] - [ForkJoinPool-3-worker-0] Connection terminated: Right(())

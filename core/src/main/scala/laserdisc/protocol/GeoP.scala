@@ -31,21 +31,21 @@ trait GeoP {
 
   final def geoadd(key: Key, positions: OneOrMore[Position]): Protocol.Aux[NonNegInt] =
     Protocol("GEOADD", key :: positions.map(p => (p.longitude -> p.latitude) -> p.member) :: HNil)
-      .as[Integer, NonNegInt]
+      .as[Num, NonNegInt]
 
   final def geodist(key: Key, member1: Key, member2: Key): Protocol.Aux[Option[ValidDouble]] =
     Protocol("GEODIST", key :: member1 :: member2 :: HNil)
-      .asC[NullBulkString :+: NonNullBulkString :+: CNil, Option[ValidDouble]]
+      .asC[NullBulk :+: Bulk :+: CNil, Option[ValidDouble]]
 
   final def geodist(key: Key, member1: Key, member2: Key, unit: geos.Unit): Protocol.Aux[Option[ValidDouble]] =
     Protocol("GEODIST", key :: member1 :: member2 :: unit :: HNil)
-      .asC[NullBulkString :+: NonNullBulkString :+: CNil, Option[ValidDouble]]
+      .asC[NullBulk :+: Bulk :+: CNil, Option[ValidDouble]]
 
   final def geohash(key: Key, members: OneOrMoreKeys): Protocol.Aux[Seq[Option[GeoHash]]] =
-    Protocol("GEOHASH", key :: members).as[NonNilArray, Seq[Option[GeoHash]]]
+    Protocol("GEOHASH", key :: members).as[Arr, Seq[Option[GeoHash]]]
 
   final def geopos(key: Key, members: OneOrMoreKeys): Protocol.Aux[Seq[Option[Coordinates]]] =
-    Protocol("GEOPOS", key :: members).as[NonNilArray, Seq[Option[Coordinates]]]
+    Protocol("GEOPOS", key :: members).as[Arr, Seq[Option[Coordinates]]]
 
   final def georadius(
       key: Key,
@@ -54,7 +54,7 @@ trait GeoP {
       unit: geos.Unit
   ): Protocol.Aux[Seq[Key]] =
     Protocol("GEORADIUS", key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: HNil)
-      .as[NonNilArray, Seq[Key]]
+      .as[Arr, Seq[Key]]
 
   final def georadius(
       key: Key,
@@ -66,7 +66,7 @@ trait GeoP {
     Protocol(
       "GEORADIUS",
       key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: HNil
-    ).as[NonNilArray, Seq[Key]]
+    ).as[Arr, Seq[Key]]
 
   final def georadius(
       key: Key,
@@ -76,7 +76,7 @@ trait GeoP {
       sort: Direction
   ): Protocol.Aux[Seq[Key]] =
     Protocol("GEORADIUS", key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: sort :: HNil)
-      .as[NonNilArray, Seq[Key]]
+      .as[Arr, Seq[Key]]
 
   final def georadius(
       key: Key,
@@ -89,7 +89,7 @@ trait GeoP {
     Protocol(
       "GEORADIUS",
       key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: sort :: HNil
-    ).as[NonNilArray, Seq[Key]]
+    ).as[Arr, Seq[Key]]
 
 //  final def georadiuswithcoord(
 //      key: Key,
@@ -98,7 +98,7 @@ trait GeoP {
 //      unit: geos.Unit
 //  ): Protocol.Aux[Seq[(Key, Coordinates)]] =
 //    Protocol("GEORADIUS", key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "WITHCOORD" :: HNil)
-//      .as[NonNilArray, Seq[(Key, Coordinates)]]
+//      .as[Arr, Seq[(Key, Coordinates)]]
 //
 //  final def georadiuswithcoord(
 //      key: Key,
@@ -110,7 +110,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: "WITHCOORD" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates)]]
+//    ).as[Arr, Seq[(Key, Coordinates)]]
 //
 //  final def georadiuswithcoord(
 //      key: Key,
@@ -122,7 +122,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: sort :: "WITHCOORD" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates)]]
+//    ).as[Arr, Seq[(Key, Coordinates)]]
 //
 //  final def georadiuswithcoord(
 //      key: Key,
@@ -135,7 +135,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: sort :: "WITHCOORD" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates)]]
+//    ).as[Arr, Seq[(Key, Coordinates)]]
 //
 //  final def georadiuswithdist(
 //      key: Key,
@@ -144,7 +144,7 @@ trait GeoP {
 //      unit: geos.Unit
 //  ): Protocol.Aux[Seq[(Key, NonNegDouble)]] =
 //    Protocol("GEORADIUS", key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "WITHDIST" :: HNil)
-//      .as[NonNilArray, Seq[(Key, NonNegDouble)]]
+//      .as[Arr, Seq[(Key, NonNegDouble)]]
 //
 //  final def georadiuswithdist(
 //      key: Key,
@@ -156,7 +156,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: "WITHDIST" :: HNil
-//    ).as[NonNilArray, Seq[(Key, NonNegDouble)]]
+//    ).as[Arr, Seq[(Key, NonNegDouble)]]
 //
 //  final def georadiuswithdist(
 //      key: Key,
@@ -168,7 +168,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: sort :: "WITHDIST" :: HNil
-//    ).as[NonNilArray, Seq[(Key, NonNegDouble)]]
+//    ).as[Arr, Seq[(Key, NonNegDouble)]]
 //
 //  final def georadiuswithdist(
 //      key: Key,
@@ -181,7 +181,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: sort :: "WITHDIST" :: HNil
-//    ).as[NonNilArray, Seq[(Key, NonNegDouble)]]
+//    ).as[Arr, Seq[(Key, NonNegDouble)]]
 //
 //  final def georadiuswithhash(
 //      key: Key,
@@ -190,7 +190,7 @@ trait GeoP {
 //      unit: geos.Unit
 //  ): Protocol.Aux[Seq[(Key, GeoHash)]] =
 //    Protocol("GEORADIUS", key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "WITHHASH" :: HNil)
-//      .as[NonNilArray, Seq[(Key, GeoHash)]]
+//      .as[Arr, Seq[(Key, GeoHash)]]
 //
 //  final def georadiuswithhash(
 //      key: Key,
@@ -202,7 +202,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, GeoHash)]]
+//    ).as[Arr, Seq[(Key, GeoHash)]]
 //
 //  final def georadiuswithhash(
 //      key: Key,
@@ -214,7 +214,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: sort :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, GeoHash)]]
+//    ).as[Arr, Seq[(Key, GeoHash)]]
 //
 //  final def georadiuswithhash(
 //      key: Key,
@@ -227,7 +227,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: sort :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, GeoHash)]]
+//    ).as[Arr, Seq[(Key, GeoHash)]]
 //
 //  final def georadiuswithcoorddist(
 //      key: Key,
@@ -238,7 +238,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "WITHCOORD" :: "WITHDIST" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, NonNegDouble)]]
+//    ).as[Arr, Seq[(Key, Coordinates, NonNegDouble)]]
 //
 //  final def georadiuswithcoorddist(
 //      key: Key,
@@ -250,7 +250,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: "WITHCOORD" :: "WITHDIST" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, NonNegDouble)]]
+//    ).as[Arr, Seq[(Key, Coordinates, NonNegDouble)]]
 //
 //  final def georadiuswithcoorddist(
 //      key: Key,
@@ -262,7 +262,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: sort :: "WITHCOORD" :: "WITHDIST" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, NonNegDouble)]]
+//    ).as[Arr, Seq[(Key, Coordinates, NonNegDouble)]]
 //
 //  final def georadiuswithcoorddist(
 //      key: Key,
@@ -275,7 +275,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: sort :: "WITHCOORD" :: "WITHDIST" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, NonNegDouble)]]
+//    ).as[Arr, Seq[(Key, Coordinates, NonNegDouble)]]
 //
 //  final def georadiuswithcoordhash(
 //      key: Key,
@@ -286,7 +286,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "WITHCOORD" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, GeoHash)]]
+//    ).as[Arr, Seq[(Key, Coordinates, GeoHash)]]
 //
 //  final def georadiuswithcoordhash(
 //      key: Key,
@@ -298,7 +298,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: "WITHCOORD" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, GeoHash)]]
+//    ).as[Arr, Seq[(Key, Coordinates, GeoHash)]]
 //
 //  final def georadiuswithcoordhash(
 //      key: Key,
@@ -310,7 +310,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: sort :: "WITHCOORD" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, GeoHash)]]
+//    ).as[Arr, Seq[(Key, Coordinates, GeoHash)]]
 //
 //  final def georadiuswithcoordhash(
 //      key: Key,
@@ -323,7 +323,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: sort :: "WITHCOORD" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, GeoHash)]]
+//    ).as[Arr, Seq[(Key, Coordinates, GeoHash)]]
 //
 //  final def georadiuswithdisthash(
 //      key: Key,
@@ -334,7 +334,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "WITHDIST" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, NonNegDouble, GeoHash)]]
+//    ).as[Arr, Seq[(Key, NonNegDouble, GeoHash)]]
 //
 //  final def georadiuswithdisthash(
 //      key: Key,
@@ -346,7 +346,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: "WITHDIST" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, NonNegDouble, GeoHash)]]
+//    ).as[Arr, Seq[(Key, NonNegDouble, GeoHash)]]
 //
 //  final def georadiuswithdisthash(
 //      key: Key,
@@ -358,7 +358,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: sort :: "WITHDIST" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, NonNegDouble, GeoHash)]]
+//    ).as[Arr, Seq[(Key, NonNegDouble, GeoHash)]]
 //
 //  final def georadiuswithdisthash(
 //      key: Key,
@@ -371,7 +371,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: sort :: "WITHDIST" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, NonNegDouble, GeoHash)]]
+//    ).as[Arr, Seq[(Key, NonNegDouble, GeoHash)]]
 //
 //  final def georadiuswithcoorddisthash(
 //      key: Key,
@@ -382,7 +382,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "WITHCOORD" :: "WITHDIST" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, NonNegDouble, GeoHash)]]
+//    ).as[Arr, Seq[(Key, Coordinates, NonNegDouble, GeoHash)]]
 //
 //  final def georadiuswithcoorddisthash(
 //      key: Key,
@@ -394,7 +394,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: "WITHCOORD" :: "WITHDIST" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, NonNegDouble, GeoHash)]]
+//    ).as[Arr, Seq[(Key, Coordinates, NonNegDouble, GeoHash)]]
 //
 //  final def georadiuswithcoorddisthash(
 //      key: Key,
@@ -406,7 +406,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: sort :: "WITHCOORD" :: "WITHDIST" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, NonNegDouble, GeoHash)]]
+//    ).as[Arr, Seq[(Key, Coordinates, NonNegDouble, GeoHash)]]
 //
 //  final def georadiuswithcoorddisthash(
 //      key: Key,
@@ -419,7 +419,7 @@ trait GeoP {
 //    Protocol(
 //      "GEORADIUS",
 //      key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: sort :: "WITHCOORD" :: "WITHDIST" :: "WITHHASH" :: HNil
-//    ).as[NonNilArray, Seq[(Key, Coordinates, NonNegDouble, GeoHash)]]
+//    ).as[Arr, Seq[(Key, Coordinates, NonNegDouble, GeoHash)]]
 
   final def georadiusstore(
       key: Key,
@@ -431,7 +431,7 @@ trait GeoP {
     Protocol(
       "GEORADIUS",
       key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "STORE" :: newKey :: HNil
-    ).as[Integer, NonNegInt]
+    ).as[Num, NonNegInt]
 
   final def georadiusstore(
       key: Key,
@@ -444,7 +444,7 @@ trait GeoP {
     Protocol(
       "GEORADIUS",
       key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: "STORE" :: newKey :: HNil
-    ).as[Integer, NonNegInt]
+    ).as[Num, NonNegInt]
 
   final def georadiusstore(
       key: Key,
@@ -457,7 +457,7 @@ trait GeoP {
     Protocol(
       "GEORADIUS",
       key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: sort :: "STORE" :: newKey :: HNil
-    ).as[Integer, NonNegInt]
+    ).as[Num, NonNegInt]
 
   final def georadiusstore(
       key: Key,
@@ -471,7 +471,7 @@ trait GeoP {
     Protocol(
       "GEORADIUS",
       key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: sort :: "STORE" :: newKey :: HNil
-    ).as[Integer, NonNegInt]
+    ).as[Num, NonNegInt]
 
   final def georadiusstoredist(
       key: Key,
@@ -483,7 +483,7 @@ trait GeoP {
     Protocol(
       "GEORADIUS",
       key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "STOREDIST" :: newKey :: HNil
-    ).as[Integer, NonNegInt]
+    ).as[Num, NonNegInt]
 
   final def georadiusstoredist(
       key: Key,
@@ -496,7 +496,7 @@ trait GeoP {
     Protocol(
       "GEORADIUS",
       key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: "STOREDIST" :: newKey :: HNil
-    ).as[Integer, NonNegInt]
+    ).as[Num, NonNegInt]
 
   final def georadiusstoredist(
       key: Key,
@@ -509,7 +509,7 @@ trait GeoP {
     Protocol(
       "GEORADIUS",
       key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: sort :: "STOREDIST" :: newKey :: HNil
-    ).as[Integer, NonNegInt]
+    ).as[Num, NonNegInt]
 
   final def georadiusstoredist(
       key: Key,
@@ -523,7 +523,7 @@ trait GeoP {
     Protocol(
       "GEORADIUS",
       key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "COUNT" :: limit :: sort :: "STOREDIST" :: newKey :: HNil
-    ).as[Integer, NonNegInt]
+    ).as[Num, NonNegInt]
 }
 
 trait AllGeoP extends GeoP with GeoPExtra

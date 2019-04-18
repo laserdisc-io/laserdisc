@@ -23,13 +23,13 @@ final class HyperLogLogPSpec extends BaseSpec {
           val protocol = pfadd(key, el)
 
           protocol.encode shouldBe arr(bulk("PFADD"), bulk(key.show), bulk(el.show))
-          protocol.decode(int(if (b) 1 else 0)).right.value shouldBe b
+          protocol.decode(num(if (b) 1 else 0)).right.value shouldBe b
         }
         "given non empty key and two non empty elements" in forAll { (key: Key, el1: Key, el2: Key, b: Boolean) =>
           val protocol = pfadd(key, el1, el2)
 
           protocol.encode shouldBe arr(bulk("PFADD"), bulk(key.show), bulk(el1.show), bulk(el2.show))
-          protocol.decode(int(if (b) 1 else 0)).right.value shouldBe b
+          protocol.decode(num(if (b) 1 else 0)).right.value shouldBe b
         }
       }
 
@@ -51,13 +51,13 @@ final class HyperLogLogPSpec extends BaseSpec {
           val protocol = pfcount(key)
 
           protocol.encode shouldBe arr(bulk("PFCOUNT"), bulk(key.show))
-          protocol.decode(int(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
         }
         "given two non empty keys" in forAll { (key1: Key, key2: Key, nni: NonNegInt) =>
           val protocol = pfcount(key1, key2)
 
           protocol.encode shouldBe arr(bulk("PFCOUNT"), bulk(key1.show), bulk(key2.show))
-          protocol.decode(int(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
         }
       }
 

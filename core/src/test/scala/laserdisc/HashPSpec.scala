@@ -1,7 +1,7 @@
 package laserdisc
 
 import laserdisc.all._
-import laserdisc.protocol.NonNullBulkString
+import laserdisc.protocol.Bulk
 import laserdisc.protocol.RESP._
 import shapeless._
 
@@ -31,13 +31,13 @@ final class HashPSpec extends BaseSpec {
           val protocol = hdel(k, f)
 
           protocol.encode shouldBe arr(bulk("HDEL"), bulk(k.show), bulk(f.show))
-          protocol.decode(int(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
         }
         "given non empty key and two non empty fields" in forAll { (k: Key, f1: Key, f2: Key, nni: NonNegInt) =>
           val protocol = hdel(k, f1, f2)
 
           protocol.encode shouldBe arr(bulk("HDEL"), bulk(k.show), bulk(f1.show), bulk(f2.show))
-          protocol.decode(int(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
         }
       }
 
@@ -59,7 +59,7 @@ final class HashPSpec extends BaseSpec {
           val protocol = hexists(k, f)
 
           protocol.encode shouldBe arr(bulk("HEXISTS"), bulk(k.show), bulk(f.show))
-          protocol.decode(int(if (b) 1 else 0)).right.value shouldBe b
+          protocol.decode(num(if (b) 1 else 0)).right.value shouldBe b
         }
       }
 
@@ -87,8 +87,8 @@ final class HashPSpec extends BaseSpec {
           protocol.decode(bulk(s)).right.value.value shouldBe bulk(s)
         }
         "given specific read instance" in {
-          implicit val fooRead: NonNullBulkString ==> Foo = Read.instancePF {
-            case NonNullBulkString(ToInt(x)) => Foo(x)
+          implicit val fooRead: Bulk ==> Foo = Read.instancePF {
+            case Bulk(ToInt(x)) => Foo(x)
           }
           forAll { (k: Key, f: Key, i: Int) =>
             val protocol = hget[Foo](k, f)
@@ -153,12 +153,11 @@ final class HashPSpec extends BaseSpec {
       }
 
       "compile successfully" when {
-        "given non empty key, non empty field and non zero increment" in forAll {
-          (k: Key, f: Key, nzl: NonZeroLong, l: Long) =>
-            val protocol = hincrby(k, f, nzl)
+        "given non empty key, non empty field and non zero increment" in forAll { (k: Key, f: Key, nzl: NonZeroLong, l: Long) =>
+          val protocol = hincrby(k, f, nzl)
 
-            protocol.encode shouldBe arr(bulk("HINCRBY"), bulk(k.show), bulk(f.show), bulk(nzl.show))
-            protocol.decode(int(l)).right.value shouldBe l
+          protocol.encode shouldBe arr(bulk("HINCRBY"), bulk(k.show), bulk(f.show), bulk(nzl.show))
+          protocol.decode(num(l)).right.value shouldBe l
         }
       }
 
@@ -182,12 +181,11 @@ final class HashPSpec extends BaseSpec {
       }
 
       "compile successfully" when {
-        "given non empty key, non empty field and non zero increment" in forAll {
-          (k: Key, f: Key, nzd: NonZeroDouble, d: Double) =>
-            val protocol = hincrbyfloat(k, f, nzd)
+        "given non empty key, non empty field and non zero increment" in forAll { (k: Key, f: Key, nzd: NonZeroDouble, d: Double) =>
+          val protocol = hincrbyfloat(k, f, nzd)
 
-            protocol.encode shouldBe arr(bulk("HINCRBYFLOAT"), bulk(k.show), bulk(f.show), bulk(nzd.show))
-            protocol.decode(bulk(d.show)).right.value shouldBe d
+          protocol.encode shouldBe arr(bulk("HINCRBYFLOAT"), bulk(k.show), bulk(f.show), bulk(nzd.show))
+          protocol.decode(bulk(d.show)).right.value shouldBe d
         }
       }
 
@@ -225,7 +223,7 @@ final class HashPSpec extends BaseSpec {
           val protocol = hlen(k)
 
           protocol.encode shouldBe arr(bulk("HLEN"), bulk(k.show))
-          protocol.decode(int(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
         }
       }
 

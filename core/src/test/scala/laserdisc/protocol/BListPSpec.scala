@@ -61,8 +61,8 @@ final class BListPSpec extends BaseSpec {
           }
         }
         "given specific read instance" in {
-          implicit val fooRead: Read[NonNullBulkString, Foo] = Read.instancePF {
-            case NonNullBulkString(ToInt(i)) => Foo(i)
+          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF {
+            case Bulk(ToInt(i)) => Foo(i)
           }
           forAll("key", "return value") { (k: Key, i: Int) =>
             val protocol = blpop[Foo](k)
@@ -94,8 +94,8 @@ final class BListPSpec extends BaseSpec {
 
       "compile successfully" when {
         "given specific read instance" in {
-          implicit val fooRead: Read[NonNullBulkString, Foo] = Read.instancePF {
-            case NonNullBulkString(ToInt(i)) => Foo(i)
+          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF {
+            case Bulk(ToInt(i)) => Foo(i)
           }
           forAll("key", "return value") { (k: Key, i: Int) =>
             val protocol = brpop[Foo](k)
@@ -143,8 +143,8 @@ final class BListPSpec extends BaseSpec {
           }
         }
         "given specific read instance" in {
-          implicit val fooRead: Read[NonNullBulkString, Foo] = Read.instancePF {
-            case NonNullBulkString(ToInt(i)) => Foo(i)
+          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF {
+            case Bulk(ToInt(i)) => Foo(i)
           }
           forAll("source", "destination", "timeout", "return value") { (s: Key, d: Key, pi: PosInt, i: Int) =>
             val protocol = brpoplpush[Foo](s, d, pi)

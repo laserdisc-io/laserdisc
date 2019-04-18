@@ -9,7 +9,7 @@ import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.{EitherValues, MustMatchers, WordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import scodec.bits.BitVector
-import scodec.{Codec, Err}
+import scodec.{Codec, Err => SErr}
 
 object RESPCodecsSpec extends EitherValues {
 
@@ -41,9 +41,9 @@ object RESPCodecsSpec extends EitherValues {
   }
 
   implicit final class RichString(private val underlying: String) extends AnyVal {
-    def RESP: Err | RESP = functions.stringToRESPAttempt(underlying).toEither
-    def asRESP: RESP            = RESP.right.value
-    def bytesLength: Int        = functions.stringToBytesLength(underlying)
+    def RESP: SErr | RESP = functions.stringToRESPAttempt(underlying).toEither
+    def asRESP: RESP      = RESP.right.value
+    def bytesLength: Int  = functions.stringToBytesLength(underlying)
   }
 
   implicit final class RichRESP(private val underlying: RESP) extends AnyVal {
@@ -65,22 +65,22 @@ final class RESPCodecsSpec extends WordSpec with MustMatchers with ScalaCheckPro
     val exclusions = List('+', '-', ':', '$', '*')
     Gen.choose[Char](0, 127).suchThat(!exclusions.contains(_)).map(InvalidDiscriminator)
   }
-  private[this] implicit val _                                  = Gen.choose(Char.MinValue, Char.MaxValue).filter(Character.isDefined)
-  private[this] implicit val genSimpleString: Gen[SimpleString] = arbitrary[String].map(str)
-  private[this] implicit val genError: Gen[Error]               = arbitrary[String].map(err)
-  private[this] implicit val genInteger: Gen[Integer]           = arbitrary[Long].map(int)
-  private[this] implicit val genBulkString: Gen[BulkString] = arbitrary[Option[String]].map {
-    case None    => NullBulkString
+  private[this] implicit val _                = Gen.choose(Char.MinValue, Char.MaxValue).filter(Character.isDefined)
+  private[this] implicit val genStr: Gen[Str] = arbitrary[String].map(str)
+  private[this] implicit val genErr: Gen[Err] = arbitrary[String].map(err)
+  private[this] implicit val genNum: Gen[Num] = arbitrary[Long].map(num)
+  private[this] implicit val genBulk: Gen[GenBulk] = arbitrary[Option[String]].map {
+    case None    => NullBulk
     case Some(s) => bulk(s)
   }
-  private[this] implicit def genArray: Gen[Array] = smallListSize.flatMap { size =>
+  private[this] implicit def genArr: Gen[GenArr] = smallListSize.flatMap { size =>
     option(listOfN(size, genRESP)).map {
-      case None    => NilArray
+      case None    => NilArr
       case Some(v) => arr(v)
     }
   }
   private[this] implicit def genRESP: Gen[RESP] =
-    genOneOf(genSimpleString, genError, genInteger, genBulkString, genArray)
+    genOneOf(genStr, genErr, genNum, genBulk, genArr)
   private[this] implicit def genOptionListRESP: Gen[Option[List[RESP]]] = smallListSize.flatMap { size =>
     option(listOfN(size, genRESP))
   }
@@ -99,11 +99,11 @@ final class RESPCodecsSpec extends WordSpec with MustMatchers with ScalaCheckPro
       "decode them correctly" in forAll { s: String =>
         s"+$s\r\n".asRESP mustBe str(s)
       }
-      "encode them correctly" in forAll { simpleString: SimpleString =>
-        simpleString.wireFormat mustBe s"+${simpleString.value}\r\n"
+      "encode them correctly" in forAll { str: Str =>
+        str.wireFormat mustBe s"+${str.value}\r\n"
       }
-      "round-trip with no errors" in forAll { simpleString: SimpleString =>
-        simpleString.roundTrip mustBe simpleString
+      "round-trip with no errors" in forAll { str: Str =>
+        str.roundTrip mustBe str
       }
     }
 
@@ -111,23 +111,23 @@ final class RESPCodecsSpec extends WordSpec with MustMatchers with ScalaCheckPro
       "decode them correctly" in forAll { msg: String =>
         s"-$msg\r\n".asRESP mustBe err(msg)
       }
-      "encode them correctly" in forAll { error: Error =>
-        error.wireFormat mustBe s"-${error.message}\r\n"
+      "encode them correctly" in forAll { err: Err =>
+        err.wireFormat mustBe s"-${err.message}\r\n"
       }
-      "round-trip with no errors" in forAll { error: Error =>
-        error.roundTrip mustBe error
+      "round-trip with no errors" in forAll { err: Err =>
+        err.roundTrip mustBe err
       }
     }
 
     "handling integers" must {
       "decode them correctly" in forAll { l: Long =>
-        s":$l\r\n".asRESP mustBe int(l)
+        s":$l\r\n".asRESP mustBe num(l)
       }
-      "encode them correctly" in forAll { integer: Integer =>
-        integer.wireFormat mustBe s":${integer.value}\r\n"
+      "encode them correctly" in forAll { num: Num =>
+        num.wireFormat mustBe s":${num.value}\r\n"
       }
-      "round-trip with no errors" in forAll { integer: Integer =>
-        integer.roundTrip mustBe integer
+      "round-trip with no errors" in forAll { num: Num =>
+        num.roundTrip mustBe num
       }
     }
 
@@ -141,14 +141,14 @@ final class RESPCodecsSpec extends WordSpec with MustMatchers with ScalaCheckPro
           case Some(s) => s"$$${s.bytesLength}\r\n$s\r\n".asRESP mustBe bulk(s)
         }
       }
-      "encode them correctly" in forAll { bulkString: BulkString =>
-        bulkString -> bulkString.wireFormat match {
-          case (NullBulkString, s)        => s mustBe "$-1\r\n"
-          case (NonNullBulkString(bs), s) => s mustBe s"$$${bs.bytesLength}\r\n$bs\r\n"
+      "encode them correctly" in forAll { bulk: GenBulk =>
+        bulk -> bulk.wireFormat match {
+          case (NullBulk, s) => s mustBe "$-1\r\n"
+          case (Bulk(bs), s) => s mustBe s"$$${bs.bytesLength}\r\n$bs\r\n"
         }
       }
-      "round-trip with no errors" in forAll { bulkString: BulkString =>
-        bulkString.roundTrip mustBe bulkString
+      "round-trip with no errors" in forAll { bulk: GenBulk =>
+        bulk.roundTrip mustBe bulk
       }
     }
 
@@ -158,18 +158,18 @@ final class RESPCodecsSpec extends WordSpec with MustMatchers with ScalaCheckPro
       }
       "decode them correctly" in forAll { maybeRESPList: Option[List[RESP]] =>
         maybeRESPList match {
-          case None     => "*-1\r\n".asRESP mustBe nilArray
+          case None     => "*-1\r\n".asRESP mustBe nilArr
           case Some(xs) => s"*${xs.length}\r\n${xs.wireFormat}".asRESP mustBe arr(xs)
         }
       }
-      "encode them correctly" in forAll { array: Array =>
-        array -> array.wireFormat match {
-          case (NilArray, s)        => s mustBe "*-1\r\n"
-          case (NonNilArray(xs), s) => s mustBe s"*${xs.length}\r\n${xs.wireFormat}"
+      "encode them correctly" in forAll { arr: GenArr =>
+        arr -> arr.wireFormat match {
+          case (NilArr, s)  => s mustBe "*-1\r\n"
+          case (Arr(xs), s) => s mustBe s"*${xs.length}\r\n${xs.wireFormat}"
         }
       }
-      "round-trip with no errors" in forAll { array: Array =>
-        array.roundTrip mustBe array
+      "round-trip with no errors" in forAll { arr: GenArr =>
+        arr.roundTrip mustBe arr
       }
     }
   }

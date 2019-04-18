@@ -5,7 +5,7 @@ import shapeless._
 
 sealed trait Request {
   def command: String
-  def parameters: Seq[BulkString]
+  def parameters: Seq[GenBulk]
 }
 
 sealed trait Response { type A }
@@ -27,8 +27,8 @@ sealed trait Protocol extends Request with Response { self =>
       override def encode(protocol: Protocol): RESP = self.codec.encode(protocol)
       override def decode(resp: RESP): Maybe[B]     = self.codec.decode(resp).right.map(f(_))
     }
-    override def command: String             = self.command
-    override def parameters: Seq[BulkString] = self.parameters
+    override def command: String          = self.command
+    override def parameters: Seq[GenBulk] = self.parameters
   }
 
   override final def toString: String = s"Protocol($command)"
@@ -65,9 +65,9 @@ object Protocol {
       */
     final def asC[A <: Coproduct, B](implicit R: RESPRead.Aux[A, B]): Protocol.Aux[B] = new Protocol {
       override final type A = B
-      override final val codec: ProtocolCodec[B]     = new RESPProtocolCodec(R)
-      override final val command: String             = self.command
-      override final val parameters: Seq[BulkString] = RESPParamWrite[L].write(l)
+      override final val codec: ProtocolCodec[B]  = new RESPProtocolCodec(R)
+      override final val command: String          = self.command
+      override final val parameters: Seq[GenBulk] = RESPParamWrite[L].write(l)
     }
 
     final def as[A, B](implicit ev: A <:!< Coproduct, R: RESPRead.Aux[A :+: CNil, B]): Protocol.Aux[B] = asC(R)
@@ -79,7 +79,7 @@ object Protocol {
     *
     * This apply method requires the caller to provide the type of request parameters L this
     * [[Protocol]] expects to deal with when encoding the request parameters into a [[RESP]]
-    * [[Array]] instance to send to Redis.
+    * [[GenArr]] instance to send to Redis.
     *
     *
     */

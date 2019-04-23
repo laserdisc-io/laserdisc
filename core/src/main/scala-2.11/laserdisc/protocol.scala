@@ -9,7 +9,7 @@ package object protocol {
 final private[laserdisc] class EitherSyntaxBaseOps[A, B](private val aOrB: A | B) extends AnyVal {
 
   def flatMap[C](f: B => A | C): A | C = aOrB match {
-    case left @ Left(_) => left.widenAsRightOf[|, C]
+    case left @ Left(_) => left.coerceRight[|, C]
     case Right(b)       => f(b)
   }
 

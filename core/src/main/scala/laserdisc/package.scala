@@ -135,8 +135,8 @@ package object laserdisc {
   }
 
   implicit final class WidenOps2[F[_, _], A, B](private val fab: F[A, B]) extends AnyVal {
-    def widenLeft[AA: <:<[A, ?]: =:!=[A, ?]]: F[AA, B]              = fab.asInstanceOf[F[AA, B]]
-    def widenRight[BB: <:<[B, ?]: =:!=[B, ?]]: F[A, BB]             = fab.asInstanceOf[F[A, BB]]
+    def widenLeft[AA: <:<[A, ?]: =:!=[A, ?]]: F[AA, B]                            = fab.asInstanceOf[F[AA, B]]
+    def widenRight[BB: <:<[B, ?]: =:!=[B, ?]]: F[A, BB]                           = fab.asInstanceOf[F[A, BB]]
     def coerceLeft[AA, FF[_, _]](implicit ev: F[AA, B] <:< FF[AA, B]): FF[AA, B]  = fab.asInstanceOf[FF[AA, B]]
     def coerceRight[FF[_, _], BB](implicit ev: F[A, BB] <:< FF[A, BB]): FF[A, BB] = fab.asInstanceOf[FF[A, BB]]
   }

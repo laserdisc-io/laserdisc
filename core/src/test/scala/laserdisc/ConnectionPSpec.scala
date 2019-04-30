@@ -85,18 +85,18 @@ final class ConnectionPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given out of bounds index (less than min: -1)" in {
-          """select(-1)""".stripMargin shouldNot compile
+          "select(-1)" shouldNot compile
         }
         "given out of bounds index (greater than max: 16)" in {
-          """select(16)""".stripMargin shouldNot compile
+          "select(16)" shouldNot compile
         }
       }
 
       "compile successfully" when {
-        "given valid index" in forAll { dbIndex: DbIndex =>
-          val protocol = select(dbIndex)
+        "given valid index" in forAll { dbi: DbIndex =>
+          val protocol = select(dbi)
 
-          protocol.encode shouldBe arr(bulk("SELECT"), bulk(dbIndex.show))
+          protocol.encode shouldBe arr(bulk("SELECT"), bulk(dbi.show))
           protocol.decode(str("OK")).right.value shouldBe OK
         }
       }
@@ -107,18 +107,18 @@ final class ConnectionPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given out of bounds indexes (index1 less than min: -1, index2 greater than max: 16)" in {
-          """swapdb(-1, 16)""".stripMargin shouldNot compile
+          "swapdb(-1, 16)" shouldNot compile
         }
         "given out of bounds indexes (index1 greater than max: 16, index2 less than min: -1)" in {
-          """swapdb(16, -1)""".stripMargin shouldNot compile
+          "swapdb(16, -1)" shouldNot compile
         }
       }
 
       "compile successfully" when {
-        "given valid indexes" in forAll { (index1: DbIndex, index2: DbIndex) =>
-          val protocol = swapdb(index1, index2)
+        "given valid indexes" in forAll { (dbi1: DbIndex, dbi2: DbIndex) =>
+          val protocol = swapdb(dbi1, dbi2)
 
-          protocol.encode shouldBe arr(bulk("SWAPDB"), bulk(index1.show), bulk(index2.show))
+          protocol.encode shouldBe arr(bulk("SWAPDB"), bulk(dbi1.show), bulk(dbi2.show))
           protocol.decode(str("OK")).right.value shouldBe OK
         }
       }

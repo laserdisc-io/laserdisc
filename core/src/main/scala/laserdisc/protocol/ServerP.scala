@@ -6,6 +6,8 @@ object ServerP {
 
   sealed trait InfoSection
   final object InfoSection {
+    final type default = default.type
+
     final object server       extends InfoSection
     final object clients      extends InfoSection
     final object memory       extends InfoSection
@@ -19,7 +21,7 @@ object ServerP {
     final object all          extends InfoSection
     final object default      extends InfoSection
 
-    implicit val defaultShow: Show[default.type] = Show.const("default")
+    implicit val defaultShow: Show[default] = Show.const("default")
     implicit val infoSectionShow: Show[InfoSection] = Show.instance {
       case `server`       => "server"
       case `clients`      => "clients"
@@ -58,38 +60,33 @@ object ServerP {
     final case object connected  extends ReplicaStatus
 
     final case class Master(currentReplicationOffset: NonNegLong, clients: Seq[Client]) extends Role
-    final case class Slave(masterHost: Host,
-                           masterPort: Port,
-                           masterViewReplicationState: ReplicaStatus,
-                           masterReplicationOffset: NonNegLong)
+    final case class Slave(masterHost: Host, masterPort: Port, masterViewReplicaStatus: ReplicaStatus, masterReplicationOffset: NonNegLong)
         extends Role
     final case class Sentinel(masterNames: Seq[Key]) extends Role
 
     implicit val roleRead: Arr ==> Role = {
-      val ClientRead: Arr ==> Client = Read.instancePF {
-        case Arr(Bulk(Host(host)) +: Bulk(ToInt(Port(port))) +: Bulk(ToLong(NonNegLong(offset))) +: Seq()) =>
-          Client(host, port, offset)
+      val CR: Arr ==> Client = Read.instancePF {
+        case Arr(Bulk(Host(host)) +: Bulk(ToInt(Port(port))) +: Bulk(ToLong(NonNegLong(offset))) +: Seq()) => Client(host, port, offset)
       }
-      val ReplicaStatusRead: Bulk ==> ReplicaStatus = Read.instancePF {
+      val RSR: Bulk ==> ReplicaStatus = Read.instancePF {
         case Bulk("connect")    => connect
         case Bulk("connecting") => connecting
         case Bulk("sync")       => sync
         case Bulk("connected")  => connected
       }
-      val MastersRead: Arr ==> Seq[Key] = Read[Arr, Seq[Key]]
+      val MR: Arr ==> Seq[Key] = Read[Arr, Seq[Key]]
+
       Read.instance {
         case Arr(Bulk("master") +: Num(NonNegLong(offset)) +: Arr(v) +: Seq()) =>
           val (vLength, (clients, clientsLength)) = v.foldLeft(0 -> (List.empty[Client] -> 0)) {
-            case ((vl, (cs, csl)), ClientRead(client)) => (vl + 1) -> ((client :: cs) -> (csl + 1))
-            case ((vl, acc), _)                        => (vl + 1) -> acc
+            case ((vl, (cs, csl)), CR(client)) => (vl + 1) -> ((client :: cs) -> (csl + 1))
+            case ((vl, acc), _)                => (vl + 1) -> acc
           }
           if (vLength == clientsLength) Some(Master(offset, clients.reverse)) else None
-        case Arr(
-            Bulk("slave") +: Bulk(Host(host)) +: Num(ToInt(Port(port))) +: ReplicaStatusRead(replicaStatus) +: Num(NonNegLong(offset)) +: Seq()) =>
+        case Arr(Bulk("slave") +: Bulk(Host(host)) +: Num(ToInt(Port(port))) +: RSR(replicaStatus) +: Num(NonNegLong(offset)) +: Seq()) =>
           Some(Slave(host, port, replicaStatus, offset))
-        case Arr(Bulk("sentinel") +: MastersRead(masters) +: Seq()) =>
-          Some(Sentinel(masters))
-        case _ => None
+        case Arr(Bulk("sentinel") +: MR(masters) +: Seq()) => Some(Sentinel(masters))
+        case _                                             => None
       }
     }
   }
@@ -97,21 +94,21 @@ object ServerP {
   final class Parameters(private val properties: Map[String, String]) extends AnyVal with Dynamic {
     import RESP.err
 
-    def selectDynamic[A](field: String)(
-        implicit R: String ==> A
-    ): Maybe[A] = properties.get(field).flatMap(R.read).toRight(err(s"no key $field of the provided type found"))
+    def selectDynamic[A](field: String)(implicit R: String ==> A): Maybe[A] =
+      properties.get(field).flatMap(R.read).toRight(err(s"no key $field of the provided type found"))
   }
 
   final case class ConnectedClients(clients: Seq[Parameters])
   final object ConnectedClients {
     private val KVPair = "(.*)=(.*)".r
+
     implicit val connectedClientsRead: Bulk ==> ConnectedClients = Read.instancePF {
       case Bulk(s) =>
-        ConnectedClients {
+        ConnectedClients(
           s.split('\n').map { clientData =>
             new Parameters(clientData.split(' ').collect { case KVPair(k, v) => k -> v }.toMap)
           }
-        }
+        )
     }
   }
 
@@ -123,7 +120,7 @@ object ServerP {
 
   final case class Info(sections: Map[InfoSection, Parameters])
   final object Info {
-    private val InfoSectionRead: String ==> InfoSection = Read.instancePF {
+    private val ISR: String ==> InfoSection = Read.instancePF {
       case "server"       => InfoSection.server
       case "clients"      => InfoSection.clients
       case "memory"       => InfoSection.memory
@@ -136,20 +133,22 @@ object ServerP {
       case "keyspace"     => InfoSection.keyspace
     }
     private val KVPair = "(.*):(.*)".r
-    private val ParametersRead: Seq[String] ==> Parameters = Read.instancePF {
+    private val PR: Seq[String] ==> Parameters = Read.instancePF {
       case ss => new Parameters(ss.collect { case KVPair(k, v) => k -> v }.toMap)
     }
 
     implicit val infoRead: Bulk ==> Info = Read.instancePF {
       case Bulk(s) =>
-        Info {
+        Info(
           s.split("\n\n")
-            .flatMap(_.split("\n").toSeq match {
-              case InfoSectionRead(infoSection) +: ParametersRead(parameters) => Some(infoSection -> parameters)
-              case _                                                          => None
-            })
+            .flatMap {
+              _.split("\n").toSeq match {
+                case ISR(infoSection) +: PR(parameters) => Some(infoSection -> parameters)
+                case _                                  => None
+              }
+            }
             .toMap
-        }
+        )
     }
   }
 }
@@ -173,17 +172,13 @@ trait ServerP {
 
     //FIXME other variations of kill
     def kill(host: Host, port: Port): Protocol.Aux[OK] =
-      Protocol("CLIENT", "KILL" :: s"${Show.hostShow.show(host)}:${Show.portShow.show(port)}" :: Nil)
-        .as[Str, OK]
+      Protocol("CLIENT", "KILL" :: s"${Show.hostShow.show(host)}:${Show.portShow.show(port)}" :: Nil).as[Str, OK]
 
-    val list: Protocol.Aux[ConnectedClients] =
-      Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
+    val list: Protocol.Aux[ConnectedClients] = Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
 
-    def pause(milliseconds: PosLong): Protocol.Aux[OK] =
-      Protocol("CLIENT", "PAUSE" :: milliseconds :: HNil).as[Str, OK]
+    def pause(milliseconds: PosLong): Protocol.Aux[OK] = Protocol("CLIENT", "PAUSE" :: milliseconds :: HNil).as[Str, OK]
 
-    def setname(connectionName: ConnectionName): Protocol.Aux[OK] =
-      Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[Str, OK]
+    def setname(connectionName: ConnectionName): Protocol.Aux[OK] = Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[Str, OK]
 
     val unsetname: Protocol.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
   }
@@ -198,8 +193,7 @@ trait ServerP {
 
     val rewrite: Protocol.Aux[OK] = Protocol("CONFIG", "REWRITE").as[Str, OK]
 
-    def set[A: Show](parameter: Key, value: A): Protocol.Aux[OK] =
-      Protocol("CONFIG", "SET" :: parameter :: value :: HNil).as[Str, OK]
+    def set[A: Show](parameter: Key, value: A): Protocol.Aux[OK] = Protocol("CONFIG", "SET" :: parameter :: value :: HNil).as[Str, OK]
   }
 
   final val dbsize: Protocol.Aux[NonNegLong] = Protocol("DBSIZE", Nil).as[Num, NonNegLong]
@@ -212,8 +206,7 @@ trait ServerP {
 
   final val flushdbasync: Protocol.Aux[OK] = Protocol("FLUSHDB", "ASYNC").as[Str, OK]
 
-  final val info: Protocol.Aux[Info] = info(servers.info.default)
-
+  final val info: Protocol.Aux[Info]                       = info(servers.info.default)
   final def info(section: InfoSection): Protocol.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
 
   final val lastsave: Protocol.Aux[NonNegLong] = Protocol("LASTSAVE", Nil).as[Num, NonNegLong]
@@ -222,12 +215,10 @@ trait ServerP {
 
   final val save: Protocol.Aux[OK] = Protocol("SAVE", Nil).as[Str, OK]
 
-  final val shutdown: Protocol.Aux[OK] = Protocol("SHUTDOWN", Nil).as[Str, OK]
-
+  final val shutdown: Protocol.Aux[OK]                     = Protocol("SHUTDOWN", Nil).as[Str, OK]
   final def shutdown(flag: ShutdownFlag): Protocol.Aux[OK] = Protocol("SHUTDOWN", flag).as[Str, OK]
 
-  final def slaveof(host: Host, port: Port): Protocol.Aux[OK] =
-    Protocol("SLAVEOF", host :: port :: HNil).as[Str, OK]
+  final def slaveof(host: Host, port: Port): Protocol.Aux[OK] = Protocol("SLAVEOF", host :: port :: HNil).as[Str, OK]
 
   final val slaveofnoone: Protocol.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 

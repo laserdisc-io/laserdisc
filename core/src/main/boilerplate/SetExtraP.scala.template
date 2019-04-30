@@ -1,7 +1,7 @@
 package laserdisc
 package protocol
 
-trait SetPExtra { this: SetP =>
+trait SetExtraP { this: SetBaseP =>
   import eu.timepit.refined.api.RefinedType
 
   //SADD
@@ -10,9 +10,7 @@ trait SetPExtra { this: SetP =>
   ]
 
   //SDIFF
-  [..21#final def sdiff[A](key##1: Key, [#key2: Key#])(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] =
+  [..21#final def sdiff[A: Bulk ==> ?](key##1: Key, [#key2: Key#]): Protocol.Aux[Seq[A]] =
     sdiff[A](TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil))#
   ]
 
@@ -22,9 +20,7 @@ trait SetPExtra { this: SetP =>
   ]
 
   //SINTER
-  [..21#final def sinter[A](key##1: Key, [#key2: Key#])(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] =
+  [..21#final def sinter[A: Bulk ==> ?](key##1: Key, [#key2: Key#]): Protocol.Aux[Seq[A]] =
     sinter[A](TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil))#
   ]
 
@@ -39,9 +35,7 @@ trait SetPExtra { this: SetP =>
   ]
 
   //SUNION
-  [..21#final def sunion[A](key##1: Key, [#key2: Key#])(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] =
+  [..21#final def sunion[A: Bulk ==> ?](key##1: Key, [#key2: Key#]): Protocol.Aux[Seq[A]] =
     sunion[A](TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil))#
   ]
 

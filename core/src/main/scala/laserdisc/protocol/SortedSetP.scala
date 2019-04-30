@@ -33,31 +33,21 @@ object SortedSetP {
     private[this] final val posInf     = "+"
     private[this] final val negInf     = "-"
 
-    sealed abstract class Open private[LexRange] (
-        private[this] val minimum: String,
-        private[this] val maximum: String
-    ) extends LexRange {
+    sealed abstract class Open private[LexRange] (private[this] val minimum: String, private[this] val maximum: String) extends LexRange {
       override final val min: String = open(minimum)
       override final val max: String = open(maximum)
     }
-    sealed abstract class OpenClosed private[LexRange] (
-        private[this] val minimum: String,
-        private[this] val maximum: String
-    ) extends LexRange {
+    sealed abstract class OpenClosed private[LexRange] (private[this] val minimum: String, private[this] val maximum: String)
+        extends LexRange {
       override final val min: String = open(minimum)
       override final val max: String = close(maximum)
     }
-    sealed abstract class ClosedOpen private[LexRange] (
-        private[this] val minimum: String,
-        private[this] val maximum: String
-    ) extends LexRange {
+    sealed abstract class ClosedOpen private[LexRange] (private[this] val minimum: String, private[this] val maximum: String)
+        extends LexRange {
       override final val min: String = close(minimum)
       override final val max: String = open(maximum)
     }
-    sealed abstract class Closed private[LexRange] (
-        private[this] val minimum: String,
-        private[this] val maximum: String
-    ) extends LexRange {
+    sealed abstract class Closed private[LexRange] (private[this] val minimum: String, private[this] val maximum: String) extends LexRange {
       override final val min: String = close(minimum)
       override final val max: String = close(maximum)
     }
@@ -93,31 +83,23 @@ object SortedSetP {
     private[this] def open(d: ValidDouble)  = s"(${Show.validDoubleShow.show(d)}"
     private[this] def close(d: ValidDouble) = Show.validDoubleShow.show(d)
 
-    sealed abstract class Open private[ScoreRange] (
-        private[this] val minimum: ValidDouble,
-        private[this] val maximum: ValidDouble
-    ) extends ScoreRange {
+    sealed abstract class Open private[ScoreRange] (private[this] val minimum: ValidDouble, private[this] val maximum: ValidDouble)
+        extends ScoreRange {
       override final val min: String = open(minimum)
       override final val max: String = open(maximum)
     }
-    sealed abstract class OpenClosed private[ScoreRange] (
-        private[this] val minimum: ValidDouble,
-        private[this] val maximum: ValidDouble
-    ) extends ScoreRange {
+    sealed abstract class OpenClosed private[ScoreRange] (private[this] val minimum: ValidDouble, private[this] val maximum: ValidDouble)
+        extends ScoreRange {
       override final val min: String = open(minimum)
       override final val max: String = close(maximum)
     }
-    sealed abstract class ClosedOpen private[ScoreRange] (
-        private[this] val minimum: ValidDouble,
-        private[this] val maximum: ValidDouble
-    ) extends ScoreRange {
+    sealed abstract class ClosedOpen private[ScoreRange] (private[this] val minimum: ValidDouble, private[this] val maximum: ValidDouble)
+        extends ScoreRange {
       override final val min: String = close(minimum)
       override final val max: String = open(maximum)
     }
-    sealed abstract class Closed private[ScoreRange] (
-        private[this] val minimum: ValidDouble,
-        private[this] val maximum: ValidDouble
-    ) extends ScoreRange {
+    sealed abstract class Closed private[ScoreRange] (private[this] val minimum: ValidDouble, private[this] val maximum: ValidDouble)
+        extends ScoreRange {
       override final val min: String = close(minimum)
       override final val max: String = close(maximum)
     }
@@ -129,7 +111,7 @@ object SortedSetP {
   }
 }
 
-trait SortedSetP {
+trait SortedSetBaseP {
   import SortedSetP.{Aggregate, Flag, LexRange, ScoreRange}
   import auto._
   import shapeless._
@@ -145,25 +127,21 @@ trait SortedSetP {
 
   final def zadd[A: Show](key: Key, scoredMembers: OneOrMore[(A, ValidDouble)]): Protocol.Aux[NonNegInt] =
     Protocol("ZADD", key :: scoredMembers.map(_.swap) :: HNil).as[Num, NonNegInt]
-
   final def zadd[A: Show](key: Key, flag: Flag, scoredMembers: OneOrMore[(A, ValidDouble)]): Protocol.Aux[NonNegInt] =
     Protocol("ZADD", key :: flag :: scoredMembers.map(_.swap) :: HNil).as[Num, NonNegInt]
 
   final def zaddch[A: Show](key: Key, scoredMembers: OneOrMore[(A, ValidDouble)]): Protocol.Aux[NonNegInt] =
     Protocol("ZADD", key :: "CH" :: scoredMembers.map(_.swap) :: HNil).as[Num, NonNegInt]
-
   final def zaddch[A: Show](key: Key, flag: Flag, scoredMembers: OneOrMore[(A, ValidDouble)]): Protocol.Aux[NonNegInt] =
     Protocol("ZADD", key :: flag :: "CH" :: scoredMembers.map(_.swap) :: HNil).as[Num, NonNegInt]
 
   final def zaddincr[A: Show](key: Key, member: A, increment: NonZeroDouble): Protocol.Aux[Double] =
     Protocol("ZADD", key :: increment :: member :: HNil).as[Bulk, Double]
-
   final def zaddincr[A: Show](key: Key, flag: Flag, member: A, increment: NonZeroDouble): Protocol.Aux[Double] =
     Protocol("ZADD", key :: flag :: increment :: member :: HNil).as[Bulk, Double]
 
   final def zaddchincr[A: Show](key: Key, member: A, increment: NonZeroDouble): Protocol.Aux[Double] =
     Protocol("ZADD", key :: "CH" :: "INCR" :: increment :: member :: HNil).as[Bulk, Double]
-
   final def zaddchincr[A: Show](key: Key, flag: Flag, member: A, increment: NonZeroDouble): Protocol.Aux[Double] =
     Protocol("ZADD", key :: flag :: "CH" :: "INCR" :: increment :: member :: HNil).as[Bulk, Double]
 
@@ -180,62 +158,44 @@ trait SortedSetP {
 
   final def zinterstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key): Protocol.Aux[NonNegInt] = {
     val (keys, weights) = weightedKeys.unzip
-    Protocol("ZINTERSTORE", destinationKey :: keys.length :: keys :: "WEIGHTS" :: weights :: HNil)
-      .as[Num, NonNegInt]
+    Protocol("ZINTERSTORE", destinationKey :: keys.length :: keys :: "WEIGHTS" :: weights :: HNil).as[Num, NonNegInt]
   }
 
   final def zinterstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] =
-    Protocol("ZINTERSTORE", destinationKey :: keys.length :: keys.value :: "AGGREGATE" :: aggregate :: HNil)
-      .as[Num, NonNegInt]
+    Protocol("ZINTERSTORE", destinationKey :: keys.length :: keys.value :: "AGGREGATE" :: aggregate :: HNil).as[Num, NonNegInt]
 
-  final def zinterstoreweighted(
-      weightedKeys: TwoOrMoreWeightedKeys,
-      destinationKey: Key,
-      aggregate: Aggregate
-  ): Protocol.Aux[NonNegInt] = {
+  final def zinterstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] = {
     val (keys, weights) = weightedKeys.unzip
-    Protocol(
-      "ZINTERSTORE",
-      destinationKey :: keys.length :: keys :: "WEIGHTS" :: weights :: "AGGREGATE" :: aggregate :: HNil
-    ).as[Num, NonNegInt]
+    Protocol("ZINTERSTORE", destinationKey :: keys.length :: keys :: "WEIGHTS" :: weights :: "AGGREGATE" :: aggregate :: HNil)
+      .as[Num, NonNegInt]
   }
 
   final def zlexcount(key: Key, range: LexRange): Protocol.Aux[NonNegInt] =
     Protocol("ZLEXCOUNT", key :: range.min :: range.max :: HNil).as[Num, NonNegInt]
 
-  final def zrange[A](key: Key, start: Index, stop: Index)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] = Protocol("ZRANGE", key :: start :: stop :: HNil).as[Arr, Seq[A]]
+  final def zrange[A: Bulk ==> ?](key: Key, start: Index, stop: Index): Protocol.Aux[Seq[A]] =
+    Protocol("ZRANGE", key :: start :: stop :: HNil).as[Arr, Seq[A]]
 
-  final def zrangebylex[A](key: Key, range: LexRange)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] = Protocol("ZRANGEBYLEX", key :: range.min :: range.max :: HNil).as[Arr, Seq[A]]
+  final def zrangebylex[A: Bulk ==> ?](key: Key, range: LexRange): Protocol.Aux[Seq[A]] =
+    Protocol("ZRANGEBYLEX", key :: range.min :: range.max :: HNil).as[Arr, Seq[A]]
 
-  final def zrangebylex[A](key: Key, range: LexRange, offset: NonNegLong, count: PosLong)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] =
+  final def zrangebylex[A: Bulk ==> ?](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
     Protocol("ZRANGEBYLEX", key :: range.min :: range.max :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[A]]
 
-  final def zrangebyscore[A](key: Key, range: ScoreRange)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] = Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: HNil).as[Arr, Seq[A]]
+  final def zrangebyscore[A: Bulk ==> ?](key: Key, range: ScoreRange): Protocol.Aux[Seq[A]] =
+    Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: HNil).as[Arr, Seq[A]]
+  final def zrangebyscore[A: Bulk ==> ?](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
+    Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[A]]
 
-  final def zrangebyscore[A](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] =
-    Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: "LIMIT" :: offset :: count :: HNil)
-      .as[Arr, Seq[A]]
-
-  final def zrangebyscorewithscores[A](key: Key, range: ScoreRange)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[(A, Double)]] =
+  final def zrangebyscorewithscores[A: Bulk ==> ?](key: Key, range: ScoreRange): Protocol.Aux[Seq[(A, Double)]] =
     Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: "WITHSCORES" :: HNil).as[Arr, Seq[(A, Double)]]
-
-  final def zrangebyscorewithscores[A](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong)(
-      implicit ev: Bulk ==> A
+  final def zrangebyscorewithscores[A: Bulk ==> ?](
+      key: Key,
+      range: ScoreRange,
+      offset: NonNegLong,
+      count: PosLong
   ): Protocol.Aux[Seq[(A, Double)]] =
-    Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: "WITHSCORES" :: "LIMIT" :: offset :: count :: HNil)
-      .as[Arr, Seq[(A, Double)]]
+    Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: "WITHSCORES" :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[(A, Double)]]
 
   final def zrank(key: Key, member: Key): Protocol.Aux[Option[NonNegInt]] =
     Protocol("ZRANK", key :: member :: Nil).asC[NullBulk :+: Num :+: CNil, Option[NonNegInt]]
@@ -252,38 +212,27 @@ trait SortedSetP {
   final def zremrangebyscore(key: Key, range: ScoreRange): Protocol.Aux[NonNegInt] =
     Protocol("ZREMRANGEBYSCORE", key :: range.min :: range.max :: HNil).as[Num, NonNegInt]
 
-  final def zrevrange[A](key: Key, start: Index, stop: Index)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] = Protocol("ZREVRANGE", key :: start :: stop :: HNil).as[Arr, Seq[A]]
+  final def zrevrange[A: Bulk ==> ?](key: Key, start: Index, stop: Index): Protocol.Aux[Seq[A]] =
+    Protocol("ZREVRANGE", key :: start :: stop :: HNil).as[Arr, Seq[A]]
 
-  final def zrevrangebylex[A](key: Key, range: LexRange)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] = Protocol("ZREVRANGEBYLEX", key :: range.max :: range.min :: HNil).as[Arr, Seq[A]]
+  final def zrevrangebylex[A: Bulk ==> ?](key: Key, range: LexRange): Protocol.Aux[Seq[A]] =
+    Protocol("ZREVRANGEBYLEX", key :: range.max :: range.min :: HNil).as[Arr, Seq[A]]
 
-  final def zrevrangebylex[A](key: Key, range: LexRange, offset: NonNegLong, count: PosLong)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] =
-    Protocol("ZREVRANGEBYLEX", key :: range.max :: range.min :: "LIMIT" :: offset :: count :: HNil)
-      .as[Arr, Seq[A]]
+  final def zrevrangebylex[A: Bulk ==> ?](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
+    Protocol("ZREVRANGEBYLEX", key :: range.max :: range.min :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[A]]
 
-  final def zrevrangebyscore[A](key: Key, range: ScoreRange)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] = Protocol("ZREVRANGEBYSCORE", key :: range.max :: range.min :: HNil).as[Arr, Seq[A]]
+  final def zrevrangebyscore[A: Bulk ==> ?](key: Key, range: ScoreRange): Protocol.Aux[Seq[A]] =
+    Protocol("ZREVRANGEBYSCORE", key :: range.max :: range.min :: HNil).as[Arr, Seq[A]]
+  final def zrevrangebyscore[A: Bulk ==> ?](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
+    Protocol("ZREVRANGEBYSCORE", key :: range.max :: range.min :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[A]]
 
-  final def zrevrangebyscore[A](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[A]] =
-    Protocol("ZREVRANGEBYSCORE", key :: range.max :: range.min :: "LIMIT" :: offset :: count :: HNil)
-      .as[Arr, Seq[A]]
-
-  final def zrevrangebyscorewithscores[A](key: Key, range: ScoreRange)(
-      implicit ev: Bulk ==> A
-  ): Protocol.Aux[Seq[(A, Double)]] =
-    Protocol("ZREVRANGEBYSCORE", key :: range.max :: range.min :: "WITHSCORES" :: HNil)
-      .as[Arr, Seq[(A, Double)]]
-
-  final def zrevrangebyscorewithscores[A](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong)(
-      implicit ev: Bulk ==> A
+  final def zrevrangebyscorewithscores[A: Bulk ==> ?](key: Key, range: ScoreRange): Protocol.Aux[Seq[(A, Double)]] =
+    Protocol("ZREVRANGEBYSCORE", key :: range.max :: range.min :: "WITHSCORES" :: HNil).as[Arr, Seq[(A, Double)]]
+  final def zrevrangebyscorewithscores[A: Bulk ==> ?](
+      key: Key,
+      range: ScoreRange,
+      offset: NonNegLong,
+      count: PosLong
   ): Protocol.Aux[Seq[(A, Double)]] =
     Protocol("ZREVRANGEBYSCORE", key :: range.max :: range.min :: "WITHSCORES" :: "LIMIT" :: offset :: count :: HNil)
       .as[Arr, Seq[(A, Double)]]
@@ -291,21 +240,13 @@ trait SortedSetP {
   final def zrevrank(key: Bulk, member: Key): Protocol.Aux[Option[NonNegInt]] =
     Protocol("ZREVRANK", key :: member :: HNil).asC[NullBulk :+: Num :+: CNil, Option[NonNegInt]]
 
-  final def zscan[A](key: Key, cursor: NonNegLong)(
-      implicit ev: Arr ==> Seq[A]
-  ): Protocol.Aux[Scan[A]] = Protocol("ZSCAN", key :: cursor :: HNil).as[Arr, Scan[A]]
-
-  final def zscan[A](key: Key, cursor: NonNegLong, pattern: GlobPattern)(
-      implicit ev: Arr ==> Seq[A]
-  ): Protocol.Aux[Scan[A]] = Protocol("ZSCAN", key :: cursor :: "MATCH" :: pattern :: HNil).as[Arr, Scan[A]]
-
-  final def zscan[A](key: Key, cursor: NonNegLong, count: PosInt)(
-      implicit ev: Arr ==> Seq[A]
-  ): Protocol.Aux[Scan[A]] = Protocol("ZSCAN", key :: cursor :: "COUNT" :: count :: HNil).as[Arr, Scan[A]]
-
-  final def zscan[A](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt)(
-      implicit ev: Arr ==> Seq[A]
-  ): Protocol.Aux[Scan[A]] =
+  final def zscan[A: λ[a => Arr ==> Seq[a]]](key: Key, cursor: NonNegLong): Protocol.Aux[Scan[A]] =
+    Protocol("ZSCAN", key :: cursor :: HNil).as[Arr, Scan[A]]
+  final def zscan[A: λ[a => Arr ==> Seq[a]]](key: Key, cursor: NonNegLong, pattern: GlobPattern): Protocol.Aux[Scan[A]] =
+    Protocol("ZSCAN", key :: cursor :: "MATCH" :: pattern :: HNil).as[Arr, Scan[A]]
+  final def zscan[A: λ[a => Arr ==> Seq[a]]](key: Key, cursor: NonNegLong, count: PosInt): Protocol.Aux[Scan[A]] =
+    Protocol("ZSCAN", key :: cursor :: "COUNT" :: count :: HNil).as[Arr, Scan[A]]
+  final def zscan[A: λ[a => Arr ==> Seq[a]]](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Protocol.Aux[Scan[A]] =
     Protocol("ZSCAN", key :: cursor :: "MATCH" :: pattern :: "COUNT" :: count :: HNil).as[Arr, Scan[A]]
 
   final def zscore[A: Show](key: Key, member: A): Protocol.Aux[Option[Double]] =
@@ -316,25 +257,17 @@ trait SortedSetP {
 
   final def zunionstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key): Protocol.Aux[NonNegInt] = {
     val (keys, weights) = weightedKeys.unzip
-    Protocol("ZUNIONSTORE", destinationKey :: keys.length :: keys :: "WEIGHTS" :: weights :: HNil)
-      .as[Num, NonNegInt]
+    Protocol("ZUNIONSTORE", destinationKey :: keys.length :: keys :: "WEIGHTS" :: weights :: HNil).as[Num, NonNegInt]
   }
 
   final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] =
-    Protocol("ZUNIONSTORE", destinationKey :: keys.length :: keys.value :: "AGGREGATE" :: aggregate :: HNil)
-      .as[Num, NonNegInt]
+    Protocol("ZUNIONSTORE", destinationKey :: keys.length :: keys.value :: "AGGREGATE" :: aggregate :: HNil).as[Num, NonNegInt]
 
-  final def zunionstoreweighted(
-      weightedKeys: TwoOrMoreWeightedKeys,
-      destinationKey: Key,
-      aggregate: Aggregate
-  ): Protocol.Aux[NonNegInt] = {
+  final def zunionstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] = {
     val (keys, weights) = weightedKeys.unzip
-    Protocol(
-      "ZUNIONSTORE",
-      destinationKey :: keys.length :: keys :: "WEIGHTS" :: weights :: "AGGREGATE" :: aggregate :: HNil
-    ).as[Num, NonNegInt]
+    Protocol("ZUNIONSTORE", destinationKey :: keys.length :: keys :: "WEIGHTS" :: weights :: "AGGREGATE" :: aggregate :: HNil)
+      .as[Num, NonNegInt]
   }
 }
 
-trait AllSortedSetP extends SortedSetP with SortedSetPExtra
+trait SortedSetP extends SortedSetBaseP with SortedSetExtraP

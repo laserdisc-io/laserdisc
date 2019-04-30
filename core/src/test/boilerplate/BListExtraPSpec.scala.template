@@ -1,19 +1,14 @@
 package laserdisc
 package protocol
 
-object BListPExtraSpec {
-  final case class Foo(x: Int)
-}
+final class BListExtraPSpec extends BaseSpec {
 
-final class BListPExtraSpec extends BaseSpec {
-
-  import BListPExtraSpec._
   import RESP._
   import auto._
   import lists.blocking._
   import show._
 
-  "A BListPExtra" when {
+  "A BListExtraP" when {
 
     "using blpop" should {
 

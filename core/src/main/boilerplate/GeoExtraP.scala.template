@@ -1,7 +1,7 @@
 package laserdisc
 package protocol
 
-trait GeoPExtra { this: GeoP =>
+trait GeoExtraP { this: GeoBaseP =>
   //GEOADD
   [..21#final def geoadd(key: Key, [#position1: Position#]): Protocol.Aux[NonNegInt] =
     geoadd(key, OneOrMore.unsafeFrom([#position1# :: ] :: Nil))#

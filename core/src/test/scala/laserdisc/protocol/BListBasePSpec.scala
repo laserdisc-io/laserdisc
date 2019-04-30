@@ -1,19 +1,13 @@
 package laserdisc
 package protocol
 
-object BListPSpec {
-  final case class Foo(x: Int)
-}
-
-final class BListPSpec extends BaseSpec {
-
+final class BListBasePSpec extends BaseSpec {
   import auto._
-  import BListPSpec._
   import lists.blocking._
   import RESP._
   import show._
 
-  "AllBListP" when {
+  "A BListBaseP" when {
 
     "using blpop" should {
 
@@ -31,12 +25,7 @@ final class BListPSpec extends BaseSpec {
 
       "fail at runtime" when {
         "given empty key list to safely refine" in {
-          OneOrMoreKeys
-            .from(List.empty[Key])
-            .right
-            .map(blpop(_, 0))
-            .left
-            .value shouldBe "Predicate isEmpty(List()) did not fail."
+          OneOrMoreKeys.from(List.empty[Key]).right.map(blpop(_, 0)).left.value shouldBe "Predicate isEmpty(List()) did not fail."
         }
         "given empty key list to unsafely refine" in {
           the[IllegalArgumentException].thrownBy {
@@ -51,19 +40,12 @@ final class BListPSpec extends BaseSpec {
             val protocol = blpop[Int](ks, nni)
 
             protocol.encode shouldBe arr((bulk("BLPOP") :: ks.map(k => bulk(k.show))) :+ bulk(nni.show))
-            protocol
-              .decode(
-                arr(bulk(ks.headOption.value.show), bulk(i.show))
-              )
-              .right
-              .value
-              .value shouldBe KV(ks.headOption.value, i)
+            protocol.decode(arr(bulk(ks.headOption.value.show), bulk(i.show))).right.value.value shouldBe KV(ks.headOption.value, i)
           }
         }
         "given specific read instance" in {
-          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF {
-            case Bulk(ToInt(i)) => Foo(i)
-          }
+          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF { case Bulk(ToInt(i)) => Foo(i) }
+
           forAll("key", "return value") { (k: Key, i: Int) =>
             val protocol = blpop[Foo](k)
 
@@ -94,9 +76,8 @@ final class BListPSpec extends BaseSpec {
 
       "compile successfully" when {
         "given specific read instance" in {
-          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF {
-            case Bulk(ToInt(i)) => Foo(i)
-          }
+          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF { case Bulk(ToInt(i)) => Foo(i) }
+
           forAll("key", "return value") { (k: Key, i: Int) =>
             val protocol = brpop[Foo](k)
 
@@ -143,9 +124,8 @@ final class BListPSpec extends BaseSpec {
           }
         }
         "given specific read instance" in {
-          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF {
-            case Bulk(ToInt(i)) => Foo(i)
-          }
+          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF { case Bulk(ToInt(i)) => Foo(i) }
+
           forAll("source", "destination", "timeout", "return value") { (s: Key, d: Key, pi: PosInt, i: Int) =>
             val protocol = brpoplpush[Foo](s, d, pi)
 

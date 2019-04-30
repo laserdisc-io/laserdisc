@@ -1,7 +1,7 @@
 package laserdisc
 package protocol
 
-trait BListP {
+trait BListBaseP {
   import shapeless._
 
   final def blpop[A: Bulk ==> ?](keys: OneOrMoreKeys, seconds: NonNegInt): Protocol.Aux[Option[KV[A]]] =
@@ -11,16 +11,9 @@ trait BListP {
     Protocol("BRPOP", keys.value :: seconds :: HNil).asC[NilArr :+: Arr :+: CNil, Option[KV[A]]]
 
   final def brpoplpush[A: Bulk ==> ?](source: Key, destination: Key): Protocol.Aux[Option[A]] =
-    Protocol("BRPOPLPUSH", source :: destination :: 0 :: HNil)
-      .asC[NullBulk :+: Bulk :+: CNil, Option[A]]
-
-  final def brpoplpush[A: Bulk ==> ?](
-      source: Key,
-      destination: Key,
-      timeout: PosInt
-  ): Protocol.Aux[Option[A]] =
-    Protocol("BRPOPLPUSH", source :: destination :: timeout :: HNil)
-      .asC[NullBulk :+: Bulk :+: CNil, Option[A]]
+    Protocol("BRPOPLPUSH", source :: destination :: 0 :: HNil).asC[NullBulk :+: Bulk :+: CNil, Option[A]]
+  final def brpoplpush[A: Bulk ==> ?](source: Key, destination: Key, timeout: PosInt): Protocol.Aux[Option[A]] =
+    Protocol("BRPOPLPUSH", source :: destination :: timeout :: HNil).asC[NullBulk :+: Bulk :+: CNil, Option[A]]
 }
 
-trait AllBListP extends BListP with BListPExtra
+trait BListP extends BListBaseP with BListExtraP

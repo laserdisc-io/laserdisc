@@ -1,15 +1,13 @@
 package laserdisc
 package protocol
 
-trait HyperLogLogP {
-  final def pfadd(key: Key, elements: OneOrMoreKeys): Protocol.Aux[Boolean] =
-    Protocol("PFADD", key :: elements.value).as[Num, Boolean]
+trait HyperLogLogBaseP {
+  final def pfadd(key: Key, elements: OneOrMoreKeys): Protocol.Aux[Boolean] = Protocol("PFADD", key :: elements.value).as[Num, Boolean]
 
-  final def pfcount(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] =
-    Protocol("PFCOUNT", keys.value).as[Num, NonNegInt]
+  final def pfcount(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("PFCOUNT", keys.value).as[Num, NonNegInt]
 
   final def pfmerge(sourceKeys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[OK] =
     Protocol("PFMERGE", destinationKey :: sourceKeys.value).as[Str, OK]
 }
 
-trait AllHyperLogLogP extends HyperLogLogP with HyperLogLogPExtra
+trait HyperLogLogP extends HyperLogLogBaseP with HyperLogLogExtraP

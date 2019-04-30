@@ -5,14 +5,7 @@ import laserdisc.protocol.Bulk
 import laserdisc.protocol.RESP._
 import shapeless._
 
-object HashPSpec {
-  final case class Foo(x: Int)
-}
-
 final class HashPSpec extends BaseSpec {
-
-  import HashPSpec._
-
   "A HashP with HashPExtra" when {
 
     "using hdel" should {

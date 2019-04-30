@@ -1,10 +1,10 @@
 package laserdisc
 package protocol
 
-trait BListPExtra { this: BListP =>
+trait BListExtraP { this: BListBaseP =>
   //BLPOP with no timeout specified
   [#final def blpop[A: Bulk ==> ?]([#key1: Key#]): Protocol.Aux[Option[KV[A]]] =
-    blpop[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil), NonNegInt.unsafeFrom(##0))#
+    blpop[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil), NonNegInt(##0))#
   ]
 
   //BLPOP with timeout specified
@@ -14,7 +14,7 @@ trait BListPExtra { this: BListP =>
 
   //BRPOP with no timeout specified
   [#final def brpop[A: Bulk ==> ?]([#key1: Key#]): Protocol.Aux[Option[KV[A]]] =
-    brpop[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil), NonNegInt.unsafeFrom(##0))#
+    brpop[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil), NonNegInt(##0))#
   ]
 
   //BRPOP with timeout specified

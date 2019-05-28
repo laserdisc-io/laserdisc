@@ -72,7 +72,7 @@ trait KeyBaseP {
 
   final def del(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]
 
-  final def dump(key: Key): Protocol.Aux[Option[Bulk]] = Protocol("DUMP", key).asC[NullBulk :+: Bulk :+: CNil, Option[Bulk]]
+  final def dump(key: Key): Protocol.Aux[Option[Bulk]] = Protocol("DUMP", key).opt[GenBulk].as[Bulk]
 
   final def exists(keys: OneOrMoreKeys): Protocol.Aux[Option[PosInt]] = Protocol("EXISTS", keys.value).using(zeroIsNone)
 
@@ -117,12 +117,12 @@ trait KeyBaseP {
     def refcount(key: Key): Protocol.Aux[NonNegInt] = Protocol("OBJECT", "REFCOUNT" :: key.value :: Nil).as[Num, NonNegInt]
 
     def encoding(key: Key): Protocol.Aux[Option[Encoding]] =
-      Protocol("OBJECT", "ENCODING" :: key.value :: Nil).asC[NullBulk :+: Bulk :+: CNil, Option[Encoding]]
+      Protocol("OBJECT", "ENCODING" :: key.value :: Nil).opt[GenBulk].as[Encoding]
 
     //FIXME add freq
 
     def idletime(key: Key): Protocol.Aux[Option[NonNegInt]] =
-      Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).asC[NullBulk :+: Num :+: CNil, Option[NonNegInt]]
+      Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).opt[GenBulk].as[NonNegInt]
   }
 
   final def persist(key: Key): Protocol.Aux[Boolean] = Protocol("PERSIST", key).as[Num, Boolean]
@@ -136,7 +136,7 @@ trait KeyBaseP {
 
   final def pttl(key: Key): Protocol.Aux[TTLResponse] = Protocol("PTTL", key).as[Num, TTLResponse]
 
-  final val randomKey: Protocol.Aux[Option[Key]] = Protocol("RANDOMKEY", Nil).asC[NullBulk :+: Bulk :+: CNil, Option[Key]]
+  final val randomKey: Protocol.Aux[Option[Key]] = Protocol("RANDOMKEY", Nil).opt[GenBulk].as[Key]
 
   final def rename(key: Key, newKey: Key): Protocol.Aux[Key] = Protocol("RENAME", key :: newKey :: Nil).as[Str, Key]
 

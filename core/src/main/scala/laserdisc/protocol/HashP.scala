@@ -13,7 +13,7 @@ trait HashBaseP {
   final def hexists(key: Key, field: Key): Protocol.Aux[Boolean] = Protocol("HEXISTS", key :: field :: Nil).as[Num, Boolean]
 
   final def hget[A: Bulk ==> ?](key: Key, field: Key): Protocol.Aux[Option[A]] =
-    Protocol("HGET", key :: field :: Nil).asC[NullBulk :+: Bulk :+: CNil, Option[A]]
+    Protocol("HGET", key :: field :: Nil).opt[GenBulk].as[A]
 
   final def hgetall[A: Arr ==> ?](key: Key): Protocol.Aux[A] = Protocol("HGETALL", key).as[Arr, A]
 

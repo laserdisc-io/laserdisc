@@ -26,18 +26,15 @@ object RESPRead {
   final type Aux[Sub0, A] = RESPRead[A] { type Sub = Sub0 }
   final def apply[Sub, A](implicit instance: RESPRead.Aux[Sub, A]): RESPRead.Aux[Sub, A] = instance
 
-  private[this] final type RESPCoproduct =
-    Str :+: Err :+: Num :+: NullBulk :+: Bulk :+: NilArr :+: Arr :+: CNil
-
   private[this] implicit val respInject: Inject[RESPCoproduct, RESP] = new Inject[RESPCoproduct, RESP] {
     override def apply(resp: RESP): RESPCoproduct = resp match {
-      case str: Str   => Inl(str)
-      case err: Err   => Inr(Inl(err))
-      case num: Num   => Inr(Inr(Inl(num)))
-      case NullBulk   => Inr(Inr(Inr(Inl(nullBulk))))
-      case bulk: Bulk => Inr(Inr(Inr(Inr(Inl(bulk)))))
-      case NilArr     => Inr(Inr(Inr(Inr(Inr(Inl(nilArr))))))
-      case arr: Arr   => Inr(Inr(Inr(Inr(Inr(Inr(Inl(arr)))))))
+      case arr: Arr   => Inl(arr)
+      case bulk: Bulk => Inr(Inl(bulk))
+      case err: Err   => Inr(Inr(Inl(err)))
+      case NilArr     => Inr(Inr(Inr(Inl(nilArr))))
+      case NullBulk   => Inr(Inr(Inr(Inr(Inl(nullBulk)))))
+      case num: Num   => Inr(Inr(Inr(Inr(Inr(Inl(num))))))
+      case str: Str   => Inr(Inr(Inr(Inr(Inr(Inr(Inl(str)))))))
     }
   }
 

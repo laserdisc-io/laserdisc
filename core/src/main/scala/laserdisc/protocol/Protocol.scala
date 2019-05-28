@@ -37,18 +37,22 @@ sealed trait Protocol extends Request with Response { self =>
 object Protocol {
   final type Aux[A0] = Protocol { type A = A0 }
 
-  final class RESPProtocolCodec[A <: Coproduct, B](val R: RESPRead.Aux[A, B]) extends AnyVal with ProtocolCodec[B] {
+  final class RESPProtocolCodec[A, B](val R: RESPRead.Aux[A, B]) extends AnyVal with ProtocolCodec[B] {
     import RESP._
 
     override def encode(value: Protocol): RESP = arr(bulk(value.command), value.parameters: _*)
     override def decode(resp: RESP): Maybe[B]  = R.read(resp)
   }
 
+  final class PartiallyAppliedOptionalProtocol[L, A](private val underlying: PartiallyAppliedProtocol[L]) extends AnyVal {
+    def as[B](implicit R: RESPRead.Aux[A, Option[B]]): Protocol.Aux[Option[B]] = underlying.asC(R)
+  }
+
   sealed abstract class PartiallyAppliedProtocol[L: RESPParamWrite](
       private[this] final val command: String,
       private[this] final val l: L
   ) { self =>
-
+  
     /**
       * We request evidence that the [[RESP]] sent back by Redis can be deserialized
       * into an instance of a B.
@@ -63,7 +67,7 @@ object Protocol {
       * @return A fully-fledged [[Protocol]] for the provided [[Request]]/[[Response]]
       *         pair
       */
-    final def asC[A <: Coproduct, B](implicit R: RESPRead.Aux[A, B]): Protocol.Aux[B] = new Protocol {
+    final def asC[A, B](implicit R: RESPRead.Aux[A, B]): Protocol.Aux[B] = new Protocol {
       override final type A = B
       override final val codec: ProtocolCodec[B]  = new RESPProtocolCodec(R)
       override final val command: String          = self.command
@@ -71,6 +75,8 @@ object Protocol {
     }
 
     final def as[A, B](implicit ev: A <:!< Coproduct, R: RESPRead.Aux[A :+: CNil, B]): Protocol.Aux[B] = asC(R)
+
+    final def opt[A](implicit ev: A <:!< Coproduct, gen: Generic[A]) = new PartiallyAppliedOptionalProtocol[L, gen.Repr](self)
 
     final def using[A <: Coproduct, B](R: RESPRead.Aux[A, B]): Protocol.Aux[B] = asC(R)
   }
@@ -83,6 +89,5 @@ object Protocol {
     *
     *
     */
-  final def apply[L: RESPParamWrite](cmd: String, l: L): PartiallyAppliedProtocol[L] =
-    new PartiallyAppliedProtocol(cmd, l) {}
+  final def apply[L: RESPParamWrite](cmd: String, l: L): PartiallyAppliedProtocol[L] = new PartiallyAppliedProtocol(cmd, l) {}
 }

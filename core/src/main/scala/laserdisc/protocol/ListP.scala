@@ -26,14 +26,14 @@ trait ListBaseP {
   }
 
   final def lindex[A: Bulk ==> ?](key: Key, index: Index): Protocol.Aux[Option[A]] =
-    Protocol("LINDEX", key :: index :: HNil).asC[NullBulk :+: Bulk :+: CNil, Option[A]]
+    Protocol("LINDEX", key :: index :: HNil).opt[GenBulk].as[A]
 
   final def linsert[A: Show](key: Key, position: Position, pivot: A, value: A): Protocol.Aux[Option[PosInt]] =
     Protocol("LINSERT", key :: position :: pivot :: value :: HNil).using(minusOneIsNone)
 
   final def llen(key: Key): Protocol.Aux[NonNegInt] = Protocol("LLEN", key).as[Num, NonNegInt]
 
-  final def lpop[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]] = Protocol("LPOP", key).asC[NullBulk :+: Bulk :+: CNil, Option[A]]
+  final def lpop[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]] = Protocol("LPOP", key).opt[GenBulk].as[A]
 
   final def lpush[A: Show](key: Key, values: OneOrMore[A]): Protocol.Aux[PosInt] =
     Protocol("LPUSH", key :: values.value :: HNil).as[Num, PosInt]
@@ -50,10 +50,10 @@ trait ListBaseP {
 
   final def ltrim(key: Key, start: Index, stop: Index): Protocol.Aux[OK] = Protocol("LTRIM", key :: start :: stop :: HNil).as[Str, OK]
 
-  final def rpop[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]] = Protocol("RPOP", key).asC[NullBulk :+: Bulk :+: CNil, Option[A]]
+  final def rpop[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]] = Protocol("RPOP", key).opt[GenBulk].as[A]
 
   final def rpoplpush[A: Bulk ==> ?](source: Key, destination: Key): Protocol.Aux[Option[A]] =
-    Protocol("RPOPLPUSH", source :: destination :: Nil).asC[NullBulk :+: Bulk :+: CNil, Option[A]]
+    Protocol("RPOPLPUSH", source :: destination :: Nil).opt[GenBulk].as[A]
 
   final def rpush[A: Show](key: Key, values: OneOrMore[A]): Protocol.Aux[PosInt] =
     Protocol("RPUSH", key :: values.value :: HNil).as[Num, PosInt]

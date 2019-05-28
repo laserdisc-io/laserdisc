@@ -166,9 +166,6 @@ trait ReadInstances1 extends ReadInstances2 {
     case Arr(Bulk(ToLong(NonNegLong(cursor))) +: R(as) +: Seq())  => Scan(cursor, Some(as))
   }
 
-  implicit final val arr2Coordinates: Read[Arr, Coordinates] = Read.instancePF {
-    case Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) => Coordinates(lat, long)
-  }
   implicit final val arr2Map: Read[Arr, Map[Key, String]] = Read.instance {
     case Arr(vector) =>
       val (vectorLength, (kvs, kvsLength)) = vector.grouped(2).foldLeft(0 -> (Map.empty[Key, String] -> 0)) {
@@ -212,13 +209,13 @@ trait ReadInstances1 extends ReadInstances2 {
 }
 
 sealed trait ReadInstances2 {
-  implicit final def liftNullBulk2Option[A, B](implicit R: Read[A, B]): Read[NullBulk :+: A :+: CNil, Option[B]] = Read.instancePF {
-    case Inl(_)         => None
-    case Inr(Inl(R(b))) => Some(b)
+  implicit final def liftNullBulk2Option[A, B](implicit R: Read[A, B]): Read[A :+: NullBulk :+: CNil, Option[B]] = Read.instancePF {
+    case Inl(R(b)) => Some(b)
+    case Inr(_)    => None
   }
-  implicit final def liftNilArr2Option[A, B](implicit R: Read[A, B]): Read[NilArr :+: A :+: CNil, Option[B]] = Read.instancePF {
-    case Inl(_)         => None
-    case Inr(Inl(R(b))) => Some(b)
+  implicit final def liftNilArr2Option[A, B](implicit R: Read[A, B]): Read[A :+: NilArr :+: CNil, Option[B]] = Read.instancePF {
+    case Inl(R(b)) => Some(b)
+    case Inr(_)    => None
   }
   implicit final def liftSimpleToSum[A: <:!<[?, Coproduct], B](implicit R: Read[A, B]): Read[A :+: CNil, B] = Read.instancePF {
     case Inl(R(b)) => b

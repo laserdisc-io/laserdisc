@@ -12,6 +12,7 @@ import scodec.codecs.{filtered, fixedSizeBytes}
 import scodec.{Attempt, Codec, DecodeResult, Decoder, SizeBound, Err => SErr}
 
 import scala.annotation.tailrec
+import shapeless.Generic
 
 /** [[https://redis.io/topics/protocol Redis Protocol Specification]]
   *
@@ -23,7 +24,7 @@ import scala.annotation.tailrec
   * @see [[RESPBuilders]]
   * @see [[RESPCodecs]]
   */
-sealed trait RESP extends Any with Serializable
+sealed trait RESP extends AnyRef with Serializable
 
 /**
   * RESP [[https://redis.io/topics/protocol#resp-simple-strings Simple Strings]]
@@ -42,7 +43,7 @@ sealed trait RESP extends Any with Serializable
   *
   * @param value The wrapped string value
   */
-final class Str private[protocol] (val value: String) extends RESP {
+final case class Str private[protocol] (val value: String) extends RESP/*  {
   override def hashCode(): Int = value.hashCode
   override def equals(obj: Any): Boolean = obj match {
     case other: Str => other.value == value
@@ -52,7 +53,7 @@ final class Str private[protocol] (val value: String) extends RESP {
 }
 object Str {
   final def unapply(str: Str): Option[String] = Some(str.value)
-}
+} */
 
 /**
   * RESP [[https://redis.io/topics/protocol#resp-errors Errors]]
@@ -70,7 +71,7 @@ object Str {
   * }}}
   * @param message The wrapped exception's message
   */
-final class Err private[protocol] (val message: String) extends laserdisc.Platform.LaserDiscRuntimeError(message) with RESP {
+final case class Err private[protocol] (val message: String) extends laserdisc.Platform.LaserDiscRuntimeError(message) with RESP/*  {
   override def hashCode(): Int = message.hashCode
   override def equals(obj: Any): Boolean = obj match {
     case other: Err => other.message == message
@@ -80,7 +81,7 @@ final class Err private[protocol] (val message: String) extends laserdisc.Platfo
 }
 object Err {
   final def unapply(err: Err): Option[String] = Some(err.message)
-}
+} */
 
 /**
   * RESP [[https://redis.io/topics/protocol#resp-integers Integers]]
@@ -100,7 +101,7 @@ object Err {
   *
   * @param value The wrapped long value
   */
-final class Num private[protocol] (val value: Long) extends RESP {
+final case class Num private[protocol] (val value: Long) extends RESP/*  {
   override def hashCode(): Int = value.hashCode()
   override def equals(obj: Any): Boolean = obj match {
     case other: Num => other.value == value
@@ -110,7 +111,7 @@ final class Num private[protocol] (val value: Long) extends RESP {
 }
 object Num {
   final def unapply(num: Num): Option[Long] = Some(num.value)
-}
+} */
 
 /**
   * RESP [[https://redis.io/topics/protocol#resp-bulk-strings Bulk Strings]]
@@ -133,9 +134,8 @@ object Num {
   * }}}
   * @see [[Show]]
   */
-sealed trait GenBulk  extends RESP
-sealed trait NullBulk extends GenBulk
-case object NullBulk  extends NullBulk
+sealed trait GenBulk extends RESP
+case object NullBulk extends GenBulk
 
 /**
   * This is the special case of a non-null RESP [[GenBulk]]
@@ -145,16 +145,16 @@ case object NullBulk  extends NullBulk
   *
   * @param value The wrapped bulk string value
   */
-final class Bulk private[protocol] (val value: String) extends GenBulk {
+final case class Bulk private[protocol] (val value: String) extends GenBulk/*  {
   override def hashCode(): Int = value.hashCode
   override def equals(obj: Any): Boolean = obj match {
     case other: Bulk => other.value == value
     case _           => false
   }
   override def toString: String = s"Bulk($value)"
-}
+} */
 object Bulk {
-  final def unapply(bulk: Bulk): Option[String] = Some(bulk.value)
+  //final def unapply(bulk: Bulk): Option[String] = Some(bulk.value)
 
   implicit final val bulkShow: Show[Bulk] = Show.instance(_.value)
 }
@@ -186,8 +186,7 @@ object Bulk {
   * }}}
   */
 sealed trait GenArr extends RESP
-sealed trait NilArr extends GenArr
-case object NilArr  extends NilArr
+case object NilArr  extends GenArr
 
 /**
   * This is the special case of a non-nil RESP [[GenArr]]
@@ -204,7 +203,7 @@ case object NilArr  extends NilArr
   *
   * @param elements The wrapped array values, as a [[scala.Vector]] of [[RESP]]
   */
-final class Arr private[protocol] (val elements: Vector[RESP]) extends GenArr {
+final case class Arr private[protocol] (val elements: Vector[RESP]) extends GenArr/*  {
   override def hashCode(): Int = elements.hashCode()
   override def equals(obj: Any): Boolean = obj match {
     case other: Arr => other.elements == elements
@@ -214,7 +213,7 @@ final class Arr private[protocol] (val elements: Vector[RESP]) extends GenArr {
 }
 object Arr {
   final def unapply(arr: Arr): Option[Vector[RESP]] = Some(arr.elements)
-}
+} */
 
 private[protocol] final case class Repr[A](decoded: A, bits: BitVector)
 
@@ -354,6 +353,12 @@ sealed trait RESPCodecs extends BitVectorSyntax { this: RESPBuilders =>
   }
 }
 
+sealed trait RESPCoproduct {
+  final val gen = Generic[RESP]
+
+  final type RESPCoproduct = gen.Repr
+}
+
 sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
 
   import BitVectorDecoding._
@@ -442,4 +447,4 @@ object BitVectorDecoding {
   final case object Complete                                                        extends State
 }
 
-object RESP extends RESPBuilders with RESPCodecs with RESPFunctions
+object RESP extends RESPBuilders with RESPCodecs with RESPCoproduct with RESPFunctions

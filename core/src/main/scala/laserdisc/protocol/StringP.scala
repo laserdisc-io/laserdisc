@@ -64,7 +64,7 @@ object StringP {
   final class PartiallyAppliedGetSet[A](private val dummy: Boolean) extends AnyVal {
     import shapeless._
     def apply[B: Show](key: Key, value: B)(implicit ev: Bulk ==> A): Protocol.Aux[Option[A]] =
-      Protocol("GETSET", key :: value :: HNil).asC[NullBulk :+: Bulk :+: CNil, Option[A]]
+      Protocol("GETSET", key :: value :: HNil).asC[Bulk :+: NullBulk :+: CNil, Option[A]]
   }
 }
 
@@ -110,7 +110,7 @@ trait StringBaseP {
   //TODO verify ok to limit DECRBY to only positive values, REDIS happily accepts 0 and negatives and x + (-decrement)
   final def decrby[A: Num ==> ?](key: Key, decrement: PosLong): Protocol.Aux[A] = Protocol("DECRBY", key :: decrement :: HNil).as[Num, A]
 
-  final def get[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]] = Protocol("GET", key).asC[NullBulk :+: Bulk :+: CNil, Option[A]]
+  final def get[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]] = Protocol("GET", key).opt[GenBulk].as[A]
 
   final def getbit(key: Key, offset: PosLong): Protocol.Aux[Bit] = Protocol("GETBIT", key :: offset :: HNil).as[Num, Bit]
 
@@ -165,9 +165,9 @@ trait StringBaseP {
   final def set[A: Show](key: Key, value: A, expiry: Expiry): Protocol.Aux[OK] =
     Protocol("SET", key :: value :: expiry.unit :: expiry.value :: HNil).as[Str, OK]
   final def set[A: Show](key: Key, value: A, flag: Flag): Protocol.Aux[Option[OK]] =
-    Protocol("SET", key :: value :: flag :: HNil).asC[NullBulk :+: Str :+: CNil, Option[OK]]
+    Protocol("SET", key :: value :: flag :: HNil).asC[Str :+: NullBulk :+: CNil, Option[OK]]
   final def set[A: Show](key: Key, value: A, expiry: Expiry, flag: Flag): Protocol.Aux[Option[OK]] =
-    Protocol("SET", key :: value :: flag :: expiry.unit :: expiry.value :: HNil).asC[NullBulk :+: Str :+: CNil, Option[OK]]
+    Protocol("SET", key :: value :: flag :: expiry.unit :: expiry.value :: HNil).asC[Str :+: NullBulk :+: CNil, Option[OK]]
 
   final def setbit(key: Key, offset: StringLength, bit: Bit): Protocol.Aux[Bit] =
     Protocol("SETBIT", key :: offset :: bit :: HNil).as[Num, Bit]

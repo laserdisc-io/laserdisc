@@ -198,7 +198,7 @@ trait SortedSetBaseP {
     Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: "WITHSCORES" :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[(A, Double)]]
 
   final def zrank(key: Key, member: Key): Protocol.Aux[Option[NonNegInt]] =
-    Protocol("ZRANK", key :: member :: Nil).asC[NullBulk :+: Num :+: CNil, Option[NonNegInt]]
+    Protocol("ZRANK", key :: member :: Nil).asC[Num :+: NullBulk :+: CNil, Option[NonNegInt]]
 
   final def zrem[A: Show](key: Key, members: OneOrMore[A]): Protocol.Aux[NonNegInt] =
     Protocol("ZREM", key :: members.value :: HNil).as[Num, NonNegInt]
@@ -238,7 +238,7 @@ trait SortedSetBaseP {
       .as[Arr, Seq[(A, Double)]]
 
   final def zrevrank(key: Bulk, member: Key): Protocol.Aux[Option[NonNegInt]] =
-    Protocol("ZREVRANK", key :: member :: HNil).asC[NullBulk :+: Num :+: CNil, Option[NonNegInt]]
+    Protocol("ZREVRANK", key :: member :: HNil).asC[Num :+: NullBulk :+: CNil, Option[NonNegInt]]
 
   final def zscan[A: λ[a => Arr ==> Seq[a]]](key: Key, cursor: NonNegLong): Protocol.Aux[Scan[A]] =
     Protocol("ZSCAN", key :: cursor :: HNil).as[Arr, Scan[A]]
@@ -249,8 +249,7 @@ trait SortedSetBaseP {
   final def zscan[A: λ[a => Arr ==> Seq[a]]](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Protocol.Aux[Scan[A]] =
     Protocol("ZSCAN", key :: cursor :: "MATCH" :: pattern :: "COUNT" :: count :: HNil).as[Arr, Scan[A]]
 
-  final def zscore[A: Show](key: Key, member: A): Protocol.Aux[Option[Double]] =
-    Protocol("ZSCORE", key :: member :: HNil).asC[NullBulk :+: Bulk :+: CNil, Option[Double]]
+  final def zscore[A: Show](key: Key, member: A): Protocol.Aux[Option[Double]] = Protocol("ZSCORE", key :: member :: HNil).opt[GenBulk].as[Double]
 
   final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[NonNegInt] =
     Protocol("ZUNIONSTORE", destinationKey :: keys.length :: keys.value :: HNil).as[Num, NonNegInt]

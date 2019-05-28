@@ -167,8 +167,7 @@ trait ServerP {
   final val bgsave: Protocol.Aux[OK] = Protocol("BGSAVE", Nil).as[Str, OK]
 
   final object client {
-    val getname: Protocol.Aux[Option[ConnectionName]] =
-      Protocol("CLIENT", "GETNAME").asC[NullBulk :+: Bulk :+: CNil, Option[ConnectionName]]
+    val getname: Protocol.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").opt[GenBulk].as[ConnectionName]
 
     //FIXME other variations of kill
     def kill(host: Host, port: Port): Protocol.Aux[OK] =

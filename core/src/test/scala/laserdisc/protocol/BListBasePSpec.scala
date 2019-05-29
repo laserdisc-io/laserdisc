@@ -19,7 +19,7 @@ final class BListBasePSpec extends BaseSpec {
           """blpop(OneOrMoreKeys.unsafeFrom(List(Key("a"))), -1)""" shouldNot compile
         }
         "missing read instance" in {
-          """blpop[Foo](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 0)""".stripMargin shouldNot compile
+          """blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 0)""".stripMargin shouldNot compile
         }
       }
 
@@ -43,15 +43,11 @@ final class BListBasePSpec extends BaseSpec {
             protocol.decode(arr(bulk(ks.headOption.value.show), bulk(i.show))).right.value.value shouldBe KV(ks.headOption.value, i)
           }
         }
-        "given specific read instance" in {
-          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF { case Bulk(ToInt(i)) => Foo(i) }
+        "given specific read instance" in forAll("key", "return value") { (k: Key, i: Int) =>
+          val protocol = blpop[Foo](k)
 
-          forAll("key", "return value") { (k: Key, i: Int) =>
-            val protocol = blpop[Foo](k)
-
-            protocol.encode shouldBe arr(bulk("BLPOP"), bulk(k.show), bulk(0.show))
-            protocol.decode(arr(bulk(k.show), bulk(i.show))).right.value.value shouldBe KV(k, Foo(i))
-          }
+          protocol.encode shouldBe arr(bulk("BLPOP"), bulk(k.show), bulk(0.show))
+          protocol.decode(arr(bulk(k.show), bulk(i.show))).right.value.value shouldBe KV(k, Foo(i))
         }
       }
 
@@ -70,20 +66,16 @@ final class BListBasePSpec extends BaseSpec {
           """brpop("a", 0)""".stripMargin shouldNot compile
         }
         "missing read instance" in {
-          """brpop[Foo]("a", 1)""".stripMargin shouldNot compile
+          """brpop[Bar]("a", 1)""".stripMargin shouldNot compile
         }
       }
 
       "compile successfully" when {
-        "given specific read instance" in {
-          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF { case Bulk(ToInt(i)) => Foo(i) }
+        "given specific read instance" in forAll("key", "return value") { (k: Key, i: Int) =>
+          val protocol = brpop[Foo](k)
 
-          forAll("key", "return value") { (k: Key, i: Int) =>
-            val protocol = brpop[Foo](k)
-
-            protocol.encode shouldBe arr(bulk("BRPOP"), bulk(k.show), bulk(0.show))
-            protocol.decode(arr(bulk(k.show), bulk(i.show))).right.value.value shouldBe KV(k, Foo(i))
-          }
+          protocol.encode shouldBe arr(bulk("BRPOP"), bulk(k.show), bulk(0.show))
+          protocol.decode(arr(bulk(k.show), bulk(i.show))).right.value.value shouldBe KV(k, Foo(i))
         }
       }
 
@@ -124,8 +116,6 @@ final class BListBasePSpec extends BaseSpec {
           }
         }
         "given specific read instance" in {
-          implicit val fooRead: Read[Bulk, Foo] = Read.instancePF { case Bulk(ToInt(i)) => Foo(i) }
-
           forAll("source", "destination", "timeout", "return value") { (s: Key, d: Key, pi: PosInt, i: Int) =>
             val protocol = brpoplpush[Foo](s, d, pi)
 

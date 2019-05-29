@@ -1,4 +1,5 @@
-package laserdisc.protocol
+package laserdisc
+package protocol
 
 import org.scalatest.{Matchers, WordSpecLike}
 import scodec.bits.BitVector

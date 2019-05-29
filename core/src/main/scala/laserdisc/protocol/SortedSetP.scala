@@ -249,7 +249,8 @@ trait SortedSetBaseP {
   final def zscan[A: λ[a => Arr ==> Seq[a]]](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Protocol.Aux[Scan[A]] =
     Protocol("ZSCAN", key :: cursor :: "MATCH" :: pattern :: "COUNT" :: count :: HNil).as[Arr, Scan[A]]
 
-  final def zscore[A: Show](key: Key, member: A): Protocol.Aux[Option[Double]] = Protocol("ZSCORE", key :: member :: HNil).opt[GenBulk].as[Double]
+  final def zscore[A: Show](key: Key, member: A): Protocol.Aux[Option[Double]] =
+    Protocol("ZSCORE", key :: member :: HNil).opt[GenBulk].as[Double]
 
   final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[NonNegInt] =
     Protocol("ZUNIONSTORE", destinationKey :: keys.length :: keys.value :: HNil).as[Num, NonNegInt]

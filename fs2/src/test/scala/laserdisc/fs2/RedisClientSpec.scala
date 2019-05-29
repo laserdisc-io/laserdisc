@@ -43,7 +43,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       }
     }
 
-  "an fs2 redis client" ignore {
+  "an fs2 redis client" should {
 
     import cats.instances.list.catsStdInstancesForList
 

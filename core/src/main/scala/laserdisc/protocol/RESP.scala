@@ -43,7 +43,7 @@ sealed trait RESP extends AnyRef with Serializable
   *
   * @param value The wrapped string value
   */
-final case class Str private[protocol] (val value: String) extends RESP/*  {
+final case class Str private[protocol] (val value: String) extends RESP /*  {
   override def hashCode(): Int = value.hashCode
   override def equals(obj: Any): Boolean = obj match {
     case other: Str => other.value == value
@@ -71,7 +71,7 @@ object Str {
   * }}}
   * @param message The wrapped exception's message
   */
-final case class Err private[protocol] (val message: String) extends laserdisc.Platform.LaserDiscRuntimeError(message) with RESP/*  {
+final case class Err private[protocol] (val message: String) extends laserdisc.Platform.LaserDiscRuntimeError(message) with RESP /*  {
   override def hashCode(): Int = message.hashCode
   override def equals(obj: Any): Boolean = obj match {
     case other: Err => other.message == message
@@ -101,7 +101,7 @@ object Err {
   *
   * @param value The wrapped long value
   */
-final case class Num private[protocol] (val value: Long) extends RESP/*  {
+final case class Num private[protocol] (val value: Long) extends RESP /*  {
   override def hashCode(): Int = value.hashCode()
   override def equals(obj: Any): Boolean = obj match {
     case other: Num => other.value == value
@@ -145,7 +145,7 @@ case object NullBulk extends GenBulk
   *
   * @param value The wrapped bulk string value
   */
-final case class Bulk private[protocol] (val value: String) extends GenBulk/*  {
+final case class Bulk private[protocol] (val value: String) extends GenBulk /*  {
   override def hashCode(): Int = value.hashCode
   override def equals(obj: Any): Boolean = obj match {
     case other: Bulk => other.value == value
@@ -203,7 +203,7 @@ case object NilArr  extends GenArr
   *
   * @param elements The wrapped array values, as a [[scala.Vector]] of [[RESP]]
   */
-final case class Arr private[protocol] (val elements: Vector[RESP]) extends GenArr/*  {
+final case class Arr private[protocol] (val elements: Vector[RESP]) extends GenArr /*  {
   override def hashCode(): Int = elements.hashCode()
   override def equals(obj: Any): Boolean = obj match {
     case other: Arr => other.elements == elements

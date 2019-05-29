@@ -4,7 +4,6 @@ package interop
 import io.circe.generic.semiauto._
 import io.circe.{Decoder, Encoder}
 import laserdisc.interop.circe._
-import laserdisc.protocol.Bulk
 import laserdisc.protocol.RESP.bulk
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.{MustMatchers, OptionValues, WordSpec}

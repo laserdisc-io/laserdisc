@@ -24,6 +24,9 @@ abstract class BaseSpec
   implicit final def nonZeroArbitrary[T: Numeric: Choose](implicit min: Min[T], max: Max[T]): Arbitrary[T Refined Not[Equal[_0]]] =
     arbitraryRefType(Gen.chooseNum(min.min, max.max).filter(_ != 0))
 
-  implicit final val nonZeroDouble: Arbitrary[NonZeroDouble] =
+  implicit final val nonZeroDoubleArbitrary: Arbitrary[NonZeroDouble] =
     arbitraryRefType(Gen.choose(Double.MinValue, Double.MaxValue).filter(_ != 0.0d))
+
+  implicit final val positionArbitrary: Arbitrary[protocol.GeoP.Position] =
+    Arbitrary(Gen.const(protocol.GeoP.Position(Key("a"), Latitude(0.0d), Longitude(0.0d))))
 }

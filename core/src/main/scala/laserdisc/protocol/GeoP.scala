@@ -35,7 +35,8 @@ trait GeoBaseP {
     type Position    = GeoP.Position
     type Unit        = GeoP.Unit
 
-    final val unit = Unit
+    final val Position = GeoP.Position
+    final val unit     = Unit
   }
 
   final def geoadd(key: Key, positions: OneOrMore[geos.Position]): Protocol.Aux[NonNegInt] =

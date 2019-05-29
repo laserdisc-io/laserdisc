@@ -23,7 +23,7 @@ final class BListExtraPSpec extends BaseSpec {
           """blpop("a", 0)""".stripMargin shouldNot compile
         }
         "missing read instance" in {
-          """blpop[Foo]("a", 1)""".stripMargin shouldNot compile
+          """blpop[Bar]("a", 1)""".stripMargin shouldNot compile
         }
       }
 
@@ -61,7 +61,7 @@ final class BListExtraPSpec extends BaseSpec {
           """brpop("a", 0)""".stripMargin shouldNot compile
         }
         "missing read instance" in {
-          """brpop[Foo]("a", 1)""".stripMargin shouldNot compile
+          """brpop[Bar]("a", 1)""".stripMargin shouldNot compile
         }
       }
 

@@ -1,6 +1,7 @@
-package laserdisc.protocol
+package laserdisc
+package protocol
 
-import laserdisc.protocol.BitVectorDecoding.{Complete, CompleteWithRemainder, Incomplete, MissingBits}
+import BitVectorDecoding.{Complete, CompleteWithRemainder, Incomplete, MissingBits}
 import org.scalatest.{Matchers, WordSpecLike}
 import scodec.bits.BitVector
 

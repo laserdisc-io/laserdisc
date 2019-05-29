@@ -1,6 +1,6 @@
-package laserdisc.protocol
+package laserdisc
+package protocol
 
-import laserdisc.protocol
 import org.scalatest.{Matchers, WordSpecLike}
 import scodec.bits.BitVector
 
@@ -41,7 +41,7 @@ final class RESPFrameArrSpec extends WordSpecLike with Matchers {
         val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
         val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n".getBytes)
         val expected      = BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)
-        nonEmptyFrame.append(inputVector.toByteBuffer) should be(Right(protocol.CompleteFrame(expected)))
+        nonEmptyFrame.append(inputVector.toByteBuffer) should be(Right(CompleteFrame(expected)))
       }
     }
 

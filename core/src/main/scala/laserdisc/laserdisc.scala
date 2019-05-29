@@ -19,6 +19,14 @@ package object laserdisc {
   type |[A, B] = Either[A, B]
 
   //type forwarders
+  final type Arr      = protocol.Arr
+  final type Bulk     = protocol.Bulk
+  final type Err      = protocol.Err
+  final type NilArr   = protocol.NilArr.type
+  final type NullBulk = protocol.NullBulk.type
+  final type Num      = protocol.Num
+  final type Str      = protocol.Str
+
   final type Protocol  = protocol.Protocol
   final type ==>[A, B] = protocol.Read[A, B]
   final type RESP      = protocol.RESP
@@ -33,6 +41,13 @@ package object laserdisc {
   final val PONG: PONG   = "PONG"
 
   //object forwarders
+  final val Arr      = protocol.Arr
+  final val Bulk     = protocol.Bulk
+  final val Err      = protocol.Err
+  final val NilArr   = protocol.NilArr
+  final val NullBulk = protocol.NullBulk
+  final val Num      = protocol.Num
+
   final val Protocol = protocol.Protocol
   final val Read     = protocol.Read
   final val Show     = protocol.Show

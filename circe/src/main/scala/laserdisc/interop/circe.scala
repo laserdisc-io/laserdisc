@@ -3,7 +3,6 @@ package interop
 
 import io.circe._
 import io.circe.syntax._
-import laserdisc.protocol.Bulk
 
 object circe {
   implicit final def encoderShow[A: Encoder]: Show[A] = Show.instance(_.asJson.noSpaces)

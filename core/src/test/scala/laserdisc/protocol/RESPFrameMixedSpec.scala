@@ -1,7 +1,7 @@
-package laserdisc.protocol
+package laserdisc
+package protocol
 
 import eu.timepit.refined.types.string.NonEmptyString
-import laserdisc.OneOrMore
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.{Matchers, WordSpecLike}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks

@@ -1,0 +1,84 @@
+package laserdisc
+package protocol
+
+abstract class GeoExtraPSpec extends BaseSpec {
+  import auto._
+  import geo._
+  import geos._
+  import org.scalacheck.{ Arbitrary, Gen }
+  import RESP._
+  import show._
+
+  implicit final val geoHashShow: Show[GeoHash] = Show.unsafeFromToString
+  implicit final val unitArbitrary: Arbitrary[Unit] = Arbitrary(Gen.oneOf(unit.meters, unit.kilometers, unit.miles, unit.feet))
+
+  final val position2BulkList: Position => List[Bulk] = {
+    case Position(m, lat, long) => bulk(long.show) :: bulk(lat.show) :: bulk(m.show) :: Nil
+  }
+
+  final val oneOrMoreGeoHashOptionToArr: OneOrMore[Option[GeoHash]] => GenArr = _.foldLeft(nilArr: GenArr) {
+    case (`nilArr`, Some(gh)) => arr(bulk(gh.show))
+    case (`nilArr`, None)     => arr(nullBulk)
+    case (Arr(e), Some(gh))   => arr(e :+ bulk(gh.show))
+    case (Arr(e), None)       => arr(e :+ nullBulk)
+  }
+
+  "A GeoExtraP" when {
+
+    "using geoadd" should {
+
+      "fail to compile" when {
+        "given empty key" in {
+          """geoadd("", Position("m", 0.0d, 0.0d))""" shouldNot compile
+        }
+        "given empty member" in {
+          """geoadd("a", Position("", 0.0d, 0.0d))""" shouldNot compile
+        }
+        "given invalid latitude: -86.0" in {
+          """geoadd("a", Position("b", -86.0d, 0.0d))""" shouldNot compile
+        }
+        "given invalid latitude: 86.0" in {
+          """geoadd("a", Position("b", 86.0d, 0.0d))""" shouldNot compile
+        }
+        "given invalid longitude: -181.0" in {
+          """geoadd("a", Position("b", 0.0d, -181.0d))""" shouldNot compile
+        }
+        "given invalid latitude: 181.0" in {
+          """geoadd("a", Position("b", 0.0d, 181.0d))""" shouldNot compile
+        }
+      }
+
+      "compile successfully" when {
+        [1..4#"given key and [#position1#]" in forAll("key", [#"position1"#], "return value") { (k: Key, [#p1: Position#], nni: NonNegInt) =>
+          val protocol = geoadd(k, [#p1#])
+
+          protocol.encode shouldBe arr(bulk("GEOADD") :: bulk(k.show) :: List([#p1#]).flatMap(position##2BulkList))
+          protocol.decode(num(nni.toLong)).right.value shouldBe nni
+        }#
+        ]
+      }
+    }
+
+    "using geohash" should {
+
+      "fail to compile" when {
+        "given empty key" in {
+          """geohash("", "m")""" shouldNot compile
+        }
+        "given empty member" in {
+          """geohash("a", "")""" shouldNot compile
+        }
+      }
+
+      "compile successfully" when {
+        [1..4#"given key and [#member1#]" in forAll("key", [#"member1"#], "return value") { (k: Key, [#m1: Key#], oghs: OneOrMore[Option[GeoHash]]) =>
+          val protocol = geohash(k, [#m1#])
+
+          protocol.encode shouldBe arr(bulk("GEOHASH") :: bulk(k.show) :: List([#bulk(m1.show)#]))
+          protocol.decode(oneOrMoreGeoHashOptionToArr(oghs)).right.value shouldBe oghs.value
+        }#
+        ]
+      }
+    }
+  }
+}

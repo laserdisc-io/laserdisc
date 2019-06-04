@@ -2,10 +2,9 @@ package laserdisc
 package protocol
 
 final class BListExtraPSpec extends BaseSpec {
-
-  import RESP._
   import auto._
   import lists.blocking._
+  import RESP._
   import show._
 
   "A BListExtraP" when {
@@ -14,16 +13,16 @@ final class BListExtraPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """blpop("")""".stripMargin shouldNot compile
+          """blpop("")""" shouldNot compile
         }
         "given negative timeout" in {
-          """blpop("a", -1)""".stripMargin shouldNot compile
+          """blpop("a", -1)""" shouldNot compile
         }
         "given zero timeout" in {
-          """blpop("a", 0)""".stripMargin shouldNot compile
+          """blpop("a", 0)""" shouldNot compile
         }
         "missing read instance" in {
-          """blpop[Bar]("a", 1)""".stripMargin shouldNot compile
+          """blpop[Bar]("a", 1)""" shouldNot compile
         }
       }
 
@@ -52,16 +51,16 @@ final class BListExtraPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """brpop("")""".stripMargin shouldNot compile
+          """brpop("")""" shouldNot compile
         }
         "given negative timeout" in {
-          """brpop("a", -1)""".stripMargin shouldNot compile
+          """brpop("a", -1)""" shouldNot compile
         }
         "given zero timeout" in {
-          """brpop("a", 0)""".stripMargin shouldNot compile
+          """brpop("a", 0)""" shouldNot compile
         }
         "missing read instance" in {
-          """brpop[Bar]("a", 1)""".stripMargin shouldNot compile
+          """brpop[Bar]("a", 1)""" shouldNot compile
         }
       }
 

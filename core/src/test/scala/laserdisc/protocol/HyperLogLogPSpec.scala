@@ -13,10 +13,10 @@ final class HyperLogLogPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """pfadd("", "e")""".stripMargin shouldNot compile
+          """pfadd("", "e")""" shouldNot compile
         }
         "given empty element" in {
-          """pfadd("a", "")""".stripMargin shouldNot compile
+          """pfadd("a", "")""" shouldNot compile
         }
       }
 
@@ -41,10 +41,10 @@ final class HyperLogLogPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given one empty key" in {
-          """pfcount("")""".stripMargin shouldNot compile
+          """pfcount("")""" shouldNot compile
         }
         "given two empty keys" in {
-          """pfcount("", "")""".stripMargin shouldNot compile
+          """pfcount(Key(""), "")""" shouldNot compile
         }
       }
 

@@ -14,10 +14,10 @@ final class HashPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """hdel("", "f")""".stripMargin shouldNot compile
+          """hdel("", Key("f"))""" shouldNot compile
         }
         "given empty field" in {
-          """hdel("a", "")""".stripMargin shouldNot compile
+          """hdel(Key("a"), "")""" shouldNot compile
         }
       }
 
@@ -42,10 +42,10 @@ final class HashPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """hexists("", "f")""".stripMargin shouldNot compile
+          """hexists("", Key("f"))""" shouldNot compile
         }
         "given empty field" in {
-          """hexists("a", "")""".stripMargin shouldNot compile
+          """hexists(Key("a"), "")""" shouldNot compile
         }
       }
 
@@ -64,13 +64,13 @@ final class HashPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """hget("", "f")""".stripMargin shouldNot compile
+          """hget("", Key("f"))""" shouldNot compile
         }
         "given empty field" in {
-          """hget("a", "")""".stripMargin shouldNot compile
+          """hget(Key("a"), "")""" shouldNot compile
         }
         "missing read instance" in {
-          """hget[Bar]("a", "f")""".stripMargin shouldNot compile
+          """hget[Bar](Key("a"), Key("f"))""" shouldNot compile
         }
       }
 
@@ -97,10 +97,10 @@ final class HashPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """hgetall("", "f")""".stripMargin shouldNot compile
+          """hgetall("")""" shouldNot compile
         }
         "missing read instance" in {
-          """hgetall[Map[String, Int]]("a")""".stripMargin shouldNot compile
+          """hgetall[Map[String, Int]]("a")""" shouldNot compile
         }
       }
 
@@ -124,7 +124,7 @@ final class HashPSpec extends BaseSpec {
           protocol.decode(arr(bulk(f.show), bulk(v))).right.value shouldBe f :: v :: HNil
         }
         "deriving Product read instance" in {
-          //"""hgetall[Foo]("a")""".stripMargin should compile
+          //"""hgetall[Foo]("a")""" should compile
         }
       }
 
@@ -134,13 +134,13 @@ final class HashPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """hincrby("", "f", 1L)""".stripMargin shouldNot compile
+          """hincrby("", Key("f"), NonZeroLong(1L))""" shouldNot compile
         }
         "given empty field" in {
-          """hincrby("a", "", 1L)""".stripMargin shouldNot compile
+          """hincrby(Key("a"), "", NonZeroLong(1L))""" shouldNot compile
         }
         "given zero increment" in {
-          """hincrby("a", "f", 0L)""".stripMargin shouldNot compile
+          """hincrby(Key("a"), Key("f"), 0L)""" shouldNot compile
         }
       }
 
@@ -159,16 +159,16 @@ final class HashPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """hincrbyfloat("", "f", 1d)""".stripMargin shouldNot compile
+          """hincrbyfloat("", Key("f"), NonZeroLong(1d))""" shouldNot compile
         }
         "given empty field" in {
-          """hincrbyfloat("a", "", 1d)""".stripMargin shouldNot compile
+          """hincrbyfloat(Key("a"), "", NonZeroLong(1d))""" shouldNot compile
         }
         "given zero increment" in {
-          """hincrbyfloat("a", "f", 0d)""".stripMargin shouldNot compile
+          """hincrbyfloat(Key("a"), Key("f"), 0d)""" shouldNot compile
         }
         "given NaN increment" in {
-          """hincrbyfloat("a", "f", java.lang.Double.NaN)""".stripMargin shouldNot compile
+          """hincrbyfloat(Key("a"), Key("f"), java.lang.Double.NaN)""" shouldNot compile
         }
       }
 
@@ -187,7 +187,7 @@ final class HashPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """hkeys("")""".stripMargin shouldNot compile
+          """hkeys("")""" shouldNot compile
         }
       }
 
@@ -206,7 +206,7 @@ final class HashPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """hlen("")""".stripMargin shouldNot compile
+          """hlen("")""" shouldNot compile
         }
       }
 
@@ -225,10 +225,10 @@ final class HashPSpec extends BaseSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """hmget("", "f")""".stripMargin shouldNot compile
+          """hmget("", "f")""" shouldNot compile
         }
         "given empty field" in {
-          """hmget("a", "")""".stripMargin shouldNot compile
+          """hmget("a", "")""" shouldNot compile
         }
       }
 

@@ -49,13 +49,13 @@ final class GeoPSpec extends GeoExtraPSpec {
 
       "fail to compile" when {
         "given empty key" in {
-          """geodist("", "m1", "m2")""" shouldNot compile
+          """geodist("", Key("m1"), Key("m2"))""" shouldNot compile
         }
         "given empty member1" in {
-          """geodist("a", "", "m2")""" shouldNot compile
+          """geodist(Key("a"), "", Key("m2"))""" shouldNot compile
         }
         "given empty member2" in {
-          """geodist("a", "m1", "")""" shouldNot compile
+          """geodist(Key("a"), Key("m1"), "")""" shouldNot compile
         }
       }
 

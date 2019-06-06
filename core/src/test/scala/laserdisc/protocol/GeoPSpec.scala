@@ -60,17 +60,21 @@ final class GeoPSpec extends GeoExtraPSpec {
       }
 
       "compile successfully" when {
-        "given non empty key and members" in forAll("key", "member1", "member2", "return value") { (k: Key, m1: Key, m2: Key, ovd: Option[ValidDouble]) =>
-          val protocol = geodist(k, m1, m2)
+        "given non empty key and members" in {
+          forAll("key", "member1", "member2", "return value") { (k: Key, m1: Key, m2: Key, ovd: Option[ValidDouble]) =>
+            val protocol = geodist(k, m1, m2)
 
-          protocol.encode shouldBe arr(bulk("GEODIST"), bulk(k.show), bulk(m1.show), bulk(m2.show))
-          protocol.decode(ovd.fold(nullBulk: GenBulk)(vd => bulk(vd.show))).right.value shouldBe ovd
+            protocol.encode shouldBe arr(bulk("GEODIST"), bulk(k.show), bulk(m1.show), bulk(m2.show))
+            protocol.decode(ovd.fold(nullBulk: GenBulk)(vd => bulk(vd.show))).right.value shouldBe ovd
+          }
         }
-        "given non empty key, members and unit" in forAll("key", "member1", "member2", "unit", "return value") { (k: Key, m1: Key, m2: Key, u: Unit, ovd: Option[ValidDouble]) =>
-          val protocol = geodist(k, m1, m2, u)
+        "given non empty key, members and unit" in {
+          forAll("key", "member1", "member2", "unit", "return value") { (k: Key, m1: Key, m2: Key, u: Unit, ovd: Option[ValidDouble]) =>
+            val protocol = geodist(k, m1, m2, u)
 
-          protocol.encode shouldBe arr(bulk("GEODIST"), bulk(k.show), bulk(m1.show), bulk(m2.show), bulk(u.show))
-          protocol.decode(ovd.fold(nullBulk: GenBulk)(vd => bulk(vd.show))).right.value shouldBe ovd
+            protocol.encode shouldBe arr(bulk("GEODIST"), bulk(k.show), bulk(m1.show), bulk(m2.show), bulk(u.show))
+            protocol.decode(ovd.fold(nullBulk: GenBulk)(vd => bulk(vd.show))).right.value shouldBe ovd
+          }
         }
       }
     }

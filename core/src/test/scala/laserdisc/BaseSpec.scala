@@ -24,7 +24,7 @@ abstract class BaseSpec
   implicit final val geoHashArbitrary: Arbitrary[GeoHash] =
     arbitraryRefType(Gen.listOfN(11, Gen.alphaLowerChar).map(_.mkString))
 
-    implicit final def nonZeroArbitrary[T: Numeric: Choose](implicit min: Min[T], max: Max[T]): Arbitrary[T Refined Not[Equal[_0]]] =
+  implicit final def nonZeroArbitrary[T: Numeric: Choose](implicit min: Min[T], max: Max[T]): Arbitrary[T Refined Not[Equal[_0]]] =
     arbitraryRefType(Gen.chooseNum(min.min, max.max).filter(_ != 0))
 
   implicit final val nonZeroDoubleArbitrary: Arbitrary[NonZeroDouble] =

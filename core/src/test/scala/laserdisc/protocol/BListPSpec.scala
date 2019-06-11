@@ -1,7 +1,7 @@
 package laserdisc
 package protocol
 
-final class BListBasePSpec extends BaseSpec {
+final class BListPSpec extends BListExtraPSpec {
   import auto._
   import lists.blocking._
   import RESP._
@@ -28,11 +28,11 @@ final class BListBasePSpec extends BaseSpec {
 
       "fail at runtime" when {
         "given empty key list to safely refine" in {
-          OneOrMoreKeys.from(List.empty[Key]).right.map(blpop(_, 0)).left.value shouldBe "Predicate isEmpty(List()) did not fail."
+          OneOrMoreKeys.from(List.empty).right.map(blpop(_, 0)).left.value shouldBe "Predicate isEmpty(List()) did not fail."
         }
         "given empty key list to unsafely refine" in {
           the[IllegalArgumentException].thrownBy {
-            blpop(OneOrMoreKeys.unsafeFrom(List.empty[Key]), 0)
+            blpop(OneOrMoreKeys.unsafeFrom(List.empty), 0)
           }.getMessage shouldBe "Predicate isEmpty(List()) did not fail."
         }
       }
@@ -75,11 +75,11 @@ final class BListBasePSpec extends BaseSpec {
 
       "fail at runtime" when {
         "given empty key list to safely refine" in {
-          OneOrMoreKeys.from(List.empty[Key]).right.map(brpop(_, 0)).left.value shouldBe "Predicate isEmpty(List()) did not fail."
+          OneOrMoreKeys.from(List.empty).right.map(brpop(_, 0)).left.value shouldBe "Predicate isEmpty(List()) did not fail."
         }
         "given empty key list to unsafely refine" in {
           the[IllegalArgumentException].thrownBy {
-            brpop(OneOrMoreKeys.unsafeFrom(List.empty[Key]), 0)
+            brpop(OneOrMoreKeys.unsafeFrom(List.empty), 0)
           }.getMessage shouldBe "Predicate isEmpty(List()) did not fail."
         }
       }

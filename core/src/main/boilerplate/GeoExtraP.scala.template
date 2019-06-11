@@ -2,8 +2,10 @@ package laserdisc
 package protocol
 
 trait GeoExtraP { this: GeoBaseP =>
+  import geos._
+
   //GEOADD
-  [..21#final def geoadd(key: Key, [#position1: geos.Position#]): Protocol.Aux[NonNegInt] =
+  [..21#final def geoadd(key: Key, [#position1: Position#]): Protocol.Aux[NonNegInt] =
     geoadd(key, OneOrMore.unsafeFrom([#position1# :: ] :: Nil))#
   ]
 
@@ -13,7 +15,7 @@ trait GeoExtraP { this: GeoBaseP =>
   ]
 
   //GEOPOS
-  [..21#final def geopos(key: Key, [#member1: Key#]): Protocol.Aux[Seq[Option[geos.Coordinates]]] =
+  [..21#final def geopos(key: Key, [#member1: Key#]): Protocol.Aux[Seq[Option[Coordinates]]] =
     geopos(key, OneOrMoreKeys.unsafeFrom([#member1# :: ] :: Nil))#
   ]
 }

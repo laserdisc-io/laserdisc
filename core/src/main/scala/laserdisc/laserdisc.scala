@@ -5,10 +5,10 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.api._
 import eu.timepit.refined.boolean.{And, Not, Or, True}
 import eu.timepit.refined.char.Whitespace
-import eu.timepit.refined.collection.{Forall, MinSize, NonEmpty}
+import eu.timepit.refined.collection.{Forall, MinSize, MaxSize, NonEmpty}
 import eu.timepit.refined.generic.Equal
 import eu.timepit.refined.numeric.Interval.{Closed => ClosedInterval}
-import eu.timepit.refined.numeric.Positive
+import eu.timepit.refined.numeric.{NonNaN, NonNegative}
 import eu.timepit.refined.string.{IPv4, MatchesRegex}
 import eu.timepit.refined.types.net.PrivateNetworks._
 import shapeless._
@@ -54,14 +54,11 @@ package object laserdisc {
 
   final type Maybe[A] = Throwable | A
 
-  private[this] final type Loopback = IPv4 And Equal[W.`"127.0.0.1"`.T]
-  private[this] final type RFC1123HostName = MatchesRegex[
-    W.`"""^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])(\\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]))*$"""`.T]
-
-  implicit final val nanValidator: Validate.Plain[Double, NaN] =
-    Validate.fromPredicate(j.Double.isNaN, d => s"($d == NaN)", NaN())
-
-  private[this] final type NonNaN  = Not[NaN]
+  private[this] final type AllNICs  = Equal[W.`"0.0.0.0"`.T]
+  private[this] final type Loopback = Equal[W.`"127.0.0.1"`.T]
+  private[this] final type RFC1123HostName = Not[IPv4] And MaxSize[W.`255`.T] And MatchesRegex[
+    W.`"""^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])(\\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]))*$"""`.T
+  ]
   private[this] final type NonZero = Not[Equal[_0]]
 
   //shadowed types
@@ -86,11 +83,11 @@ package object laserdisc {
   final type GeoHash        = String Refined MatchesRegex[W.`"[a-z0-9]{11}"`.T]
   final type GlobPattern    = String Refined MatchesRegex[W.`"(\\\\[?[\\\\w\\\\*\\\\?]+\\\\]?)+"`.T] //TODO good enough but needs regex' TLC
   final type Host =
-    String Refined (RFC1123HostName Or Loopback Or Rfc1918PrivateSpec Or Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec)
+    String Refined (AllNICs Or Loopback Or RFC1123HostName Or Rfc1918PrivateSpec Or Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec)
   final type Index                 = Long Refined True
   final type Latitude              = Double Refined ClosedInterval[W.`-85.05112878D`.T, W.`85.05112878D`.T]
   final type Longitude             = Double Refined ClosedInterval[W.`-180.0D`.T, W.`180.0D`.T]
-  final type NonNegDouble          = Double Refined (NonNaN And Positive)
+  final type NonNegDouble          = Double Refined (NonNaN And NonNegative)
   final type NonZeroDouble         = Double Refined (NonNaN And NonZero)
   final type NonZeroInt            = Int Refined NonZero
   final type NonZeroLong           = Long Refined NonZero
@@ -112,23 +109,23 @@ package object laserdisc {
   }
 
   final object ConnectionName        extends RefinedTypeOps[ConnectionName, String]
-  final object DbIndex               extends RefinedTypeOps[DbIndex, Int]
+  final object DbIndex               extends RefinedTypeOps.Numeric[DbIndex, Int]
   final object GeoHash               extends RefinedTypeOps[GeoHash, String]
   final object GlobPattern           extends RefinedTypeOps[GlobPattern, String]
   final object Host                  extends RefinedTypeOps[Host, String]
-  final object Index                 extends RefinedTypeOps[Index, Long]
-  final object Latitude              extends RefinedTypeOps[Latitude, Double]
-  final object Longitude             extends RefinedTypeOps[Longitude, Double]
-  final object NonNegDouble          extends RefinedTypeOps[NonNegDouble, Double]
-  final object NonZeroDouble         extends RefinedTypeOps[NonZeroDouble, Double]
-  final object NonZeroInt            extends RefinedTypeOps[NonZeroInt, Int]
-  final object NonZeroLong           extends RefinedTypeOps[NonZeroLong, Long]
+  final object Index                 extends RefinedTypeOps.Numeric[Index, Long]
+  final object Latitude              extends RefinedTypeOps.Numeric[Latitude, Double]
+  final object Longitude             extends RefinedTypeOps.Numeric[Longitude, Double]
+  final object NonNegDouble          extends RefinedTypeOps.Numeric[NonNegDouble, Double]
+  final object NonZeroDouble         extends RefinedTypeOps.Numeric[NonZeroDouble, Double]
+  final object NonZeroInt            extends RefinedTypeOps.Numeric[NonZeroInt, Int]
+  final object NonZeroLong           extends RefinedTypeOps.Numeric[NonZeroLong, Long]
   final object OneOrMoreKeys         extends RefinedTypeOps[OneOrMoreKeys, List[Key]]
-  final object RangeOffset           extends RefinedTypeOps[RangeOffset, Int]
-  final object StringLength          extends RefinedTypeOps[StringLength, Long]
+  final object RangeOffset           extends RefinedTypeOps.Numeric[RangeOffset, Int]
+  final object StringLength          extends RefinedTypeOps.Numeric[StringLength, Long]
   final object TwoOrMoreKeys         extends RefinedTypeOps[TwoOrMoreKeys, List[Key]]
   final object TwoOrMoreWeightedKeys extends RefinedTypeOps[TwoOrMoreWeightedKeys, List[(Key, ValidDouble)]]
-  final object ValidDouble           extends RefinedTypeOps[ValidDouble, Double]
+  final object ValidDouble           extends RefinedTypeOps.Numeric[ValidDouble, Double]
 
   final object ToInt {
     def unapply(l: Long): Option[Int] =

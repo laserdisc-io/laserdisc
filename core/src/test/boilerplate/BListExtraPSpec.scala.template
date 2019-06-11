@@ -1,7 +1,7 @@
 package laserdisc
 package protocol
 
-final class BListExtraPSpec extends BaseSpec {
+abstract class BListExtraPSpec extends BaseSpec {
   import auto._
   import lists.blocking._
   import RESP._

@@ -24,20 +24,12 @@ abstract class BaseSpec
   implicit final val geoHashArbitrary: Arbitrary[GeoHash] =
     arbitraryRefType(Gen.listOfN(11, Gen.alphaLowerChar).map(_.mkString))
 
+  implicit final val nonNegDoubleArbitrary: Arbitrary[NonNegDouble] =
+    arbitraryRefType(Gen.choose(0.0d, Double.MaxValue).filter(_ != Double.NaN))
+
   implicit final def nonZeroArbitrary[T: Numeric: Choose](implicit min: Min[T], max: Max[T]): Arbitrary[T Refined Not[Equal[_0]]] =
     arbitraryRefType(Gen.chooseNum(min.min, max.max).filter(_ != 0))
 
   implicit final val nonZeroDoubleArbitrary: Arbitrary[NonZeroDouble] =
     arbitraryRefType(Gen.choose(Double.MinValue, Double.MaxValue).filter(_ != 0.0d))
-
-  implicit final val positionArbitrary: Arbitrary[protocol.GeoP.Position] = Arbitrary {
-    for {
-      m    <- Arbitrary.arbitrary[Key]
-      lat  <- Arbitrary.arbitrary[Latitude]
-      long <- Arbitrary.arbitrary[Longitude]
-    } yield protocol.GeoP.Position(m, lat, long)
-  }
-
-  implicit final val validDoubleArbitrary: Arbitrary[ValidDouble] =
-    arbitraryRefType(Gen.choose(Double.MinValue, Double.MaxValue).filter(_ != Double.NaN))
 }

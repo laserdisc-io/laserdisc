@@ -6,14 +6,37 @@ abstract class GeoExtraPSpec extends BaseSpec {
   import geo._
   import geos._
   import org.scalacheck.{ Arbitrary, Gen }
+  import org.scalacheck.Arbitrary.arbitrary
   import RESP._
   import show._
 
   implicit final val geoHashShow: Show[GeoHash] = Show.unsafeFromToString
+
+  implicit final val coordinatesArbitrary: Arbitrary[Coordinates] = Arbitrary {
+    for {
+      lat  <- arbitrary[Latitude]
+      long <- arbitrary[Longitude]
+    } yield Coordinates(lat, long)
+  }
+  implicit final val positionArbitrary: Arbitrary[Position] = Arbitrary {
+    for {
+      m    <- arbitrary[Key]
+      lat  <- arbitrary[Latitude]
+      long <- arbitrary[Longitude]
+    } yield Position(m, lat, long)
+  }
   implicit final val unitArbitrary: Arbitrary[Unit] = Arbitrary(Gen.oneOf(unit.meters, unit.kilometers, unit.miles, unit.feet))
 
   final val position2BulkList: Position => List[Bulk] = {
     case Position(m, lat, long) => bulk(long.show) :: bulk(lat.show) :: bulk(m.show) :: Nil
+  }
+  final val nonNegDoubleOptionToBulk: Option[NonNegDouble] => GenBulk = _.fold(nullBulk: GenBulk)(nnd => bulk(nnd.show))
+
+  final val oneOrMoreCoordinatesOptionToArr: OneOrMore[Option[Coordinates]] => GenArr = _.foldLeft(nilArr: GenArr) {
+    case (`nilArr`, Some(Coordinates(lat, long))) => arr(arr(bulk(long.show), bulk(lat.show)))
+    case (`nilArr`, None)                         => arr(nilArr)
+    case (Arr(e), Some(Coordinates(lat, long)))   => arr(e :+ arr(bulk(long.show), bulk(lat.show)))
+    case (Arr(e), None)                           => arr(e :+ nilArr)
   }
 
   final val oneOrMoreGeoHashOptionToArr: OneOrMore[Option[GeoHash]] => GenArr = _.foldLeft(nilArr: GenArr) {
@@ -76,6 +99,28 @@ abstract class GeoExtraPSpec extends BaseSpec {
 
           protocol.encode shouldBe arr(bulk("GEOHASH") :: bulk(k.show) :: List([#bulk(m1.show)#]))
           protocol.decode(oneOrMoreGeoHashOptionToArr(oghs)).right.value shouldBe oghs.value
+        }#
+        ]
+      }
+    }
+
+    "using geopos" should {
+
+      "fail to compile" when {
+        "given empty key" in {
+          """geopos("", "m")""" shouldNot compile
+        }
+        "given empty member" in {
+          """geopos("a", "")""" shouldNot compile
+        }
+      }
+
+      "compile successfully" when {
+        [1..4#"given key and [#member1#]" in forAll("key", [#"member1"#], "return value") { (k: Key, [#m1: Key#], ocs: OneOrMore[Option[Coordinates]]) =>
+          val protocol = geopos(k, [#m1#])
+
+          protocol.encode shouldBe arr(bulk("GEOPOS") :: bulk(k.show) :: List([#bulk(m1.show)#]))
+          protocol.decode(oneOrMoreCoordinatesOptionToArr(ocs)).right.value shouldBe ocs.value
         }#
         ]
       }

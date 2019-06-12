@@ -2,10 +2,9 @@ package laserdisc
 package protocol
 
 import BitVectorDecoding.{Complete, CompleteWithRemainder, Incomplete, MissingBits}
-import org.scalatest.{Matchers, WordSpecLike}
 import scodec.bits.BitVector
 
-final class RESPFunctionsSpec extends WordSpecLike with Matchers {
+final class RESPFunctionsSpec extends BaseSpec {
 
   "A RESP codec" when {
 

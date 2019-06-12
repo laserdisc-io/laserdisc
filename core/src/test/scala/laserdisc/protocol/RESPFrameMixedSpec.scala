@@ -3,11 +3,9 @@ package protocol
 
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{Matchers, WordSpecLike}
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import scodec.bits.BitVector
 
-final class RESPFrameMixedSpec extends WordSpecLike with Matchers with ScalaCheckPropertyChecks {
+final class RESPFrameMixedSpec extends BaseSpec {
 
   "A non empty mixed Frame" when {
 

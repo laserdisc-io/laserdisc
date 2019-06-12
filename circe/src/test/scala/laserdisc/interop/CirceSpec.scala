@@ -6,7 +6,7 @@ import io.circe.{Decoder, Encoder}
 import laserdisc.interop.circe._
 import laserdisc.protocol.RESP.bulk
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{MustMatchers, OptionValues, WordSpec}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 sealed trait Foo                        extends Product with Serializable
@@ -26,7 +26,7 @@ object Baz {
   implicit val encoder: Encoder[Baz] = deriveEncoder
 }
 
-final class CirceSpec extends WordSpec with MustMatchers with ScalaCheckPropertyChecks with OptionValues {
+final class CirceSpec extends WordSpec with Matchers with ScalaCheckPropertyChecks with OptionValues {
   private[this] val barGen: Gen[Bar] = Arbitrary.arbitrary[Int].map(Bar.apply)
   private[this] val bazGen: Gen[Baz] = for {
     s   <- Arbitrary.arbitrary[String]
@@ -39,27 +39,27 @@ final class CirceSpec extends WordSpec with MustMatchers with ScalaCheckProperty
 
   "Circe interop" when {
 
-    "handling a simple type" must {
+    "handling a simple type" should {
       "round-trip with no errors" in forAll { bar: Bar =>
-        Read[Bulk, Bar].read(bulk(Show[Bar].show(bar))).value mustBe bar
+        Read[Bulk, Bar].read(bulk(Show[Bar].show(bar))).value shouldBe bar
       }
     }
 
-    "handling a recursive type" must {
+    "handling a recursive type" should {
       "round-trip with no errors" in forAll { baz: Baz =>
-        Read[Bulk, Baz].read(bulk(Show[Baz].show(baz))).value mustBe baz
+        Read[Bulk, Baz].read(bulk(Show[Baz].show(baz))).value shouldBe baz
       }
     }
 
-    "handling a json that does not respect the contract" must {
+    "handling a json that does not respect the contract" should {
       "fail to decode" in {
-        Read[Bulk, Bar].read(bulk("""{"i": null}"""))
+        Read[Bulk, Bar].read(bulk("""{"i": null}""")) shouldBe empty
       }
     }
 
-    "handling an invalid json" must {
+    "handling an invalid json" should {
       "fail to decode" in {
-        Read[Bulk, Bar].read(bulk("{"))
+        Read[Bulk, Bar].read(bulk("{")) shouldBe empty
       }
     }
   }

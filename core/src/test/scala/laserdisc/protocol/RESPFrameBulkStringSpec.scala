@@ -1,10 +1,9 @@
 package laserdisc
 package protocol
 
-import org.scalatest.{Matchers, WordSpecLike}
 import scodec.bits.BitVector
 
-final class RESPFrameBulkSpec extends WordSpecLike with Matchers {
+final class RESPFrameBulkSpec extends BaseSpec {
 
   "An empty Bulk Frame" when {
 

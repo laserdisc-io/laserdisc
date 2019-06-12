@@ -13,8 +13,8 @@ val V = new {
   val refined           = "0.9.8"
   val scalacheck        = "1.13.5"
   val scalatest         = "3.0.8"
-  val `scodec-bits`     = "1.1.11"
-  val `scodec-core`     = "1.11.3"
+  val `scodec-bits`     = "1.1.12"
+  val `scodec-core`     = "1.11.4"
   val `scodec-stream`   = "1.2.1"
   val shapeless         = "2.3.3"
 }

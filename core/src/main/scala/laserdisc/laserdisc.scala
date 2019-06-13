@@ -1,7 +1,6 @@
 import java.{lang => j}
 
 import eu.timepit.refined.W
-import eu.timepit.refined.auto._
 import eu.timepit.refined.api._
 import eu.timepit.refined.boolean.{And, Not, Or, True}
 import eu.timepit.refined.char.Whitespace
@@ -36,9 +35,9 @@ package object laserdisc {
   final type NOKEY = String Refined Equal[W.`"NOKEY"`.T]
   final type PONG  = String Refined Equal[W.`"PONG"`.T]
 
-  final val OK: OK       = "OK"
-  final val NOKEY: NOKEY = "NOKEY"
-  final val PONG: PONG   = "PONG"
+  final val OK: OK       = RefType.applyRefM[OK]("OK")
+  final val NOKEY: NOKEY = RefType.applyRefM[NOKEY]("NOKEY")
+  final val PONG: PONG   = RefType.applyRefM[PONG]("PONG")
 
   //object forwarders
   final val Arr      = protocol.Arr
@@ -56,10 +55,10 @@ package object laserdisc {
 
   private[this] final type AllNICs  = Equal[W.`"0.0.0.0"`.T]
   private[this] final type Loopback = Equal[W.`"127.0.0.1"`.T]
+  private[this] final type NonZero  = Not[Equal[_0]]
   private[this] final type RFC1123HostName = Not[IPv4] And MaxSize[W.`255`.T] And MatchesRegex[
     W.`"""^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])(\\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]))*$"""`.T
   ]
-  private[this] final type NonZero = Not[Equal[_0]]
 
   //shadowed types
   final type Key        = eu.timepit.refined.types.string.NonEmptyString

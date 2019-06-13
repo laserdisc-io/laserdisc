@@ -12,6 +12,7 @@ object sets        extends protocol.SetP
 object show        extends protocol.ShowSyntax
 object sortedsets  extends protocol.SortedSetP
 object strings     extends protocol.StringP
+object transaction extends protocol.TransactionP
 
 object all
     extends protocol.ConnectionP
@@ -25,6 +26,7 @@ object all
     with protocol.SetP
     with protocol.ShowSyntax
     with protocol.SortedSetP
-    with protocol.StringP {
+    with protocol.StringP
+    with protocol.TransactionP {
   final object blocking extends protocol.BListP
 }

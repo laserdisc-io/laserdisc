@@ -78,6 +78,7 @@ trait ReadInstances1 extends ReadInstances2 {
   implicit final val num2NonZeroLongRead: Read[Num, NonZeroLong] = Read.instancePF { case Num(NonZeroLong(l))       => l }
   implicit final val num2PosIntRead: Read[Num, PosInt]           = Read.instancePF { case Num(ToInt(PosInt(i)))     => i }
   implicit final val num2PosLongRead: Read[Num, PosLong]         = Read.instancePF { case Num(PosLong(l))           => l }
+  implicit final val num2SlotRead: Read[Num, Slot]               = Read.instancePF { case Num(ToInt(Slot(i)))       => i }
 
   implicit final val bulk2StringRead: Read[Bulk, String]                 = Read.instance { case Bulk(s)                            => Some(s) }
   implicit final val bulk2DoubleRead: Read[Bulk, Double]                 = Read.instancePF { case Bulk(ToDouble(d))                => d }

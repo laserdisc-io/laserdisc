@@ -1,5 +1,6 @@
 package laserdisc
 
+object cluster     extends protocol.ClusterP
 object connection  extends protocol.ConnectionP
 object geo         extends protocol.GeoP
 object hashmaps    extends protocol.HashP
@@ -15,7 +16,8 @@ object strings     extends protocol.StringP
 object transaction extends protocol.TransactionP
 
 object all
-    extends protocol.ConnectionP
+    extends protocol.ClusterP
+    with protocol.ConnectionP
     with protocol.GeoP
     with protocol.HashP
     with protocol.HyperLogLogP

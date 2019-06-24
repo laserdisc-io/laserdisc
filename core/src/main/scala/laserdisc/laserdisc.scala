@@ -86,6 +86,7 @@ package object laserdisc {
   final type Index                 = Long Refined True
   final type Latitude              = Double Refined ClosedInterval[W.`-85.05112878D`.T, W.`85.05112878D`.T]
   final type Longitude             = Double Refined ClosedInterval[W.`-180.0D`.T, W.`180.0D`.T]
+  final type NodeId                = String Refined MatchesRegex[W.`"[0-9a-f]{40}"`.T]
   final type NonNegDouble          = Double Refined (NonNaN And NonNegative)
   final type NonZeroDouble         = Double Refined (NonNaN And NonZero)
   final type NonZeroInt            = Int Refined NonZero
@@ -93,6 +94,7 @@ package object laserdisc {
   final type OneOrMore[A]          = List[A] Refined NonEmpty
   final type OneOrMoreKeys         = OneOrMore[Key]
   final type RangeOffset           = Int Refined ClosedInterval[_0, W.`536870911`.T]
+  final type Slot                  = Int Refined ClosedInterval[_0, W.`16383`.T]
   final type StringLength          = Long Refined ClosedInterval[_0, W.`4294967295L`.T]
   final type TwoOrMoreKeys         = List[Key] Refined MinSize[_2]
   final type TwoOrMoreWeightedKeys = List[(Key, ValidDouble)] Refined MinSize[_2]
@@ -115,12 +117,14 @@ package object laserdisc {
   final object Index                 extends RefinedTypeOps.Numeric[Index, Long]
   final object Latitude              extends RefinedTypeOps.Numeric[Latitude, Double]
   final object Longitude             extends RefinedTypeOps.Numeric[Longitude, Double]
+  final object NodeId                extends RefinedTypeOps[NodeId, String]
   final object NonNegDouble          extends RefinedTypeOps.Numeric[NonNegDouble, Double]
   final object NonZeroDouble         extends RefinedTypeOps.Numeric[NonZeroDouble, Double]
   final object NonZeroInt            extends RefinedTypeOps.Numeric[NonZeroInt, Int]
   final object NonZeroLong           extends RefinedTypeOps.Numeric[NonZeroLong, Long]
   final object OneOrMoreKeys         extends RefinedTypeOps[OneOrMoreKeys, List[Key]]
   final object RangeOffset           extends RefinedTypeOps.Numeric[RangeOffset, Int]
+  final object Slot                  extends RefinedTypeOps.Numeric[Slot, Int]
   final object StringLength          extends RefinedTypeOps.Numeric[StringLength, Long]
   final object TwoOrMoreKeys         extends RefinedTypeOps[TwoOrMoreKeys, List[Key]]
   final object TwoOrMoreWeightedKeys extends RefinedTypeOps[TwoOrMoreWeightedKeys, List[(Key, ValidDouble)]]

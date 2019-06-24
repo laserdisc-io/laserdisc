@@ -8,12 +8,20 @@ final class RefinedTypesSpec extends BaseSpec {
   private[this] final val spaceChar: Char = 0x0020
   private[this] final val geoHashString: String = "[a-z0-9]{11}"
   private[this] final val globPatternString: String = raw"(\[?[\w\*\?]+\]?)+"
+  private[this] final val nodeIdString: String = "[a-f0-9]{40}"
 
   private[this] final val connectionNameGen: Gen[String] = nonEmptyListOf(alphaNumChar.suchThat(!_.equals(spaceChar))).map(_.mkString)
   private[this] final val dbIndexGen: Gen[Int] = chooseNum(0, 15, 0, 15)
   private[this] final val geoHashGen: Gen[String]   = listOfN(11, frequency(1 -> numChar, 9 -> alphaLowerChar)).map(_.mkString)
   private[this] final val latitudeGen: Gen[Double]  = chooseNum(-85.05112878D, 85.05112878D, -85.05112878D, -1.0D, 0.0D, 1.0D, 85.05112878D)
   private[this] final val longitudeGen: Gen[Double] = chooseNum(-180.0D, 180.0D, -180.0D, -1.0D, 0.0D, 1.0D, 180.0D)
+  private[this] final val nodeIdGen: Gen[String]   = listOfN(40, frequency(1 -> numChar, 9 -> choose(97.toChar, 102.toChar))).map(_.mkString)
+  private[this] final val nonNegDoubleGen: Gen[Double] = chooseNum(0.0D, Double.MaxValue, 0.0D, 1.0D, Double.MaxValue)
+  private[this] final val nonNegIntGen: Gen[Int] = chooseNum(0, Int.MaxValue, 0, 1, Int.MaxValue)
+  private[this] final val nonNegLongGen: Gen[Long] = chooseNum(0, Long.MaxValue, 0L, 1L, Long.MaxValue)
+  private[this] final val nonZeroDoubleGen: Gen[Double] = chooseNum(Double.MinValue, Double.MaxValue, -1.0D, 1.0D, Double.MinValue, Double.MaxValue).suchThat(_ != 0.0D)
+  private[this] final val nonZeroIntGen: Gen[Int] = chooseNum(Int.MinValue, Int.MaxValue, -1, 1, Int.MinValue, Int.MaxValue).suchThat(_ != 0)
+  private[this] final val nonZeroLongGen: Gen[Long] = chooseNum(Long.MinValue, Long.MaxValue, -1L, 1L, Long.MinValue, Long.MaxValue).suchThat(_ != 0L)
   private[this] final val stringsWithSpacesGen: Gen[String] = {
     val validRangesInclusive = List[(Char, Char)]((0x0000, 0x001F), (0x0021, 0xD7FF), (0xE000, 0xFFFD))
     val allWeightedEqualChars = validRangesInclusive.map { case (first, last) => (1, choose[Char](first, last)) }
@@ -87,8 +95,8 @@ final class RefinedTypesSpec extends BaseSpec {
   "GeoHash" should {
 
     "fail to compile" when {
-      "given empty String" in {
-        """GeoHash("")""" shouldNot compile
+      "given a non conformant String (length < 11)" in {
+        """GeoHash("abcdefghij")""" shouldNot compile
       }
       "given a non conformant String (length > 11)" in {
         """GeoHash("abcdefghijkl")""" shouldNot compile
@@ -325,6 +333,184 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of in range Doubles (-180.0D <= d <= 180.0D)" in forAll(longitudeGen) { d =>
         Longitude.from(d).right.value.value shouldBe d
+      }
+    }
+  }
+
+  "NodeId" should {
+
+    "fail to compile" when {
+      "given a non conformant String (length < 40)" in {
+        """NodeId("0123456789abcdef0123456789abcdef0123456")""" shouldNot compile
+      }
+      "given a non conformant String (length > 40)" in {
+        """NodeId("0123456789abcdef0123456789abcdef012345678")""" shouldNot compile
+      }
+      "given a non conformant String (uppercase)" in {
+        """NodeId("0123456789abcdEf0123456789abcdef01234567")""" shouldNot compile
+      }
+      "given a non conformant String (invalid chars)" in {
+        """NodeId("0123456789abcd&f0123456789abcdef01234567&fghijk")""" shouldNot compile
+      }
+    }
+
+    "fail at runtime" when {
+      "provided non literal cases of non conformant Strings" in forAll { (s: String) =>
+        whenever(!s.matches(nodeIdString)) {
+          an[IllegalArgumentException] should be thrownBy NodeId.unsafeFrom(s)
+        }
+      }
+    }
+
+    "compile" when {
+      "given conformant String" in {
+        """NodeId("0123456789abcdef0123456789abcdef01234567")""" should compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of conformant Strings" in forAll(nodeIdGen) { s =>
+        whenever(s.matches(nodeIdString)) {
+          NodeId.from(s).right.value.value shouldBe s
+        }
+      }
+    }
+  }
+
+  "NonNegDouble" should {
+
+    "fail to compile" when {
+      "given out of range Double (< 0.0D)" in {
+        "NonNegDouble(-0.00000001D)" shouldNot compile
+      }
+      "given NaN Double" in {
+        "NonNegDouble(Double.NaN)" shouldNot compile
+      }
+    }
+
+    "fail at runtime" when {
+      "provided non literal cases of out of range Doubles (d < 0.0D)" in forAll { (d: Double) =>
+        whenever(d < 0.0D) {
+          an[IllegalArgumentException] should be thrownBy NonNegDouble.unsafeFrom(d)
+        }
+      }
+    }
+
+    "compile" when {
+      "given edge cases (0.0D)" in {
+        "NonNegDouble(0.0D)" should compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of in range Doubles (d >= 0.0D)" in forAll(nonNegDoubleGen) { d =>
+        NonNegDouble.from(d).right.value.value shouldBe d
+      }
+    }
+  }
+
+  "NonNegInt" should {
+
+    "fail to compile" when {
+      "given out of range Ints (< 0)" in {
+        "NonNegInt(-1)" shouldNot compile
+      }
+    }
+
+    "fail at runtime" when {
+      "provided non literal cases of out of range Ints (i < 0)" in forAll { (i: Int) =>
+        whenever(i < 0) {
+          an[IllegalArgumentException] should be thrownBy NonNegInt.unsafeFrom(i)
+        }
+      }
+    }
+
+    "compile" when {
+      "given edge cases (0)" in {
+        "NonNegInt(0)" should compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of in range Ints (i > 0)" in forAll(nonNegIntGen) { i =>
+        NonNegInt.from(i).right.value.value shouldBe i
+      }
+    }
+  }
+
+  "NonNegLong" should {
+
+    "fail to compile" when {
+      "given out of range Longs (< 0L)" in {
+        "NonNegLong(-1L)" shouldNot compile
+      }
+    }
+
+    "fail at runtime" when {
+      "provided non literal cases of out of range Longs (l < 0L)" in forAll { (l: Long) =>
+        whenever(l < 0) {
+          an[IllegalArgumentException] should be thrownBy NonNegLong.unsafeFrom(l)
+        }
+      }
+    }
+
+    "compile" when {
+      "given edge cases (0L)" in {
+        "NonNegLong(0L)" should compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of in range Longs (l > 0L)" in forAll(nonNegLongGen) { l =>
+        NonNegLong.from(l).right.value.value shouldBe l
+      }
+    }
+  }
+
+  "NonZeroDouble" should {
+
+    "fail to compile" when {
+      "given 0.0D" in {
+        "NonZeroDouble(0.0D)" shouldNot compile
+      }
+      "given NaN" in {
+        "NonZeroDouble(Double.NaN)" shouldNot compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of valid Doubles (d != 0.0D)" in forAll(nonZeroDoubleGen) { d =>
+        NonZeroDouble.from(d).right.value.value shouldBe d
+      }
+    }
+  }
+
+  "NonZeroInt" should {
+
+    "fail to compile" when {
+      "given 0" in {
+        "NonZeroInt(0)" shouldNot compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of valid Ints (i != 0)" in forAll(nonZeroIntGen) { i =>
+        NonZeroInt.from(i).right.value.value shouldBe i
+      }
+    }
+  }
+
+  "NonZeroLong" should {
+
+    "fail to compile" when {
+      "given 0L" in {
+        "NonZeroLong(0L)" shouldNot compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of valid Longs (l != 0L)" in forAll(nonZeroLongGen) { l =>
+        NonZeroLong.from(l).right.value.value shouldBe l
       }
     }
   }

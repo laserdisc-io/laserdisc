@@ -27,6 +27,8 @@ object GeoP {
 }
 
 trait GeoBaseP {
+  import shapeless._
+
   final object geos {
     type Coordinates = GeoP.Coordinates
     type Position    = GeoP.Position
@@ -37,12 +39,10 @@ trait GeoBaseP {
     final val unit        = GeoP.Unit
   }
 
-  import auto._
   import geos._
-  import shapeless._
 
   final def geoadd(key: Key, positions: OneOrMore[Position]): Protocol.Aux[NonNegInt] =
-    Protocol("GEOADD", key :: positions.map { case Position(m, lat, long) => (long -> lat) -> m } :: HNil).as[Num, NonNegInt]
+    Protocol("GEOADD", key :: positions.value.map { case Position(m, lat, long) => (long -> lat) -> m } :: HNil).as[Num, NonNegInt]
 
   final def geodist(key: Key, member1: Key, member2: Key): Protocol.Aux[Option[NonNegDouble]] =
     Protocol("GEODIST", key :: member1 :: member2 :: HNil).opt[GenBulk].as[NonNegDouble]
@@ -50,10 +50,10 @@ trait GeoBaseP {
     Protocol("GEODIST", key :: member1 :: member2 :: unit :: HNil).opt[GenBulk].as[NonNegDouble]
 
   final def geohash(key: Key, members: OneOrMoreKeys): Protocol.Aux[Seq[Option[GeoHash]]] =
-    Protocol("GEOHASH", key :: members).as[Arr, Seq[Option[GeoHash]]]
+    Protocol("GEOHASH", key :: members.value).as[Arr, Seq[Option[GeoHash]]]
 
   final def geopos(key: Key, members: OneOrMoreKeys): Protocol.Aux[Seq[Option[Coordinates]]] =
-    Protocol("GEOPOS", key :: members).as[Arr, Seq[Option[Coordinates]]]
+    Protocol("GEOPOS", key :: members.value).as[Arr, Seq[Option[Coordinates]]]
 
   final def georadius(key: Key, coordinates: Coordinates, radius: NonNegDouble, unit: Unit): Protocol.Aux[Seq[Key]] =
     Protocol("GEORADIUS", key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: HNil).as[Arr, Seq[Key]]
@@ -81,7 +81,7 @@ trait GeoBaseP {
 //  ): Protocol.Aux[Seq[(Key, Coordinates)]] =
 //    Protocol("GEORADIUS", key :: coordinates.longitude :: coordinates.latitude :: radius :: unit :: "WITHCOORD" :: HNil)
 //      .as[Arr, Seq[(Key, Coordinates)]]
-//
+
 //  final def georadiuswithcoord(
 //      key: Key,
 //      coordinates: Coordinates,

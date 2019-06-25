@@ -12,27 +12,26 @@ abstract class BListExtraPSpec extends BaseSpec {
     "using blpop" should {
 
       "fail to compile" when {
-        "given empty key" in {
-          """blpop("")""" shouldNot compile
-        }
-        "given negative timeout" in {
-          """blpop("a", -1)""" shouldNot compile
-        }
-        "given zero timeout" in {
-          """blpop("a", 0)""" shouldNot compile
-        }
         "missing read instance" in {
           """blpop[Bar]("a", 1)""" shouldNot compile
         }
       }
 
-      "compile successfully" when {
+      "roundtrip successfully" when {
         //BLPOP with no timeout specified
         [1..5#"given [#key1#]" in forAll([#"key1"#], "return value") { ([#k1: Key#], i: Int) =>
           val protocol = blpop[Int]([#k1#])
 
           protocol.encode shouldBe arr(bulk("BLPOP"), [#bulk(k1.show)#], bulk(##0.show))
           protocol.decode(arr(bulk(k##1.show), bulk(i.show))).right.value.value shouldBe KV(k##1, i)
+        }#
+        ]
+        //BLPOP with no timeout specified and specific read instance
+        [1..5#"given [#key1#] and specific read instance" in forAll([#"key1"#], "return value") { ([#k1: Key#], i: Int) =>
+          val protocol = blpop[Foo]([#k1#])
+
+          protocol.encode shouldBe arr(bulk("BLPOP"), [#bulk(k1.show)#], bulk(##0.show))
+          protocol.decode(arr(bulk(k##1.show), bulk(i.show))).right.value.value shouldBe KV(k##1, Foo(i))
         }#
         ]
         //BLPOP with timeout specified
@@ -43,6 +42,14 @@ abstract class BListExtraPSpec extends BaseSpec {
           protocol.decode(arr(bulk(k##1.show), bulk(i.show))).right.value.value shouldBe KV(k##1, i)
         }#
         ]
+        //BLPOP with timeout specified and specific read instance
+        [1..4#"given [#key1#], positive timeout and specific read instance" in forAll([#"key1"#], "timeout", "return value") { ([#k1: Key#], pi: PosInt, i: Int) =>
+          val protocol = blpop[Foo]([#k1#], pi)
+
+          protocol.encode shouldBe arr(bulk("BLPOP"), [#bulk(k1.show)#], bulk(pi.show))
+          protocol.decode(arr(bulk(k##1.show), bulk(i.show))).right.value.value shouldBe KV(k##1, Foo(i))
+        }#
+        ]
       }
 
     }
@@ -50,27 +57,26 @@ abstract class BListExtraPSpec extends BaseSpec {
     "using brpop" should {
 
       "fail to compile" when {
-        "given empty key" in {
-          """brpop("")""" shouldNot compile
-        }
-        "given negative timeout" in {
-          """brpop("a", -1)""" shouldNot compile
-        }
-        "given zero timeout" in {
-          """brpop("a", 0)""" shouldNot compile
-        }
         "missing read instance" in {
           """brpop[Bar]("a", 1)""" shouldNot compile
         }
       }
 
-      "compile successfully" when {
+      "roundtrip successfully" when {
         //BRPOP with no timeout specified
         [1..5#"given [#key1#]" in forAll([#"key1"#], "return value") { ([#k1: Key#], i: Int) =>
           val protocol = brpop[Int]([#k1#])
 
           protocol.encode shouldBe arr(bulk("BRPOP"), [#bulk(k1.show)#], bulk(##0.show))
           protocol.decode(arr(bulk(k##1.show), bulk(i.show))).right.value.value shouldBe KV(k##1, i)
+        }#
+        ]
+        //BRPOP with no timeout specified and specific read instance
+        [1..5#"given [#key1#] and specific read instance" in forAll([#"key1"#], "return value") { ([#k1: Key#], i: Int) =>
+          val protocol = brpop[Foo]([#k1#])
+
+          protocol.encode shouldBe arr(bulk("BRPOP"), [#bulk(k1.show)#], bulk(##0.show))
+          protocol.decode(arr(bulk(k##1.show), bulk(i.show))).right.value.value shouldBe KV(k##1, Foo(i))
         }#
         ]
         //BRPOP with timeout specified
@@ -81,8 +87,15 @@ abstract class BListExtraPSpec extends BaseSpec {
           protocol.decode(arr(bulk(k##1.show), bulk(i.show))).right.value.value shouldBe KV(k##1, i)
         }#
         ]
-      }
+        //BRPOP with timeout specified and specific read instance
+        [1..4#"given [#key1#], positive timeout and specific read instance" in forAll([#"key1"#], "timeout", "return value") { ([#k1: Key#], pi: PosInt, i: Int) =>
+          val protocol = brpop[Foo]([#k1#], pi)
 
+          protocol.encode shouldBe arr(bulk("BRPOP"), [#bulk(k1.show)#], bulk(pi.show))
+          protocol.decode(arr(bulk(k##1.show), bulk(i.show))).right.value.value shouldBe KV(k##1, Foo(i))
+        }#
+        ]
+      }
     }
   }
 }

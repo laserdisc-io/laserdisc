@@ -12,32 +12,12 @@ final class BListPSpec extends BListExtraPSpec {
     "using blpop" should {
 
       "fail to compile" when {
-        "given non literal to refine" in {
-          """blpop(OneOrMoreKeys(List(Key("a"))), 0)""" shouldNot compile
-        }
-        "given empty key" in {
-          """blpop(OneOrMoreKeys.unsafeFrom(List(Key(""))), 0)""" shouldNot compile
-        }
-        "given negative timeout" in {
-          """blpop(OneOrMoreKeys.unsafeFrom(List(Key("a"))), -1)""" shouldNot compile
-        }
         "missing read instance" in {
           """blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 0)""" shouldNot compile
         }
       }
 
-      "fail at runtime" when {
-        "given empty key list to safely refine" in {
-          OneOrMoreKeys.from(List.empty).right.map(blpop(_, 0)).left.value shouldBe "Predicate isEmpty(List()) did not fail."
-        }
-        "given empty key list to unsafely refine" in {
-          the[IllegalArgumentException].thrownBy {
-            blpop(OneOrMoreKeys.unsafeFrom(List.empty), 0)
-          }.getMessage shouldBe "Predicate isEmpty(List()) did not fail."
-        }
-      }
-
-      "compile successfully" when {
+      "roundtrip successfully" when {
         "given non empty key list and non negative timeout" in {
           forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
             val protocol = blpop[Int](ks, nni)
@@ -46,45 +26,27 @@ final class BListPSpec extends BListExtraPSpec {
             protocol.decode(arr(bulk(ks.headOption.value.show), bulk(i.show))).right.value.value shouldBe KV(ks.headOption.value, i)
           }
         }
-        "given specific read instance" in forAll("key", "return value") { (k: Key, i: Int) =>
-          val protocol = blpop[Foo](k)
+        "given non empty key list, non negative timeout and specific read instance" in {
+          forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
+            val protocol = blpop[Foo](ks, nni)
 
-          protocol.encode shouldBe arr(bulk("BLPOP"), bulk(k.show), bulk(0.show))
-          protocol.decode(arr(bulk(k.show), bulk(i.show))).right.value.value shouldBe KV(k, Foo(i))
+            protocol.encode shouldBe arr((bulk("BLPOP") :: ks.map(k => bulk(k.show))) :+ bulk(nni.show))
+            protocol.decode(arr(bulk(ks.headOption.value.show), bulk(i.show))).right.value.value shouldBe KV(ks.headOption.value, Foo(i))
+          }
         }
       }
-
     }
+
 
     "using brpop" should {
 
       "fail to compile" when {
-        "given non literal to refine" in {
-          """brpop(OneOrMoreKeys(List(Key("a"))), 0)""" shouldNot compile
-        }
-        "given empty key" in {
-          """brpop(OneOrMoreKeys.unsafeFrom(List(Key(""))), 0)""" shouldNot compile
-        }
-        "given negative timeout" in {
-          """brpop(OneOrMoreKeys.unsafeFrom(List(Key("a"))), -1)""" shouldNot compile
-        }
         "missing read instance" in {
           """brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 0)""" shouldNot compile
         }
       }
 
-      "fail at runtime" when {
-        "given empty key list to safely refine" in {
-          OneOrMoreKeys.from(List.empty).right.map(brpop(_, 0)).left.value shouldBe "Predicate isEmpty(List()) did not fail."
-        }
-        "given empty key list to unsafely refine" in {
-          the[IllegalArgumentException].thrownBy {
-            brpop(OneOrMoreKeys.unsafeFrom(List.empty), 0)
-          }.getMessage shouldBe "Predicate isEmpty(List()) did not fail."
-        }
-      }
-
-      "compile successfully" when {
+      "roundtrip successfully" when {
         "given non empty key list and non negative timeout" in {
           forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
             val protocol = brpop[Int](ks, nni)
@@ -93,40 +55,34 @@ final class BListPSpec extends BListExtraPSpec {
             protocol.decode(arr(bulk(ks.headOption.value.show), bulk(i.show))).right.value.value shouldBe KV(ks.headOption.value, i)
           }
         }
-        "given specific read instance" in forAll("key", "return value") { (k: Key, i: Int) =>
-          val protocol = brpop[Foo](k)
+        "given non empty key list, non negative timeout and specific read instance" in {
+          forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
+            val protocol = brpop[Foo](ks, nni)
 
-          protocol.encode shouldBe arr(bulk("BRPOP"), bulk(k.show), bulk(0.show))
-          protocol.decode(arr(bulk(k.show), bulk(i.show))).right.value.value shouldBe KV(k, Foo(i))
+            protocol.encode shouldBe arr((bulk("BRPOP") :: ks.map(k => bulk(k.show))) :+ bulk(nni.show))
+            protocol.decode(arr(bulk(ks.headOption.value.show), bulk(i.show))).right.value.value shouldBe KV(ks.headOption.value, Foo(i))
+          }
         }
       }
-
     }
 
     "using brpoplpush" should {
 
-      "fail to compile" when {
-        "given empty source key" in {
-          """brpoplpush("", "b")""" shouldNot compile
-        }
-        "given empty destination key" in {
-          """brpoplpush("a", "")""" shouldNot compile
-        }
-        "given negative timeout" in {
-          """brpoplpush("a", "b", -1)""" shouldNot compile
-        }
-        "given zero timeout" in {
-          """brpoplpush("a", "b", 0)""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
+      "roundtrip successfully" when {
         "given non empty source key and non empty destination key" in {
           forAll("source", "destination", "return value") { (s: Key, d: Key, i: Int) =>
             val protocol = brpoplpush[Int](s, d)
 
             protocol.encode shouldBe arr(bulk("BRPOPLPUSH"), bulk(s.show), bulk(d.show), bulk(0.show))
             protocol.decode(bulk(i.show)).right.value.value shouldBe i
+          }
+        }
+        "given non empty source key, non empty destination key and specific read instance" in {
+          forAll("source", "destination", "return value") { (s: Key, d: Key, i: Int) =>
+            val protocol = brpoplpush[Foo](s, d)
+
+            protocol.encode shouldBe arr(bulk("BRPOPLPUSH"), bulk(s.show), bulk(d.show), bulk(0.show))
+            protocol.decode(bulk(i.show)).right.value.value shouldBe Foo(i)
           }
         }
         "given non empty source key, non empty destination key and positive timeout" in {
@@ -137,7 +93,7 @@ final class BListPSpec extends BListExtraPSpec {
             protocol.decode(bulk(i.show)).right.value.value shouldBe i
           }
         }
-        "given specific read instance" in {
+        "given non empty source key, non empty destination key, positive timeout and specific read instance" in {
           forAll("source", "destination", "timeout", "return value") { (s: Key, d: Key, pi: PosInt, i: Int) =>
             val protocol = brpoplpush[Foo](s, d, pi)
 
@@ -146,7 +102,6 @@ final class BListPSpec extends BListExtraPSpec {
           }
         }
       }
-
     }
   }
 }

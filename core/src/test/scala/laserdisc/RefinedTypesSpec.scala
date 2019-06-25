@@ -11,17 +11,20 @@ final class RefinedTypesSpec extends BaseSpec {
   private[this] final val nodeIdString: String = "[a-f0-9]{40}"
 
   private[this] final val connectionNameGen: Gen[String] = nonEmptyListOf(alphaNumChar.suchThat(!_.equals(spaceChar))).map(_.mkString)
-  private[this] final val dbIndexGen: Gen[Int] = chooseNum(0, 15, 0, 15)
+  private[this] final val dbIndexGen: Gen[Int] = chooseNum(0, 15)
   private[this] final val geoHashGen: Gen[String]   = listOfN(11, frequency(1 -> numChar, 9 -> alphaLowerChar)).map(_.mkString)
-  private[this] final val latitudeGen: Gen[Double]  = chooseNum(-85.05112878D, 85.05112878D, -85.05112878D, -1.0D, 0.0D, 1.0D, 85.05112878D)
-  private[this] final val longitudeGen: Gen[Double] = chooseNum(-180.0D, 180.0D, -180.0D, -1.0D, 0.0D, 1.0D, 180.0D)
+  private[this] final val latitudeGen: Gen[Double]  = chooseNum(-85.05112878D, 85.05112878D)
+  private[this] final val longitudeGen: Gen[Double] = chooseNum(-180.0D, 180.0D)
   private[this] final val nodeIdGen: Gen[String]   = listOfN(40, frequency(1 -> numChar, 9 -> choose(97.toChar, 102.toChar))).map(_.mkString)
-  private[this] final val nonNegDoubleGen: Gen[Double] = chooseNum(0.0D, Double.MaxValue, 0.0D, 1.0D, Double.MaxValue)
-  private[this] final val nonNegIntGen: Gen[Int] = chooseNum(0, Int.MaxValue, 0, 1, Int.MaxValue)
-  private[this] final val nonNegLongGen: Gen[Long] = chooseNum(0, Long.MaxValue, 0L, 1L, Long.MaxValue)
-  private[this] final val nonZeroDoubleGen: Gen[Double] = chooseNum(Double.MinValue, Double.MaxValue, -1.0D, 1.0D, Double.MinValue, Double.MaxValue).suchThat(_ != 0.0D)
-  private[this] final val nonZeroIntGen: Gen[Int] = chooseNum(Int.MinValue, Int.MaxValue, -1, 1, Int.MinValue, Int.MaxValue).suchThat(_ != 0)
-  private[this] final val nonZeroLongGen: Gen[Long] = chooseNum(Long.MinValue, Long.MaxValue, -1L, 1L, Long.MinValue, Long.MaxValue).suchThat(_ != 0L)
+  private[this] final val nonNegDoubleGen: Gen[Double] = chooseNum(0.0D, Double.MaxValue)
+  private[this] final val nonNegIntGen: Gen[Int] = chooseNum(0, Int.MaxValue)
+  private[this] final val nonNegLongGen: Gen[Long] = chooseNum(0, Long.MaxValue)
+  private[this] final val nonZeroDoubleGen: Gen[Double] = chooseNum(Double.MinValue, Double.MaxValue).suchThat(_ != 0.0D)
+  private[this] final val nonZeroIntGen: Gen[Int] = chooseNum(Int.MinValue, Int.MaxValue).suchThat(_ != 0)
+  private[this] final val nonZeroLongGen: Gen[Long] = chooseNum(Long.MinValue, Long.MaxValue).suchThat(_ != 0L)
+  private[this] final val rangeOffsetGen: Gen[Int] = chooseNum(0, 536870911)
+  private[this] final val slotGen: Gen[Int] = chooseNum(0, 16383)
+  private[this] final val stringLengthGen: Gen[Long] = chooseNum(0L, 4294967295L)
   private[this] final val stringsWithSpacesGen: Gen[String] = {
     val validRangesInclusive = List[(Char, Char)]((0x0000, 0x001F), (0x0021, 0xD7FF), (0xE000, 0xFFFD))
     val allWeightedEqualChars = validRangesInclusive.map { case (first, last) => (1, choose[Char](first, last)) }
@@ -511,6 +514,242 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of valid Longs (l != 0L)" in forAll(nonZeroLongGen) { l =>
         NonZeroLong.from(l).right.value.value shouldBe l
+      }
+    }
+  }
+
+  "OneOrMore" should {
+
+    "fail at runtime" when {
+      "provided empty List" in {
+        an[IllegalArgumentException] should be thrownBy OneOrMore.unsafeFrom(List.empty[Int])
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of non empty Lists (length > 0)" in forAll { (is: List[Int]) =>
+        whenever(is.nonEmpty) {
+          OneOrMore.from(is).right.value.value shouldBe is
+        }
+      }
+    }
+  }
+
+  "OneOrMoreKeys" should {
+
+    "fail to compile" when {
+      "given non literal empty List" in {
+        "OneOrMoreKeys(List.empty)" shouldNot compile
+      }
+      "given non literal non empty List" in {
+        """OneOrMoreKeys(List(Key("a")))""" shouldNot compile
+      }
+    }
+
+    "fail at runtime" when {
+      "provided empty List" in {
+        an[IllegalArgumentException] should be thrownBy OneOrMoreKeys.unsafeFrom(List.empty)
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of non empty Lists (length > 0)" in forAll { (ks: List[Key]) =>
+        whenever(ks.nonEmpty) {
+          OneOrMoreKeys.from(ks).right.value.value shouldBe ks
+        }
+      }
+    }
+  }
+
+  "RangeOffset" should {
+
+    "fail to compile" when {
+      "given out of range Int (< 0)" in {
+        "RangeOffset(-1)" shouldNot compile
+      }
+      "given out of range Int (> 536870911)" in {
+        "RangeOffset(536870912)" shouldNot compile
+      }
+    }
+
+    "fail at runtime" when {
+      "provided non literal cases of out of range Ints (i < 0 | i > 536870911)" in forAll { (i: Int) =>
+        whenever(i < 0 || i > 536870911) {
+          an[IllegalArgumentException] should be thrownBy RangeOffset.unsafeFrom(i)
+        }
+      }
+    }
+
+    "compile" when {
+      "given edge cases (0)" in {
+        "RangeOffset(0)" should compile
+      }
+      "given edge cases (536870911)" in {
+        "RangeOffset(536870911)" should compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of in range Ints (0 <= i <= 536870911)" in forAll(rangeOffsetGen) { i =>
+        RangeOffset.from(i).right.value.value shouldBe i
+      }
+    }
+  }
+
+  "Slot" should {
+
+    "fail to compile" when {
+      "given out of range Int (< 0)" in {
+        "Slot(-1)" shouldNot compile
+      }
+      "given out of range Int (> 16383)" in {
+        "Slot(16384)" shouldNot compile
+      }
+    }
+
+    "fail at runtime" when {
+      "provided non literal cases of out of range Ints (i < 0 | i > 16383)" in forAll { (i: Int) =>
+        whenever(i < 0 || i > 16383) {
+          an[IllegalArgumentException] should be thrownBy Slot.unsafeFrom(i)
+        }
+      }
+    }
+
+    "compile" when {
+      "given edge cases (0)" in {
+        "Slot(0)" should compile
+      }
+      "given edge cases (16383)" in {
+        "Slot(16383)" should compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of in range Ints (0 <= i <= 16383)" in forAll(slotGen) { i =>
+        Slot.from(i).right.value.value shouldBe i
+      }
+    }
+  }
+
+  "StringLength" should {
+
+    "fail to compile" when {
+      "given out of range Long (< 0L)" in {
+        "StringLength(-1L)" shouldNot compile
+      }
+      "given out of range Long (> 4294967295L)" in {
+        "StringLength(4294967296L)" shouldNot compile
+      }
+    }
+
+    "fail at runtime" when {
+      "provided non literal cases of out of range Longs (l < 0L | l > 4294967295L)" in forAll { (l: Long) =>
+        whenever(l < 0L || l > 4294967295L) {
+          an[IllegalArgumentException] should be thrownBy StringLength.unsafeFrom(l)
+        }
+      }
+    }
+
+    "compile" when {
+      "given edge cases (0L)" in {
+        "StringLength(0L)" should compile
+      }
+      "given edge cases (4294967295L)" in {
+        "StringLength(4294967295L)" should compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of in range Longs (0L <= l <= 4294967295L)" in forAll(stringLengthGen) { l =>
+        StringLength.from(l).right.value.value shouldBe l
+      }
+    }
+  }
+
+  "TwoOrMoreKeys" should {
+
+    "fail to compile" when {
+      "given non literal empty List" in {
+        "TwoOrMoreKeys(List.empty)" shouldNot compile
+      }
+      "given non literal single element List" in {
+        """TwoOrMoreKeys(List(Key("a")))""" shouldNot compile
+      }
+      "given non literal List of two elements" in {
+        """TwoOrMoreKeys(List(Key("a"), Key("b")))""" shouldNot compile
+      }
+    }
+
+    "fail at runtime" when {
+      "provided empty List" in {
+        an[IllegalArgumentException] should be thrownBy TwoOrMoreKeys.unsafeFrom(List.empty)
+      }
+      "provided single element List" in {
+        an[IllegalArgumentException] should be thrownBy TwoOrMoreKeys.unsafeFrom(List(Key("a")))
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of Lists of length > 1" in forAll { (ks: List[Key]) =>
+        whenever(ks.size > 1) {
+          TwoOrMoreKeys.from(ks).right.value.value shouldBe ks
+        }
+      }
+    }
+  }
+
+  "TwoOrMoreWeightedKeys" should {
+
+    "fail to compile" when {
+      "given non literal empty List" in {
+        "TwoOrMoreWeightedKeys(List.empty)" shouldNot compile
+      }
+      "given non literal single element List" in {
+        """TwoOrMoreWeightedKeys(List(Key("a") -> ValidDouble(42.0D)))""" shouldNot compile
+      }
+      "given non literal List of two elements" in {
+        """TwoOrMoreWeightedKeys(List(Key("a") -> ValidDouble(42.0D), Key("b") -> ValidDouble(23.0D)))""" shouldNot compile
+      }
+    }
+
+    "fail at runtime" when {
+      "provided empty List" in {
+        an[IllegalArgumentException] should be thrownBy TwoOrMoreWeightedKeys.unsafeFrom(List.empty)
+      }
+      "provided single element List" in {
+        an[IllegalArgumentException] should be thrownBy TwoOrMoreWeightedKeys.unsafeFrom(List(Key("a") -> ValidDouble(42.0D)))
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of Lists of length > 1" in forAll { (kvds: List[(Key, ValidDouble)]) =>
+        whenever(kvds.size > 1) {
+          TwoOrMoreWeightedKeys.from(kvds).right.value.value shouldBe kvds
+        }
+      }
+    }
+  }
+
+  "ValidDouble" should {
+
+    "fail to compile" when {
+      "given Double.NaN" in {
+        "ValidDouble(Double.NaN)" shouldNot compile
+      }
+    }
+
+    "compile" when {
+      "given edge cases (-1.7976931348623157E308) -> can't use Double.MinValue as not a literal" in {
+        "ValidDouble(-1.7976931348623157E308)" should compile
+      }
+      "given edge cases (Double.MaxValue)" in {
+        "ValidDouble(Double.MaxValue)" should compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of valid Doubles (d != Double.NaN)" in forAll { (d: Double) =>
+        ValidDouble.from(d).right.value.value shouldBe d
       }
     }
   }

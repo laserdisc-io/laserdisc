@@ -10,7 +10,6 @@ object lists       extends protocol.ListP { object blocking extends protocol.BLi
 object publish     extends protocol.PublishP
 object server      extends protocol.ServerP
 object sets        extends protocol.SetP
-object show        extends protocol.ShowSyntax
 object sortedsets  extends protocol.SortedSetP
 object strings     extends protocol.StringP
 object transaction extends protocol.TransactionP
@@ -26,7 +25,6 @@ object all
     with protocol.PublishP
     with protocol.ServerP
     with protocol.SetP
-    with protocol.ShowSyntax
     with protocol.SortedSetP
     with protocol.StringP
     with protocol.TransactionP {

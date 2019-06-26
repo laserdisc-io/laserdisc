@@ -4,7 +4,6 @@ package protocol
 final class ConnectionPSpec extends BaseSpec {
   import auto._
   import connection._
-  import show._
 
   "A ConnectionP" when {
 
@@ -32,8 +31,8 @@ final class ConnectionPSpec extends BaseSpec {
         "given any Int message" in forAll { i: Int =>
           val protocol = echo(i)
 
-          protocol.encode shouldBe Arr(Bulk("ECHO"), Bulk(i.show))
-          protocol.decode(Bulk(i.show)).right.value shouldBe i
+          protocol.encode shouldBe Arr(Bulk("ECHO"), Bulk(i))
+          protocol.decode(Bulk(i)).right.value shouldBe i
         }
       }
     }
@@ -50,8 +49,8 @@ final class ConnectionPSpec extends BaseSpec {
         "given any Int message" in forAll { i: Int =>
           val protocol = ping(i)
 
-          protocol.encode shouldBe Arr(Bulk("PING"), Bulk(i.show))
-          protocol.decode(Bulk(i.show)).right.value shouldBe i
+          protocol.encode shouldBe Arr(Bulk("PING"), Bulk(i))
+          protocol.decode(Bulk(i)).right.value shouldBe i
         }
         "using val to get back PONG message" in {
           val protocol = ping
@@ -78,7 +77,7 @@ final class ConnectionPSpec extends BaseSpec {
         "given valid DbIndexes" in forAll { dbi: DbIndex =>
           val protocol = select(dbi)
 
-          protocol.encode shouldBe Arr(Bulk("SELECT"), Bulk(dbi.show))
+          protocol.encode shouldBe Arr(Bulk("SELECT"), Bulk(dbi))
           protocol.decode(Str(OK.value)).right.value shouldBe OK
         }
       }
@@ -90,7 +89,7 @@ final class ConnectionPSpec extends BaseSpec {
         "given valid DbIndexes" in forAll { (dbi1: DbIndex, dbi2: DbIndex) =>
           val protocol = swapdb(dbi1, dbi2)
 
-          protocol.encode shouldBe Arr(Bulk("SWAPDB"), Bulk(dbi1.show), Bulk(dbi2.show))
+          protocol.encode shouldBe Arr(Bulk("SWAPDB"), Bulk(dbi1), Bulk(dbi2))
           protocol.decode(Str(OK.value)).right.value shouldBe OK
         }
       }

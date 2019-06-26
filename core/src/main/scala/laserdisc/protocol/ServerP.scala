@@ -165,11 +165,13 @@ trait ServerP {
   final val bgsave: Protocol.Aux[OK] = Protocol("BGSAVE", Nil).as[Str, OK]
 
   final object client {
+    import Show.{hostShow, portShow}
+
     val getname: Protocol.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").opt[GenBulk].as[ConnectionName]
 
     //FIXME other variations of kill
     def kill(host: Host, port: Port): Protocol.Aux[OK] =
-      Protocol("CLIENT", "KILL" :: s"${Show.hostShow.show(host)}:${Show.portShow.show(port)}" :: Nil).as[Str, OK]
+      Protocol("CLIENT", "KILL" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Str, OK]
 
     val list: Protocol.Aux[ConnectedClients] = Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
 

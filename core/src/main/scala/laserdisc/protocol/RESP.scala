@@ -98,6 +98,8 @@ case object NullBulk extends GenBulk
   */
 final case class Bulk(value: String) extends GenBulk
 object Bulk {
+  final def apply[A](a: A)(implicit A: Show[A]): Bulk = new Bulk(A.show(a))
+
   implicit final val bulkShow: Show[Bulk] = Show.instance(_.value)
 }
 

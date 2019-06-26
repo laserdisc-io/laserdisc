@@ -80,8 +80,10 @@ object SortedSetP {
 
   sealed trait ScoreRange { def min: String; def max: String }
   final object ScoreRange {
-    private[this] def open(d: ValidDouble)  = s"(${Show.validDoubleShow.show(d)}"
-    private[this] def close(d: ValidDouble) = Show.validDoubleShow.show(d)
+    import Show.validDoubleShow
+
+    private[this] def open(d: ValidDouble)  = s"(${validDoubleShow.show(d)}"
+    private[this] def close(d: ValidDouble) = validDoubleShow.show(d)
 
     sealed abstract class Open private[ScoreRange] (private[this] val minimum: ValidDouble, private[this] val maximum: ValidDouble)
         extends ScoreRange {

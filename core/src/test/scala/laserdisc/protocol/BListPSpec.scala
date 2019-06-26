@@ -4,7 +4,6 @@ package protocol
 final class BListPSpec extends BListExtraPSpec {
   import auto._
   import lists.blocking._
-  import show._
 
   "A BListBaseP" when {
 
@@ -21,16 +20,16 @@ final class BListPSpec extends BListExtraPSpec {
           forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
             val protocol = blpop[Int](ks, nni)
 
-            protocol.encode shouldBe Arr((Bulk("BLPOP") :: ks.map(k => Bulk(k.show))) :+ Bulk(nni.show))
-            protocol.decode(Arr(Bulk(ks.headOption.value.show), Bulk(i.show))).right.value.value shouldBe KV(ks.headOption.value, i)
+            protocol.encode shouldBe Arr((Bulk("BLPOP") :: ks.map(k => Bulk(k))) :+ Bulk(nni))
+            protocol.decode(Arr(Bulk(ks.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.headOption.value, i)
           }
         }
         "given non empty key list, non negative timeout and specific read instance" in {
           forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
             val protocol = blpop[Foo](ks, nni)
 
-            protocol.encode shouldBe Arr((Bulk("BLPOP") :: ks.map(k => Bulk(k.show))) :+ Bulk(nni.show))
-            protocol.decode(Arr(Bulk(ks.headOption.value.show), Bulk(i.show))).right.value.value shouldBe KV(ks.headOption.value, Foo(i))
+            protocol.encode shouldBe Arr((Bulk("BLPOP") :: ks.map(k => Bulk(k))) :+ Bulk(nni))
+            protocol.decode(Arr(Bulk(ks.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.headOption.value, Foo(i))
           }
         }
       }
@@ -49,16 +48,16 @@ final class BListPSpec extends BListExtraPSpec {
           forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
             val protocol = brpop[Int](ks, nni)
 
-            protocol.encode shouldBe Arr((Bulk("BRPOP") :: ks.map(k => Bulk(k.show))) :+ Bulk(nni.show))
-            protocol.decode(Arr(Bulk(ks.headOption.value.show), Bulk(i.show))).right.value.value shouldBe KV(ks.headOption.value, i)
+            protocol.encode shouldBe Arr((Bulk("BRPOP") :: ks.map(k => Bulk(k))) :+ Bulk(nni))
+            protocol.decode(Arr(Bulk(ks.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.headOption.value, i)
           }
         }
         "given non empty key list, non negative timeout and specific read instance" in {
           forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
             val protocol = brpop[Foo](ks, nni)
 
-            protocol.encode shouldBe Arr((Bulk("BRPOP") :: ks.map(k => Bulk(k.show))) :+ Bulk(nni.show))
-            protocol.decode(Arr(Bulk(ks.headOption.value.show), Bulk(i.show))).right.value.value shouldBe KV(ks.headOption.value, Foo(i))
+            protocol.encode shouldBe Arr((Bulk("BRPOP") :: ks.map(k => Bulk(k))) :+ Bulk(nni))
+            protocol.decode(Arr(Bulk(ks.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.headOption.value, Foo(i))
           }
         }
       }
@@ -71,32 +70,32 @@ final class BListPSpec extends BListExtraPSpec {
           forAll("source", "destination", "return value") { (s: Key, d: Key, i: Int) =>
             val protocol = brpoplpush[Int](s, d)
 
-            protocol.encode shouldBe Arr(Bulk("BRPOPLPUSH"), Bulk(s.show), Bulk(d.show), Bulk(0.show))
-            protocol.decode(Bulk(i.show)).right.value.value shouldBe i
+            protocol.encode shouldBe Arr(Bulk("BRPOPLPUSH"), Bulk(s), Bulk(d), Bulk(0))
+            protocol.decode(Bulk(i)).right.value.value shouldBe i
           }
         }
         "given non empty source key, non empty destination key and specific read instance" in {
           forAll("source", "destination", "return value") { (s: Key, d: Key, i: Int) =>
             val protocol = brpoplpush[Foo](s, d)
 
-            protocol.encode shouldBe Arr(Bulk("BRPOPLPUSH"), Bulk(s.show), Bulk(d.show), Bulk(0.show))
-            protocol.decode(Bulk(i.show)).right.value.value shouldBe Foo(i)
+            protocol.encode shouldBe Arr(Bulk("BRPOPLPUSH"), Bulk(s), Bulk(d), Bulk(0))
+            protocol.decode(Bulk(i)).right.value.value shouldBe Foo(i)
           }
         }
         "given non empty source key, non empty destination key and positive timeout" in {
           forAll("source", "destination", "timeout", "return value") { (s: Key, d: Key, pi: PosInt, i: Int) =>
             val protocol = brpoplpush[Int](s, d, pi)
 
-            protocol.encode shouldBe Arr(Bulk("BRPOPLPUSH"), Bulk(s.show), Bulk(d.show), Bulk(pi.show))
-            protocol.decode(Bulk(i.show)).right.value.value shouldBe i
+            protocol.encode shouldBe Arr(Bulk("BRPOPLPUSH"), Bulk(s), Bulk(d), Bulk(pi))
+            protocol.decode(Bulk(i)).right.value.value shouldBe i
           }
         }
         "given non empty source key, non empty destination key, positive timeout and specific read instance" in {
           forAll("source", "destination", "timeout", "return value") { (s: Key, d: Key, pi: PosInt, i: Int) =>
             val protocol = brpoplpush[Foo](s, d, pi)
 
-            protocol.encode shouldBe Arr(Bulk("BRPOPLPUSH"), Bulk(s.show), Bulk(d.show), Bulk(pi.show))
-            protocol.decode(Bulk(i.show)).right.value.value shouldBe Foo(i)
+            protocol.encode shouldBe Arr(Bulk("BRPOPLPUSH"), Bulk(s), Bulk(d), Bulk(pi))
+            protocol.decode(Bulk(i)).right.value.value shouldBe Foo(i)
           }
         }
       }

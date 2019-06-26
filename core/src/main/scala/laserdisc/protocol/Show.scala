@@ -71,11 +71,3 @@ private[protocol] sealed trait ShowInstances {
   implicit final val stringLengthShow: Show[StringLength]     = Show.unsafeFromToString
   implicit final val validDoubleShow: Show[ValidDouble]       = Show.instance(refinedDoubleCases)
 }
-
-private[protocol] final class ShowOps[A](private val a: A) extends AnyVal {
-  def show(implicit S: Show[A]): String = S.show(a)
-}
-
-trait ShowSyntax {
-  implicit final def toShowOps[A](a: A): ShowOps[A] = new ShowOps[A](a)
-}

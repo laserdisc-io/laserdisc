@@ -92,10 +92,8 @@ object ServerP {
   }
 
   final class Parameters(private val properties: Map[String, String]) extends AnyVal with Dynamic {
-    import RESP.err
-
     def selectDynamic[A](field: String)(implicit R: String ==> A): Maybe[A] =
-      properties.get(field).flatMap(R.read).toRight(err(s"no key $field of the provided type found"))
+      properties.get(field).flatMap(R.read).toRight(Err(s"no key $field of the provided type found"))
   }
 
   final case class ConnectedClients(clients: Seq[Parameters])

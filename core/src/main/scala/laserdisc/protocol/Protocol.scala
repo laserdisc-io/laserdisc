@@ -38,9 +38,7 @@ object Protocol {
   final type Aux[A0] = Protocol { type A = A0 }
 
   final class RESPProtocolCodec[A, B](val R: RESPRead.Aux[A, B]) extends AnyVal with ProtocolCodec[B] {
-    import RESP._
-
-    override def encode(value: Protocol): RESP = arr(bulk(value.command), value.parameters: _*)
+    override def encode(value: Protocol): RESP = Arr(Bulk(value.command), value.parameters: _*)
     override def decode(resp: RESP): Maybe[B]  = R.read(resp)
   }
 

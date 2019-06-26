@@ -7,10 +7,8 @@ object ClusterP {
   private[this] final val loopbackHost = Host("127.0.0.1")
 
   final class ClusterInfo(private val properties: Map[String, String]) extends AnyVal with Dynamic {
-    import RESP.err
-
     def selectDynamic[A](field: String)(implicit R: String ==> A): Maybe[A] =
-      properties.get(field).flatMap(R.read).toRight(err(s"no key $field of the provided type found"))
+      properties.get(field).flatMap(R.read).toRight(Err(s"no key $field of the provided type found"))
   }
   final object ClusterInfo {
     private final val KVPair = "(.*):(.*)".r

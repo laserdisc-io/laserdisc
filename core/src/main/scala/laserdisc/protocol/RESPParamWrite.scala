@@ -31,7 +31,7 @@ object RESPParamWrite extends RESPParamWriteInstances {
 
 private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteInstances1 {
   implicit final def showRESPParamWrite[A](implicit A: Show[A]): RESPParamWrite[A] = RESPParamWrite.instance { a =>
-    Seq(RESP.bulk(A.show(a)))
+    Seq(Bulk(A.show(a)))
   }
   implicit final def pairRESPParamWrite[A, B](
       implicit A: RESPParamWrite[A],
@@ -44,7 +44,7 @@ private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteIns
   implicit final def taggedRESPParamWrite[K <: Symbol, V](
       implicit K: Witness.Aux[K],
       V: RESPParamWrite[V]
-  ): RESPParamWrite[FieldType[K, V]] = RESPParamWrite.instance(RESP.bulk(K.value.name) +: V.write(_))
+  ): RESPParamWrite[FieldType[K, V]] = RESPParamWrite.instance(Bulk(K.value.name) +: V.write(_))
 }
 
 private[protocol] sealed trait RESPParamWriteInstances1 {

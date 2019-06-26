@@ -110,9 +110,9 @@ trait ReadInstances1 extends ReadInstances2 {
   implicit final def arrOfBulk2OptionSeq[A](implicit R: Read[Bulk, A]): Read[Arr, Seq[Option[A]]] = Read.instance {
     case Arr(vector) =>
       val (vectorLength, (as, asLength)) = vector.foldLeft(0 -> (List.empty[Option[A]] -> 0)) {
-        case ((vl, (as0, asl)), RESP.`nullBulk`) => (vl + 1) -> ((None :: as0) -> (asl + 1))
-        case ((vl, (as0, asl)), R(a))            => (vl + 1) -> ((Some(a) :: as0) -> (asl + 1))
-        case ((vl, acc), _)                      => (vl + 1) -> acc
+        case ((vl, (as0, asl)), NullBulk) => (vl + 1) -> ((None :: as0) -> (asl + 1))
+        case ((vl, (as0, asl)), R(a))     => (vl + 1) -> ((Some(a) :: as0) -> (asl + 1))
+        case ((vl, acc), _)               => (vl + 1) -> acc
       }
       if (vectorLength == asLength) Some(as.reverse) else None
     case _ => None
@@ -121,9 +121,9 @@ trait ReadInstances1 extends ReadInstances2 {
   implicit final def arrOfArr2OptionSeq[A](implicit R: Read[Arr, A]): Read[Arr, Seq[Option[A]]] = Read.instance {
     case Arr(vector) =>
       val (vectorLength, (as, asLength)) = vector.foldLeft(0 -> (List.empty[Option[A]] -> 0)) {
-        case ((vl, (as0, asl)), RESP.`nilArr`) => (vl + 1) -> ((None :: as0) -> (asl + 1))
-        case ((vl, (as0, asl)), R(a))          => (vl + 1) -> ((Some(a) :: as0) -> (asl + 1))
-        case ((vl, acc), _)                    => (vl + 1) -> acc
+        case ((vl, (as0, asl)), NilArr) => (vl + 1) -> ((None :: as0) -> (asl + 1))
+        case ((vl, (as0, asl)), R(a))   => (vl + 1) -> ((Some(a) :: as0) -> (asl + 1))
+        case ((vl, acc), _)             => (vl + 1) -> acc
       }
       if (vectorLength == asLength) Some(as.reverse) else None
     case _ => None
@@ -195,7 +195,7 @@ trait ReadInstances1 extends ReadInstances2 {
       RHV: Read[Bulk, HV],
       RT: Read[Arr, T]
   ): Read[Arr, FieldType[HK, HV] :: T] = Read.instance {
-    case Arr(Bulk(HK.value.`name`) +: RHV(hv) +: rest) => RT.read(RESP.arr(rest)).map(t => field[HK](hv) :: t)
+    case Arr(Bulk(HK.value.`name`) +: RHV(hv) +: rest) => RT.read(Arr(rest)).map(t => field[HK](hv) :: t)
     case _                                             => None
   }
 
@@ -203,7 +203,7 @@ trait ReadInstances1 extends ReadInstances2 {
       implicit RH: Read[Bulk, H],
       RT: Read[Arr, T]
   ): Read[Arr, H :: T] = Read.instance {
-    case Arr(RH(h) +: rest) => RT.read(RESP.arr(rest)).map(h :: _)
+    case Arr(RH(h) +: rest) => RT.read(Arr(rest)).map(h :: _)
   }
 
   implicit final val arr2HNil: Read[Arr, HNil] = Read.instancePF { case Arr(Seq()) => HNil }

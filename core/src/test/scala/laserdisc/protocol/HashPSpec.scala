@@ -4,7 +4,6 @@ package protocol
 final class HashPSpec extends BaseSpec {
   import auto._
   import hashmaps._
-  import RESP._
   import shapeless._
   import show._
 
@@ -25,14 +24,14 @@ final class HashPSpec extends BaseSpec {
         "given non empty key and one non empty field" in forAll { (k: Key, f: Key, nni: NonNegInt) =>
           val protocol = hdel(k, f)
 
-          protocol.encode shouldBe arr(bulk("HDEL"), bulk(k.show), bulk(f.show))
-          protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
+          protocol.encode shouldBe Arr(Bulk("HDEL"), Bulk(k.show), Bulk(f.show))
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
         "given non empty key and two non empty fields" in forAll { (k: Key, f1: Key, f2: Key, nni: NonNegInt) =>
           val protocol = hdel(k, f1, f2)
 
-          protocol.encode shouldBe arr(bulk("HDEL"), bulk(k.show), bulk(f1.show), bulk(f2.show))
-          protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
+          protocol.encode shouldBe Arr(Bulk("HDEL"), Bulk(k.show), Bulk(f1.show), Bulk(f2.show))
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
       }
 
@@ -53,8 +52,8 @@ final class HashPSpec extends BaseSpec {
         "given non empty key and non empty field" in forAll { (k: Key, f: Key, b: Boolean) =>
           val protocol = hexists(k, f)
 
-          protocol.encode shouldBe arr(bulk("HEXISTS"), bulk(k.show), bulk(f.show))
-          protocol.decode(num(if (b) 1 else 0)).right.value shouldBe b
+          protocol.encode shouldBe Arr(Bulk("HEXISTS"), Bulk(k.show), Bulk(f.show))
+          protocol.decode(Num(if (b) 1 else 0)).right.value shouldBe b
         }
       }
 
@@ -78,15 +77,15 @@ final class HashPSpec extends BaseSpec {
         "given non empty key and non empty field" in forAll { (k: Key, f: Key, s: String) =>
           val protocol = hget(k, f)
 
-          protocol.encode shouldBe arr(bulk("HGET"), bulk(k.show), bulk(f.show))
-          protocol.decode(bulk(s)).right.value.value shouldBe bulk(s)
+          protocol.encode shouldBe Arr(Bulk("HGET"), Bulk(k.show), Bulk(f.show))
+          protocol.decode(Bulk(s)).right.value.value shouldBe Bulk(s)
         }
         "given specific read instance" in {
           forAll { (k: Key, f: Key, i: Int) =>
             val protocol = hget[Foo](k, f)
 
-            protocol.encode shouldBe arr(bulk("HGET"), bulk(k.show), bulk(f.show))
-            protocol.decode(bulk(i.show)).right.value.value shouldBe Foo(i)
+            protocol.encode shouldBe Arr(Bulk("HGET"), Bulk(k.show), Bulk(f.show))
+            protocol.decode(Bulk(i.show)).right.value.value shouldBe Foo(i)
           }
         }
       }
@@ -108,20 +107,20 @@ final class HashPSpec extends BaseSpec {
         "given non empty key" in forAll { (k: Key, f: Key, v: String) =>
           val protocol = hgetall(k)
 
-          protocol.encode shouldBe arr(bulk("HGETALL"), bulk(k.show))
-          protocol.decode(arr(bulk(f.show), bulk(v))).right.value shouldBe arr(bulk(f.show), bulk(v))
+          protocol.encode shouldBe Arr(Bulk("HGETALL"), Bulk(k.show))
+          protocol.decode(Arr(Bulk(f.show), Bulk(v))).right.value shouldBe Arr(Bulk(f.show), Bulk(v))
         }
         "using OOB read instance" in forAll { (k: Key, f: Key, v: String) =>
           val protocol = hgetall[Map[Key, String]](k)
 
-          protocol.encode shouldBe arr(bulk("HGETALL"), bulk(k.show))
-          protocol.decode(arr(bulk(f.show), bulk(v))).right.value shouldBe Map(f -> v)
+          protocol.encode shouldBe Arr(Bulk("HGETALL"), Bulk(k.show))
+          protocol.decode(Arr(Bulk(f.show), Bulk(v))).right.value shouldBe Map(f -> v)
         }
         "deriving HList read instance" in forAll { (k: Key, f: Key, v: String) =>
           val protocol = hgetall[Key :: String :: HNil](k)
 
-          protocol.encode shouldBe arr(bulk("HGETALL"), bulk(k.show))
-          protocol.decode(arr(bulk(f.show), bulk(v))).right.value shouldBe f :: v :: HNil
+          protocol.encode shouldBe Arr(Bulk("HGETALL"), Bulk(k.show))
+          protocol.decode(Arr(Bulk(f.show), Bulk(v))).right.value shouldBe f :: v :: HNil
         }
         "deriving Product read instance" in {
           //"""hgetall[Foo]("a")""" should compile
@@ -148,8 +147,8 @@ final class HashPSpec extends BaseSpec {
         "given non empty key, non empty field and non zero increment" in forAll { (k: Key, f: Key, nzl: NonZeroLong, l: Long) =>
           val protocol = hincrby(k, f, nzl)
 
-          protocol.encode shouldBe arr(bulk("HINCRBY"), bulk(k.show), bulk(f.show), bulk(nzl.show))
-          protocol.decode(num(l)).right.value shouldBe l
+          protocol.encode shouldBe Arr(Bulk("HINCRBY"), Bulk(k.show), Bulk(f.show), Bulk(nzl.show))
+          protocol.decode(Num(l)).right.value shouldBe l
         }
       }
 
@@ -176,8 +175,8 @@ final class HashPSpec extends BaseSpec {
         "given non empty key, non empty field and non zero increment" in forAll { (k: Key, f: Key, nzd: NonZeroDouble, d: Double) =>
           val protocol = hincrbyfloat(k, f, nzd)
 
-          protocol.encode shouldBe arr(bulk("HINCRBYFLOAT"), bulk(k.show), bulk(f.show), bulk(nzd.show))
-          protocol.decode(bulk(d.show)).right.value shouldBe d
+          protocol.encode shouldBe Arr(Bulk("HINCRBYFLOAT"), Bulk(k.show), Bulk(f.show), Bulk(nzd.show))
+          protocol.decode(Bulk(d.show)).right.value shouldBe d
         }
       }
 
@@ -192,11 +191,11 @@ final class HashPSpec extends BaseSpec {
       }
 
       "compile successfully" when {
-        "given non empty key" in forAll { (k: Key, ks: Seq[Key]) =>
+        "given non empty key" in forAll { (k: Key, ks: List[Key]) =>
           val protocol = hkeys(k)
 
-          protocol.encode shouldBe arr(bulk("HKEYS"), bulk(k.show))
-          protocol.decode(arr(ks.map(k => bulk(k.show)))).right.value shouldBe ks
+          protocol.encode shouldBe Arr(Bulk("HKEYS"), Bulk(k.show))
+          protocol.decode(Arr(ks.map(k => Bulk(k.show)))).right.value shouldBe ks
         }
       }
 
@@ -214,8 +213,8 @@ final class HashPSpec extends BaseSpec {
         "given non empty key" in forAll { (k: Key, nni: NonNegInt) =>
           val protocol = hlen(k)
 
-          protocol.encode shouldBe arr(bulk("HLEN"), bulk(k.show))
-          protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
+          protocol.encode shouldBe Arr(Bulk("HLEN"), Bulk(k.show))
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
       }
 
@@ -236,14 +235,14 @@ final class HashPSpec extends BaseSpec {
         "given non empty key and one non empty field" in forAll { (k: Key, f: Key, i: Int) =>
           val protocol = hmget[Int](k, f)
 
-          protocol.encode shouldBe arr(bulk("HMGET"), bulk(k.show), bulk(f.show))
-          protocol.decode(arr(bulk(i.show))).right.value shouldBe i
+          protocol.encode shouldBe Arr(Bulk("HMGET"), Bulk(k.show), Bulk(f.show))
+          protocol.decode(Arr(Bulk(i.show))).right.value shouldBe i
         }
         "given non empty key and two non empty fields" in forAll { (k: Key, f1: Key, f2: Key, i: Int, s: String) =>
           val protocol = hmget[Int, String](k, f1, f2)
 
-          protocol.encode shouldBe arr(bulk("HMGET"), bulk(k.show), bulk(f1.show), bulk(f2.show))
-          protocol.decode(arr(bulk(i.show), bulk(s.show))).right.value shouldBe (i -> s)
+          protocol.encode shouldBe Arr(Bulk("HMGET"), Bulk(k.show), Bulk(f1.show), Bulk(f2.show))
+          protocol.decode(Arr(Bulk(i.show), Bulk(s.show))).right.value shouldBe (i -> s)
         }
       }
 

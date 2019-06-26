@@ -56,7 +56,6 @@ object RESPCodecsSpec extends EitherValues {
 }
 
 final class RESPCodecsSpec extends BaseSpec {
-  import RESP._
   import RESPCodecsSpec._
 
   private[this] val smallListSize = chooseNum(0, 20)
@@ -65,17 +64,17 @@ final class RESPCodecsSpec extends BaseSpec {
     Gen.choose[Char](0, 127).suchThat(!exclusions.contains(_)).map(InvalidDiscriminator)
   }
   private[this] implicit val _                = Gen.choose(Char.MinValue, Char.MaxValue).filter(Character.isDefined)
-  private[this] implicit val genStr: Gen[Str] = arbitrary[String].map(str)
-  private[this] implicit val genErr: Gen[Err] = arbitrary[String].map(err)
-  private[this] implicit val genNum: Gen[Num] = arbitrary[Long].map(num)
+  private[this] implicit val genStr: Gen[Str] = arbitrary[String].map(Str.apply)
+  private[this] implicit val genErr: Gen[Err] = arbitrary[String].map(Err.apply)
+  private[this] implicit val genNum: Gen[Num] = arbitrary[Long].map(Num.apply)
   private[this] implicit val genBulk: Gen[GenBulk] = arbitrary[Option[String]].map {
     case None    => NullBulk
-    case Some(s) => bulk(s)
+    case Some(s) => Bulk(s)
   }
   private[this] implicit def genArr: Gen[GenArr] = smallListSize.flatMap { size =>
     option(listOfN(size, genRESP)).map {
       case None    => NilArr
-      case Some(v) => arr(v)
+      case Some(v) => Arr(v)
     }
   }
   private[this] implicit def genRESP: Gen[RESP] =
@@ -96,7 +95,7 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling simple strings" should {
       "decode them correctly" in forAll { s: String =>
-        s"+$s\r\n".asRESP shouldBe str(s)
+        s"+$s\r\n".asRESP shouldBe Str(s)
       }
       "encode them correctly" in forAll { str: Str =>
         str.wireFormat shouldBe s"+${str.value}\r\n"
@@ -108,7 +107,7 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling errors" should {
       "decode them correctly" in forAll { msg: String =>
-        s"-$msg\r\n".asRESP shouldBe err(msg)
+        s"-$msg\r\n".asRESP shouldBe Err(msg)
       }
       "encode them correctly" in forAll { err: Err =>
         err.wireFormat shouldBe s"-${err.message}\r\n"
@@ -120,7 +119,7 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling integers" should {
       "decode them correctly" in forAll { l: Long =>
-        s":$l\r\n".asRESP shouldBe num(l)
+        s":$l\r\n".asRESP shouldBe Num(l)
       }
       "encode them correctly" in forAll { num: Num =>
         num.wireFormat shouldBe s":${num.value}\r\n"
@@ -136,8 +135,8 @@ final class RESPCodecsSpec extends BaseSpec {
       }
       "decode them correctly" in forAll { maybeString: Option[String] =>
         maybeString match {
-          case None    => "$-1\r\n".asRESP shouldBe nullBulk
-          case Some(s) => s"$$${s.bytesLength}\r\n$s\r\n".asRESP shouldBe bulk(s)
+          case None    => "$-1\r\n".asRESP shouldBe NullBulk
+          case Some(s) => s"$$${s.bytesLength}\r\n$s\r\n".asRESP shouldBe Bulk(s)
         }
       }
       "encode them correctly" in forAll { bulk: GenBulk =>
@@ -157,8 +156,8 @@ final class RESPCodecsSpec extends BaseSpec {
       }
       "decode them correctly" in forAll { maybeRESPList: Option[List[RESP]] =>
         maybeRESPList match {
-          case None     => "*-1\r\n".asRESP shouldBe nilArr
-          case Some(xs) => s"*${xs.length}\r\n${xs.wireFormat}".asRESP shouldBe arr(xs)
+          case None     => "*-1\r\n".asRESP shouldBe NilArr
+          case Some(xs) => s"*${xs.length}\r\n${xs.wireFormat}".asRESP shouldBe Arr(xs)
         }
       }
       "encode them correctly" in forAll { arr: GenArr =>

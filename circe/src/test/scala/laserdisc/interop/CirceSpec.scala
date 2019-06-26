@@ -4,7 +4,6 @@ package interop
 import io.circe.generic.semiauto._
 import io.circe.{Decoder, Encoder}
 import laserdisc.interop.circe._
-import laserdisc.protocol.RESP.bulk
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
@@ -41,25 +40,25 @@ final class CirceSpec extends WordSpec with Matchers with ScalaCheckPropertyChec
 
     "handling a simple type" should {
       "round-trip with no errors" in forAll { bar: Bar =>
-        Read[Bulk, Bar].read(bulk(Show[Bar].show(bar))).value shouldBe bar
+        Read[Bulk, Bar].read(Bulk(Show[Bar].show(bar))).value shouldBe bar
       }
     }
 
     "handling a recursive type" should {
       "round-trip with no errors" in forAll { baz: Baz =>
-        Read[Bulk, Baz].read(bulk(Show[Baz].show(baz))).value shouldBe baz
+        Read[Bulk, Baz].read(Bulk(Show[Baz].show(baz))).value shouldBe baz
       }
     }
 
     "handling a json that does not respect the contract" should {
       "fail to decode" in {
-        Read[Bulk, Bar].read(bulk("""{"i": null}""")) shouldBe empty
+        Read[Bulk, Bar].read(Bulk("""{"i": null}""")) shouldBe empty
       }
     }
 
     "handling an invalid json" should {
       "fail to decode" in {
-        Read[Bulk, Bar].read(bulk("{")) shouldBe empty
+        Read[Bulk, Bar].read(Bulk("{")) shouldBe empty
       }
     }
   }

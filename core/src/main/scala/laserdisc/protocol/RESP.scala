@@ -29,31 +29,17 @@ sealed trait RESP extends AnyRef with Serializable
 /**
   * RESP [[https://redis.io/topics/protocol#resp-simple-strings Simple Strings]]
   *
-  * These can be constructed by using the [[RESPBuilders#str]] method
-  *
   * @note Sometimes the value "OK" is used to represent a successful
   * acknowledgement/processing of a command.
   *
   * @example
   * {{{
-  *   import laserdisc.protocol.RESP._
-  *
-  *   val s: Str = str("some string")
+  *   val s: Str = Str("some string")
   * }}}
   *
   * @param value The wrapped string value
   */
-final case class Str private[protocol] (val value: String) extends RESP /*  {
-  override def hashCode(): Int = value.hashCode
-  override def equals(obj: Any): Boolean = obj match {
-    case other: Str => other.value == value
-    case _          => false
-  }
-  override def toString: String = s"Str($value)"
-}
-object Str {
-  final def unapply(str: Str): Option[String] = Some(str.value)
-} */
+final case class Str(value: String) extends RESP
 
 /**
   * RESP [[https://redis.io/topics/protocol#resp-errors Errors]]
@@ -61,32 +47,16 @@ object Str {
   * RESP [[Err]]s are also [[scala.RuntimeException]]s, although
   * __where possible__ they will not contain stacktrace data
   *
-  * These can be constructed by using the [[RESPBuilders#err]] method
-  *
   * @example
   * {{{
-  *   import laserdisc.protocol.RESP._
-  *
-  *   val e: Err = err("some error message")
+  *   val e: Err = Err("some error message")
   * }}}
   * @param message The wrapped exception's message
   */
-final case class Err private[protocol] (val message: String) extends laserdisc.Platform.LaserDiscRuntimeError(message) with RESP /*  {
-  override def hashCode(): Int = message.hashCode
-  override def equals(obj: Any): Boolean = obj match {
-    case other: Err => other.message == message
-    case _          => false
-  }
-  override def toString: String = s"Err($message)"
-}
-object Err {
-  final def unapply(err: Err): Option[String] = Some(err.message)
-} */
+final case class Err(message: String) extends laserdisc.Platform.LaserDiscRuntimeError(message) with RESP
 
 /**
   * RESP [[https://redis.io/topics/protocol#resp-integers Integers]]
-  *
-  * These can be constructed by using the [[RESPBuilders#num]] method
   *
   * @note Sometimes the values 0 and 1 are used to represent boolean
   * values. In this case 0 corresponds to False while 1 to True,
@@ -94,24 +64,12 @@ object Err {
   *
   * @example
   * {{{
-  *   import laserdisc.protocol.RESP._
-  *
-  *   val n: Num = num(42)
+  *   val n: Num = Num(42)
   * }}}
   *
   * @param value The wrapped long value
   */
-final case class Num private[protocol] (val value: Long) extends RESP /*  {
-  override def hashCode(): Int = value.hashCode()
-  override def equals(obj: Any): Boolean = obj match {
-    case other: Num => other.value == value
-    case _          => false
-  }
-  override def toString: String = s"Num($value)"
-}
-object Num {
-  final def unapply(num: Num): Option[Long] = Some(num.value)
-} */
+final case class Num(value: Long) extends RESP
 
 /**
   * RESP [[https://redis.io/topics/protocol#resp-bulk-strings Bulk Strings]]
@@ -120,17 +78,10 @@ object Num {
   *  - `null` bulk strings, where the length is -1 and no actual underlying string is present
   *  - actual (non-null) bulk strings, where the length is >= 0
   *
-  * Non-null [[GenBulk]]s can be constructed using the [[RESPBuilders#bulk]]
-  * method
-  *
-  * @note A forwarder for `null` [[GenBulk]]s is present too and represented
-  *       using the `final val`s [[RESPBuilders.nullBulk]]
   * @example
   * {{{
-  *   import laserdisc.protocol.RESP._
-  *
-  *   val b: Bulk      = bulk("some string")
-  *   val nb: NullBulk = nullBulk
+  *   val b: Bulk      = Bulk("some string")
+  *   val nb: NullBulk = NullBulk
   * }}}
   * @see [[Show]]
   */
@@ -145,17 +96,8 @@ case object NullBulk extends GenBulk
   *
   * @param value The wrapped bulk string value
   */
-final case class Bulk private[protocol] (val value: String) extends GenBulk /*  {
-  override def hashCode(): Int = value.hashCode
-  override def equals(obj: Any): Boolean = obj match {
-    case other: Bulk => other.value == value
-    case _           => false
-  }
-  override def toString: String = s"Bulk($value)"
-} */
+final case class Bulk(value: String) extends GenBulk
 object Bulk {
-  //final def unapply(bulk: Bulk): Option[String] = Some(bulk.value)
-
   implicit final val bulkShow: Show[Bulk] = Show.instance(_.value)
 }
 
@@ -166,23 +108,16 @@ object Bulk {
   *  - `nil` arrays, where the length is -1 and no array element is present
   *  - actual (non-nil) arrays, where the length is >= 0
   *
-  * Non-nil [[GenArr]]s can be constructed using the
-  * [[[RESPBuilders#arr(xs:Seq[laserdisc\.protocol\.RESP])* RESPBuilders#arr(xs: Seq[RESP])]]] method.
-  *
-  * @note [[[RESPBuilders#arr(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* RESPBuilders#arr(one: RESP, rest: RESP*)]]]
+  * @note [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]]]
   * is an overload which supports the creation of guaranteed non-empty
   * sequences only. This is achieved through the usage of one fixed
   * parameter followed by a var-arg of the same
-  * @note A forwarder for `nil` is present too and represented using
-  *       the `final val`s [[RESPBuilders.nilArr]]
   * @example
   * {{{
-  *   import laserdisc.protocol.RESP._
-  *
-  *   val a: Arr                  = arr(Vector(str("hello"), str("world")))
-  *   val guaranteedNonEmpty: Arr = arr(str("hello"), str("world"))
-  *   val empty: Arr              = arr(Vector.empty)
-  *   val nil: NilArr             = nilArr
+  *   val arr: Arr                = Arr(List(Str("hello"), Str("world")))
+  *   val guaranteedNonEmpty: Arr = Arr(Str("hello"), Str("world"))
+  *   val empty: Arr              = Arr(List.empty)
+  *   val nil: NilArr             = NilArr
   * }}}
   */
 sealed trait GenArr extends RESP
@@ -191,48 +126,23 @@ case object NilArr  extends GenArr
 /**
   * This is the special case of a non-nil RESP [[GenArr]]
   *
-  * These can be constructed by using the [[[RESPBuilders#arr(xs:Seq[laserdisc\.protocol\.RESP])* RESPBuilders#arr(xs: Seq[RESP])]]]
-  * method
-  *
-  * __or__
-  *
-  * by resorting to the overloaded
-  * [[[RESPBuilders#arr(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* RESPBuilders#arr(one: RESP, rest: RESP*)]]]
+  * These can be constructed either by the default case class' apply by resorting to the overloaded
+  * [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]]]
   * method which expects one parameter to be supplied followed
   * by a (possibly empty) sequence of [[RESP]]s (vararg).
   *
-  * @param elements The wrapped array values, as a [[scala.Vector]] of [[RESP]]
+  * @param elements The wrapped array values, as a [[scala.List]] of [[RESP]]
   */
-final case class Arr private[protocol] (val elements: Vector[RESP]) extends GenArr /*  {
-  override def hashCode(): Int = elements.hashCode()
-  override def equals(obj: Any): Boolean = obj match {
-    case other: Arr => other.elements == elements
-    case _          => false
-  }
+final case class Arr(elements: List[RESP]) extends GenArr {
   override def toString: String = s"Arr(${elements.mkString(",")})"
 }
 object Arr {
-  final def unapply(arr: Arr): Option[Vector[RESP]] = Some(arr.elements)
-} */
+  final def apply(one: RESP, rest: RESP*): Arr = new Arr(one +: rest.toList)
+}
 
 private[protocol] final case class Repr[A](decoded: A, bits: BitVector)
 
-sealed trait RESPBuilders {
-  final def str(value: String): Str = new Str(value)
-
-  final def err(message: String): Err = new Err(message)
-
-  final def num(value: Long): Num = new Num(value)
-
-  final val nullBulk: NullBulk    = NullBulk
-  final def bulk(s: String): Bulk = new Bulk(s)
-
-  final val nilArr: NilArr                   = NilArr
-  final def arr(one: RESP, rest: RESP*): Arr = arr(one +: rest)
-  final def arr(xs: Seq[RESP]): Arr          = new Arr(xs.toVector)
-}
-
-sealed trait RESPCodecs extends BitVectorSyntax { this: RESPBuilders =>
+sealed trait RESPCodecs extends BitVectorSyntax {
   protected final val utf8Codec         = new LenientStringCodec(UTF_8)
   protected final val BitsInByte        = 8L
   protected final val plus              = hex"2b".bits
@@ -267,14 +177,14 @@ sealed trait RESPCodecs extends BitVectorSyntax { this: RESPBuilders =>
       catch { case _: NumberFormatException => Attempt.failure(SErr(s"Expected long but found $s")) },
     _.toString
   )
-  private[this] final val strCodec: Codec[Str] = crlfTerminatedStringCodec.xmap[Str](str, _.value)
-  private[this] final val errCodec: Codec[Err] = crlfTerminatedStringCodec.xmap[Err](err, _.message)
-  private[this] final val numCodec: Codec[Num] = crlfTerminatedLongCodec.xmap[Num](num, _.value)
+  private[this] final val strCodec: Codec[Str] = crlfTerminatedStringCodec.xmap[Str](Str.apply, _.value)
+  private[this] final val errCodec: Codec[Err] = crlfTerminatedStringCodec.xmap[Err](Err.apply, _.message)
+  private[this] final val numCodec: Codec[Num] = crlfTerminatedLongCodec.xmap[Num](Num.apply, _.value)
   private[this] final val bulkCodec: Codec[GenBulk] = new Codec[GenBulk] {
     private[this] final val nullBulkBits = minusOne ++ crlf
     private[this] final val decoder = crlfTerminatedLongCodec.flatMap {
       case -1                => Decoder.point(NullBulk)
-      case size if size >= 0 => fixedSizeBytes(size + crlfBytesSize, crlfTerminatedCodec(utf8Codec, size)).map(bulk)
+      case size if size >= 0 => fixedSizeBytes(size + crlfBytesSize, crlfTerminatedCodec(utf8Codec, size)).map(Bulk.apply)
       case negSize           => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
     }
     private[this] final def failDec(negSize: Long) = General(s"failed to decode bulk-string of size $negSize", List("size"))
@@ -294,14 +204,14 @@ sealed trait RESPCodecs extends BitVectorSyntax { this: RESPBuilders =>
   private[this] final val arrCodec: Codec[GenArr] = new Codec[GenArr] {
     private[this] final val nilArrBits   = minusOne ++ crlf
     private[this] final val emptyArrBits = zero ++ crlf
-    private[this] final def checkSize(v: Vector[RESP], expectedSize: Long): Attempt[Vector[RESP]] =
+    private[this] final def checkSize(v: List[RESP], expectedSize: Long): Attempt[List[RESP]] =
       if (v.size == expectedSize) Attempt.successful(v)
       else Attempt.failure(SErr(s"Insufficient number of elements: decoded ${v.size} instead of $expectedSize"))
     private[this] final val decoder = crlfTerminatedLongCodec.flatMap {
       case -1 => Decoder.point(NilArr)
-      case 0  => Decoder.point(arr(Seq.empty))
+      case 0  => Decoder.point(Arr(List.empty))
       case size if size > 0 =>
-        Decoder(decodeCollect[Vector, RESP](respCodec, Some(size.toInt))(_)).narrow[Vector[RESP]](checkSize(_, size), identity).map(arr(_))
+        Decoder(decodeCollect[List, RESP](respCodec, Some(size.toInt))(_)).narrow[List[RESP]](checkSize(_, size), identity).map(Arr.apply)
       case negSize => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
     }
     private[this] final def failDec(negSize: Long) = General(s"failed to decode array of size $negSize", List("size"))
@@ -447,4 +357,4 @@ object BitVectorDecoding {
   final case object Complete                                                        extends State
 }
 
-object RESP extends RESPBuilders with RESPCodecs with RESPCoproduct with RESPFunctions
+object RESP extends RESPCodecs with RESPCoproduct with RESPFunctions

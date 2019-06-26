@@ -4,7 +4,6 @@ package protocol
 final class GeoPSpec extends GeoExtraPSpec {
   import geo._
   import geos._
-  import RESP._
   import show._
 
   "A GeoBaseP" when {
@@ -36,8 +35,8 @@ final class GeoPSpec extends GeoExtraPSpec {
           forAll("key", "positions", "return value") { (k: Key, ps: OneOrMore[Position], nni: NonNegInt) =>
             val protocol = geoadd(k, ps)
 
-            protocol.encode shouldBe arr(bulk("GEOADD") :: bulk(k.show) :: ps.value.flatMap(position2BulkList))
-            protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
+            protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k.show) :: ps.value.flatMap(position2BulkList))
+            protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
           }
         }
       }
@@ -63,7 +62,7 @@ final class GeoPSpec extends GeoExtraPSpec {
           forAll("key", "member1", "member2", "return value") { (k: Key, m1: Key, m2: Key, onnd: Option[NonNegDouble]) =>
             val protocol = geodist(k, m1, m2)
 
-            protocol.encode shouldBe arr(bulk("GEODIST"), bulk(k.show), bulk(m1.show), bulk(m2.show))
+            protocol.encode shouldBe Arr(Bulk("GEODIST"), Bulk(k.show), Bulk(m1.show), Bulk(m2.show))
             protocol.decode(nonNegDoubleOptionToBulk(onnd)).right.value shouldBe onnd
           }
         }
@@ -71,7 +70,7 @@ final class GeoPSpec extends GeoExtraPSpec {
           forAll("key", "member1", "member2", "unit", "return value") { (k: Key, m1: Key, m2: Key, u: Unit, onnd: Option[NonNegDouble]) =>
             val protocol = geodist(k, m1, m2, u)
 
-            protocol.encode shouldBe arr(bulk("GEODIST"), bulk(k.show), bulk(m1.show), bulk(m2.show), bulk(u.show))
+            protocol.encode shouldBe Arr(Bulk("GEODIST"), Bulk(k.show), Bulk(m1.show), Bulk(m2.show), Bulk(u.show))
             protocol.decode(nonNegDoubleOptionToBulk(onnd)).right.value shouldBe onnd
           }
         }
@@ -105,7 +104,7 @@ final class GeoPSpec extends GeoExtraPSpec {
           forAll("key", "members", "return value") { (k: Key, ms: OneOrMoreKeys, oghs: OneOrMore[Option[GeoHash]]) =>
             val protocol = geohash(k, ms)
 
-            protocol.encode shouldBe arr(bulk("GEOHASH") :: bulk(k.show) :: ms.value.map(m => bulk(m.show)))
+            protocol.encode shouldBe Arr(Bulk("GEOHASH") :: Bulk(k.show) :: ms.value.map(m => Bulk(m.show)))
             protocol.decode(oneOrMoreGeoHashOptionToArr(oghs)).right.value shouldBe oghs.value
           }
         }
@@ -140,7 +139,7 @@ final class GeoPSpec extends GeoExtraPSpec {
           forAll("key", "members", "return value") { (k: Key, ms: OneOrMoreKeys, ocs: OneOrMore[Option[Coordinates]]) =>
             val protocol = geopos(k, ms)
 
-            protocol.encode shouldBe arr(bulk("GEOPOS") :: bulk(k.show) :: ms.value.map(m => bulk(m.show)))
+            protocol.encode shouldBe Arr(Bulk("GEOPOS") :: Bulk(k.show) :: ms.value.map(m => Bulk(m.show)))
             protocol.decode(oneOrMoreCoordinatesOptionToArr(ocs)).right.value shouldBe ocs.value
           }
         }
@@ -165,7 +164,7 @@ final class GeoPSpec extends GeoExtraPSpec {
             forAll("key", "member1", "member2", "return value") { (k: Key, m1: Key, m2: Key, onnd: Option[NonNegDouble]) =>
               val protocol = geodist(k, m1, m2)
 
-              protocol.encode shouldBe arr(bulk("GEODIST"), bulk(k.show), bulk(m1.show), bulk(m2.show))
+              protocol.encode shouldBe Arr(Bulk("GEODIST"), Bulk(k.show), Bulk(m1.show), Bulk(m2.show))
               protocol.decode(nonNegDoubleOptionToBulk(onnd)).right.value shouldBe onnd
             }
           }
@@ -173,7 +172,7 @@ final class GeoPSpec extends GeoExtraPSpec {
             forAll("key", "member1", "member2", "unit", "return value") { (k: Key, m1: Key, m2: Key, u: Unit, onnd: Option[NonNegDouble]) =>
               val protocol = geodist(k, m1, m2, u)
 
-              protocol.encode shouldBe arr(bulk("GEODIST"), bulk(k.show), bulk(m1.show), bulk(m2.show), bulk(u.show))
+              protocol.encode shouldBe Arr(Bulk("GEODIST"), Bulk(k.show), Bulk(m1.show), Bulk(m2.show), Bulk(u.show))
               protocol.decode(nonNegDoubleOptionToBulk(onnd)).right.value shouldBe onnd
             }
           }

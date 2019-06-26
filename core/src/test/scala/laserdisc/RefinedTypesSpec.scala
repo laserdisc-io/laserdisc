@@ -5,28 +5,28 @@ import org.scalacheck.Gen._
 
 final class RefinedTypesSpec extends BaseSpec {
 
-  private[this] final val spaceChar: Char = 0x0020
-  private[this] final val geoHashString: String = "[a-z0-9]{11}"
+  private[this] final val spaceChar: Char           = 0x0020
+  private[this] final val geoHashString: String     = "[a-z0-9]{11}"
   private[this] final val globPatternString: String = raw"(\[?[\w\*\?]+\]?)+"
-  private[this] final val nodeIdString: String = "[a-f0-9]{40}"
+  private[this] final val nodeIdString: String      = "[a-f0-9]{40}"
 
   private[this] final val connectionNameGen: Gen[String] = nonEmptyListOf(alphaNumChar.suchThat(!_.equals(spaceChar))).map(_.mkString)
-  private[this] final val dbIndexGen: Gen[Int] = chooseNum(0, 15)
-  private[this] final val geoHashGen: Gen[String]   = listOfN(11, frequency(1 -> numChar, 9 -> alphaLowerChar)).map(_.mkString)
-  private[this] final val latitudeGen: Gen[Double]  = chooseNum(-85.05112878D, 85.05112878D)
-  private[this] final val longitudeGen: Gen[Double] = chooseNum(-180.0D, 180.0D)
-  private[this] final val nodeIdGen: Gen[String]   = listOfN(40, frequency(1 -> numChar, 9 -> choose(97.toChar, 102.toChar))).map(_.mkString)
-  private[this] final val nonNegDoubleGen: Gen[Double] = chooseNum(0.0D, Double.MaxValue)
-  private[this] final val nonNegIntGen: Gen[Int] = chooseNum(0, Int.MaxValue)
-  private[this] final val nonNegLongGen: Gen[Long] = chooseNum(0, Long.MaxValue)
-  private[this] final val nonZeroDoubleGen: Gen[Double] = chooseNum(Double.MinValue, Double.MaxValue).suchThat(_ != 0.0D)
-  private[this] final val nonZeroIntGen: Gen[Int] = chooseNum(Int.MinValue, Int.MaxValue).suchThat(_ != 0)
-  private[this] final val nonZeroLongGen: Gen[Long] = chooseNum(Long.MinValue, Long.MaxValue).suchThat(_ != 0L)
-  private[this] final val rangeOffsetGen: Gen[Int] = chooseNum(0, 536870911)
-  private[this] final val slotGen: Gen[Int] = chooseNum(0, 16383)
-  private[this] final val stringLengthGen: Gen[Long] = chooseNum(0L, 4294967295L)
+  private[this] final val dbIndexGen: Gen[Int]           = chooseNum(0, 15)
+  private[this] final val geoHashGen: Gen[String]        = listOfN(11, frequency(1 -> numChar, 9 -> alphaLowerChar)).map(_.mkString)
+  private[this] final val latitudeGen: Gen[Double]       = chooseNum(-85.05112878D, 85.05112878D)
+  private[this] final val longitudeGen: Gen[Double]      = chooseNum(-180.0D, 180.0D)
+  private[this] final val nodeIdGen: Gen[String]         = listOfN(40, frequency(1 -> numChar, 9 -> choose(97.toChar, 102.toChar))).map(_.mkString)
+  private[this] final val nonNegDoubleGen: Gen[Double]   = chooseNum(0.0D, Double.MaxValue)
+  private[this] final val nonNegIntGen: Gen[Int]         = chooseNum(0, Int.MaxValue)
+  private[this] final val nonNegLongGen: Gen[Long]       = chooseNum(0, Long.MaxValue)
+  private[this] final val nonZeroDoubleGen: Gen[Double]  = chooseNum(Double.MinValue, Double.MaxValue).suchThat(_ != 0.0D)
+  private[this] final val nonZeroIntGen: Gen[Int]        = chooseNum(Int.MinValue, Int.MaxValue).suchThat(_ != 0)
+  private[this] final val nonZeroLongGen: Gen[Long]      = chooseNum(Long.MinValue, Long.MaxValue).suchThat(_ != 0L)
+  private[this] final val rangeOffsetGen: Gen[Int]       = chooseNum(0, 536870911)
+  private[this] final val slotGen: Gen[Int]              = chooseNum(0, 16383)
+  private[this] final val stringLengthGen: Gen[Long]     = chooseNum(0L, 4294967295L)
   private[this] final val stringsWithSpacesGen: Gen[String] = {
-    val validRangesInclusive = List[(Char, Char)]((0x0000, 0x001F), (0x0021, 0xD7FF), (0xE000, 0xFFFD))
+    val validRangesInclusive  = List[(Char, Char)]((0x0000, 0x001F), (0x0021, 0xD7FF), (0xE000, 0xFFFD))
     val allWeightedEqualChars = validRangesInclusive.map { case (first, last) => (1, choose[Char](first, last)) }
     listOf(frequency(((100 -> const(spaceChar)) :: allWeightedEqualChars): _*)).map(_.mkString)
   }

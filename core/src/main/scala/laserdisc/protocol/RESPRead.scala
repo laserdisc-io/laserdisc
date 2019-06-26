@@ -31,8 +31,8 @@ object RESPRead {
       case arr: Arr   => Inl(arr)
       case bulk: Bulk => Inr(Inl(bulk))
       case err: Err   => Inr(Inr(Inl(err)))
-      case NilArr     => Inr(Inr(Inr(Inl(nilArr))))
-      case NullBulk   => Inr(Inr(Inr(Inr(Inl(nullBulk)))))
+      case NilArr     => Inr(Inr(Inr(Inl(NilArr))))
+      case NullBulk   => Inr(Inr(Inr(Inr(Inl(NullBulk)))))
       case num: Num   => Inr(Inr(Inr(Inr(Inr(Inl(num))))))
       case str: Str   => Inr(Inr(Inr(Inr(Inr(Inr(Inl(str)))))))
     }
@@ -46,9 +46,9 @@ object RESPRead {
     override def read(resp: RESP): Maybe[B] = Coproduct[RESPCoproduct](resp).deembed match {
       case Right(R(b)) => Right(b)
       case Right(_) =>
-        Left(err(s"RESP type(s) matched but failed to deserialize correctly: $resp")).widenLeft[Throwable]
+        Left(Err(s"RESP type(s) matched but failed to deserialize correctly: $resp")).widenLeft[Throwable]
       case Left(rest) =>
-        rest.select[Err].fold(Left(err(s"RESP type(s) did not match: $resp")))(Left(_)).widenLeft[Throwable]
+        rest.select[Err].fold(Left(Err(s"RESP type(s) did not match: $resp")))(Left(_)).widenLeft[Throwable]
     }
   }
 

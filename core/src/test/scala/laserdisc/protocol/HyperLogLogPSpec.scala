@@ -4,7 +4,6 @@ package protocol
 final class HyperLogLogPSpec extends BaseSpec {
   import auto._
   import hyperloglog._
-  import RESP._
   import show._
 
   "A HyperLogLogP with HyperLogLogPExtra" when {
@@ -24,14 +23,14 @@ final class HyperLogLogPSpec extends BaseSpec {
         "given non empty key and one non empty element" in forAll { (key: Key, el: Key, b: Boolean) =>
           val protocol = pfadd(key, el)
 
-          protocol.encode shouldBe arr(bulk("PFADD"), bulk(key.show), bulk(el.show))
-          protocol.decode(num(if (b) 1 else 0)).right.value shouldBe b
+          protocol.encode shouldBe Arr(Bulk("PFADD"), Bulk(key.show), Bulk(el.show))
+          protocol.decode(Num(if (b) 1 else 0)).right.value shouldBe b
         }
         "given non empty key and two non empty elements" in forAll { (key: Key, el1: Key, el2: Key, b: Boolean) =>
           val protocol = pfadd(key, el1, el2)
 
-          protocol.encode shouldBe arr(bulk("PFADD"), bulk(key.show), bulk(el1.show), bulk(el2.show))
-          protocol.decode(num(if (b) 1 else 0)).right.value shouldBe b
+          protocol.encode shouldBe Arr(Bulk("PFADD"), Bulk(key.show), Bulk(el1.show), Bulk(el2.show))
+          protocol.decode(Num(if (b) 1 else 0)).right.value shouldBe b
         }
       }
 
@@ -52,14 +51,14 @@ final class HyperLogLogPSpec extends BaseSpec {
         "given one non empty key" in forAll { (key: Key, nni: NonNegInt) =>
           val protocol = pfcount(key)
 
-          protocol.encode shouldBe arr(bulk("PFCOUNT"), bulk(key.show))
-          protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
+          protocol.encode shouldBe Arr(Bulk("PFCOUNT"), Bulk(key.show))
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
         "given two non empty keys" in forAll { (key1: Key, key2: Key, nni: NonNegInt) =>
           val protocol = pfcount(key1, key2)
 
-          protocol.encode shouldBe arr(bulk("PFCOUNT"), bulk(key1.show), bulk(key2.show))
-          protocol.decode(num(nni.value.toLong)).right.value shouldBe nni
+          protocol.encode shouldBe Arr(Bulk("PFCOUNT"), Bulk(key1.show), Bulk(key2.show))
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
       }
 

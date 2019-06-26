@@ -3,26 +3,25 @@ package protocol
 
 trait SortedSetExtraP { this: SortedSetBaseP =>
   import SortedSetP.{Aggregate, Flag}
-  import eu.timepit.refined.api.RefinedType
 
   //ZADD with no flag
   [..21#final def zadd[A: Show](key: Key, [#member1: A, score1: ValidDouble#]): Protocol.Aux[NonNegInt] =
-    zadd(key, RefinedType[OneOrMore[(A, ValidDouble)]].unsafeRefine([#(member1 -> score1)# :: ] :: Nil))#
+    zadd(key, OneOrMore.unsafeFrom([#(member1 -> score1)# :: ] :: Nil))#
   ]
 
   //ZADD with flag
   [..20#final def zadd[A: Show](key: Key, flag: Flag, [#member1: A, score1: ValidDouble#]): Protocol.Aux[NonNegInt] =
-    zadd(key, flag, RefinedType[OneOrMore[(A, ValidDouble)]].unsafeRefine([#(member1 -> score1)# :: ] :: Nil))#
+    zadd(key, flag, OneOrMore.unsafeFrom([#(member1 -> score1)# :: ] :: Nil))#
   ]
 
   //ZADD with no flag changed
   [..21#final def zaddch[A: Show](key: Key, [#member1: A, score1: ValidDouble#]): Protocol.Aux[NonNegInt] =
-    zaddch(key, RefinedType[OneOrMore[(A, ValidDouble)]].unsafeRefine([#(member1 -> score1)# :: ] :: Nil))#
+    zaddch(key, OneOrMore.unsafeFrom([#(member1 -> score1)# :: ] :: Nil))#
   ]
 
   //ZADD with flag changed
   [..20#final def zaddch[A: Show](key: Key, flag: Flag, [#member1: A, score1: ValidDouble#]): Protocol.Aux[NonNegInt] =
-    zaddch(key, flag, RefinedType[OneOrMore[(A, ValidDouble)]].unsafeRefine([#(member1 -> score1)# :: ] :: Nil))#
+    zaddch(key, flag, OneOrMore.unsafeFrom([#(member1 -> score1)# :: ] :: Nil))#
   ]
 
   //ZINTERSTORE with no weights
@@ -47,7 +46,7 @@ trait SortedSetExtraP { this: SortedSetBaseP =>
 
   //ZREM
   [..21#final def zrem[A: Show](key: Key, [#member1: A#]): Protocol.Aux[NonNegInt] =
-    zrem(key, RefinedType[OneOrMore[A]].unsafeRefine([#member1# :: ] :: Nil))#
+    zrem(key, OneOrMore.unsafeFrom([#member1# :: ] :: Nil))#
   ]
 
   //ZUNIONSTORE with no weights

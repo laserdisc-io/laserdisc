@@ -2,15 +2,13 @@ package laserdisc
 package protocol
 
 trait ListExtraP { this: ListBaseP =>
-  import eu.timepit.refined.api.RefinedType
-
   //LPUSH
   [..21#final def lpush[A: Show](key: Key, [#value1: A#]): Protocol.Aux[PosInt] =
-    lpush(key, RefinedType[OneOrMore[A]].unsafeRefine([#value1# :: ] :: Nil))#
+    lpush(key, OneOrMore.unsafeFrom([#value1# :: ] :: Nil))#
   ]
 
   //RPUSH
   [..21#final def rpush[A: Show](key: Key, [#value1: A#]): Protocol.Aux[PosInt] =
-    rpush(key, RefinedType[OneOrMore[A]].unsafeRefine([#value1# :: ] :: Nil))#
+    rpush(key, OneOrMore.unsafeFrom([#value1# :: ] :: Nil))#
   ]
 }

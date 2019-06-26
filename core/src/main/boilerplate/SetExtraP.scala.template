@@ -2,11 +2,9 @@ package laserdisc
 package protocol
 
 trait SetExtraP { this: SetBaseP =>
-  import eu.timepit.refined.api.RefinedType
-
   //SADD
   [..21#final def sadd[A: Show](key: Key, [#member1: A#]): Protocol.Aux[NonNegInt] =
-    sadd(key, RefinedType[OneOrMore[A]].unsafeRefine([#member1# :: ] :: Nil))#
+    sadd(key, OneOrMore.unsafeFrom([#member1# :: ] :: Nil))#
   ]
 
   //SDIFF
@@ -31,7 +29,7 @@ trait SetExtraP { this: SetBaseP =>
 
   //SREM
   [..21#final def srem[A: Show](key: Key, [#member1: A#]): Protocol.Aux[NonNegInt] =
-    srem(key, RefinedType[OneOrMore[A]].unsafeRefine([#member1# :: ] :: Nil))#
+    srem(key, OneOrMore.unsafeFrom([#member1# :: ] :: Nil))#
   ]
 
   //SUNION

@@ -39,13 +39,13 @@ final class CirceSpec extends WordSpec with Matchers with ScalaCheckPropertyChec
   "Circe interop" when {
 
     "handling a simple type" should {
-      "round-trip with no errors" in forAll { bar: Bar =>
+      "roundtrip with no errors" in forAll { bar: Bar =>
         Read[Bulk, Bar].read(Bulk(bar)).value shouldBe bar
       }
     }
 
     "handling a recursive type" should {
-      "round-trip with no errors" in forAll { baz: Baz =>
+      "roundtrip with no errors" in forAll { baz: Baz =>
         Read[Bulk, Baz].read(Bulk(baz)).value shouldBe baz
       }
     }

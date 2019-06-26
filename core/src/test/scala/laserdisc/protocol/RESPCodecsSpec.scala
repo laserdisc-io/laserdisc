@@ -100,7 +100,7 @@ final class RESPCodecsSpec extends BaseSpec {
       "encode them correctly" in forAll { str: Str =>
         str.wireFormat shouldBe s"+${str.value}\r\n"
       }
-      "round-trip with no errors" in forAll { str: Str =>
+      "roundtrip with no errors" in forAll { str: Str =>
         str.roundTrip shouldBe str
       }
     }
@@ -112,7 +112,7 @@ final class RESPCodecsSpec extends BaseSpec {
       "encode them correctly" in forAll { err: Err =>
         err.wireFormat shouldBe s"-${err.message}\r\n"
       }
-      "round-trip with no errors" in forAll { err: Err =>
+      "roundtrip with no errors" in forAll { err: Err =>
         err.roundTrip shouldBe err
       }
     }
@@ -124,7 +124,7 @@ final class RESPCodecsSpec extends BaseSpec {
       "encode them correctly" in forAll { num: Num =>
         num.wireFormat shouldBe s":${num.value}\r\n"
       }
-      "round-trip with no errors" in forAll { num: Num =>
+      "roundtrip with no errors" in forAll { num: Num =>
         num.roundTrip shouldBe num
       }
     }
@@ -145,7 +145,7 @@ final class RESPCodecsSpec extends BaseSpec {
           case (Bulk(bs), s) => s shouldBe s"$$${bs.bytesLength}\r\n$bs\r\n"
         }
       }
-      "round-trip with no errors" in forAll { bulk: GenBulk =>
+      "roundtrip with no errors" in forAll { bulk: GenBulk =>
         bulk.roundTrip shouldBe bulk
       }
     }
@@ -166,7 +166,7 @@ final class RESPCodecsSpec extends BaseSpec {
           case (Arr(xs), s) => s shouldBe s"*${xs.length}\r\n${xs.wireFormat}"
         }
       }
-      "round-trip with no errors" in forAll { arr: GenArr =>
+      "roundtrip with no errors" in forAll { arr: GenArr =>
         arr.roundTrip shouldBe arr
       }
     }

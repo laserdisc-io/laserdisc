@@ -1,7 +1,7 @@
 package laserdisc
 package protocol
 
-trait HashExtraP { this: HashBaseP =>
+trait HashExtP { this: HashBaseP =>
   import shapeless._
   import shapeless.ops.hlist.Tupler
 

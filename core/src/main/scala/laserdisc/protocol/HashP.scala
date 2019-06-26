@@ -61,4 +61,4 @@ trait HashBaseP {
   final def hvals[L <: HList: Arr ==> ?](key: Key): Protocol.Aux[L] = Protocol("HVALS", key).as[Arr, L]
 }
 
-trait HashP extends HashBaseP with HashExtraP
+trait HashP extends HashBaseP with HashExtP

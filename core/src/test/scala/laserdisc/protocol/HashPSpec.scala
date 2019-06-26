@@ -1,32 +1,21 @@
 package laserdisc
 package protocol
 
-final class HashPSpec extends BaseSpec {
-  import auto._
-  import hashmaps._
+final class HashPSpec extends BaseSpec with HashP {
   import shapeless._
 
-  "A HashP with HashPExtra" when {
+  "The Hash protocol" when {
 
     "using hdel" should {
 
-      "fail to compile" when {
-        "given empty key" in {
-          """hdel("", Key("f"))""" shouldNot compile
-        }
-        "given empty field" in {
-          """hdel(Key("a"), "")""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
-        "given non empty key and one non empty field" in forAll { (k: Key, f: Key, nni: NonNegInt) =>
+      "roundtrip successfully" when {
+        "given key and one field" in forAll { (k: Key, f: Key, nni: NonNegInt) =>
           val protocol = hdel(k, f)
 
           protocol.encode shouldBe Arr(Bulk("HDEL"), Bulk(k), Bulk(f))
           protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
-        "given non empty key and two non empty fields" in forAll { (k: Key, f1: Key, f2: Key, nni: NonNegInt) =>
+        "given key and two fields" in forAll { (k: Key, f1: Key, f2: Key, nni: NonNegInt) =>
           val protocol = hdel(k, f1, f2)
 
           protocol.encode shouldBe Arr(Bulk("HDEL"), Bulk(k), Bulk(f1), Bulk(f2))
@@ -38,17 +27,8 @@ final class HashPSpec extends BaseSpec {
 
     "using hexists" should {
 
-      "fail to compile" when {
-        "given empty key" in {
-          """hexists("", Key("f"))""" shouldNot compile
-        }
-        "given empty field" in {
-          """hexists(Key("a"), "")""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
-        "given non empty key and non empty field" in forAll { (k: Key, f: Key, b: Boolean) =>
+      "roundtrip successfully" when {
+        "given key and field" in forAll { (k: Key, f: Key, b: Boolean) =>
           val protocol = hexists(k, f)
 
           protocol.encode shouldBe Arr(Bulk("HEXISTS"), Bulk(k), Bulk(f))
@@ -61,31 +41,23 @@ final class HashPSpec extends BaseSpec {
     "using hget" should {
 
       "fail to compile" when {
-        "given empty key" in {
-          """hget("", Key("f"))""" shouldNot compile
-        }
-        "given empty field" in {
-          """hget(Key("a"), "")""" shouldNot compile
-        }
-        "missing read instance" in {
+        "given key and one field but missing read instance" in {
           """hget[Bar](Key("a"), Key("f"))""" shouldNot compile
         }
       }
 
-      "compile successfully" when {
+      "roundtrip successfully" when {
         "given non empty key and non empty field" in forAll { (k: Key, f: Key, s: String) =>
           val protocol = hget(k, f)
 
           protocol.encode shouldBe Arr(Bulk("HGET"), Bulk(k), Bulk(f))
           protocol.decode(Bulk(s)).right.value.value shouldBe Bulk(s)
         }
-        "given specific read instance" in {
-          forAll { (k: Key, f: Key, i: Int) =>
-            val protocol = hget[Foo](k, f)
+        "given specific read instance" in forAll { (k: Key, f: Key, i: Int) =>
+          val protocol = hget[Foo](k, f)
 
-            protocol.encode shouldBe Arr(Bulk("HGET"), Bulk(k), Bulk(f))
-            protocol.decode(Bulk(i)).right.value.value shouldBe Foo(i)
-          }
+          protocol.encode shouldBe Arr(Bulk("HGET"), Bulk(k), Bulk(f))
+          protocol.decode(Bulk(i)).right.value.value shouldBe Foo(i)
         }
       }
 
@@ -94,16 +66,13 @@ final class HashPSpec extends BaseSpec {
     "using hgetall" should {
 
       "fail to compile" when {
-        "given empty key" in {
-          """hgetall("")""" shouldNot compile
-        }
         "missing read instance" in {
-          """hgetall[Map[String, Int]]("a")""" shouldNot compile
+          """hgetall[Map[String, Int]](Key("a"))""" shouldNot compile
         }
       }
 
-      "compile successfully" when {
-        "given non empty key" in forAll { (k: Key, f: Key, v: String) =>
+      "roundtrip successfully" when {
+        "given key" in forAll { (k: Key, f: Key, v: String) =>
           val protocol = hgetall(k)
 
           protocol.encode shouldBe Arr(Bulk("HGETALL"), Bulk(k))
@@ -130,20 +99,8 @@ final class HashPSpec extends BaseSpec {
 
     "using hincrby" should {
 
-      "fail to compile" when {
-        "given empty key" in {
-          """hincrby("", Key("f"), NonZeroLong(1L))""" shouldNot compile
-        }
-        "given empty field" in {
-          """hincrby(Key("a"), "", NonZeroLong(1L))""" shouldNot compile
-        }
-        "given zero increment" in {
-          """hincrby(Key("a"), Key("f"), 0L)""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
-        "given non empty key, non empty field and non zero increment" in forAll { (k: Key, f: Key, nzl: NonZeroLong, l: Long) =>
+      "roundtrip successfully" when {
+        "given key, field and increment" in forAll { (k: Key, f: Key, nzl: NonZeroLong, l: Long) =>
           val protocol = hincrby(k, f, nzl)
 
           protocol.encode shouldBe Arr(Bulk("HINCRBY"), Bulk(k), Bulk(f), Bulk(nzl))
@@ -155,23 +112,8 @@ final class HashPSpec extends BaseSpec {
 
     "using hincrbyfloat" should {
 
-      "fail to compile" when {
-        "given empty key" in {
-          """hincrbyfloat("", Key("f"), NonZeroLong(1d))""" shouldNot compile
-        }
-        "given empty field" in {
-          """hincrbyfloat(Key("a"), "", NonZeroLong(1d))""" shouldNot compile
-        }
-        "given zero increment" in {
-          """hincrbyfloat(Key("a"), Key("f"), 0d)""" shouldNot compile
-        }
-        "given NaN increment" in {
-          """hincrbyfloat(Key("a"), Key("f"), java.lang.Double.NaN)""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
-        "given non empty key, non empty field and non zero increment" in forAll { (k: Key, f: Key, nzd: NonZeroDouble, d: Double) =>
+      "roundtrip successfully" when {
+        "given key, field and increment" in forAll { (k: Key, f: Key, nzd: NonZeroDouble, d: Double) =>
           val protocol = hincrbyfloat(k, f, nzd)
 
           protocol.encode shouldBe Arr(Bulk("HINCRBYFLOAT"), Bulk(k), Bulk(f), Bulk(nzd))
@@ -183,14 +125,8 @@ final class HashPSpec extends BaseSpec {
 
     "using hkeys" should {
 
-      "fail to compile" when {
-        "given empty key" in {
-          """hkeys("")""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
-        "given non empty key" in forAll { (k: Key, ks: List[Key]) =>
+      "roundtrip successfully" when {
+        "given key" in forAll { (k: Key, ks: List[Key]) =>
           val protocol = hkeys(k)
 
           protocol.encode shouldBe Arr(Bulk("HKEYS"), Bulk(k))
@@ -202,14 +138,8 @@ final class HashPSpec extends BaseSpec {
 
     "using hlen" should {
 
-      "fail to compile" when {
-        "given empty key" in {
-          """hlen("")""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
-        "given non empty key" in forAll { (k: Key, nni: NonNegInt) =>
+      "roundtrip successfully" when {
+        "given key" in forAll { (k: Key, nni: NonNegInt) =>
           val protocol = hlen(k)
 
           protocol.encode shouldBe Arr(Bulk("HLEN"), Bulk(k))
@@ -221,23 +151,14 @@ final class HashPSpec extends BaseSpec {
 
     "using hmget" should {
 
-      "fail to compile" when {
-        "given empty key" in {
-          """hmget("", "f")""" shouldNot compile
-        }
-        "given empty field" in {
-          """hmget("a", "")""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
-        "given non empty key and one non empty field" in forAll { (k: Key, f: Key, i: Int) =>
+      "roundtrip successfully" when {
+        "given key and one field" in forAll { (k: Key, f: Key, i: Int) =>
           val protocol = hmget[Int](k, f)
 
           protocol.encode shouldBe Arr(Bulk("HMGET"), Bulk(k), Bulk(f))
           protocol.decode(Arr(Bulk(i))).right.value shouldBe i
         }
-        "given non empty key and two non empty fields" in forAll { (k: Key, f1: Key, f2: Key, i: Int, s: String) =>
+        "given key and two fields" in forAll { (k: Key, f1: Key, f2: Key, i: Int, s: String) =>
           val protocol = hmget[Int, String](k, f1, f2)
 
           protocol.encode shouldBe Arr(Bulk("HMGET"), Bulk(k), Bulk(f1), Bulk(f2))

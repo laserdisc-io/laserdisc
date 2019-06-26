@@ -1,17 +1,18 @@
 package laserdisc
 package protocol
 
-abstract class BListExtraPSpec extends BaseSpec {
-  import auto._
-  import lists.blocking._
+abstract class BListExtPSpec extends BaseSpec with BListP {
 
-  "A BListExtraP" when {
+  "The Blocking List extended protocol" when {
 
     "using blpop" should {
 
       "fail to compile" when {
-        "missing read instance" in {
-          """blpop[Bar]("a", 1)""" shouldNot compile
+        "given key but missing read instance" in {
+          """blpop[Bar](Key("a"))""" shouldNot compile
+        }
+        "given key and timeout but missing read instance" in {
+          """blpop[Bar](Key("a"), PosInt(1))""" shouldNot compile
         }
       }
 
@@ -55,8 +56,11 @@ abstract class BListExtraPSpec extends BaseSpec {
     "using brpop" should {
 
       "fail to compile" when {
-        "missing read instance" in {
-          """brpop[Bar]("a", 1)""" shouldNot compile
+        "given key but missing read instance" in {
+          """brpop[Bar](Key("a"))""" shouldNot compile
+        }
+        "given key and timeout but missing read instance" in {
+          """brpop[Bar](Key("a"), PosInt(1))""" shouldNot compile
         }
       }
 

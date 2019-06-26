@@ -1,7 +1,7 @@
 package laserdisc
 package protocol
 
-trait StringExtraP { this: StringBaseP =>
+trait StringExtP { this: StringBaseP =>
   import StringP.Bitwise
   import shapeless._
 

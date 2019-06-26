@@ -54,4 +54,4 @@ trait SetBaseP {
     Protocol("SUNIONSTORE", destinationKey :: keys.value).as[Num, NonNegInt]
 }
 
-trait SetP extends SetBaseP with SetExtraP
+trait SetP extends SetBaseP with SetExtP

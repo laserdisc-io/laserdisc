@@ -183,4 +183,4 @@ trait StringBaseP {
   final def strlen(key: Key): Protocol.Aux[NonNegInt] = Protocol("STRLEN", key :: HNil).as[Num, NonNegInt]
 }
 
-trait StringP extends StringBaseP with StringExtraP
+trait StringP extends StringBaseP with StringExtP

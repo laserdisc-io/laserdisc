@@ -1,66 +1,44 @@
 package laserdisc
 package protocol
 
-final class HyperLogLogPSpec extends BaseSpec {
-  import auto._
-  import hyperloglog._
+final class HyperLogLogPSpec extends HyperLogLogExtPSpec {
 
-  "A HyperLogLogP with HyperLogLogPExtra" when {
+  "The HyperLogLog protocol" when {
 
     "using pfadd" should {
 
-      "fail to compile" when {
-        "given empty key" in {
-          """pfadd("", "e")""" shouldNot compile
-        }
-        "given empty element" in {
-          """pfadd("a", "")""" shouldNot compile
-        }
-      }
+      "roundtrip successfully" when {
+        "given key and elements" in forAll("key", "elements", "return value") { (k: Key, es: OneOrMoreKeys, b: Boolean) =>
+          val protocol = pfadd(k, es)
 
-      "compile successfully" when {
-        "given non empty key and one non empty element" in forAll { (key: Key, el: Key, b: Boolean) =>
-          val protocol = pfadd(key, el)
-
-          protocol.encode shouldBe Arr(Bulk("PFADD"), Bulk(key), Bulk(el))
-          protocol.decode(Num(if (b) 1 else 0)).right.value shouldBe b
-        }
-        "given non empty key and two non empty elements" in forAll { (key: Key, el1: Key, el2: Key, b: Boolean) =>
-          val protocol = pfadd(key, el1, el2)
-
-          protocol.encode shouldBe Arr(Bulk("PFADD"), Bulk(key), Bulk(el1), Bulk(el2))
-          protocol.decode(Num(if (b) 1 else 0)).right.value shouldBe b
+          protocol.encode shouldBe Arr(Bulk("PFADD") :: Bulk(k) :: es.value.map(Bulk(_)))
+          protocol.decode(bool2Num(b)).right.value shouldBe b
         }
       }
-
     }
 
     "using pfcount" should {
 
-      "fail to compile" when {
-        "given one empty key" in {
-          """pfcount("")""" shouldNot compile
-        }
-        "given two empty keys" in {
-          """pfcount(Key(""), "")""" shouldNot compile
-        }
-      }
+      "roundtrip successfully" when {
+        "given keys" in forAll("keys", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
+          val protocol = pfcount(ks)
 
-      "compile successfully" when {
-        "given one non empty key" in forAll { (key: Key, nni: NonNegInt) =>
-          val protocol = pfcount(key)
-
-          protocol.encode shouldBe Arr(Bulk("PFCOUNT"), Bulk(key))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
-        }
-        "given two non empty keys" in forAll { (key1: Key, key2: Key, nni: NonNegInt) =>
-          val protocol = pfcount(key1, key2)
-
-          protocol.encode shouldBe Arr(Bulk("PFCOUNT"), Bulk(key1), Bulk(key2))
+          protocol.encode shouldBe Arr(Bulk("PFCOUNT") :: ks.value.map(Bulk(_)))
           protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
       }
+    }
 
+    "using pfmerge" should {
+
+      "roundtrip successfully" when {
+        "given two or more source keys and one destination key" in forAll("sourcekeys", "destinationkey") { (sks: TwoOrMoreKeys, dk: Key) =>
+          val protocol = pfmerge(sks, dk)
+
+          protocol.encode shouldBe Arr(Bulk("PFMERGE") :: Bulk(dk) :: sks.value.map(Bulk(_)))
+          protocol.decode(Str(OK.value)).right.value shouldBe OK
+        }
+      }
     }
   }
 }

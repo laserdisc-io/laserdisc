@@ -10,4 +10,4 @@ trait HyperLogLogBaseP {
     Protocol("PFMERGE", destinationKey :: sourceKeys.value).as[Str, OK]
 }
 
-trait HyperLogLogP extends HyperLogLogBaseP with HyperLogLogExtraP
+trait HyperLogLogP extends HyperLogLogBaseP with HyperLogLogExtP

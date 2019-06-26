@@ -1,7 +1,7 @@
 package laserdisc
 package protocol
 
-trait HyperLogLogExtraP { this: HyperLogLogBaseP =>
+trait HyperLogLogExtP { this: HyperLogLogBaseP =>
   //PFADD
   [..21#final def pfadd(key: Key, [#element1: Key#]): Protocol.Aux[Boolean] =
     pfadd(key, OneOrMoreKeys.unsafeFrom([#element1# :: ] :: Nil))#

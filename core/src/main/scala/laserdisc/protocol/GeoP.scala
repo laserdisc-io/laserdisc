@@ -494,4 +494,4 @@ trait GeoBaseP {
     ).as[Num, NonNegInt]
 }
 
-trait GeoP extends GeoBaseP with GeoExtraP
+trait GeoP extends GeoBaseP with GeoExtP

@@ -1,11 +1,9 @@
 package laserdisc
 package protocol
 
-abstract class GeoExtraPSpec extends BaseSpec {
-  import auto._
-  import geo._
+abstract class GeoExtPSpec extends BaseSpec with GeoP {
   import geos._
-  import org.scalacheck.{ Arbitrary, Gen }
+  import org.scalacheck.{Arbitrary, Gen}
   import org.scalacheck.Arbitrary.arbitrary
 
   implicit final val geoHashShow: Show[GeoHash] = Show.unsafeFromToString
@@ -30,51 +28,29 @@ abstract class GeoExtraPSpec extends BaseSpec {
   }
   final val nonNegDoubleOptionToBulk: Option[NonNegDouble] => GenBulk = _.fold(NullBulk: GenBulk)(nnd => Bulk(nnd))
 
-  final val oneOrMoreCoordinatesOptionToArr: OneOrMore[Option[Coordinates]] => GenArr = _.foldLeft(NilArr: GenArr) {
+  final val oneOrMoreCoordinatesOptionToArr: OneOrMore[Option[Coordinates]] => GenArr = _.value.foldLeft(NilArr: GenArr) {
     case (NilArr, Some(Coordinates(lat, long))) => Arr(Arr(Bulk(long), Bulk(lat)))
     case (NilArr, None)                         => Arr(NilArr)
     case (Arr(e), Some(Coordinates(lat, long))) => Arr(e :+ Arr(Bulk(long), Bulk(lat)))
     case (Arr(e), None)                         => Arr(e :+ NilArr)
   }
 
-  final val oneOrMoreGeoHashOptionToArr: OneOrMore[Option[GeoHash]] => GenArr = _.foldLeft(NilArr: GenArr) {
+  final val oneOrMoreGeoHashOptionToArr: OneOrMore[Option[GeoHash]] => GenArr = _.value.foldLeft(NilArr: GenArr) {
     case (NilArr, Some(gh)) => Arr(Bulk(gh))
     case (NilArr, None)     => Arr(NullBulk)
     case (Arr(e), Some(gh)) => Arr(e :+ Bulk(gh))
     case (Arr(e), None)     => Arr(e :+ NullBulk)
   }
 
-  "A GeoExtraP" when {
+  "The Geo extended protocol" when {
 
     "using geoadd" should {
-
-      "fail to compile" when {
-        "given empty key" in {
-          """geoadd("", Position("m", 0.0d, 0.0d))""" shouldNot compile
-        }
-        "given empty member" in {
-          """geoadd("a", Position("", 0.0d, 0.0d))""" shouldNot compile
-        }
-        "given invalid latitude: -86.0" in {
-          """geoadd("a", Position("b", -86.0d, 0.0d))""" shouldNot compile
-        }
-        "given invalid latitude: 86.0" in {
-          """geoadd("a", Position("b", 86.0d, 0.0d))""" shouldNot compile
-        }
-        "given invalid longitude: -181.0" in {
-          """geoadd("a", Position("b", 0.0d, -181.0d))""" shouldNot compile
-        }
-        "given invalid latitude: 181.0" in {
-          """geoadd("a", Position("b", 0.0d, 181.0d))""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
+      "roundtrip successfully" when {
         [1..4#"given key and [#position1#]" in forAll("key", [#"position1"#], "return value") { (k: Key, [#p1: Position#], nni: NonNegInt) =>
           val protocol = geoadd(k, [#p1#])
 
           protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: List([#p1#]).flatMap(position##2BulkList))
-          protocol.decode(Num(nni.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }#
         ]
       }
@@ -82,16 +58,7 @@ abstract class GeoExtraPSpec extends BaseSpec {
 
     "using geohash" should {
 
-      "fail to compile" when {
-        "given empty key" in {
-          """geohash("", "m")""" shouldNot compile
-        }
-        "given empty member" in {
-          """geohash("a", "")""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
+      "roundtrip successfully" when {
         [1..4#"given key and [#member1#]" in forAll("key", [#"member1"#], "return value") { (k: Key, [#m1: Key#], oghs: OneOrMore[Option[GeoHash]]) =>
           val protocol = geohash(k, [#m1#])
 
@@ -104,16 +71,7 @@ abstract class GeoExtraPSpec extends BaseSpec {
 
     "using geopos" should {
 
-      "fail to compile" when {
-        "given empty key" in {
-          """geopos("", "m")""" shouldNot compile
-        }
-        "given empty member" in {
-          """geopos("a", "")""" shouldNot compile
-        }
-      }
-
-      "compile successfully" when {
+      "roundtrip successfully" when {
         [1..4#"given key and [#member1#]" in forAll("key", [#"member1"#], "return value") { (k: Key, [#m1: Key#], ocs: OneOrMore[Option[Coordinates]]) =>
           val protocol = geopos(k, [#m1#])
 

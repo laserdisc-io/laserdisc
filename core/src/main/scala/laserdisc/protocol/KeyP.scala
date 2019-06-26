@@ -182,4 +182,4 @@ trait KeyBaseP {
     Protocol("WAIT", numSlaves :: timeout :: HNil).as[Num, PosInt]
 }
 
-trait KeyP extends KeyBaseP with KeyExtraP
+trait KeyP extends KeyBaseP with KeyExtP

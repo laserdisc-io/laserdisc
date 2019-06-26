@@ -16,4 +16,4 @@ trait BListBaseP {
     Protocol("BRPOPLPUSH", source :: destination :: timeout :: HNil).opt[GenBulk].as[A]
 }
 
-trait BListP extends BListBaseP with BListExtraP
+trait BListP extends BListBaseP with BListExtP

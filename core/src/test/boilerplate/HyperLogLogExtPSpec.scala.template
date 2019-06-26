@@ -1,0 +1,49 @@
+package laserdisc
+package protocol
+
+abstract class HyperLogLogExtPSpec extends BaseSpec with HyperLogLogP {
+
+  final val bool2Num: Boolean => Num = b => Num(if (b) 1 else 0)
+
+  "The HyperLogLog extended protocol" when {
+
+    "using pfadd" should {
+
+      "roundtrip successfully" when {
+        [1..4#"given key and [#elem1#]" in forAll("key", [#"elem1"#], "return value") { (k: Key, [#e1: Key#], b: Boolean) =>
+          val protocol = pfadd(k, [#e1#])
+
+          protocol.encode shouldBe Arr(Bulk("PFADD"), Bulk(k), [#Bulk(e1)#])
+          protocol.decode(bool##2Num(b)).right.value shouldBe b
+        }#
+        ]
+      }
+    }
+
+    "using pfcount" should {
+
+      "roundtrip successfully" when {
+        [1..5#"given [#key1#]" in forAll([#"key1"#], "return value") { ([#k1: Key#], nni: NonNegInt) =>
+          val protocol = pfcount([#k1#])
+
+          protocol.encode shouldBe Arr(Bulk("PFCOUNT"), [#Bulk(k1)#])
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+        }#
+        ]
+      }
+    }
+
+    "using pfmerge" should {
+
+      "roundtrip successfully" when {
+        [2..4#"given [#sourcekey1#] and destinationkey" in forAll([#"sourcekey1"#], "destinationkey") { ([#sk1: Key#], dk: Key) =>
+          val protocol = pfmerge([#sk1#], dk)
+
+          protocol.encode shouldBe Arr(Bulk("PFMERGE"), Bulk(dk), [#Bulk(sk1)#])
+          protocol.decode(Str(OK.value)).right.value shouldBe OK
+        }#
+        ]
+      }
+    }
+  }
+}

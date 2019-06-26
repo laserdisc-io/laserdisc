@@ -272,4 +272,4 @@ trait SortedSetBaseP {
   }
 }
 
-trait SortedSetP extends SortedSetBaseP with SortedSetExtraP
+trait SortedSetP extends SortedSetBaseP with SortedSetExtP

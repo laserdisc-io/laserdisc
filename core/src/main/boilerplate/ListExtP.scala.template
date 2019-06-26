@@ -1,7 +1,7 @@
 package laserdisc
 package protocol
 
-trait ListExtraP { this: ListBaseP =>
+trait ListExtP { this: ListBaseP =>
   //LPUSH
   [..21#final def lpush[A: Show](key: Key, [#value1: A#]): Protocol.Aux[PosInt] =
     lpush(key, OneOrMore.unsafeFrom([#value1# :: ] :: Nil))#

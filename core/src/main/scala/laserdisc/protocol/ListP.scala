@@ -61,4 +61,4 @@ trait ListBaseP {
   final def rpushx[A: Show](key: Key, value: A): Protocol.Aux[Option[PosInt]] = Protocol("RPUSHX", key :: value :: HNil).using(zeroIsNone)
 }
 
-trait ListP extends ListBaseP with ListExtraP
+trait ListP extends ListBaseP with ListExtP

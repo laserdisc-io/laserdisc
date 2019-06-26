@@ -1,11 +1,9 @@
 package laserdisc
 package protocol
 
-final class ConnectionPSpec extends BaseSpec {
-  import auto._
-  import connection._
+final class ConnectionPSpec extends BaseSpec with ConnectionP {
 
-  "A ConnectionP" when {
+  "The Connection protocol" when {
 
     "using auth" should {
 

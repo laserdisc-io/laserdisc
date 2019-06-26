@@ -1,17 +1,15 @@
 package laserdisc
 package protocol
 
-final class BListPSpec extends BListExtraPSpec {
-  import auto._
-  import lists.blocking._
+final class BListPSpec extends BListExtPSpec {
 
-  "A BListBaseP" when {
+  "The Blocking List protocol" when {
 
     "using blpop" should {
 
       "fail to compile" when {
-        "missing read instance" in {
-          """blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 0)""" shouldNot compile
+        "given key and timeout but missing read instance" in {
+          """blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))""" shouldNot compile
         }
       }
 
@@ -20,16 +18,16 @@ final class BListPSpec extends BListExtraPSpec {
           forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
             val protocol = blpop[Int](ks, nni)
 
-            protocol.encode shouldBe Arr((Bulk("BLPOP") :: ks.map(k => Bulk(k))) :+ Bulk(nni))
-            protocol.decode(Arr(Bulk(ks.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.headOption.value, i)
+            protocol.encode shouldBe Arr((Bulk("BLPOP") :: ks.value.map(k => Bulk(k))) :+ Bulk(nni))
+            protocol.decode(Arr(Bulk(ks.value.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.value.headOption.value, i)
           }
         }
         "given non empty key list, non negative timeout and specific read instance" in {
           forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
             val protocol = blpop[Foo](ks, nni)
 
-            protocol.encode shouldBe Arr((Bulk("BLPOP") :: ks.map(k => Bulk(k))) :+ Bulk(nni))
-            protocol.decode(Arr(Bulk(ks.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.headOption.value, Foo(i))
+            protocol.encode shouldBe Arr((Bulk("BLPOP") :: ks.value.map(k => Bulk(k))) :+ Bulk(nni))
+            protocol.decode(Arr(Bulk(ks.value.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.value.headOption.value, Foo(i))
           }
         }
       }
@@ -38,8 +36,8 @@ final class BListPSpec extends BListExtraPSpec {
     "using brpop" should {
 
       "fail to compile" when {
-        "missing read instance" in {
-          """brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 0)""" shouldNot compile
+        "given key and timeout but missing read instance" in {
+          """brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))""" shouldNot compile
         }
       }
 
@@ -48,16 +46,16 @@ final class BListPSpec extends BListExtraPSpec {
           forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
             val protocol = brpop[Int](ks, nni)
 
-            protocol.encode shouldBe Arr((Bulk("BRPOP") :: ks.map(k => Bulk(k))) :+ Bulk(nni))
-            protocol.decode(Arr(Bulk(ks.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.headOption.value, i)
+            protocol.encode shouldBe Arr((Bulk("BRPOP") :: ks.value.map(k => Bulk(k))) :+ Bulk(nni))
+            protocol.decode(Arr(Bulk(ks.value.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.value.headOption.value, i)
           }
         }
         "given non empty key list, non negative timeout and specific read instance" in {
           forAll("keys", "timeout", "return value") { (ks: OneOrMoreKeys, nni: NonNegInt, i: Int) =>
             val protocol = brpop[Foo](ks, nni)
 
-            protocol.encode shouldBe Arr((Bulk("BRPOP") :: ks.map(k => Bulk(k))) :+ Bulk(nni))
-            protocol.decode(Arr(Bulk(ks.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.headOption.value, Foo(i))
+            protocol.encode shouldBe Arr((Bulk("BRPOP") :: ks.value.map(k => Bulk(k))) :+ Bulk(nni))
+            protocol.decode(Arr(Bulk(ks.value.headOption.value), Bulk(i))).right.value.value shouldBe KV(ks.value.headOption.value, Foo(i))
           }
         }
       }

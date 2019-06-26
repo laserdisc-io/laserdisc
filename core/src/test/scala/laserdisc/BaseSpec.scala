@@ -33,6 +33,9 @@ abstract class BaseSpec
   implicit final val nonZeroDoubleArbitrary: Arbitrary[NonZeroDouble] =
     arbitraryRefType(Gen.choose(Double.MinValue, Double.MaxValue).filter(_ != 0.0d))
 
+  implicit final val twoOrMoreKeys: Arbitrary[TwoOrMoreKeys] =
+    arbitraryRefType(Gen.nonEmptyListOf(nonEmptyStringArbitrary[Refined].arbitrary).suchThat(_.size > 1))
+
   implicit final val validDoubleArbitrary: Arbitrary[ValidDouble] =
     arbitraryRefType(Gen.choose(Double.MinValue, Double.MaxValue))
 }

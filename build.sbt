@@ -17,7 +17,7 @@ val V = new {
   val `scodec-core`     = "1.11.4"
   val `scodec-stream`   = "1.2.1"
   val shapeless         = "2.3.3"
-  val `log-effect-fs2`  = "0.7.0"
+  val `log-effect-fs2`  = "0.8.0"
 }
 
 val `circe-core`      = Def.setting("io.circe"        %%% "circe-core"      % V.circe)

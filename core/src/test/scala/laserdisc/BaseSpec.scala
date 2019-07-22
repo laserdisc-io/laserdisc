@@ -49,8 +49,8 @@ abstract class BaseSpec
   private[this] final val lbGen: Gen[String]      = const(LoopbackEqWit.value)
   private[this] final val rfc1123Gen: Gen[String] = {
     def dashAtBeginOrEnd(s: String) = s.startsWith(dashString) || s.endsWith(dashString)
-    val piece                       = chooseNum(1, 62).flatMap(strOfNGen(_, 1 -> dashGen, 9 -> alphaNumChar))
-    listOf(piece.suchThat(!dashAtBeginOrEnd(_))).map(_.mkString(dotString)).suchThat(_.size <= 255)
+    val piece                       = chooseNum(1, 62).flatMap(strOfNGen(_, 1 -> dashGen, 99 -> alphaNumChar))
+    choose(1, 5).flatMap(listOfN(_, piece.retryUntil(!dashAtBeginOrEnd(_))).map(_.mkString(dotString)).retryUntil(_.size <= 255))
   }
   private[this] final val rfc1918Gen: Gen[String] = Gen.oneOf(ipv4Gen(10), chooseNum(15, 31).flatMap(ipv4Gen(172, _)), ipv4Gen(192, 168))
   private[this] final val rfc5737Gen: Gen[String] = Gen.oneOf(ipv4Gen(192, 0, 2), ipv4Gen(198, 51, 100), ipv4Gen(203, 0, 113))

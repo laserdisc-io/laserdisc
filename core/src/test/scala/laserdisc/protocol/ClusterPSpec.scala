@@ -5,7 +5,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   import clusters._
   import org.scalacheck.Gen
   import org.scalacheck.Gen._
-  import org.scalatest.Assertion
 
   private[this] final val kvPairPattern                                = ClusterP.KVPairRegex.pattern
   private[this] final val infoIsValid: Map[String, String] => Boolean  = _.forall { case (k, v) => kvPairPattern.matcher(s"$k:$v").matches }
@@ -58,26 +57,63 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   private[this] implicit final val nodesShow: Show[RawNodes] = Show.instance {
     _.map(rawNodeToString).mkString(LF)
   }
-  private[this] final val validateNode: ((ClusterP.ClusterNode, RawNode)) => Assertion = {
-    case (ClusterP.ClusterNode(n0, ClusterP.NodeAddress(h0, p0, cp0), fs0, m0, ps0, pr0, ce0, l0, ss0),
-          (n, h, p, cp, fs, m, ps, pr, ce, l, ss)) =>
-      n0.value shouldBe n
-      h0.value shouldBe (if (h.isEmpty) LoopbackEqWit.value else h)
-      p0.value shouldBe p
-      cp0.value shouldBe cp.getOrElse(p)
-      (if (fs0.isEmpty) Seq("noflags") else fs0.map(Show[ClusterP.Flag].show)) shouldBe fs
-      m0.fold("-")(_.value) shouldBe m
-      ps0.value shouldBe ps
-      pr0.value shouldBe pr
-      ce0.value shouldBe ce
-      Show[ClusterP.LinkState].show(l0) shouldBe l
-      ss0.map {
-        case ClusterP.SlotType.Single(s)            => s.toString
-        case ClusterP.SlotType.Range(f, t)          => s"$f-$t"
-        case ClusterP.SlotType.ImportingSlot(s, in) => s"[$s-<-$in]"
-        case ClusterP.SlotType.MigratingSlot(s, mn) => s"[$s->-$mn]"
-      } shouldBe ss
+  private[this] final val validateNodes: (Nodes, RawNodes) => Unit = (ns, rns) =>
+    ns.clusterNodes.zip(rns).foreach {
+      case (ClusterP.ClusterNode(n0, ClusterP.NodeAddress(h0, p0, cp0), fs0, m0, ps0, pr0, ce0, l0, ss0),
+            (n, h, p, cp, fs, m, ps, pr, ce, l, ss)) =>
+        n0.value shouldBe n
+        h0.value shouldBe (if (h.isEmpty) LoopbackEqWit.value else h)
+        p0.value shouldBe p
+        cp0.value shouldBe cp.getOrElse(p)
+        (if (fs0.isEmpty) Seq("noflags") else fs0.map(Show[ClusterP.Flag].show)) shouldBe fs
+        m0.fold("-")(_.value) shouldBe m
+        ps0.value shouldBe ps
+        pr0.value shouldBe pr
+        ce0.value shouldBe ce
+        Show[ClusterP.LinkState].show(l0) shouldBe l
+        ss0.map {
+          case ClusterP.SlotType.Single(s)            => s.toString
+          case ClusterP.SlotType.Range(f, t)          => s"$f-$t"
+          case ClusterP.SlotType.ImportingSlot(s, in) => s"[$s-<-$in]"
+          case ClusterP.SlotType.MigratingSlot(s, mn) => s"[$s->-$mn]"
+        } shouldBe ss
   }
+
+  private[this] final type RawSlot  = (Int, Int, Seq[(String, Int, Option[String])])
+  private[this] final type RawSlots = List[RawSlot]
+  private[this] final val slotsIsValid: RawSlots => Boolean = _.forall {
+    case (Slot(_), Slot(_), mrs) if mrs.forall { case (Host(_) | "", Port(_), Some(NodeId(_)) | None) => true; case _ => false } => true
+    case _ => false
+  }
+  private[this] final val slotsGen: Gen[RawSlots] = for {
+    isOld <- Gen.oneOf(true, false)
+    rss <- choose(1, 10).flatMap {
+      listOfN(
+        _,
+        for {
+          fst <- slotGen
+          snd <- slotGen
+          mrs <- choose(1, 10).flatMap {
+            listOfN(_, for {
+              h    <- Gen.oneOf(const(""), hostGen)
+              p    <- portGen
+              mrid <- if (isOld) const(None) else nodeIdGen.map(Some(_))
+            } yield (h, p, mrid))
+          }
+        } yield if (fst < snd) (fst, snd, mrs) else (snd, fst, mrs)
+      )
+    }
+  } yield rss
+  private[this] final val slotsToArr: RawSlots => Arr = ss =>
+    Arr(
+      ss.map {
+        case (f, t, rs) =>
+          Arr(Num(f.toLong), Num(t.toLong), Arr(rs.toList.map {
+            case (h, p, Some(mrid)) => Arr(Bulk(h), Num(p.toLong), Bulk(mrid))
+            case (h, p, None)       => Arr(Bulk(h), Num(p.toLong))
+          }))
+      }
+  )
 
   "The Cluster protocol" when {
 
@@ -224,7 +260,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             val protocol = nodes
 
             protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("NODES"))
-            protocol.decode(Bulk(ns)).right.value.clusterNodes.zip(ns).foreach(validateNode)
+            validateNodes(protocol.decode(Bulk(ns)).right.value, ns)
           }
         }
       }
@@ -262,7 +298,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             val protocol = replicas(n)
 
             protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("REPLICAS"), Bulk(n))
-            protocol.decode(Bulk(ns)).right.value.clusterNodes.zip(ns).foreach(validateNode)
+            validateNodes(protocol.decode(Bulk(ns)).right.value, ns)
           }
         }
       }
@@ -384,7 +420,32 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             val protocol = slaves(n)
 
             protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLAVES"), Bulk(n))
-            protocol.decode(Bulk(ns)).right.value.clusterNodes.zip(ns).foreach(validateNode)
+            validateNodes(protocol.decode(Bulk(ns)).right.value, ns)
+          }
+        }
+      }
+    }
+
+    "using slots" should {
+
+      "roundtrip successfully" when {
+        "using val" in forAll(slotsGen) { ss =>
+          whenever(slotsIsValid(ss)) {
+            val protocol = slots
+
+            protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLOTS"))
+            protocol.decode(slotsToArr(ss)).right.value.slots.foreach {
+              case (ClusterP.SlotType.Range(f, t), ClusterP.SlotInfo.NewSlotInfo(ClusterP.HostPortNodeId(mh, mp, mid), rs)) =>
+                val mrs = (mh.value, mp.value, Some(mid.value)) :: rs.foldLeft(List.empty[(String, Int, Option[String])]) {
+                  case (acc, ClusterP.HostPortNodeId(h, p, nid)) => acc :+ ((h.value, p.value, Some(nid.value)))
+                }
+                ss should contain((f.value, t.value, mrs))
+              case (ClusterP.SlotType.Range(f, t), ClusterP.SlotInfo.OldSlotInfo(ClusterP.HostPort(mh, mp), rs)) =>
+                val mrs = (mh.value, mp.value, None) :: rs.foldLeft(List.empty[(String, Int, Option[String])]) {
+                  case (acc, ClusterP.HostPort(h, p)) => acc :+ ((h.value, p.value, None))
+                }
+                ss should contain((f.value, t.value, mrs))
+            }
           }
         }
       }

@@ -4,17 +4,15 @@ package protocol
 object ClusterP {
   import scala.language.dynamics
 
-  private[this] final val loopbackHost = Host("127.0.0.1")
+  private[protocol] final val KVPairRegex = "(.*):(.*)".r
 
   final class ClusterInfo(private val properties: Map[String, String]) extends AnyVal with Dynamic {
     def selectDynamic[A](field: String)(implicit R: String ==> A): Maybe[A] =
       properties.get(field).flatMap(R.read).toRight(Err(s"no key $field of the provided type found"))
   }
   final object ClusterInfo {
-    private final val KVPair = "(.*):(.*)".r
-
-    implicit final val infoRead: Bulk ==> ClusterInfo = Read.instancePF {
-      case Bulk(s) => new ClusterInfo(s.split("\r\n").collect { case KVPair(k, v) => k -> v }.toMap)
+    implicit final val clusterInfoRead: Bulk ==> ClusterInfo = Read.instancePF {
+      case Bulk(s) => new ClusterInfo(s.split(CRLF).collect { case KVPairRegex(k, v) => k -> v }.toMap)
     }
   }
 
@@ -32,19 +30,19 @@ object ClusterP {
   final case class ClusterNodes(clusterNodes: Seq[ClusterNode]) extends AnyVal
   final object ClusterNodes {
     private final val NA: String ==> NodeAddress = {
-      val R0 = raw"(\w*):(\d+)@(\d+)".r
-      val R1 = raw"(\w*):(\d+)".r
+      val HPCP = raw"([A-Za-z0-9\-\.]*):(\d+)@(\d+)".r
+      val HP   = raw"([A-Za-z0-9\-\.]*):(\d+)".r
       Read.instancePF {
-        case R0("", ToInt(Port(port)), ToInt(Port(clusterPort)))         => NodeAddress(loopbackHost, port, clusterPort)
-        case R0(Host(host), ToInt(Port(port)), ToInt(Port(clusterPort))) => NodeAddress(host, port, clusterPort)
-        case R1("", ToInt(Port(port)))                                   => NodeAddress(loopbackHost, port, port)
-        case R1(Host(host), ToInt(Port(port)))                           => NodeAddress(host, port, port)
+        case HPCP("", ToInt(Port(p)), ToInt(Port(cp)))      => NodeAddress(LoopbackHost, p, cp)
+        case HPCP(Host(h), ToInt(Port(p)), ToInt(Port(cp))) => NodeAddress(h, p, cp)
+        case HP("", ToInt(Port(p)))                         => NodeAddress(LoopbackHost, p, p)
+        case HP(Host(h), ToInt(Port(p)))                    => NodeAddress(h, p, p)
       }
     }
     private final val Fs: String ==> Seq[Flag] = Read.instancePF {
       case "noflags" => Seq.empty
       case s =>
-        s.split(",").toList.collect {
+        s.split(COMMA_CH).toList.collect {
           case "myself"    => Flag.myself
           case "master"    => Flag.master
           case "slave"     => Flag.replica
@@ -63,16 +61,16 @@ object ClusterP {
       case "disconnected" => LinkState.disconnected
     }
     private final val STs: Seq[String] ==> Seq[SlotType] = {
-      val R0 = raw"(\d+)-(\d+)".r
-      val R1 = raw"\[(\d+)-<-([0-9a-f]{40})\]".r
-      val R2 = raw"\[(\d+)->-([0-9a-f]{40})\]".r
+      val R  = raw"(\d+)-(\d+)".r
+      val IS = raw"\[(\d+)-<-(${NodeIdRegexWit.value})\]".r
+      val MS = raw"\[(\d+)->-(${NodeIdRegexWit.value})\]".r
       Read.instancePF {
         case ss =>
           ss.collect {
-            case ToInt(Slot(slot))                         => SlotType.Single(slot)
-            case R0(ToInt(Slot(from)), ToInt(Slot(to)))    => SlotType.Range(from, to)
-            case R1(ToInt(Slot(slot)), NodeId(fromNodeId)) => SlotType.ImportingSlot(slot, fromNodeId)
-            case R2(ToInt(Slot(slot)), NodeId(toNodeId))   => SlotType.MigratingSlot(slot, toNodeId)
+            case ToInt(Slot(s))                    => SlotType.Single(s)
+            case R(ToInt(Slot(f)), ToInt(Slot(t))) => SlotType.Range(f, t)
+            case IS(ToInt(Slot(s)), NodeId(fid))   => SlotType.ImportingSlot(s, fid)
+            case MS(ToInt(Slot(s)), NodeId(tid))   => SlotType.MigratingSlot(s, tid)
           }.toList
       }
     }
@@ -80,12 +78,12 @@ object ClusterP {
     implicit final val clusterNodesRead: Bulk ==> ClusterNodes = Read.instancePF {
       case Bulk(s) =>
         ClusterNodes(
-          s.split("\n")
+          s.split(LF_CH)
             .flatMap {
-              _.split(" ").toSeq match {
-                case NodeId(nodeId) +: NA(nodeAddress) +: Fs(flags) +: OptNodeId(maybeMaster) +: ToInt(NonNegInt(pingSent)) +:
-                      ToInt(NonNegInt(pongReceived)) +: ToInt(NonNegInt(configEpoch)) +: LS(linkState) +: STs(slots) =>
-                  Some(ClusterNode(nodeId, nodeAddress, flags, maybeMaster, pingSent, pongReceived, configEpoch, linkState, slots))
+              _.split(SPACE_CH).toSeq match {
+                case NodeId(nid) +: NA(na) +: Fs(fs) +: OptNodeId(mmid) +: ToInt(NonNegInt(ps)) +:
+                      ToInt(NonNegInt(pr)) +: ToInt(NonNegInt(ce)) +: LS(ls) +: STs(ss) =>
+                  Some(ClusterNode(nid, na, fs, mmid, ps, pr, ce, ls, ss))
                 case _ => None
               }
             }
@@ -114,6 +112,16 @@ object ClusterP {
     final case object fail         extends Flag
     final case object handshake    extends Flag
     final case object noaddress    extends Flag
+
+    implicit final val flagShow: Show[Flag] = Show.instance {
+      case `myself`       => "myself"
+      case `master`       => "master"
+      case `replica`      => "slave"
+      case `possiblefail` => "fail?"
+      case `fail`         => "fail"
+      case `handshake`    => "handshake"
+      case `noaddress`    => "noaddr"
+    }
   }
 
   final case class HostPort(host: Host, port: Port)
@@ -123,6 +131,8 @@ object ClusterP {
   final object LinkState {
     final case object connected    extends LinkState
     final case object disconnected extends LinkState
+
+    implicit final val linkStateShow: Show[LinkState] = Show.unsafeFromToString
   }
 
   final case class NodeAddress(host: Host, port: Port, clusterPort: Port)
@@ -164,7 +174,7 @@ object ClusterP {
     import SlotInfo._
     import SlotType.Range
     private val H: Bulk ==> Host = Read.instancePF {
-      case Bulk("")         => loopbackHost
+      case Bulk("")         => LoopbackHost
       case Bulk(Host(host)) => host
     }
     private val NSI: Seq[RESP] ==> NewSlotInfo = {
@@ -210,6 +220,7 @@ trait ClusterP {
     final type Slots        = ClusterP.Slots
 
     final val failoverMode = ClusterP.FailoverMode
+    final val Nodes        = ClusterP.ClusterNodes
     final val resetMode    = ClusterP.ResetMode
   }
 

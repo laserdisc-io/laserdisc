@@ -26,15 +26,13 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
   final val position2BulkList: Position => List[Bulk] = {
     case Position(m, lat, long) => Bulk(long) :: Bulk(lat) :: Bulk(m) :: Nil
   }
-  final val nonNegDoubleOptionToBulk: Option[NonNegDouble] => GenBulk = _.fold(NullBulk: GenBulk)(nnd => Bulk(nnd))
-
+  final val nonNegDoubleOptionToBulk: Option[NonNegDouble] => GenBulk = _.fold(NullBulk: GenBulk)(Bulk(_))
   final val oneOrMoreCoordinatesOptionToArr: OneOrMore[Option[Coordinates]] => GenArr = _.value.foldLeft(NilArr: GenArr) {
     case (NilArr, Some(Coordinates(lat, long))) => Arr(Arr(Bulk(long), Bulk(lat)))
     case (NilArr, None)                         => Arr(NilArr)
     case (Arr(e), Some(Coordinates(lat, long))) => Arr(e :+ Arr(Bulk(long), Bulk(lat)))
     case (Arr(e), None)                         => Arr(e :+ NilArr)
   }
-
   final val oneOrMoreGeoHashOptionToArr: OneOrMore[Option[GeoHash]] => GenArr = _.value.foldLeft(NilArr: GenArr) {
     case (NilArr, Some(gh)) => Arr(Bulk(gh))
     case (NilArr, None)     => Arr(NullBulk)

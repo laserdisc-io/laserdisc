@@ -1,35 +1,6 @@
 package laserdisc
 
-import org.scalacheck.Gen
-import org.scalacheck.Gen._
-
 final class RefinedTypesSpec extends BaseSpec {
-
-  private[this] final val spaceChar: Char           = 0x0020
-  private[this] final val geoHashString: String     = "[a-z0-9]{11}"
-  private[this] final val globPatternString: String = raw"(\[?[\w\*\?]+\]?)+"
-  private[this] final val nodeIdString: String      = "[a-f0-9]{40}"
-
-  private[this] final val connectionNameGen: Gen[String] = nonEmptyListOf(alphaNumChar.suchThat(!_.equals(spaceChar))).map(_.mkString)
-  private[this] final val dbIndexGen: Gen[Int]           = chooseNum(0, 15)
-  private[this] final val geoHashGen: Gen[String]        = listOfN(11, frequency(1 -> numChar, 9 -> alphaLowerChar)).map(_.mkString)
-  private[this] final val latitudeGen: Gen[Double]       = chooseNum(-85.05112878D, 85.05112878D)
-  private[this] final val longitudeGen: Gen[Double]      = chooseNum(-180.0D, 180.0D)
-  private[this] final val nodeIdGen: Gen[String]         = listOfN(40, frequency(1 -> numChar, 9 -> choose(97.toChar, 102.toChar))).map(_.mkString)
-  private[this] final val nonNegDoubleGen: Gen[Double]   = chooseNum(0.0D, Double.MaxValue)
-  private[this] final val nonNegIntGen: Gen[Int]         = chooseNum(0, Int.MaxValue)
-  private[this] final val nonNegLongGen: Gen[Long]       = chooseNum(0, Long.MaxValue)
-  private[this] final val nonZeroDoubleGen: Gen[Double]  = chooseNum(Double.MinValue, Double.MaxValue).suchThat(_ != 0.0D)
-  private[this] final val nonZeroIntGen: Gen[Int]        = chooseNum(Int.MinValue, Int.MaxValue).suchThat(_ != 0)
-  private[this] final val nonZeroLongGen: Gen[Long]      = chooseNum(Long.MinValue, Long.MaxValue).suchThat(_ != 0L)
-  private[this] final val rangeOffsetGen: Gen[Int]       = chooseNum(0, 536870911)
-  private[this] final val slotGen: Gen[Int]              = chooseNum(0, 16383)
-  private[this] final val stringLengthGen: Gen[Long]     = chooseNum(0L, 4294967295L)
-  private[this] final val stringsWithSpacesGen: Gen[String] = {
-    val validRangesInclusive  = List[(Char, Char)]((0x0000, 0x001F), (0x0021, 0xD7FF), (0xE000, 0xFFFD))
-    val allWeightedEqualChars = validRangesInclusive.map { case (first, last) => (1, choose[Char](first, last)) }
-    listOf(frequency(((100 -> const(spaceChar)) :: allWeightedEqualChars): _*)).map(_.mkString)
-  }
 
   "ConnectionName" should {
 
@@ -44,7 +15,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of Strings that contain spaces" in forAll(stringsWithSpacesGen) { s =>
-        whenever(s.contains(spaceChar)) {
+        whenever(!connectionNameIsValid(s)) {
           an[IllegalArgumentException] should be thrownBy ConnectionName.unsafeFrom(s)
         }
       }
@@ -58,7 +29,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of non empty Strings with no spaces" in forAll(connectionNameGen) { s =>
-        ConnectionName.from(s).right.value.value shouldBe s
+        whenever(connectionNameIsValid(s)) {
+          ConnectionName.from(s).right.value.value shouldBe s
+        }
       }
     }
   }
@@ -76,7 +49,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of out of range Ints" in forAll { (i: Int) =>
-        whenever(i < 0 || i > 15) {
+        whenever(!dbIndexIsValid(i)) {
           an[IllegalArgumentException] should be thrownBy DbIndex.unsafeFrom(i)
         }
       }
@@ -90,7 +63,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of in range Ints" in forAll(dbIndexGen) { i =>
-        DbIndex.from(i).right.value.value shouldBe i
+        whenever(dbIndexIsValid(i)) {
+          DbIndex.from(i).right.value.value shouldBe i
+        }
       }
     }
   }
@@ -114,7 +89,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of non conformant Strings" in forAll { (s: String) =>
-        whenever(!s.matches(geoHashString)) {
+        whenever(!geoHashIsValid(s)) {
           an[IllegalArgumentException] should be thrownBy GeoHash.unsafeFrom(s)
         }
       }
@@ -128,7 +103,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of conformant Strings" in forAll(geoHashGen) { s =>
-        whenever(s.matches(geoHashString)) {
+        whenever(geoHashIsValid(s)) {
           GeoHash.from(s).right.value.value shouldBe s
         }
       }
@@ -148,7 +123,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of non conformant Strings" in forAll { (s: String) =>
-        whenever(!s.matches(globPatternString)) {
+        whenever(!globPatternIsValid(s)) {
           an[IllegalArgumentException] should be thrownBy GlobPattern.unsafeFrom(s)
         }
       }
@@ -189,7 +164,7 @@ final class RefinedTypesSpec extends BaseSpec {
         """Host("0.0.0.0")""" should compile
       }
       "given loopback address (127.0.0.1)" in {
-        """Host("localhost")""" should compile
+        """Host("127.0.0.1")""" should compile
       }
       "given localhost (RFC-1123)" in {
         """Host("localhost")""" should compile
@@ -245,6 +220,14 @@ final class RefinedTypesSpec extends BaseSpec {
         """Host("198.19.1.2")""" should compile
       }
     }
+
+    "refine correctly" when {
+      "provided non literal cases of valid hosts" in forAll(hostGen) { s =>
+        whenever(hostIsValid(s)) {
+          Host.from(s).right.value.value shouldBe s
+        }
+      }
+    }
   }
 
   "Key" should {
@@ -263,7 +246,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of non empty Strings" in forAll { (s: String) =>
-        whenever(s.nonEmpty) {
+        whenever(keyIsValid(s)) {
           Key.from(s).right.value.value shouldBe s
         }
       }
@@ -283,7 +266,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of out of range Doubles (d < -85.05112878D | d > 85.05112878D)" in forAll { (d: Double) =>
-        whenever(d < -85.05112878D || d > 85.05112878D) {
+        whenever(!latitudeIsValid(d)) {
           an[IllegalArgumentException] should be thrownBy Latitude.unsafeFrom(d)
         }
       }
@@ -300,7 +283,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of in range Doubles (-85.05112878D <= d <= 85.05112878D)" in forAll(latitudeGen) { d =>
-        Latitude.from(d).right.value.value shouldBe d
+        whenever(latitudeIsValid(d)) {
+          Latitude.from(d).right.value.value shouldBe d
+        }
       }
     }
   }
@@ -318,7 +303,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of out of range Doubles (d < -180.0D | d > 180.0D)" in forAll { (d: Double) =>
-        whenever(d < -180.0D || d > 180.0D) {
+        whenever(!longitudeIsValid(d)) {
           an[IllegalArgumentException] should be thrownBy Longitude.unsafeFrom(d)
         }
       }
@@ -335,7 +320,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of in range Doubles (-180.0D <= d <= 180.0D)" in forAll(longitudeGen) { d =>
-        Longitude.from(d).right.value.value shouldBe d
+        whenever(longitudeIsValid(d)) {
+          Longitude.from(d).right.value.value shouldBe d
+        }
       }
     }
   }
@@ -359,7 +346,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of non conformant Strings" in forAll { (s: String) =>
-        whenever(!s.matches(nodeIdString)) {
+        whenever(!nodeIdIsValid(s)) {
           an[IllegalArgumentException] should be thrownBy NodeId.unsafeFrom(s)
         }
       }
@@ -373,7 +360,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of conformant Strings" in forAll(nodeIdGen) { s =>
-        whenever(s.matches(nodeIdString)) {
+        whenever(nodeIdIsValid(s)) {
           NodeId.from(s).right.value.value shouldBe s
         }
       }
@@ -393,7 +380,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of out of range Doubles (d < 0.0D)" in forAll { (d: Double) =>
-        whenever(d < 0.0D) {
+        whenever(!nonNegDoubleIsValid(d)) {
           an[IllegalArgumentException] should be thrownBy NonNegDouble.unsafeFrom(d)
         }
       }
@@ -407,7 +394,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of in range Doubles (d >= 0.0D)" in forAll(nonNegDoubleGen) { d =>
-        NonNegDouble.from(d).right.value.value shouldBe d
+        whenever(nonNegDoubleIsValid(d)) {
+          NonNegDouble.from(d).right.value.value shouldBe d
+        }
       }
     }
   }
@@ -422,7 +411,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of out of range Ints (i < 0)" in forAll { (i: Int) =>
-        whenever(i < 0) {
+        whenever(!nonNegIntIsValid(i)) {
           an[IllegalArgumentException] should be thrownBy NonNegInt.unsafeFrom(i)
         }
       }
@@ -436,7 +425,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of in range Ints (i > 0)" in forAll(nonNegIntGen) { i =>
-        NonNegInt.from(i).right.value.value shouldBe i
+        whenever(nonNegIntIsValid(i)) {
+          NonNegInt.from(i).right.value.value shouldBe i
+        }
       }
     }
   }
@@ -451,7 +442,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of out of range Longs (l < 0L)" in forAll { (l: Long) =>
-        whenever(l < 0) {
+        whenever(!nonNegLongIsValid(l)) {
           an[IllegalArgumentException] should be thrownBy NonNegLong.unsafeFrom(l)
         }
       }
@@ -465,7 +456,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of in range Longs (l > 0L)" in forAll(nonNegLongGen) { l =>
-        NonNegLong.from(l).right.value.value shouldBe l
+        whenever(nonNegLongIsValid(l)) {
+          NonNegLong.from(l).right.value.value shouldBe l
+        }
       }
     }
   }
@@ -483,7 +476,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of valid Doubles (d != 0.0D)" in forAll(nonZeroDoubleGen) { d =>
-        NonZeroDouble.from(d).right.value.value shouldBe d
+        whenever(nonZeroDoubleIsValid(d)) {
+          NonZeroDouble.from(d).right.value.value shouldBe d
+        }
       }
     }
   }
@@ -498,7 +493,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of valid Ints (i != 0)" in forAll(nonZeroIntGen) { i =>
-        NonZeroInt.from(i).right.value.value shouldBe i
+        whenever(nonZeroIntIsValid(i)) {
+          NonZeroInt.from(i).right.value.value shouldBe i
+        }
       }
     }
   }
@@ -513,7 +510,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of valid Longs (l != 0L)" in forAll(nonZeroLongGen) { l =>
-        NonZeroLong.from(l).right.value.value shouldBe l
+        whenever(nonZeroLongIsValid(l)) {
+          NonZeroLong.from(l).right.value.value shouldBe l
+        }
       }
     }
   }
@@ -574,7 +573,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of out of range Ints (i < 0 | i > 536870911)" in forAll { (i: Int) =>
-        whenever(i < 0 || i > 536870911) {
+        whenever(!rangeOffsetIsValid(i)) {
           an[IllegalArgumentException] should be thrownBy RangeOffset.unsafeFrom(i)
         }
       }
@@ -591,7 +590,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of in range Ints (0 <= i <= 536870911)" in forAll(rangeOffsetGen) { i =>
-        RangeOffset.from(i).right.value.value shouldBe i
+        whenever(rangeOffsetIsValid(i)) {
+          RangeOffset.from(i).right.value.value shouldBe i
+        }
       }
     }
   }
@@ -609,7 +610,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of out of range Ints (i < 0 | i > 16383)" in forAll { (i: Int) =>
-        whenever(i < 0 || i > 16383) {
+        whenever(!slotIsValid(i)) {
           an[IllegalArgumentException] should be thrownBy Slot.unsafeFrom(i)
         }
       }
@@ -626,7 +627,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of in range Ints (0 <= i <= 16383)" in forAll(slotGen) { i =>
-        Slot.from(i).right.value.value shouldBe i
+        whenever(slotIsValid(i)) {
+          Slot.from(i).right.value.value shouldBe i
+        }
       }
     }
   }
@@ -644,7 +647,7 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "fail at runtime" when {
       "provided non literal cases of out of range Longs (l < 0L | l > 4294967295L)" in forAll { (l: Long) =>
-        whenever(l < 0L || l > 4294967295L) {
+        whenever(!stringLengthIsValid(l)) {
           an[IllegalArgumentException] should be thrownBy StringLength.unsafeFrom(l)
         }
       }
@@ -661,7 +664,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of in range Longs (0L <= l <= 4294967295L)" in forAll(stringLengthGen) { l =>
-        StringLength.from(l).right.value.value shouldBe l
+        whenever(stringLengthIsValid(l)) {
+          StringLength.from(l).right.value.value shouldBe l
+        }
       }
     }
   }
@@ -749,7 +754,9 @@ final class RefinedTypesSpec extends BaseSpec {
 
     "refine correctly" when {
       "provided non literal cases of valid Doubles (d != Double.NaN)" in forAll { (d: Double) =>
-        ValidDouble.from(d).right.value.value shouldBe d
+        whenever(validDoubleIsValid(d)) {
+          ValidDouble.from(d).right.value.value shouldBe d
+        }
       }
     }
   }

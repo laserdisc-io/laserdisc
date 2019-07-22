@@ -127,10 +127,12 @@ final class HashPSpec extends BaseSpec with HashP {
 
       "roundtrip successfully" when {
         "given key" in forAll { (k: Key, ks: List[Key]) =>
-          val protocol = hkeys(k)
+          whenever(keyIsValid(k.value) && ks.forall(k => keyIsValid(k.value))) {
+            val protocol = hkeys(k)
 
-          protocol.encode shouldBe Arr(Bulk("HKEYS"), Bulk(k))
-          protocol.decode(Arr(ks.map(k => Bulk(k)))).right.value shouldBe ks
+            protocol.encode shouldBe Arr(Bulk("HKEYS"), Bulk(k))
+            protocol.decode(Arr(ks.map(Bulk(_)))).right.value shouldBe ks
+          }
         }
       }
 

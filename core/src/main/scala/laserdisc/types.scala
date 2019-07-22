@@ -1,5 +1,13 @@
 package laserdisc
 
+final case class ControlChar()
+object ControlChar {
+  import eu.timepit.refined.api.Validate
+
+  implicit final val controlCharValidate: Validate.Plain[Char, ControlChar] =
+    Validate.fromPredicate(_.isControl, t => s"isControl('$t')", ControlChar())
+}
+
 final case class KV[A](key: Key, value: A)
 final case class ScanKV(cursor: NonNegLong, maybeValues: Option[Seq[KV[String]]])
 final case class Scan[A](cursor: NonNegLong, values: Option[Seq[A]])

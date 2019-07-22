@@ -10,7 +10,7 @@ abstract class HyperLogLogExtPSpec extends BaseSpec with HyperLogLogP {
     "using pfadd" should {
 
       "roundtrip successfully" when {
-        [1..4#"given key and [#elem1#]" in forAll("key", [#"elem1"#], "return value") { (k: Key, [#e1: Key#], b: Boolean) =>
+        [1..4#"given key and [#element1#]" in forAll("key", [#"element1"#], "return value") { (k: Key, [#e1: Key#], b: Boolean) =>
           val protocol = pfadd(k, [#e1#])
 
           protocol.encode shouldBe Arr(Bulk("PFADD"), Bulk(k), [#Bulk(e1)#])

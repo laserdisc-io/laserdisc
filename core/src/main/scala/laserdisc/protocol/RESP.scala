@@ -136,7 +136,7 @@ case object NilArr  extends GenArr
   * @param elements The wrapped array values, as a [[scala.List]] of [[RESP]]
   */
 final case class Arr(elements: List[RESP]) extends GenArr {
-  override def toString: String = s"Arr(${elements.mkString(",")})"
+  override def toString: String = s"Arr(${elements.mkString(COMMA)})"
 }
 object Arr {
   final def apply(one: RESP, rest: RESP*): Arr = new Arr(one +: rest.toList)

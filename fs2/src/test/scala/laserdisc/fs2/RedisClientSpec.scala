@@ -183,7 +183,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
     "handle correctly hundreds of read requests in parallel for an array payload" in {
 
       implicit object myShow1 extends Show[List[String]] {
-        final def show(a: List[String]): String = a mkString ","
+        final def show(a: List[String]): String = a mkString COMMA
       }
 
       val testKey  = Key("test-key-list")

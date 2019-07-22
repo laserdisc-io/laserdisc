@@ -103,8 +103,8 @@ object ServerP {
     implicit val connectedClientsRead: Bulk ==> ConnectedClients = Read.instancePF {
       case Bulk(s) =>
         ConnectedClients(
-          s.split('\n').map { clientData =>
-            new Parameters(clientData.split(' ').collect { case KVPair(k, v) => k -> v }.toMap)
+          s.split(LF_CH).map { clientData =>
+            new Parameters(clientData.split(SPACE_CH).collect { case KVPair(k, v) => k -> v }.toMap)
           }
         )
     }
@@ -138,9 +138,9 @@ object ServerP {
     implicit val infoRead: Bulk ==> Info = Read.instancePF {
       case Bulk(s) =>
         Info(
-          s.split("\n\n")
+          s.split(LF * 2)
             .flatMap {
-              _.split("\n").toSeq match {
+              _.split(LF_CH).toSeq match {
                 case ISR(infoSection) +: PR(parameters) => Some(infoSection -> parameters)
                 case _                                  => None
               }

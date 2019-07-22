@@ -95,10 +95,10 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling simple strings" should {
       "decode them correctly" in forAll { s: String =>
-        s"+$s\r\n".asRESP shouldBe Str(s)
+        s"+$s$CRLF".asRESP shouldBe Str(s)
       }
       "encode them correctly" in forAll { str: Str =>
-        str.wireFormat shouldBe s"+${str.value}\r\n"
+        str.wireFormat shouldBe s"+${str.value}$CRLF"
       }
       "roundtrip with no errors" in forAll { str: Str =>
         str.roundTrip shouldBe str
@@ -107,10 +107,10 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling errors" should {
       "decode them correctly" in forAll { msg: String =>
-        s"-$msg\r\n".asRESP shouldBe Err(msg)
+        s"-$msg$CRLF".asRESP shouldBe Err(msg)
       }
       "encode them correctly" in forAll { err: Err =>
-        err.wireFormat shouldBe s"-${err.message}\r\n"
+        err.wireFormat shouldBe s"-${err.message}$CRLF"
       }
       "roundtrip with no errors" in forAll { err: Err =>
         err.roundTrip shouldBe err
@@ -119,10 +119,10 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling integers" should {
       "decode them correctly" in forAll { l: Long =>
-        s":$l\r\n".asRESP shouldBe Num(l)
+        s":$l$CRLF".asRESP shouldBe Num(l)
       }
       "encode them correctly" in forAll { num: Num =>
-        num.wireFormat shouldBe s":${num.value}\r\n"
+        num.wireFormat shouldBe s":${num.value}$CRLF"
       }
       "roundtrip with no errors" in forAll { num: Num =>
         num.roundTrip shouldBe num
@@ -131,18 +131,18 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling bulk strings" should {
       "fail with correct error message when decoding size < -1" in {
-        "$-2\r\nbla\r\n".RESP.left.value.messageWithContext shouldBe "size: failed to decode bulk-string of size -2"
+        s"$$-2${CRLF}bla$CRLF".RESP.left.value.messageWithContext shouldBe "size: failed to decode bulk-string of size -2"
       }
       "decode them correctly" in forAll { maybeString: Option[String] =>
         maybeString match {
-          case None    => "$-1\r\n".asRESP shouldBe NullBulk
-          case Some(s) => s"$$${s.bytesLength}\r\n$s\r\n".asRESP shouldBe Bulk(s)
+          case None    => s"$$-1$CRLF".asRESP shouldBe NullBulk
+          case Some(s) => s"$$${s.bytesLength}$CRLF$s$CRLF".asRESP shouldBe Bulk(s)
         }
       }
       "encode them correctly" in forAll { bulk: GenBulk =>
         bulk -> bulk.wireFormat match {
-          case (NullBulk, s) => s shouldBe "$-1\r\n"
-          case (Bulk(bs), s) => s shouldBe s"$$${bs.bytesLength}\r\n$bs\r\n"
+          case (NullBulk, s) => s shouldBe s"$$-1$CRLF"
+          case (Bulk(bs), s) => s shouldBe s"$$${bs.bytesLength}$CRLF$bs$CRLF"
         }
       }
       "roundtrip with no errors" in forAll { bulk: GenBulk =>
@@ -152,18 +152,18 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling arrays" should {
       "fail with correct error message when decoding size < -1" in {
-        "*-2\r\nbla\r\n".RESP.left.value.messageWithContext shouldBe "size: failed to decode array of size -2"
+        s"*-2${CRLF}bla$CRLF".RESP.left.value.messageWithContext shouldBe "size: failed to decode array of size -2"
       }
       "decode them correctly" in forAll { maybeRESPList: Option[List[RESP]] =>
         maybeRESPList match {
-          case None     => "*-1\r\n".asRESP shouldBe NilArr
-          case Some(xs) => s"*${xs.length}\r\n${xs.wireFormat}".asRESP shouldBe Arr(xs)
+          case None     => s"*-1$CRLF".asRESP shouldBe NilArr
+          case Some(xs) => s"*${xs.length}$CRLF${xs.wireFormat}".asRESP shouldBe Arr(xs)
         }
       }
       "encode them correctly" in forAll { arr: GenArr =>
         arr -> arr.wireFormat match {
-          case (NilArr, s)  => s shouldBe "*-1\r\n"
-          case (Arr(xs), s) => s shouldBe s"*${xs.length}\r\n${xs.wireFormat}"
+          case (NilArr, s)  => s shouldBe s"*-1$CRLF"
+          case (Arr(xs), s) => s shouldBe s"*${xs.length}$CRLF${xs.wireFormat}"
         }
       }
       "roundtrip with no errors" in forAll { arr: GenArr =>

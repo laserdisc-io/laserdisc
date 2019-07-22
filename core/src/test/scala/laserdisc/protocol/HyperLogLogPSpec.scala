@@ -32,7 +32,7 @@ final class HyperLogLogPSpec extends HyperLogLogExtPSpec {
     "using pfmerge" should {
 
       "roundtrip successfully" when {
-        "given two or more source keys and one destination key" in forAll("sourcekeys", "destinationkey") { (sks: TwoOrMoreKeys, dk: Key) =>
+        "given two or more source keys and a destination key" in forAll("sourcekeys", "destinationkey") { (sks: TwoOrMoreKeys, dk: Key) =>
           val protocol = pfmerge(sks, dk)
 
           protocol.encode shouldBe Arr(Bulk("PFMERGE") :: Bulk(dk) :: sks.value.map(Bulk(_)))

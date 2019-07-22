@@ -20,9 +20,7 @@ LaserDisc is a(nother) Scala driver for [Redis](https://redis.io/), written in S
 It differentiates itself from the others for having a core layer, which is made up of all the supported Redis commands
 and the Redis Serialization Protocol ([RESP](https://redis.io/topics/protocol)), that is strongly typed and which makes
 heavy use of [shapeless](https://github.com/milessabin/shapeless) and [refined](https://github.com/fthomas/refined) to
-achieve this. It's also worth noting that the core - in order to be built on scala 2.11.x - makes use of
-[Typelevel's Scala 2.11](https://typelevel.org/scala) fork, since it requires the enhancements on implicit heuristics. Finally, it also provides an implementation of RESP built using
-[scodec](http://scodec.org/).
+achieve this. Finally, it also provides an implementation of RESP built using [scodec](http://scodec.org/).
 
 On top of this, one or more clients can be implemented. The only one currently available out of the box is built using
 [fs2](https://functional-streams-for-scala.github.io/fs2/)/[cats effect](https://typelevel.org/cats-effect/) but
@@ -48,7 +46,7 @@ Two reasons:
 
 ### Getting Started
 
-LaserDisc is currently available for Scala 2.11 and 2.12 on the JVM.
+LaserDisc is currently available for Scala 2.12 on the JVM.
 
 Its core (protocol commands and RESP wire format) is also available for [Scala.JS](http://www.scala-js.org/).
 

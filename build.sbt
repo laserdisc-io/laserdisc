@@ -1,7 +1,6 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-val `scala 2.11` = "2.11.11-bin-typelevel-4"
 val `scala 2.12` = "2.12.8"
 
 val V = new {
@@ -123,9 +122,7 @@ val versionDependantScalacOptions = Def.setting {
           "-Ywarn-unused:privates", // Warn if a private member is unused.
           "-Ywarn-value-discard" // Warn when non-Unit expression results are unused.
         )
-      case _ =>
-        (flags :+ "-Yinduction-heuristics")
-          .filterNot(_ == "-Xlint:missing-interpolator") //@implicitNotFound uses ${A} syntax w/o need for s interpolator
+      case _ => flags
     }
 
   val flags = Seq(
@@ -179,12 +176,8 @@ inThisBuild {
 }
 
 lazy val commonSettings = Seq(
-  scalaOrganization :=
-    (CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, 11)) => "org.typelevel"
-      case _             => "org.scala-lang"
-    }),
-  crossScalaVersions := Seq(`scala 2.11`, `scala 2.12`),
+  scalaOrganization := "org.scala-lang",
+  crossScalaVersions := Seq(`scala 2.12`),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value
@@ -234,12 +227,6 @@ lazy val scoverageSettings = Seq(
   coverageMinimum := 60,
   coverageFailOnMinimum := false,
   coverageHighlighting := true,
-  coverageEnabled := {
-    CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, 11)) => false
-      case _             => coverageEnabled.value
-    }
-  }
 )
 
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings

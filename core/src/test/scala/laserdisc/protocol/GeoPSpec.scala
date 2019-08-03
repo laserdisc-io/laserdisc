@@ -9,13 +9,11 @@ final class GeoPSpec extends GeoExtPSpec {
     "using geoadd" should {
 
       "roundtrip successfully" when {
-        "given key and positions" in {
-          forAll("key", "positions", "return value") { (k: Key, ps: OneOrMore[Position], nni: NonNegInt) =>
-            val protocol = geoadd(k, ps)
+        "given key and positions" in forAll("key", "positions", "added") { (k: Key, ps: OneOrMore[Position], nni: NonNegInt) =>
+          val protocol = geoadd(k, ps)
 
-            protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: ps.value.flatMap(position2BulkList))
-            protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
-          }
+          protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: ps.value.flatMap(position2BulkList))
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
       }
 
@@ -25,7 +23,7 @@ final class GeoPSpec extends GeoExtPSpec {
 
       "roundtrip successfully" when {
         "given key and members" in {
-          forAll("key", "member1", "member2", "return value") { (k: Key, m1: Key, m2: Key, onnd: Option[NonNegDouble]) =>
+          forAll("key", "member 1", "member 2", "maybe distance") { (k: Key, m1: Key, m2: Key, onnd: Option[NonNegDouble]) =>
             val protocol = geodist(k, m1, m2)
 
             protocol.encode shouldBe Arr(Bulk("GEODIST"), Bulk(k), Bulk(m1), Bulk(m2))
@@ -33,11 +31,12 @@ final class GeoPSpec extends GeoExtPSpec {
           }
         }
         "given key, members and unit" in {
-          forAll("key", "member1", "member2", "unit", "return value") { (k: Key, m1: Key, m2: Key, u: Unit, onnd: Option[NonNegDouble]) =>
-            val protocol = geodist(k, m1, m2, u)
+          forAll("key", "member 1", "member 2", "unit", "maybe distance") {
+            (k: Key, m1: Key, m2: Key, u: Unit, onnd: Option[NonNegDouble]) =>
+              val protocol = geodist(k, m1, m2, u)
 
-            protocol.encode shouldBe Arr(Bulk("GEODIST"), Bulk(k), Bulk(m1), Bulk(m2), Bulk(u))
-            protocol.decode(nonNegDoubleOptionToBulk(onnd)).right.value shouldBe onnd
+              protocol.encode shouldBe Arr(Bulk("GEODIST"), Bulk(k), Bulk(m1), Bulk(m2), Bulk(u))
+              protocol.decode(nonNegDoubleOptionToBulk(onnd)).right.value shouldBe onnd
           }
         }
       }
@@ -47,7 +46,7 @@ final class GeoPSpec extends GeoExtPSpec {
 
       "roundtrip successfully" when {
         "given key and members" in {
-          forAll("key", "members", "return value") { (k: Key, ms: OneOrMoreKeys, oghs: OneOrMore[Option[GeoHash]]) =>
+          forAll("key", "members", "geo hashes") { (k: Key, ms: OneOrMoreKeys, oghs: OneOrMore[Option[GeoHash]]) =>
             val protocol = geohash(k, ms)
 
             protocol.encode shouldBe Arr(Bulk("GEOHASH") :: Bulk(k) :: ms.value.map(m => Bulk(m)))
@@ -62,7 +61,7 @@ final class GeoPSpec extends GeoExtPSpec {
 
       "roundtrip successfully" when {
         "given key and members" in {
-          forAll("key", "members", "return value") { (k: Key, ms: OneOrMoreKeys, ocs: OneOrMore[Option[Coordinates]]) =>
+          forAll("key", "members", "coordinatws") { (k: Key, ms: OneOrMoreKeys, ocs: OneOrMore[Option[Coordinates]]) =>
             val protocol = geopos(k, ms)
 
             protocol.encode shouldBe Arr(Bulk("GEOPOS") :: Bulk(k) :: ms.value.map(m => Bulk(m)))

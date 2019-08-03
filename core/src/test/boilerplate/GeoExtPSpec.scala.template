@@ -8,13 +8,13 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
 
   implicit final val geoHashShow: Show[GeoHash] = Show.unsafeFromToString
 
-  implicit final val coordinatesArbitrary: Arbitrary[Coordinates] = Arbitrary {
+  implicit final val coordinatesArb: Arbitrary[Coordinates] = Arbitrary {
     for {
       lat  <- arbitrary[Latitude]
       long <- arbitrary[Longitude]
     } yield Coordinates(lat, long)
   }
-  implicit final val positionArbitrary: Arbitrary[Position] = Arbitrary {
+  implicit final val positionArb: Arbitrary[Position] = Arbitrary {
     for {
       m    <- arbitrary[Key]
       lat  <- arbitrary[Latitude]
@@ -44,7 +44,7 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
 
     "using geoadd" should {
       "roundtrip successfully" when {
-        [1..4#"given key and [#position1#]" in forAll("key", [#"position1"#], "return value") { (k: Key, [#p1: Position#], nni: NonNegInt) =>
+        [1..4#"given key and [#position1#]" in forAll("key", [#"position1"#], "added") { (k: Key, [#p1: Position#], nni: NonNegInt) =>
           val protocol = geoadd(k, [#p1#])
 
           protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: List([#p1#]).flatMap(position##2BulkList))
@@ -57,7 +57,7 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
     "using geohash" should {
 
       "roundtrip successfully" when {
-        [1..4#"given key and [#member1#]" in forAll("key", [#"member1"#], "return value") { (k: Key, [#m1: Key#], oghs: OneOrMore[Option[GeoHash]]) =>
+        [1..4#"given key and [#member1#]" in forAll("key", [#"member1"#], "geo hashes") { (k: Key, [#m1: Key#], oghs: OneOrMore[Option[GeoHash]]) =>
           val protocol = geohash(k, [#m1#])
 
           protocol.encode shouldBe Arr(Bulk("GEOHASH") :: Bulk(k) :: List([#Bulk(m1)#]))
@@ -70,7 +70,7 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
     "using geopos" should {
 
       "roundtrip successfully" when {
-        [1..4#"given key and [#member1#]" in forAll("key", [#"member1"#], "return value") { (k: Key, [#m1: Key#], ocs: OneOrMore[Option[Coordinates]]) =>
+        [1..4#"given key and [#member1#]" in forAll("key", [#"member1"#], "coordinates") { (k: Key, [#m1: Key#], ocs: OneOrMore[Option[Coordinates]]) =>
           val protocol = geopos(k, [#m1#])
 
           protocol.encode shouldBe Arr(Bulk("GEOPOS") :: Bulk(k) :: List([#Bulk(m1)#]))

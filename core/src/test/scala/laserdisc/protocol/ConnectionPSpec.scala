@@ -8,7 +8,7 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     "using auth" should {
 
       "roundtrip successfully" when {
-        "given non empty password" in forAll { key: Key =>
+        "given non empty password" in forAll("non empty password") { key: Key =>
           val protocol = auth(key)
 
           protocol.encode shouldBe Arr(Bulk("AUTH"), Bulk(key.value))
@@ -20,13 +20,13 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     "using echo" should {
 
       "roundtrip successfully" when {
-        "given any String message" in forAll { s: String =>
+        "given any String message" in forAll("string") { s: String =>
           val protocol = echo(s)
 
           protocol.encode shouldBe Arr(Bulk("ECHO"), Bulk(s))
           protocol.decode(Bulk(s)).right.value shouldBe s
         }
-        "given any Int message" in forAll { i: Int =>
+        "given any Int message" in forAll("int") { i: Int =>
           val protocol = echo(i)
 
           protocol.encode shouldBe Arr(Bulk("ECHO"), Bulk(i))
@@ -38,13 +38,13 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     "using ping" should {
 
       "roundript successfully" when {
-        "given any String message" in forAll { s: String =>
+        "given any String message" in forAll("string") { s: String =>
           val protocol = ping(s)
 
           protocol.encode shouldBe Arr(Bulk("PING"), Bulk(s))
           protocol.decode(Bulk(s)).right.value shouldBe s
         }
-        "given any Int message" in forAll { i: Int =>
+        "given any Int message" in forAll("int") { i: Int =>
           val protocol = ping(i)
 
           protocol.encode shouldBe Arr(Bulk("PING"), Bulk(i))
@@ -72,7 +72,7 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     "using select" should {
 
       "roundtrip successfully" when {
-        "given valid DbIndexes" in forAll { dbi: DbIndex =>
+        "given valid DbIndexes" in forAll("db index") { dbi: DbIndex =>
           val protocol = select(dbi)
 
           protocol.encode shouldBe Arr(Bulk("SELECT"), Bulk(dbi))
@@ -84,7 +84,7 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     "using swapdb" should {
 
       "roundtrip successfully" when {
-        "given valid DbIndexes" in forAll { (dbi1: DbIndex, dbi2: DbIndex) =>
+        "given valid DbIndexes" in forAll("db index 1", "db index 2") { (dbi1: DbIndex, dbi2: DbIndex) =>
           val protocol = swapdb(dbi1, dbi2)
 
           protocol.encode shouldBe Arr(Bulk("SWAPDB"), Bulk(dbi1), Bulk(dbi2))

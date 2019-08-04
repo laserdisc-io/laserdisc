@@ -2,9 +2,19 @@ package laserdisc
 package protocol
 
 final class ClusterPSpec extends BaseSpec with ClusterP {
-  import clusters._
-  import org.scalacheck.Gen
+  import clustertypes._
+  import org.scalacheck.{Arbitrary, Gen}
   import org.scalacheck.Gen._
+
+  private[this] implicit final val clusterFailoverModeArb: Arbitrary[ClusterFailoverMode] = Arbitrary {
+    Gen.oneOf(ClusterFailoverMode.force, ClusterFailoverMode.takeover)
+  }
+  private[this] implicit final val clusterResetModeArb: Arbitrary[ClusterResetMode] = Arbitrary {
+    Gen.oneOf(ClusterResetMode.hard, ClusterResetMode.soft)
+  }
+  private[this] implicit final val clusterSetSlotModeArb: Arbitrary[ClusterSetSlotMode] = Arbitrary {
+    Gen.oneOf(ClusterSetSlotMode.importing, ClusterSetSlotMode.migrating, ClusterSetSlotMode.node)
+  }
 
   private[this] final val kvPairPattern                                = ClusterP.KVPairRegex.pattern
   private[this] final val infoIsValid: Map[String, String] => Boolean  = _.forall { case (k, v) => kvPairPattern.matcher(s"$k:$v").matches }
@@ -57,25 +67,24 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   private[this] implicit final val nodesShow: Show[RawNodes] = Show.instance {
     _.map(rawNodeToString).mkString(LF)
   }
-  private[this] final val validateNodes: (Nodes, RawNodes) => Unit = (ns, rns) =>
-    ns.clusterNodes.zip(rns).foreach {
-      case (ClusterP.ClusterNode(n0, ClusterP.NodeAddress(h0, p0, cp0), fs0, m0, ps0, pr0, ce0, l0, ss0),
-            (n, h, p, cp, fs, m, ps, pr, ce, l, ss)) =>
+  private[this] final val validateNodes: (ClusterNodes, RawNodes) => Unit = (ns, rns) =>
+    ns.nodes.zip(rns).foreach {
+      case (ClusterNode(n0, ClusterAddress(h0, p0, cp0), fs0, m0, ps0, pr0, ce0, l0, ss0), (n, h, p, cp, fs, m, ps, pr, ce, l, ss)) =>
         n0.value shouldBe n
         h0.value shouldBe (if (h.isEmpty) LoopbackEqWit.value else h)
         p0.value shouldBe p
         cp0.value shouldBe cp.getOrElse(p)
-        (if (fs0.isEmpty) Seq("noflags") else fs0.map(Show[ClusterP.Flag].show)) shouldBe fs
+        (if (fs0.isEmpty) Seq("noflags") else fs0.map(Show[ClusterFlag].show)) shouldBe fs
         m0.fold("-")(_.value) shouldBe m
         ps0.value shouldBe ps
         pr0.value shouldBe pr
         ce0.value shouldBe ce
-        Show[ClusterP.LinkState].show(l0) shouldBe l
+        Show[ClusterLinkState].show(l0) shouldBe l
         ss0.map {
-          case ClusterP.SlotType.Single(s)            => s.toString
-          case ClusterP.SlotType.Range(f, t)          => s"$f-$t"
-          case ClusterP.SlotType.ImportingSlot(s, in) => s"[$s-<-$in]"
-          case ClusterP.SlotType.MigratingSlot(s, mn) => s"[$s->-$mn]"
+          case ClusterSingleSlotType(s)        => s.toString
+          case ClusterRangeSlotType(f, t)      => s"$f-$t"
+          case ClusterImportingSlotType(s, in) => s"[$s-<-$in]"
+          case ClusterMigratingSlotType(s, mn) => s"[$s->-$mn]"
         } shouldBe ss
   }
 
@@ -189,16 +198,10 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FAILOVER"))
           protocol.decode(Str(OK.value)).right.value shouldBe OK
         }
-        "given failover mode FORCE" in {
-          val protocol = failover(failoverMode.force)
+        "given mode" in forAll("failover mode") { (m: ClusterFailoverMode) =>
+          val protocol = failover(m)
 
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FAILOVER"), Bulk("FORCE"))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
-        }
-        "given failover mode TAKEOVER" in {
-          val protocol = failover(failoverMode.takeover)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FAILOVER"), Bulk("TAKEOVER"))
+          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FAILOVER"), Bulk(m))
           protocol.decode(Str(OK.value)).right.value shouldBe OK
         }
       }
@@ -325,16 +328,10 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk("SOFT"))
           protocol.decode(Str(OK.value)).right.value shouldBe OK
         }
-        "given reset mode HARD" in {
-          val protocol = reset(resetMode.hard)
+        "given reset mode" in forAll("reset mode") { (m: ClusterResetMode) =>
+          val protocol = reset(m)
 
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk("HARD"))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
-        }
-        "given reset mode SOFT" in {
-          val protocol = reset(resetMode.soft)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk("SOFT"))
+          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk(m))
           protocol.decode(Str(OK.value)).right.value shouldBe OK
         }
       }
@@ -364,49 +361,19 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       }
     }
 
-    "using setslotimporting" should {
-
-      "roundtrip successfully" when {
-        "given a slot and a node id" in forAll("slot", "node id") { (s: Slot, nid: NodeId) =>
-          val protocol = setslotimporting(s, nid)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk("IMPORTING"), Bulk(nid))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
-        }
-      }
-    }
-
-    "using setslotmigrating" should {
-
-      "roundtrip successfully" when {
-        "given a slot and a node id" in forAll("slot", "node id") { (s: Slot, nid: NodeId) =>
-          val protocol = setslotmigrating(s, nid)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk("MIGRATING"), Bulk(nid))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
-        }
-      }
-    }
-
-    "using setslotnode" should {
-
-      "roundtrip successfully" when {
-        "given a slot and a node id" in forAll("slot", "node id") { (s: Slot, nid: NodeId) =>
-          val protocol = setslotnode(s, nid)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk("NODE"), Bulk(nid))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
-        }
-      }
-    }
-
-    "using setslotstable" should {
+    "using setslot" should {
 
       "roundtrip successfully" when {
         "given a slot" in forAll("slot") { (s: Slot) =>
-          val protocol = setslotstable(s)
+          val protocol = setslot(s)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk("STABLE"))
+          protocol.decode(Str(OK.value)).right.value shouldBe OK
+        }
+        "given a slot, mode and a node id" in forAll("slot", "mode", "node id") { (s: Slot, m: ClusterSetSlotMode, nid: NodeId) =>
+          val protocol = setslot(s, m, nid)
+
+          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk(m), Bulk(nid))
           protocol.decode(Str(OK.value)).right.value shouldBe OK
         }
       }
@@ -435,14 +402,14 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
             protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLOTS"))
             protocol.decode(slotsToArr(ss)).right.value.slots.foreach {
-              case (ClusterP.SlotType.Range(f, t), ClusterP.SlotInfo.NewSlotInfo(ClusterP.HostPortNodeId(mh, mp, mid), rs)) =>
+              case (ClusterRangeSlotType(f, t), ClusterNewSlotInfo(ClusterHostPortNodeId(mh, mp, mid), rs)) =>
                 val mrs = (mh.value, mp.value, Some(mid.value)) :: rs.foldLeft(List.empty[(String, Int, Option[String])]) {
-                  case (acc, ClusterP.HostPortNodeId(h, p, nid)) => acc :+ ((h.value, p.value, Some(nid.value)))
+                  case (acc, ClusterHostPortNodeId(h, p, nid)) => acc :+ ((h.value, p.value, Some(nid.value)))
                 }
                 ss should contain((f.value, t.value, mrs))
-              case (ClusterP.SlotType.Range(f, t), ClusterP.SlotInfo.OldSlotInfo(ClusterP.HostPort(mh, mp), rs)) =>
+              case (ClusterRangeSlotType(f, t), ClusterOldSlotInfo(ClusterHostPort(mh, mp), rs)) =>
                 val mrs = (mh.value, mp.value, None) :: rs.foldLeft(List.empty[(String, Int, Option[String])]) {
-                  case (acc, ClusterP.HostPort(h, p)) => acc :+ ((h.value, p.value, None))
+                  case (acc, ClusterHostPort(h, p)) => acc :+ ((h.value, p.value, None))
                 }
                 ss should contain((f.value, t.value, mrs))
             }

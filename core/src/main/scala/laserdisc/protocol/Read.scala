@@ -129,6 +129,16 @@ trait ReadInstances1 extends ReadInstances2 {
     case _ => None
   }
 
+  implicit final def arrOfArr2Seq[A](implicit R: Read[Arr, A]): Read[Arr, Seq[A]] = Read.instance {
+    case Arr(vector) =>
+      val (vectorLength, (as, asLength)) = vector.foldLeft(0 -> (List.empty[A] -> 0)) {
+        case ((vl, (as0, asl)), R(a)) => (vl + 1) -> ((a :: as0) -> (asl + 1))
+        case ((vl, acc), _)           => (vl + 1) -> acc
+      }
+      if (vectorLength == asLength) Some(as.reverse) else None
+    case _ => None
+  }
+
   implicit final def arr2Tuple2Read[A, B](implicit RA: Read[Bulk, A], RB: Read[Bulk, B]): Read[Arr, (A, B)] = Read.instancePF {
     case Arr(RA(a) +: RB(b) +: Seq()) => a -> b
   }

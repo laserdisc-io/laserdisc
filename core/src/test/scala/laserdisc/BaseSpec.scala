@@ -68,6 +68,7 @@ abstract class BaseSpec
 
   final val connectionNameGen: Gen[String]    = strGen(nonEmptyListOf(noSpaceUtf8BMPCharGen)) :| "connection name"
   final val dbIndexGen: Gen[Int]              = chooseNum(0, DbIndexMaxValueWit.value) :| "db index"
+  final val directionGen: Gen[Direction]      = Gen.oneOf(Direction.asc, Direction.desc) :| "direction"
   final val geoHashGen: Gen[String]           = strOfNGen(11, 1 -> numChar, 9 -> alphaLowerChar) :| "geo hash"
   final val hostGen: Gen[String]              = Gen.oneOf(allNICsGen, lbGen, rfc1123Gen, rfc1918Gen, rfc5737Gen, rfc3927Gen, rfc2544Gen) :| "host"
   final val keyGen: Gen[String]               = strGen(nonEmptyListOf(utf8BMPCharGen)) :| "key"
@@ -113,6 +114,7 @@ abstract class BaseSpec
   final val validDoubleIsValid: Double => Boolean                             = Validate[Double, ValidDoubleRef].isValid
 
   implicit final val connectionNameArb: Arbitrary[ConnectionName]               = arbitraryRefType(connectionNameGen)
+  implicit final val directionArb: Arbitrary[Direction]                         = Arbitrary(directionGen)
   implicit final val geoHashArb: Arbitrary[GeoHash]                             = arbitraryRefType(geoHashGen)
   implicit final val hostArb: Arbitrary[Host]                                   = arbitraryRefType(hostGen)
   implicit final val keyArb: Arbitrary[Key]                                     = arbitraryRefType(keyGen)

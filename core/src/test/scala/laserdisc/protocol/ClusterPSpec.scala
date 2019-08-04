@@ -129,7 +129,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     "using addslots" should {
 
       "roundtrip successfully" when {
-        "given one or more slots" in forAll("slots") { (ss: OneOrMore[Slot]) =>
+        "given one or more slots" in forAll("slots") { ss: OneOrMore[Slot] =>
           val protocol = addslots(ss)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER") :: Bulk("ADDSLOTS") :: ss.value.map(Bulk(_)))
@@ -180,7 +180,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     "using delslots" should {
 
       "roundtrip successfully" when {
-        "given one or more slots" in forAll("slots") { (ss: OneOrMore[Slot]) =>
+        "given one or more slots" in forAll("slots") { ss: OneOrMore[Slot] =>
           val protocol = delslots(ss)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER") :: Bulk("DELSLOTS") :: ss.value.map(Bulk(_)))
@@ -198,7 +198,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FAILOVER"))
           protocol.decode(Str(OK.value)).right.value shouldBe OK
         }
-        "given mode" in forAll("failover mode") { (m: ClusterFailoverMode) =>
+        "given mode" in forAll("failover mode") { m: ClusterFailoverMode =>
           val protocol = failover(m)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FAILOVER"), Bulk(m))
@@ -210,7 +210,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     "using forget" should {
 
       "roundtrip successfully" when {
-        "given a nodeId" in forAll("node id") { (n: NodeId) =>
+        "given a nodeId" in forAll("node id") { n: NodeId =>
           val protocol = forget(n)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FORGET"), Bulk(n))
@@ -310,7 +310,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     "using replicate" should {
 
       "roundtrip successfully" when {
-        "given a nodeId" in forAll("node id") { (n: NodeId) =>
+        "given a nodeId" in forAll("node id") { n: NodeId =>
           val protocol = replicate(n)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("REPLICATE"), Bulk(n))
@@ -328,7 +328,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk("SOFT"))
           protocol.decode(Str(OK.value)).right.value shouldBe OK
         }
-        "given reset mode" in forAll("reset mode") { (m: ClusterResetMode) =>
+        "given reset mode" in forAll("reset mode") { m: ClusterResetMode =>
           val protocol = reset(m)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk(m))
@@ -352,7 +352,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     "using setconfigepoch" should {
 
       "roundtrip successfully" when {
-        "given a config epoch" in forAll("config epoch") { (nni: NonNegInt) =>
+        "given a config epoch" in forAll("config epoch") { nni: NonNegInt =>
           val protocol = setconfigepoch(nni)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SET-CONFIG-EPOCH"), Bulk(nni))
@@ -364,7 +364,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     "using setslot" should {
 
       "roundtrip successfully" when {
-        "given a slot" in forAll("slot") { (s: Slot) =>
+        "given a slot" in forAll("slot") { s: Slot =>
           val protocol = setslot(s)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk("STABLE"))

@@ -63,7 +63,7 @@ package object laserdisc {
   final val RangeOffsetMaxValueWit      = W(536870911)
   final val Rfc1123HostnameMaxLengthWit = W(255)
   final val Rfc1123HostnameRegexWit = W(
-    "([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])(\\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]))*"
+    "(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*"
   )
   final val SlotMaxValueWit         = W(16383)
   final val StringLengthMaxValueWit = W(4294967295L)

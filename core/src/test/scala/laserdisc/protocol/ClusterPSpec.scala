@@ -57,16 +57,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   private[this] implicit final val nodesShow: Show[RawNodes] = Show.instance {
     _.map(rawNodeToString).mkString(LF)
   }
-  private[this] final val validateNodes: (Nodes, RawNodes) => Unit = (ns, rns) => {
-    // if (ns.clusterNodes.size < rns.size) {
-    //   println(s"decoded ${ns.clusterNodes.size} from original ${rns.size}, what follows are the missing nodes")
-    //   println("missing nodes:\n" + Show[RawNodes].show {
-    //     rns.filterNot {
-    //       case (n, _, _, _, _, _, _, _, _, _, _) => ns.clusterNodes.exists(_.nodeId.value == n)
-    //     }
-    //   })
-    //   println("original nodes:\n" + Show[RawNodes].show(rns))
-    // }
+  private[this] final val validateNodes: (Nodes, RawNodes) => Unit = (ns, rns) =>
     ns.clusterNodes.zip(rns).foreach {
       case (ClusterP.ClusterNode(n0, ClusterP.NodeAddress(h0, p0, cp0), fs0, m0, ps0, pr0, ce0, l0, ss0),
             (n, h, p, cp, fs, m, ps, pr, ce, l, ss)) =>
@@ -86,7 +77,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           case ClusterP.SlotType.ImportingSlot(s, in) => s"[$s-<-$in]"
           case ClusterP.SlotType.MigratingSlot(s, mn) => s"[$s->-$mn]"
         } shouldBe ss
-    }
   }
 
   private[this] final type RawSlot  = (Int, Int, Seq[(String, Int, Option[String])])

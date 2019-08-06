@@ -25,7 +25,7 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
     Gen.oneOf(GeoUnit.meters, GeoUnit.kilometers, GeoUnit.miles, GeoUnit.feet)
   }
 
-  protected final val geoPosition2BulkList: GeoPosition => List[Bulk] = {
+  protected final val geoPositionToBulkList: GeoPosition => List[Bulk] = {
     case GeoPosition(m, lat, long) => Bulk(long) :: Bulk(lat) :: Bulk(m) :: Nil
   }
   protected final val nonNegDoubleOptionToBulk: Option[NonNegDouble] => GenBulk = _.fold(NullBulk: GenBulk)(Bulk(_))
@@ -49,7 +49,7 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
         [1..4#"given key and [#position1#]" in forAll("key", [#"position1"#], "added") { (k: Key, [#p1: GeoPosition#], nni: NonNegInt) =>
           val protocol = geoadd(k, [#p1#])
 
-          protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: List([#p1#]).flatMap(geoPosition##2BulkList))
+          protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: List([#p1#]).flatMap(geoPositionToBulkList))
           protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }#
         ]

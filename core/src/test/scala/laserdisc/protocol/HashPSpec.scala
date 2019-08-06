@@ -100,21 +100,14 @@ final class HashPSpec extends BaseSpec with HashP {
     "using hincrby" should {
 
       "roundtrip successfully" when {
-        "given key, field and increment" in forAll { (k: Key, f: Key, nzl: NonZeroLong, l: Long) =>
+        "given key, field and non zero long increment" in forAll { (k: Key, f: Key, nzl: NonZeroLong, l: Long) =>
           val protocol = hincrby(k, f, nzl)
 
           protocol.encode shouldBe Arr(Bulk("HINCRBY"), Bulk(k), Bulk(f), Bulk(nzl))
           protocol.decode(Num(l)).right.value shouldBe l
         }
-      }
-
-    }
-
-    "using hincrbyfloat" should {
-
-      "roundtrip successfully" when {
-        "given key, field and increment" in forAll { (k: Key, f: Key, nzd: NonZeroDouble, d: Double) =>
-          val protocol = hincrbyfloat(k, f, nzd)
+        "given key, field and non zero double increment" in forAll { (k: Key, f: Key, nzd: NonZeroDouble, d: Double) =>
+          val protocol = hincrby(k, f, nzd)
 
           protocol.encode shouldBe Arr(Bulk("HINCRBYFLOAT"), Bulk(k), Bulk(f), Bulk(nzd))
           protocol.decode(Bulk(d)).right.value shouldBe d
@@ -169,5 +162,7 @@ final class HashPSpec extends BaseSpec with HashP {
       }
 
     }
+
+    //TODO add all other missing tests
   }
 }

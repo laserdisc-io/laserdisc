@@ -3,7 +3,7 @@ package protocol
 
 abstract class HyperLogLogExtPSpec extends BaseSpec with HyperLogLogP {
 
-  final val bool2Num: Boolean => Num = b => Num(if (b) 1 else 0)
+  protected final val boolToNum: Boolean => Num = b => Num(if (b) 1 else 0)
 
   "The HyperLogLog extended protocol" when {
 
@@ -14,7 +14,7 @@ abstract class HyperLogLogExtPSpec extends BaseSpec with HyperLogLogP {
           val protocol = pfadd(k, [#e1#])
 
           protocol.encode shouldBe Arr(Bulk("PFADD"), Bulk(k), [#Bulk(e1)#])
-          protocol.decode(bool##2Num(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)).right.value shouldBe b
         }#
         ]
       }

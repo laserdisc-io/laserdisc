@@ -19,8 +19,7 @@ trait HashBaseP {
 
   final def hincrby(key: Key, field: Key, increment: NonZeroLong): Protocol.Aux[Long] =
     Protocol("HINCRBY", key :: field :: increment :: HNil).as[Num, Long]
-
-  final def hincrbyfloat(key: Key, field: Key, increment: NonZeroDouble): Protocol.Aux[Double] =
+  final def hincrby(key: Key, field: Key, increment: NonZeroDouble): Protocol.Aux[Double] =
     Protocol("HINCRBYFLOAT", key :: field :: increment :: HNil).as[Bulk, Double]
 
   final def hkeys(key: Key): Protocol.Aux[Seq[Key]] = Protocol("HKEYS", key).as[Arr, Seq[Key]]

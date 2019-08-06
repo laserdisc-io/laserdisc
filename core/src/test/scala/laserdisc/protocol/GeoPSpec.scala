@@ -92,7 +92,7 @@ final class GeoPSpec extends GeoExtPSpec {
         "given key and positions" in forAll("key", "positions", "added") { (k: Key, ps: OneOrMore[GeoPosition], nni: NonNegInt) =>
           val protocol = geoadd(k, ps)
 
-          protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: ps.value.flatMap(geoPosition2BulkList))
+          protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: ps.value.flatMap(geoPositionToBulkList))
           protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
       }

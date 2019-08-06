@@ -113,20 +113,26 @@ abstract class BaseSpec
   final val twoOrMoreWeightedKeysIsValid: List[(Key, ValidDouble)] => Boolean = Validate[List[(Key, ValidDouble)], TwoOrMoreRef].isValid
   final val validDoubleIsValid: Double => Boolean                             = Validate[Double, ValidDoubleRef].isValid
 
-  implicit final val connectionNameArb: Arbitrary[ConnectionName]               = arbitraryRefType(connectionNameGen)
-  implicit final val directionArb: Arbitrary[Direction]                         = Arbitrary(directionGen)
-  implicit final val geoHashArb: Arbitrary[GeoHash]                             = arbitraryRefType(geoHashGen)
-  implicit final val hostArb: Arbitrary[Host]                                   = arbitraryRefType(hostGen)
-  implicit final val keyArb: Arbitrary[Key]                                     = arbitraryRefType(keyGen)
-  implicit final val nodeIdArb: Arbitrary[NodeId]                               = arbitraryRefType(nodeIdGen)
-  implicit final val nonNegDoubleArb: Arbitrary[NonNegDouble]                   = arbitraryRefType(nonNegDoubleGen)
-  implicit final val nonNegIntArb: Arbitrary[NonNegInt]                         = arbitraryRefType(nonNegIntGen)
-  implicit final val nonNegLongArb: Arbitrary[NonNegLong]                       = arbitraryRefType(nonNegLongGen)
-  implicit final val nonZeroDoubleArb: Arbitrary[NonZeroDouble]                 = arbitraryRefType(nonZeroDoubleGen)
-  implicit final val nonZeroIntArb: Arbitrary[NonZeroInt]                       = arbitraryRefType(nonZeroIntGen)
-  implicit final val nonZeroLongArb: Arbitrary[NonZeroLong]                     = arbitraryRefType(nonZeroLongGen)
+  implicit final val connectionNameArb: Arbitrary[ConnectionName] = arbitraryRefType(connectionNameGen)
+  implicit final val directionArb: Arbitrary[Direction]           = Arbitrary(directionGen)
+  implicit final val geoHashArb: Arbitrary[GeoHash]               = arbitraryRefType(geoHashGen)
+  implicit final val hostArb: Arbitrary[Host]                     = arbitraryRefType(hostGen)
+  implicit final val keyArb: Arbitrary[Key]                       = arbitraryRefType(keyGen)
+  implicit final def kvArb[A](implicit A: Arbitrary[A]): Arbitrary[KV[A]] =
+    Arbitrary(keyArb.arbitrary.flatMap(k => A.arbitrary.map(KV(k, _))))
+  implicit final val nodeIdArb: Arbitrary[NodeId]               = arbitraryRefType(nodeIdGen)
+  implicit final val nonNegDoubleArb: Arbitrary[NonNegDouble]   = arbitraryRefType(nonNegDoubleGen)
+  implicit final val nonNegIntArb: Arbitrary[NonNegInt]         = arbitraryRefType(nonNegIntGen)
+  implicit final val nonNegLongArb: Arbitrary[NonNegLong]       = arbitraryRefType(nonNegLongGen)
+  implicit final val nonZeroDoubleArb: Arbitrary[NonZeroDouble] = arbitraryRefType(nonZeroDoubleGen)
+  implicit final val nonZeroIntArb: Arbitrary[NonZeroInt]       = arbitraryRefType(nonZeroIntGen)
+  implicit final val nonZeroLongArb: Arbitrary[NonZeroLong]     = arbitraryRefType(nonZeroLongGen)
+  implicit final val scanKVArb: Arbitrary[ScanKV] = Arbitrary(
+    nonNegLongArb.arbitrary.flatMap(l => option(listOf(kvArb[String].arbitrary)).map(ScanKV(l, _))))
   implicit final val slotArb: Arbitrary[Slot]                                   = arbitraryRefType(slotGen)
   implicit final val twoOrMoreKeysArb: Arbitrary[TwoOrMoreKeys]                 = arbitraryRefType(twoOrMore(keyArb.arbitrary))
   implicit final val twoOrMoreWeightedKeysArb: Arbitrary[TwoOrMoreWeightedKeys] = arbitraryRefType(twoOrMore(zip(keyArb, validDoubleArb)))
   implicit final val validDoubleArb: Arbitrary[ValidDouble]                     = arbitraryRefType(validDoubleGen)
+
+  final val boolToNum: Boolean => Num = b => Num(if (b) 1 else 0)
 }

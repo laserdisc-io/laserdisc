@@ -3,8 +3,6 @@ package protocol
 
 abstract class HyperLogLogExtPSpec extends BaseSpec with HyperLogLogP {
 
-  protected final val boolToNum: Boolean => Num = b => Num(if (b) 1 else 0)
-
   "The HyperLogLog extended protocol" when {
 
     "using pfadd" should {

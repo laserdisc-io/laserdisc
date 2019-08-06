@@ -7,6 +7,7 @@ final class KeyPSpec extends KeyExtPSpec {
   import org.scalacheck.Gen.const
 
   private[this] implicit final val encodingShow: Show[KeyEncoding] = Show.unsafeFromToString
+  private[this] implicit final val typeShow: Show[KeyType] = Show.unsafeFromToString
 
   private[this] implicit final val encodingArb: Arbitrary[KeyEncoding] = Arbitrary {
     Gen.oneOf(
@@ -18,12 +19,21 @@ final class KeyPSpec extends KeyExtPSpec {
       KeyEncoding.skiplist
     )
   }
+  private[this] implicit final val restoreEvictionArb: Arbitrary[KeyRestoreEviction] = Arbitrary {
+    nonNegIntArb.arbitrary.flatMap(nni => Gen.oneOf(KeyIdleTimeEviction(nni), KeyFrequencyEviction(nni)))
+  }
+  private[this] implicit final val restoreModeArb: Arbitrary[KeyRestoreMode] = Arbitrary {
+    Gen.oneOf(KeyRestoreMode.replace, KeyRestoreMode.absolutettl, KeyRestoreMode.both)
+  }
   private[this] implicit final val ttlResponseArb: Arbitrary[KeyTTLResponse] = Arbitrary {
     Gen.oneOf(
       const(KeyNoKeyTTLResponse),
       const(KeyNoExpireTTLResponse),
       nonNegLongArb.arbitrary.map(KeyExpireAfterTTLResponse(_))
     )
+  }
+  private[this] implicit final val typeArb: Arbitrary[KeyType] = Arbitrary {
+    Gen.oneOf(KeyType.string, KeyType.list, KeyType.set, KeyType.zset, KeyType.hash)
   }
 
   private[this] final val ttlResponseToNum: KeyTTLResponse => Num = {
@@ -187,11 +197,11 @@ final class KeyPSpec extends KeyExtPSpec {
     "using obj.freq" should {
 
       "roundtrip successfully" when {
-        "given key" in forAll("key", "frequency") { (k: Key, nnl: NonNegLong) =>
+        "given key" in forAll("key", "frequency") { (k: Key, nni: NonNegInt) =>
           val protocol = obj.freq(k)
 
           protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("FREQ"), Bulk(k))
-          protocol.decode(Num(nnl.value)).right.value shouldBe nnl
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
       }
     }
@@ -199,11 +209,11 @@ final class KeyPSpec extends KeyExtPSpec {
     "using obj.idletime" should {
 
       "roundtrip successfully" when {
-        "given key" in forAll("key", "idle time") { (k: Key, onni: Option[NonNegInt]) =>
+        "given key" in forAll("key", "idle time") { (k: Key, nni: NonNegInt) =>
           val protocol = obj.idletime(k)
 
           protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("IDLETIME"), Bulk(k))
-          protocol.decode(onni.fold(NullBulk: GenBulk)(Bulk(_))).right.value shouldBe onni
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
         }
       }
     }
@@ -304,6 +314,43 @@ final class KeyPSpec extends KeyExtPSpec {
       }
     }
 
+    "using restore" should {
+
+      "roundtrip successfully" when {
+        "given key, ttl and serialized value" in forAll("key", "ttl", "serialized value") { (k: Key, nnl: NonNegLong, s: String) =>
+          val protocol = restore(k, nnl, Bulk(s))
+
+          protocol.encode shouldBe Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk(s))
+          protocol.decode(Str(OK.value)).right.value shouldBe OK
+        }
+        "given key, ttl, serialized value and mode" in {
+          forAll("key", "ttl", "serialized value", "mode") { (k: Key, nnl: NonNegLong, s: String, m: KeyRestoreMode) =>
+            val protocol = restore(k, nnl, Bulk(s), m)
+
+            protocol.encode shouldBe Arr(Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)))
+            protocol.decode(Str(OK.value)).right.value shouldBe OK
+          }
+        }
+        "given key, ttl, serialized value and eviction" in {
+          forAll("key", "ttl", "serialized value", "eviction") { (k: Key, nnl: NonNegLong, s: String, e: KeyRestoreEviction) =>
+            val protocol = restore(k, nnl, Bulk(s), e)
+
+            protocol.encode shouldBe Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk(s), Bulk(e.param), Bulk(e.seconds))
+            protocol.decode(Str(OK.value)).right.value shouldBe OK
+          }
+        }
+        "given key, ttl, serialized value, mode and eviction" in forAll("key", "ttl", "serialized value", "mode", "eviction") {
+          (k: Key, nnl: NonNegLong, s: String, m: KeyRestoreMode, e: KeyRestoreEviction) =>
+            val protocol = restore(k, nnl, Bulk(s), m, e)
+
+            protocol.encode shouldBe Arr(
+              Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)) ::: (Bulk(e.param) :: Bulk(e.seconds) :: Nil)
+            )
+            protocol.decode(Str(OK.value)).right.value shouldBe OK
+        }
+      }
+    }
+
     "using scan" should {
 
       "roundtrip successfully" when {
@@ -335,6 +382,74 @@ final class KeyPSpec extends KeyExtPSpec {
 
             protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g), Bulk("COUNT"), Bulk(pi))
             protocol.decode(scanKeyToArr(sk)).right.value shouldBe sk
+        }
+      }
+    }
+
+    //FIXME add SORT
+
+    "using touch" should {
+
+      "roundtrip successfully" when {
+        "given keys" in forAll("keys", "touched") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
+          val protocol = touch(ks)
+
+          protocol.encode shouldBe Arr(Bulk("TOUCH") :: ks.value.map(Bulk(_)))
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+        }
+      }
+    }
+
+    "using ttl" should {
+
+      "roundtrip successfully" when {
+        "given key" in forAll("key", "ttl") { (k: Key, ttl0: KeyTTLResponse) =>
+          val protocol = ttl(k)
+
+          protocol.encode shouldBe Arr(Bulk("TTL"), Bulk(k))
+          protocol.decode(ttlResponseToNum(ttl0)).right.value shouldBe ttl0
+        }
+      }
+    }
+
+    "using typeof" should {
+
+      "roundtrip successfully" when {
+        "given key" in forAll("key", "type") { (k: Key, ot: Option[KeyType]) =>
+          val protocol = typeof(k)
+
+          protocol.encode shouldBe Arr(Bulk("TYPE"), Bulk(k))
+          protocol.decode(ot.fold(Str("none"))(Str(_))).right.value shouldBe ot
+        }
+      }
+    }
+
+    "using unlink" should {
+
+      "roundtrip successfully" when {
+        "given keys" in forAll("keys", "unlinked") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
+          val protocol = unlink(ks)
+
+          protocol.encode shouldBe Arr(Bulk("UNLINK") :: ks.value.map(Bulk(_)))
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+        }
+      }
+    }
+
+    "using wait" should {
+
+      "roundtrip successfully" when {
+        "given replicas" in forAll("replicas", "acknowledgements") { (pi1: PosInt, pi2: PosInt) =>
+          val protocol = wait(pi1)
+
+          protocol.encode shouldBe Arr(Bulk("WAIT"), Bulk(pi1), Bulk(0))
+          protocol.decode(Num(pi2.value.toLong)).right.value shouldBe pi2
+        }
+        "given replicas and timeout" in forAll("replicas", "timeout", "acknowledgements") { (pi1: PosInt, pl: PosLong, pi2: PosInt) =>
+          val protocol = wait(pi1, pl)
+
+          protocol.encode shouldBe Arr(Bulk("WAIT"), Bulk(pi1), Bulk(pl))
+          protocol.decode(Num(pi2.value.toLong)).right.value shouldBe pi2
         }
       }
     }

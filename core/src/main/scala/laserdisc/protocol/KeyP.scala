@@ -30,6 +30,23 @@ object KeyP {
     final object both    extends MigrateMode { override final val params: List[String] = List("COPY", "REPLACE") }
   }
 
+  sealed trait RestoreEviction { def param: String; def seconds: NonNegInt }
+  final object RestoreEviction {
+    final case class IdleTime(override final val seconds: NonNegInt) extends RestoreEviction {
+      override final val param: String = "IDLETIME"
+    }
+    final case class Frequency(override final val seconds: NonNegInt) extends RestoreEviction {
+      override final val param: String = "FREQUENCY"
+    }
+  }
+
+  sealed trait RestoreMode { def params: List[String] }
+  final object RestoreMode {
+    final case object replace     extends RestoreMode { override final val params: List[String] = List("REPLACE")           }
+    final case object absolutettl extends RestoreMode { override final val params: List[String] = List("ABSTTL")            }
+    final case object both        extends RestoreMode { override final val params: List[String] = List("REPLACE", "ABSTTL") }
+  }
+
   sealed trait Type
   final object Type {
     final case object string extends Type
@@ -57,13 +74,18 @@ trait KeyBaseP {
   import shapeless._
 
   final object keytypes {
-    final type KeyEncoding    = KeyP.Encoding
-    final type KeyMigrateMode = KeyP.MigrateMode
-    final type KeyType        = KeyP.Type
-    final type KeyTTLResponse = KeyP.TTLResponse
+    final type KeyEncoding        = KeyP.Encoding
+    final type KeyMigrateMode     = KeyP.MigrateMode
+    final type KeyRestoreEviction = KeyP.RestoreEviction
+    final type KeyRestoreMode     = KeyP.RestoreMode
+    final type KeyType            = KeyP.Type
+    final type KeyTTLResponse     = KeyP.TTLResponse
 
     final val KeyEncoding               = KeyP.Encoding
     final val KeyMigrateMode            = KeyP.MigrateMode
+    final val KeyIdleTimeEviction       = KeyP.RestoreEviction.IdleTime
+    final val KeyFrequencyEviction      = KeyP.RestoreEviction.Frequency
+    final val KeyRestoreMode            = KeyP.RestoreMode
     final val KeyType                   = KeyP.Type
     final val KeyNoKeyTTLResponse       = KeyP.TTLResponse.NoKey
     final val KeyNoExpireTTLResponse    = KeyP.TTLResponse.NoExpire
@@ -130,9 +152,9 @@ trait KeyBaseP {
     def encoding(key: Key): Protocol.Aux[Option[KeyEncoding]] =
       Protocol("OBJECT", "ENCODING" :: key.value :: Nil).opt[GenBulk].as[KeyEncoding]
 
-    def freq(key: Key): Protocol.Aux[NonNegLong] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegLong]
+    def freq(key: Key): Protocol.Aux[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
 
-    def idletime(key: Key): Protocol.Aux[Option[NonNegInt]] = Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).opt[GenBulk].as[NonNegInt]
+    def idletime(key: Key): Protocol.Aux[NonNegInt] = Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).as[Num, NonNegInt]
 
     def refcount(key: Key): Protocol.Aux[NonNegInt] = Protocol("OBJECT", "REFCOUNT" :: key.value :: Nil).as[Num, NonNegInt]
   }
@@ -156,9 +178,18 @@ trait KeyBaseP {
 
   final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk): Protocol.Aux[OK] =
     Protocol("RESTORE", key :: ttl :: serializedValue :: HNil).as[Str, OK]
-
-  final def restorereplace(key: Key, ttl: NonNegLong, serializedValue: Bulk): Protocol.Aux[OK] =
-    Protocol("RESTORE", key :: ttl :: serializedValue :: "REPLACE" :: HNil).as[Str, OK]
+  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, mode: KeyRestoreMode): Protocol.Aux[OK] =
+    Protocol("RESTORE", key :: ttl :: serializedValue :: mode.params :: HNil).as[Str, OK]
+  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, eviction: KeyRestoreEviction): Protocol.Aux[OK] =
+    Protocol("RESTORE", key :: ttl :: serializedValue :: eviction.param :: eviction.seconds :: HNil).as[Str, OK]
+  final def restore(
+      key: Key,
+      ttl: NonNegLong,
+      serializedValue: Bulk,
+      mode: KeyRestoreMode,
+      eviction: KeyRestoreEviction
+  ): Protocol.Aux[OK] =
+    Protocol("RESTORE", key :: ttl :: serializedValue :: mode.params :: eviction.param :: eviction.seconds :: HNil).as[Str, OK]
 
   final def scan(cursor: NonNegLong): Protocol.Aux[Scan[Key]] = Protocol("SCAN", cursor).as[Arr, Scan[Key]]
   final def scan(cursor: NonNegLong, pattern: GlobPattern): Protocol.Aux[Scan[Key]] =
@@ -176,8 +207,7 @@ trait KeyBaseP {
     Protocol("SORT", key :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[A]]
   final def sort[A: Bulk ==> ?](key: Key, direction: Direction): Protocol.Aux[Seq[A]] =
     Protocol("SORT", key :: direction :: HNil).as[Arr, Seq[A]]
-
-  final def sortstore(key: Key, destination: Key): Protocol.Aux[NonNegInt] =
+  final def sort(key: Key, destination: Key): Protocol.Aux[NonNegInt] =
     Protocol("SORT", key.value :: "STORE" :: destination.value :: Nil).as[Num, NonNegInt]
 
   final def touch(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("TOUCH", keys.value).as[Num, NonNegInt]
@@ -188,10 +218,8 @@ trait KeyBaseP {
 
   final def unlink(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("UNLINK", keys.value).as[Num, NonNegInt]
 
-  final def waitFor(numSlaves: PosInt): Protocol.Aux[PosInt] = Protocol("WAIT", numSlaves :: 0 :: HNil).as[Num, PosInt]
-
-  final def waitFor(numSlaves: PosInt, timeout: PosLong): Protocol.Aux[PosInt] =
-    Protocol("WAIT", numSlaves :: timeout :: HNil).as[Num, PosInt]
+  final def wait(replicas: PosInt): Protocol.Aux[PosInt]                   = Protocol("WAIT", replicas :: 0 :: HNil).as[Num, PosInt]
+  final def wait(replicas: PosInt, timeout: PosLong): Protocol.Aux[PosInt] = Protocol("WAIT", replicas :: timeout :: HNil).as[Num, PosInt]
 }
 
 trait KeyP extends KeyBaseP with KeyExtP

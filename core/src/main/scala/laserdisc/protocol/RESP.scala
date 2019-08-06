@@ -40,6 +40,10 @@ sealed trait RESP extends AnyRef with Serializable
   * @param value The wrapped string value
   */
 final case class Str(value: String) extends RESP
+object Str {
+  final def apply[A](a: A)(implicit A: Show[A]): Str = new Str(A.show(a))
+}
+
 
 /**
   * RESP [[https://redis.io/topics/protocol#resp-errors Errors]]

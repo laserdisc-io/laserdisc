@@ -4,6 +4,7 @@ import eu.timepit.refined.api._
 import eu.timepit.refined.scalacheck.reftype.arbitraryRefType
 import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInstances, StringInstances}
 import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen._
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
@@ -123,6 +124,7 @@ abstract class BaseSpec
   implicit final val geoHashArb: Arbitrary[GeoHash]               = arbitraryRefType(geoHashGen)
   implicit final val globPatternArb: Arbitrary[GlobPattern]       = arbitraryRefType(globPatternGen)
   implicit final val hostArb: Arbitrary[Host]                     = arbitraryRefType(hostGen)
+  implicit final val indexArb: Arbitrary[Index]                   = arbitraryRefType(arbitrary[Long])
   implicit final val keyArb: Arbitrary[Key]                       = arbitraryRefType(keyGen)
   implicit final def kvArb[A](implicit A: Arbitrary[A]): Arbitrary[KV[A]] =
     Arbitrary(keyArb.arbitrary.flatMap(k => A.arbitrary.map(KV(k, _))))

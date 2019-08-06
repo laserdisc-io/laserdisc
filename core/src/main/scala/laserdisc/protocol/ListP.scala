@@ -15,20 +15,23 @@ object ListP {
 }
 
 trait ListBaseP {
-  import ListP.Position
   import shapeless._
+
+  final object listtypes {
+    final type ListPosition = ListP.Position
+
+    final val ListPosition = ListP.Position
+  }
+
+  import listtypes._
 
   private[this] final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[PosInt])
   private[this] final val zeroIsNone     = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  final object lists {
-    final val position = Position
-  }
-
   final def lindex[A: Bulk ==> ?](key: Key, index: Index): Protocol.Aux[Option[A]] =
     Protocol("LINDEX", key :: index :: HNil).opt[GenBulk].as[A]
 
-  final def linsert[A: Show](key: Key, position: Position, pivot: A, value: A): Protocol.Aux[Option[PosInt]] =
+  final def linsert[A: Show](key: Key, position: ListPosition, pivot: A, value: A): Protocol.Aux[Option[PosInt]] =
     Protocol("LINSERT", key :: position :: pivot :: value :: HNil).using(minusOneIsNone)
 
   final def llen(key: Key): Protocol.Aux[NonNegInt] = Protocol("LLEN", key).as[Num, NonNegInt]

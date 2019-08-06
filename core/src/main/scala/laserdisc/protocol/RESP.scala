@@ -44,7 +44,6 @@ object Str {
   final def apply[A](a: A)(implicit A: Show[A]): Str = new Str(A.show(a))
 }
 
-
 /**
   * RESP [[https://redis.io/topics/protocol#resp-errors Errors]]
   *

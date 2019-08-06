@@ -7,7 +7,7 @@ final class KeyPSpec extends KeyExtPSpec {
   import org.scalacheck.Gen.const
 
   private[this] implicit final val encodingShow: Show[KeyEncoding] = Show.unsafeFromToString
-  private[this] implicit final val typeShow: Show[KeyType] = Show.unsafeFromToString
+  private[this] implicit final val typeShow: Show[KeyType]         = Show.unsafeFromToString
 
   private[this] implicit final val encodingArb: Arbitrary[KeyEncoding] = Arbitrary {
     Gen.oneOf(

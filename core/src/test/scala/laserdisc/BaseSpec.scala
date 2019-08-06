@@ -133,8 +133,10 @@ abstract class BaseSpec
   implicit final val nonZeroDoubleArb: Arbitrary[NonZeroDouble] = arbitraryRefType(nonZeroDoubleGen)
   implicit final val nonZeroIntArb: Arbitrary[NonZeroInt]       = arbitraryRefType(nonZeroIntGen)
   implicit final val nonZeroLongArb: Arbitrary[NonZeroLong]     = arbitraryRefType(nonZeroLongGen)
-  implicit final val scanKVArb: Arbitrary[ScanKV] = Arbitrary(
-    nonNegLongArb.arbitrary.flatMap(l => option(listOf(kvArb[String].arbitrary)).map(ScanKV(l, _))))
+  implicit final val scanKeyArb: Arbitrary[Scan[Key]] =
+    Arbitrary(nonNegLongArb.arbitrary.flatMap(l => option(listOf(keyArb.arbitrary)).map(Scan(l, _))))
+  implicit final val scanKVArb: Arbitrary[ScanKV] =
+    Arbitrary(nonNegLongArb.arbitrary.flatMap(l => option(listOf(kvArb[String].arbitrary)).map(ScanKV(l, _))))
   implicit final val slotArb: Arbitrary[Slot]                                   = arbitraryRefType(slotGen)
   implicit final val twoOrMoreKeysArb: Arbitrary[TwoOrMoreKeys]                 = arbitraryRefType(twoOrMore(keyArb.arbitrary))
   implicit final val twoOrMoreWeightedKeysArb: Arbitrary[TwoOrMoreWeightedKeys] = arbitraryRefType(twoOrMore(zip(keyArb, validDoubleArb)))

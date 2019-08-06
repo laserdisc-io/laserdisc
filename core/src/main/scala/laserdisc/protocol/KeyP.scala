@@ -62,10 +62,12 @@ trait KeyBaseP {
     final type KeyType        = KeyP.Type
     final type KeyTTLResponse = KeyP.TTLResponse
 
-    final val KeyEncoding    = KeyP.Encoding
-    final val KeyMigrateMode = KeyP.MigrateMode
-    final val KeyType        = KeyP.Type
-    final val KeyTTLResponse = KeyP.TTLResponse
+    final val KeyEncoding               = KeyP.Encoding
+    final val KeyMigrateMode            = KeyP.MigrateMode
+    final val KeyType                   = KeyP.Type
+    final val KeyNoKeyTTLResponse       = KeyP.TTLResponse.NoKey
+    final val KeyNoExpireTTLResponse    = KeyP.TTLResponse.NoExpire
+    final val KeyExpireAfterTTLResponse = KeyP.TTLResponse.ExpireAfter
   }
 
   import keytypes._
@@ -146,9 +148,9 @@ trait KeyBaseP {
 
   final def pttl(key: Key): Protocol.Aux[KeyTTLResponse] = Protocol("PTTL", key).as[Num, KeyTTLResponse]
 
-  final val randomKey: Protocol.Aux[Option[Key]] = Protocol("RANDOMKEY", Nil).opt[GenBulk].as[Key]
+  final val randomkey: Protocol.Aux[Option[Key]] = Protocol("RANDOMKEY", Nil).opt[GenBulk].as[Key]
 
-  final def rename(key: Key, newKey: Key): Protocol.Aux[Key] = Protocol("RENAME", key :: newKey :: Nil).as[Str, Key]
+  final def rename(key: Key, newKey: Key): Protocol.Aux[OK] = Protocol("RENAME", key :: newKey :: Nil).as[Str, OK]
 
   final def renamenx(key: Key, newKey: Key): Protocol.Aux[Boolean] = Protocol("RENAMENX", key :: newKey :: Nil).as[Num, Boolean]
 

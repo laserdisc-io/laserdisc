@@ -4,6 +4,7 @@ package protocol
 final class KeyPSpec extends KeyExtPSpec {
   import keytypes._
   import org.scalacheck.{Arbitrary, Gen}
+  import org.scalacheck.Gen.const
 
   private[this] implicit final val encodingShow: Show[KeyEncoding] = Show.unsafeFromToString
 
@@ -17,6 +18,24 @@ final class KeyPSpec extends KeyExtPSpec {
       KeyEncoding.skiplist
     )
   }
+  private[this] implicit final val ttlResponseArb: Arbitrary[KeyTTLResponse] = Arbitrary {
+    Gen.oneOf(
+      const(KeyNoKeyTTLResponse),
+      const(KeyNoExpireTTLResponse),
+      nonNegLongArb.arbitrary.map(KeyExpireAfterTTLResponse(_))
+    )
+  }
+
+  private[this] final val ttlResponseToNum: KeyTTLResponse => Num = {
+    case KeyNoKeyTTLResponse            => Num(-2L)
+    case KeyNoExpireTTLResponse         => Num(-1L)
+    case KeyExpireAfterTTLResponse(ttl) => Num(ttl.value)
+  }
+  private[this] final val scanKeyToArr: Scan[Key] => Arr = scanKey =>
+    Arr(
+      Bulk(scanKey.cursor.value),
+      scanKey.values.fold(NilArr: GenArr)(ks => Arr(ks.map(k => Bulk(k.value)).toList))
+  )
 
   "The Key protocol" when {
 
@@ -132,7 +151,7 @@ final class KeyPSpec extends KeyExtPSpec {
 
                 protocol.encode shouldBe Arr(
                   Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) ::
-                  mm.params.map(Bulk(_)) ::: (Bulk("KEYS") :: ks.value.map(Bulk(_)))
+                    mm.params.map(Bulk(_)) ::: (Bulk("KEYS") :: ks.value.map(Bulk(_)))
                 )
                 protocol.decode(noKeyOrOkToStr(nkOrOk)).right.value shouldBe nkOrOk
               }
@@ -197,6 +216,125 @@ final class KeyPSpec extends KeyExtPSpec {
 
           protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("REFCOUNT"), Bulk(k))
           protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+        }
+      }
+    }
+
+    "using persist" should {
+
+      "roundtrip successfully" when {
+        "given key" in forAll("key", "persisted") { (k: Key, b: Boolean) =>
+          val protocol = persist(k)
+
+          protocol.encode shouldBe Arr(Bulk("PERSIST"), Bulk(k))
+          protocol.decode(boolToNum(b)).right.value shouldBe b
+        }
+      }
+    }
+
+    "using pexpire" should {
+
+      "roundtrip successfully" when {
+        "given key" in forAll("key", "timeout", "persisted") { (k: Key, nnl: NonNegLong, b: Boolean) =>
+          val protocol = pexpire(k, nnl)
+
+          protocol.encode shouldBe Arr(Bulk("PEXPIRE"), Bulk(k), Bulk(nnl))
+          protocol.decode(boolToNum(b)).right.value shouldBe b
+        }
+      }
+    }
+
+    "using pexpireat" should {
+
+      "roundtrip successfully" when {
+        "given key" in forAll("key", "timestamp", "persisted") { (k: Key, nnl: NonNegLong, b: Boolean) =>
+          val protocol = pexpireat(k, nnl)
+
+          protocol.encode shouldBe Arr(Bulk("PEXPIREAT"), Bulk(k), Bulk(nnl))
+          protocol.decode(boolToNum(b)).right.value shouldBe b
+        }
+      }
+    }
+
+    "using pttl" should {
+
+      "roundtrip successfully" when {
+        "given key" in forAll("key", "ttl") { (k: Key, ttl: KeyTTLResponse) =>
+          val protocol = pttl(k)
+
+          protocol.encode shouldBe Arr(Bulk("PTTL"), Bulk(k))
+          protocol.decode(ttlResponseToNum(ttl)).right.value shouldBe ttl
+        }
+      }
+    }
+
+    "using randomkey" should {
+
+      "roundtrip successfully" when {
+        "using val" in { (ok: Option[Key]) =>
+          val protocol = randomkey
+
+          protocol.encode shouldBe Arr(Bulk("RANDOMKEY"))
+          protocol.decode(ok.fold(NullBulk: GenBulk)(Bulk(_))).right.value shouldBe ok
+        }
+      }
+    }
+
+    "using rename" should {
+
+      "roundtrip successfully" when {
+        "given old key and new key" in forAll("old key", "new key") { (ok: Key, nk: Key) =>
+          val protocol = rename(ok, nk)
+
+          protocol.encode shouldBe Arr(Bulk("RENAME"), Bulk(ok), Bulk(nk))
+          protocol.decode(Str(OK.value)).right.value shouldBe OK
+        }
+      }
+    }
+
+    "using renamenx" should {
+
+      "roundtrip successfully" when {
+        "given old key and new key" in forAll("old key", "new key", "renamed") { (ok: Key, nk: Key, b: Boolean) =>
+          val protocol = renamenx(ok, nk)
+
+          protocol.encode shouldBe Arr(Bulk("RENAMENX"), Bulk(ok), Bulk(nk))
+          protocol.decode(boolToNum(b)).right.value shouldBe b
+        }
+      }
+    }
+
+    "using scan" should {
+
+      "roundtrip successfully" when {
+        "given cursor" in forAll("cursor", "scan result") { (nnl: NonNegLong, sk: Scan[Key]) =>
+          val protocol = scan(nnl)
+
+          protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl))
+          protocol.decode(scanKeyToArr(sk)).right.value shouldBe sk
+        }
+        "given cursor and glob pattern" in {
+          forAll("cursor", "glob pattern", "scan result") { (nnl: NonNegLong, g: GlobPattern, sk: Scan[Key]) =>
+            val protocol = scan(nnl, g)
+
+            protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g))
+            protocol.decode(scanKeyToArr(sk)).right.value shouldBe sk
+          }
+        }
+        "given cursor and count" in {
+          forAll("cursor", "count", "scan result") { (nnl: NonNegLong, pi: PosInt, sk: Scan[Key]) =>
+            val protocol = scan(nnl, pi)
+
+            protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl), Bulk("COUNT"), Bulk(pi))
+            protocol.decode(scanKeyToArr(sk)).right.value shouldBe sk
+          }
+        }
+        "given cursor, glob pattern and count" in forAll("cursor", "glob pattern", "count", "scan result") {
+          (nnl: NonNegLong, g: GlobPattern, pi: PosInt, sk: Scan[Key]) =>
+            val protocol = scan(nnl, g, pi)
+
+            protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g), Bulk("COUNT"), Bulk(pi))
+            protocol.decode(scanKeyToArr(sk)).right.value shouldBe sk
         }
       }
     }

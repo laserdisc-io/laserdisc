@@ -45,6 +45,10 @@ abstract class BaseSpec
   }
   private[this] final val noSpaceUtf8BMPCharGen: Gen[Char] = utf8BMPCharGen.suchThat(_ != spaceChar)
 
+  private[this] final val globGen: Gen[String] = {
+    val basicGlob = nonEmptyListOf(frequency(1 -> const('*'), 1 -> const('?'), 1 -> alphaNumChar)).map(_.mkString)
+    Gen.oneOf(0, 1).flatMap(f => if (f == 0) basicGlob else basicGlob.map(g => s"[$g]"))
+  }
   private[this] final val allNICsGen: Gen[String] = const(AllNICsEqWit.value)
   private[this] final val lbGen: Gen[String]      = const(LoopbackEqWit.value)
   private[this] final val rfc1123Gen: Gen[String] = {
@@ -70,6 +74,7 @@ abstract class BaseSpec
   final val dbIndexGen: Gen[Int]              = chooseNum(0, DbIndexMaxValueWit.value) :| "db index"
   final val directionGen: Gen[Direction]      = Gen.oneOf(Direction.asc, Direction.desc) :| "direction"
   final val geoHashGen: Gen[String]           = strOfNGen(11, 1 -> numChar, 9 -> alphaLowerChar) :| "geo hash"
+  final val globPatternGen: Gen[String]       = nonEmptyListOf(globGen).map(_.mkString) :| "glob pattern"
   final val hostGen: Gen[String]              = Gen.oneOf(allNICsGen, lbGen, rfc1123Gen, rfc1918Gen, rfc5737Gen, rfc3927Gen, rfc2544Gen) :| "host"
   final val keyGen: Gen[String]               = strGen(nonEmptyListOf(utf8BMPCharGen)) :| "key"
   final val latitudeGen: Gen[Double]          = chooseNum(LatitudeMinValueWit.value, LatitudeMaxValueWit.value) :| "latitude"
@@ -116,6 +121,7 @@ abstract class BaseSpec
   implicit final val connectionNameArb: Arbitrary[ConnectionName] = arbitraryRefType(connectionNameGen)
   implicit final val directionArb: Arbitrary[Direction]           = Arbitrary(directionGen)
   implicit final val geoHashArb: Arbitrary[GeoHash]               = arbitraryRefType(geoHashGen)
+  implicit final val globPatternArb: Arbitrary[GlobPattern]       = arbitraryRefType(globPatternGen)
   implicit final val hostArb: Arbitrary[Host]                     = arbitraryRefType(hostGen)
   implicit final val keyArb: Arbitrary[Key]                       = arbitraryRefType(keyGen)
   implicit final def kvArb[A](implicit A: Arbitrary[A]): Arbitrary[KV[A]] =

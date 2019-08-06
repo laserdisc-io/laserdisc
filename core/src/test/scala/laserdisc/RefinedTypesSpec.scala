@@ -128,6 +128,21 @@ final class RefinedTypesSpec extends BaseSpec {
         }
       }
     }
+
+    "compile" when {
+      "given conformant String" in {
+        """GlobPattern("abc*fg?1jk")""" should compile
+        """GlobPattern("a[bc*]fg?1jk")""" should compile
+      }
+    }
+
+    "refine correctly" when {
+      "provided non literal cases of conformant Strings" in forAll(globPatternGen) { s =>
+        whenever(globPatternIsValid(s)) {
+          GlobPattern.from(s).right.value.value shouldBe s
+        }
+      }
+    }
   }
 
   "Host" should {

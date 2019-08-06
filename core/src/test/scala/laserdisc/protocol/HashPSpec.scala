@@ -194,9 +194,84 @@ final class HashPSpec extends HashExtPSpec {
           protocol.encode shouldBe Arr(Bulk("HSCAN"), Bulk(k), Bulk(nnl))
           protocol.decode(scanKVToArr(skv)).right.value shouldBe skv
         }
+        "given key, cursor and glob pattern" in {
+          forAll("key", "cursor", "glob pattern", "scan result") { (k: Key, nnl: NonNegLong, g: GlobPattern, skv: ScanKV) =>
+            val protocol = hscan(k, nnl, g)
+
+            protocol.encode shouldBe Arr(Bulk("HSCAN"), Bulk(k), Bulk(nnl), Bulk("MATCH"), Bulk(g))
+            protocol.decode(scanKVToArr(skv)).right.value shouldBe skv
+          }
+        }
+        "given key, cursor and count" in {
+          forAll("key", "cursor", "count", "scan result") { (k: Key, nnl: NonNegLong, pi: PosInt, skv: ScanKV) =>
+            val protocol = hscan(k, nnl, pi)
+
+            protocol.encode shouldBe Arr(Bulk("HSCAN"), Bulk(k), Bulk(nnl), Bulk("COUNT"), Bulk(pi))
+            protocol.decode(scanKVToArr(skv)).right.value shouldBe skv
+          }
+        }
+        "given key, cursor, glob pattern and count" in forAll("key", "cursor", "glob pattern", "count", "scan result") {
+          (k: Key, nnl: NonNegLong, g: GlobPattern, pi: PosInt, skv: ScanKV) =>
+            val protocol = hscan(k, nnl, g, pi)
+
+            protocol.encode shouldBe Arr(Bulk("HSCAN"), Bulk(k), Bulk(nnl), Bulk("MATCH"), Bulk(g), Bulk("COUNT"), Bulk(pi))
+            protocol.decode(scanKVToArr(skv)).right.value shouldBe skv
+        }
       }
     }
 
-    //TODO add all other missing tests
+    "using hset" should {
+
+      "roundtrip successfully" when {
+        "given key, field and value" in forAll("key", "field", "value", "success") { (k: Key, f: Key, v: Int, b: Boolean) =>
+          val protocol = hset(k, f, v)
+
+          protocol.encode shouldBe Arr(Bulk("HSET"), Bulk(k), Bulk(f), Bulk(v))
+          protocol.decode(boolToNum(b)).right.value shouldBe b
+        }
+      }
+    }
+
+    "using hsetnx" should {
+
+      "roundtrip successfully" when {
+        "given key, field and value" in forAll("key", "field", "value", "success") { (k: Key, f: Key, v: Int, b: Boolean) =>
+          val protocol = hsetnx(k, f, v)
+
+          protocol.encode shouldBe Arr(Bulk("HSETNX"), Bulk(k), Bulk(f), Bulk(v))
+          protocol.decode(boolToNum(b)).right.value shouldBe b
+        }
+      }
+    }
+
+    "using hstrlen" should {
+
+      "roundtrip successfully" when {
+        "given key and field" in forAll("key", "field", "length") { (k: Key, f: Key, nni: NonNegInt) =>
+          val protocol = hstrlen(k, f)
+
+          protocol.encode shouldBe Arr(Bulk("HSTRLEN"), Bulk(k), Bulk(f))
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+        }
+      }
+    }
+
+    "using hvals" should {
+
+      "roundtrip successfully" when {
+        "given key (expecting one field)" in forAll { (k: Key, i: Int) =>
+          val protocol = hvals[Int :: HNil](k)
+
+          protocol.encode shouldBe Arr(Bulk("HVALS"), Bulk(k))
+          protocol.decode(Arr(Bulk(i))).right.value shouldBe (i :: HNil)
+        }
+        "given key (expecting two fields)" in forAll { (k: Key, i: Int, s: String) =>
+          val protocol = hvals[Int :: String :: HNil](k)
+
+          protocol.encode shouldBe Arr(Bulk("HVALS"), Bulk(k))
+          protocol.decode(Arr(Bulk(i), Bulk(s))).right.value shouldBe (i :: s :: HNil)
+        }
+      }
+    }
   }
 }

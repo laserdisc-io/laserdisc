@@ -47,7 +47,7 @@ package object laserdisc {
   final val AllNICsEqWit                = W("0.0.0.0")
   final val DbIndexMaxValueWit          = W(15)
   final val GeoHashRegexWit             = W("[a-z0-9]{11}")
-  final val GlobPatternRegexWit         = W("(\\\\[?[\\\\w\\\\*\\\\?]+\\\\]?)+") //TODO good enough but needs regex' TLC
+  final val GlobPatternRegexWit         = W("(\\[?[\\w\\*\\?]+\\]?)+") //TODO good enough but needs regex' TLC
   final val IPv4RegexWit                = W("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
   final val LatitudeMinValueWit         = W(-85.05112878D)
   final val LatitudeMaxValueWit         = W(85.05112878D)

@@ -21,7 +21,7 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
       long <- arbitrary[Longitude]
     } yield GeoPosition(m, lat, long)
   }
-  protected implicit final val geoUnitArbitrary: Arbitrary[GeoUnit] = Arbitrary {
+  protected implicit final val geoUnitArb: Arbitrary[GeoUnit] = Arbitrary {
     Gen.oneOf(GeoUnit.meters, GeoUnit.kilometers, GeoUnit.miles, GeoUnit.feet)
   }
 

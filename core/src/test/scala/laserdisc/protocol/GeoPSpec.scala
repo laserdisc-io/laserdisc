@@ -5,18 +5,7 @@ final class GeoPSpec extends GeoExtPSpec {
   import geotypes._
   import org.scalacheck.{Arbitrary, Gen}
   import org.scalacheck.Arbitrary.arbitrary
-  import org.scalacheck.Gen._
-
-  private[this] final val listToArr: List[_] => Arr = l =>
-    Arr(l.collect {
-      case GeoKeyAndCoord(k, GeoCoordinates(lat, long))               => Arr(Bulk(k), Arr(Bulk(long), Bulk(lat)))
-      case GeoKeyAndDist(k, d)                                        => Arr(Bulk(k), Bulk(d))
-      case GeoKeyAndHash(k, h)                                        => Arr(Bulk(k), Num(h.value))
-      case GeoKeyCoordAndDist(k, GeoCoordinates(lat, long), d)        => Arr(Bulk(k), Bulk(d), Arr(Bulk(long), Bulk(lat)))
-      case GeoKeyCoordAndHash(k, GeoCoordinates(lat, long), h)        => Arr(Bulk(k), Num(h.value), Arr(Bulk(long), Bulk(lat)))
-      case GeoKeyDistAndHash(k, d, h)                                 => Arr(Bulk(k), Bulk(d), Num(h.value))
-      case GeoKeyCoordDistAndHash(k, GeoCoordinates(lat, long), d, h) => Arr(Bulk(k), Bulk(d), Num(h.value), Arr(Bulk(long), Bulk(lat)))
-    })
+  import org.scalacheck.Gen.listOf
 
   private[this] implicit final val geoKeyAndCoordArb: Arbitrary[GeoKeyAndCoord] = Arbitrary {
     for {
@@ -83,6 +72,17 @@ final class GeoPSpec extends GeoExtPSpec {
       arbitrary[Key].flatMap(hk => arbitrary[Key].map(GeoStoreBoth(hk, _)))
     )
   }
+
+  private[this] final val listToArr: List[_] => Arr = l =>
+    Arr(l.collect {
+      case GeoKeyAndCoord(k, GeoCoordinates(lat, long))               => Arr(Bulk(k), Arr(Bulk(long), Bulk(lat)))
+      case GeoKeyAndDist(k, d)                                        => Arr(Bulk(k), Bulk(d))
+      case GeoKeyAndHash(k, h)                                        => Arr(Bulk(k), Num(h.value))
+      case GeoKeyCoordAndDist(k, GeoCoordinates(lat, long), d)        => Arr(Bulk(k), Bulk(d), Arr(Bulk(long), Bulk(lat)))
+      case GeoKeyCoordAndHash(k, GeoCoordinates(lat, long), h)        => Arr(Bulk(k), Num(h.value), Arr(Bulk(long), Bulk(lat)))
+      case GeoKeyDistAndHash(k, d, h)                                 => Arr(Bulk(k), Bulk(d), Num(h.value))
+      case GeoKeyCoordDistAndHash(k, GeoCoordinates(lat, long), d, h) => Arr(Bulk(k), Bulk(d), Num(h.value), Arr(Bulk(long), Bulk(lat)))
+    })
 
   "The Geo protocol" when {
 

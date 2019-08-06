@@ -2,6 +2,8 @@ package laserdisc
 package protocol
 
 trait KeyExtP { this: KeyBaseP =>
+  import keytypes._
+
   //DEL
   [#final def del([#key1: Key#]): Protocol.Aux[NonNegInt] =
     del(OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil))#
@@ -10,6 +12,14 @@ trait KeyExtP { this: KeyBaseP =>
   //EXISTS
   [#final def exists([#key1: Key#]): Protocol.Aux[Option[PosInt]] =
     exists(OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil))#
+  ]
+
+  //MIGRATE
+  [2..18#final def migrate([#key1: Key#], host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Protocol.Aux[NOKEY | OK] =
+    migrate(TwoOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil), host, port, dbIndex, timeout)#
+  ]
+  [2..17#final def migrate([#key1: Key#], host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Protocol.Aux[NOKEY | OK] =
+    migrate(TwoOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil), host, port, dbIndex, timeout, mode)#
   ]
 
   //TOUCH

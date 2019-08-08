@@ -31,7 +31,7 @@ abstract class BaseSpec
   private[this] final val dashGen: Gen[Char]  = const(dashChar)
   private[this] final val hexGen: Gen[Char]   = frequency(10 -> numChar, 6 -> choose(0x0061.toChar, 0x0066.toChar))
   private[this] final val spaceGen: Gen[Char] = const(spaceChar)
-  private[this] final val utf8BMPCharGen: Gen[Char] = {
+  protected final val utf8BMPCharGen: Gen[Char] = {
     val b01 = 24 -> choose(spaceChar, 0x007E.toChar) // 75% it's a 7-bit ASCII char
     val b02 = 1  -> choose(0x00A0.toChar, 0x085F.toChar) // 3.125% for all other cases
     val b03 = 1  -> choose(0x08A0.toChar, 0x1AAF.toChar)

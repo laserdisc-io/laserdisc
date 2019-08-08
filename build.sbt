@@ -10,7 +10,7 @@ val V = new {
   val kittens           = "1.2.1"
   val `log-effect-fs2`  = "0.8.0"
   val refined           = "0.9.9"
-  val scalacheck        = "1.13.5"
+  val scalacheck        = "1.14.0"
   val scalatest         = "3.0.8"
   val `scodec-bits`     = "1.1.12"
   val `scodec-core`     = "1.11.4"
@@ -30,10 +30,10 @@ val `scodec-core`    = Def.setting("org.scodec"    %%% "scodec-core"    % V.`sco
 val `scodec-stream`  = Def.setting("org.scodec"    %%% "scodec-stream"  % V.`scodec-stream`)
 val shapeless        = Def.setting("com.chuusai"   %%% "shapeless"      % V.shapeless)
 
-val `circe-generic`      = Def.setting("io.circe"       %%% "circe-generic"           % V.circe      % Test)
-val `refined-scalacheck` = Def.setting("eu.timepit"     %%% "refined-scalacheck_1.13" % V.refined    % Test)
-val scalacheck           = Def.setting("org.scalacheck" %%% "scalacheck"              % V.scalacheck % Test)
-val scalatest            = Def.setting("org.scalatest"  %%% "scalatest"               % V.scalatest  % Test)
+val `circe-generic`      = Def.setting("io.circe"       %%% "circe-generic"      % V.circe      % Test)
+val `refined-scalacheck` = Def.setting("eu.timepit"     %%% "refined-scalacheck" % V.refined    % Test)
+val scalacheck           = Def.setting("org.scalacheck" %%% "scalacheck"         % V.scalacheck % Test)
+val scalatest            = Def.setting("org.scalatest"  %%% "scalatest"          % V.scalatest  % Test)
 
 val `kind-projector-compiler-plugin` = Def.setting {
   compilerPlugin("org.spire-math" % "kind-projector" % V.`kind-projector` cross CrossVersion.binary)

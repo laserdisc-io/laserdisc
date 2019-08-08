@@ -3,19 +3,14 @@ package protocol
 
 import java.nio.charset.StandardCharsets.UTF_8
 
-import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck.Gen.{chooseNum, listOfN, option, oneOf => genOneOf}
 import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.Arbitrary.arbitrary
+import org.scalacheck.Gen._
 import org.scalatest.EitherValues
 import scodec.bits.BitVector
 import scodec.{Codec, Err => SErr}
 
 object RESPCodecsSpec extends EitherValues {
-
-  private final case class InvalidDiscriminator(c: Char) {
-    val toHex: String             = BitVector.fromByte(c.toByte).toHex
-    override val toString: String = s"$c"
-  }
 
   private[this] final object functions {
     private[this] final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
@@ -39,18 +34,22 @@ object RESPCodecsSpec extends EitherValues {
     final val roundTripAttempt = requireEncode andThen attemptDecode
   }
 
-  implicit final class RichString(private val underlying: String) extends AnyVal {
+  private implicit final class RichChar(private val underlying: Char) extends AnyVal {
+    def toHex: String = BitVector.fromByte(underlying.toByte).toHex
+  }
+
+  private implicit final class RichString(private val underlying: String) extends AnyVal {
     def RESP: SErr | RESP = functions.stringToRESPAttempt(underlying).toEither
     def asRESP: RESP      = RESP.right.value
     def bytesLength: Int  = functions.stringToBytesLength(underlying)
   }
 
-  implicit final class RichRESP(private val underlying: RESP) extends AnyVal {
+  private implicit final class RichRESP(private val underlying: RESP) extends AnyVal {
     def wireFormat: String = functions.respToString(underlying)
     def roundTrip: RESP    = functions.roundTripAttempt(underlying).require
   }
 
-  implicit final class RichSeqRESP(private val underlying: Seq[RESP]) extends AnyVal {
+  private implicit final class RichSeqRESP(private val underlying: Seq[RESP]) extends AnyVal {
     def wireFormat: String = functions.respSeqToString(underlying)
   }
 }
@@ -58,38 +57,46 @@ object RESPCodecsSpec extends EitherValues {
 final class RESPCodecsSpec extends BaseSpec {
   import RESPCodecsSpec._
 
-  private[this] val smallListSize = chooseNum(0, 20)
-  private[this] implicit def invalidProtocolDiscriminator: Gen[InvalidDiscriminator] = {
+  private[this] val smallNumGen: Gen[Int] = chooseNum(0, 20)
+  private[this] val invalidProtocolGen: Gen[Char] = {
     val exclusions = List('+', '-', ':', '$', '*')
-    Gen.choose[Char](0, 127).suchThat(!exclusions.contains(_)).map(InvalidDiscriminator)
-  }
-  private[this] implicit val _                = Gen.choose(Char.MinValue, Char.MaxValue).filter(Character.isDefined)
-  private[this] implicit val genStr: Gen[Str] = arbitrary[String].map(Str.apply)
-  private[this] implicit val genErr: Gen[Err] = arbitrary[String].map(Err.apply)
-  private[this] implicit val genNum: Gen[Num] = arbitrary[Long].map(Num.apply)
-  private[this] implicit val genBulk: Gen[GenBulk] = arbitrary[Option[String]].map {
+    choose[Char](0, 127).suchThat(!exclusions.contains(_))
+  } :| "invalid protocol discriminator"
+  private[this] val stringGen: Gen[String] = listOf(utf8BMPCharGen).map(_.mkString) :| "string"
+  private[this] val strGen: Gen[Str]       = stringGen.map(Str.apply) :| "simple string RESP"
+  private[this] val errGen: Gen[Err]       = stringGen.map(Err.apply) :| "error RESP"
+  private[this] val numGen: Gen[Num]       = arbitrary[Long].map(Num.apply) :| "integer RESP"
+  private[this] val genBulkGen: Gen[GenBulk] = option(stringGen).map {
     case None    => NullBulk
     case Some(s) => Bulk(s)
-  }
-  private[this] implicit def genArr: Gen[GenArr] = smallListSize.flatMap { size =>
-    option(listOfN(size, genRESP)).map {
-      case None    => NilArr
-      case Some(v) => Arr(v)
-    }
-  }
-  private[this] implicit def genRESP: Gen[RESP] =
-    genOneOf(genStr, genErr, genNum, genBulk, genArr)
-  private[this] implicit def genOptionListRESP: Gen[Option[List[RESP]]] = smallListSize.flatMap { size =>
-    option(listOfN(size, genRESP))
-  }
+  } :| "bulk string RESP"
+  private[this] def genArrGen: Gen[GenArr] =
+    smallNumGen.flatMap { size =>
+      option(listOfN(size, respGen)).map {
+        case None    => NilArr
+        case Some(v) => Arr(v)
+      }
+    } :| "array RESP"
+  private[this] def respGen: Gen[RESP] =
+    lzy {
+      frequency(2 -> strGen, 1 -> errGen, 2 -> numGen, 4 -> genBulkGen, 1 -> genArrGen)
+    } :| "RESP"
+  private[this] def respListGen: Gen[List[RESP]] = smallNumGen.flatMap(listOfN(_, respGen)) :| "list of RESPs"
 
-  private[this] implicit def arb[A](implicit A: Gen[A]): Arbitrary[A] = Arbitrary(A)
+  private[this] implicit final val stringArb: Arbitrary[String]        = Arbitrary(stringGen)
+  private[this] implicit final val invalidProtocolArb: Arbitrary[Char] = Arbitrary(invalidProtocolGen)
+  private[this] implicit final val strArb: Arbitrary[Str]              = Arbitrary(strGen)
+  private[this] implicit final val errArb: Arbitrary[Err]              = Arbitrary(errGen)
+  private[this] implicit final val numArb: Arbitrary[Num]              = Arbitrary(numGen)
+  private[this] implicit final val genBulkArb: Arbitrary[GenBulk]      = Arbitrary(genBulkGen)
+  private[this] implicit final val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
+  private[this] implicit final val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
 
   "A RESP codec" when {
 
     "handling unknown protocol type" should {
-      "fail with correct error message" in forAll { invalidDiscriminator: InvalidDiscriminator =>
-        s"$invalidDiscriminator".RESP.left.value.messageWithContext shouldBe s"unidentified RESP type (Hex: ${invalidDiscriminator.toHex})"
+      "fail with correct error message" in forAll { c: Char =>
+        s"$c".RESP.left.value.messageWithContext shouldBe s"unidentified RESP type (Hex: ${c.toHex})"
       }
     }
 
@@ -97,23 +104,23 @@ final class RESPCodecsSpec extends BaseSpec {
       "decode them correctly" in forAll { s: String =>
         s"+$s$CRLF".asRESP shouldBe Str(s)
       }
-      "encode them correctly" in forAll { str: Str =>
-        str.wireFormat shouldBe s"+${str.value}$CRLF"
+      "encode them correctly" in forAll { s: Str =>
+        s.wireFormat shouldBe s"+${s.value}$CRLF"
       }
-      "roundtrip with no errors" in forAll { str: Str =>
-        str.roundTrip shouldBe str
+      "roundtrip with no errors" in forAll { s: Str =>
+        s.roundTrip shouldBe s
       }
     }
 
     "handling errors" should {
-      "decode them correctly" in forAll { msg: String =>
-        s"-$msg$CRLF".asRESP shouldBe Err(msg)
+      "decode them correctly" in forAll { s: String =>
+        s"-$s$CRLF".asRESP shouldBe Err(s)
       }
-      "encode them correctly" in forAll { err: Err =>
-        err.wireFormat shouldBe s"-${err.message}$CRLF"
+      "encode them correctly" in forAll { e: Err =>
+        e.wireFormat shouldBe s"-${e.message}$CRLF"
       }
-      "roundtrip with no errors" in forAll { err: Err =>
-        err.roundTrip shouldBe err
+      "roundtrip with no errors" in forAll { e: Err =>
+        e.roundTrip shouldBe e
       }
     }
 
@@ -121,11 +128,11 @@ final class RESPCodecsSpec extends BaseSpec {
       "decode them correctly" in forAll { l: Long =>
         s":$l$CRLF".asRESP shouldBe Num(l)
       }
-      "encode them correctly" in forAll { num: Num =>
-        num.wireFormat shouldBe s":${num.value}$CRLF"
+      "encode them correctly" in forAll { n: Num =>
+        n.wireFormat shouldBe s":${n.value}$CRLF"
       }
-      "roundtrip with no errors" in forAll { num: Num =>
-        num.roundTrip shouldBe num
+      "roundtrip with no errors" in forAll { n: Num =>
+        n.roundTrip shouldBe n
       }
     }
 
@@ -133,20 +140,20 @@ final class RESPCodecsSpec extends BaseSpec {
       "fail with correct error message when decoding size < -1" in {
         s"$$-2${CRLF}bla$CRLF".RESP.left.value.messageWithContext shouldBe "size: failed to decode bulk-string of size -2"
       }
-      "decode them correctly" in forAll { maybeString: Option[String] =>
-        maybeString match {
+      "decode them correctly" in forAll { os: Option[String] =>
+        os match {
           case None    => s"$$-1$CRLF".asRESP shouldBe NullBulk
           case Some(s) => s"$$${s.bytesLength}$CRLF$s$CRLF".asRESP shouldBe Bulk(s)
         }
       }
-      "encode them correctly" in forAll { bulk: GenBulk =>
-        bulk -> bulk.wireFormat match {
-          case (NullBulk, s) => s shouldBe s"$$-1$CRLF"
-          case (Bulk(bs), s) => s shouldBe s"$$${bs.bytesLength}$CRLF$bs$CRLF"
+      "encode them correctly" in forAll { b: GenBulk =>
+        b match {
+          case NullBulk => b.wireFormat shouldBe s"$$-1$CRLF"
+          case Bulk(bs) => b.wireFormat shouldBe s"$$${bs.bytesLength}$CRLF$bs$CRLF"
         }
       }
-      "roundtrip with no errors" in forAll { bulk: GenBulk =>
-        bulk.roundTrip shouldBe bulk
+      "roundtrip with no errors" in forAll { b: GenBulk =>
+        b.roundTrip shouldBe b
       }
     }
 
@@ -154,20 +161,20 @@ final class RESPCodecsSpec extends BaseSpec {
       "fail with correct error message when decoding size < -1" in {
         s"*-2${CRLF}bla$CRLF".RESP.left.value.messageWithContext shouldBe "size: failed to decode array of size -2"
       }
-      "decode them correctly" in forAll { maybeRESPList: Option[List[RESP]] =>
-        maybeRESPList match {
+      "decode them correctly" in forAll { ors: Option[List[RESP]] =>
+        ors match {
           case None     => s"*-1$CRLF".asRESP shouldBe NilArr
           case Some(xs) => s"*${xs.length}$CRLF${xs.wireFormat}".asRESP shouldBe Arr(xs)
         }
       }
-      "encode them correctly" in forAll { arr: GenArr =>
-        arr -> arr.wireFormat match {
-          case (NilArr, s)  => s shouldBe s"*-1$CRLF"
-          case (Arr(xs), s) => s shouldBe s"*${xs.length}$CRLF${xs.wireFormat}"
+      "encode them correctly" in forAll { a: GenArr =>
+        a match {
+          case NilArr  => a.wireFormat shouldBe s"*-1$CRLF"
+          case Arr(xs) => a.wireFormat shouldBe s"*${xs.length}$CRLF${xs.wireFormat}"
         }
       }
-      "roundtrip with no errors" in forAll { arr: GenArr =>
-        arr.roundTrip shouldBe arr
+      "roundtrip with no errors" in forAll { a: GenArr =>
+        a.roundTrip shouldBe a
       }
     }
   }

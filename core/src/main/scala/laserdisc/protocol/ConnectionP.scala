@@ -2,24 +2,18 @@ package laserdisc
 package protocol
 
 trait ConnectionP {
-  import Read.==>
+  private[this] implicit final val pongRead: Str ==> PONG = Read.instancePF { case Str(PONG.`value`) => PONG }
 
-  private[this] implicit final val pongRead: SimpleString ==> PONG = Read.instancePF {
-    case SimpleString("PONG") => PONG
-  }
+  final def auth(password: Key): Protocol.Aux[OK] = Protocol("AUTH", password).as[Str, OK]
 
-  final def auth(password: Key): Protocol.Aux[OK] = Protocol("AUTH", password).as[SimpleString, OK]
+  final def echo[A: Show: Bulk ==> ?](message: A): Protocol.Aux[A] = Protocol("ECHO", message).as[Bulk, A]
 
-  final def echo(message: Key): Protocol.Aux[Key] = Protocol("ECHO", message).as[NonNullBulkString, Key]
+  final val ping: Protocol.Aux[PONG]                               = Protocol("PING", Nil).as[Str, PONG]
+  final def ping[A: Show: Bulk ==> ?](message: A): Protocol.Aux[A] = Protocol("PING", message).as[Bulk, A]
 
-  final val ping: Protocol.Aux[PONG] = Protocol("PING", Nil).as[SimpleString, PONG]
+  final val quit: Protocol.Aux[OK] = Protocol("QUIT", Nil).as[Str, OK]
 
-  final def ping(message: Key): Protocol.Aux[Key] = Protocol("PING", message).as[NonNullBulkString, Key]
+  final def select(index: DbIndex): Protocol.Aux[OK] = Protocol("SELECT", index).as[Str, OK]
 
-  final val quit: Protocol.Aux[OK] = Protocol("QUIT", Nil).as[SimpleString, OK]
-
-  final def select(index: DbIndex): Protocol.Aux[OK] = Protocol("SELECT", index).as[SimpleString, OK]
-
-  final def swapdb(index1: DbIndex, index2: DbIndex): Protocol.Aux[OK] =
-    Protocol("SWAPDB", index1 :: index2 :: Nil).as[SimpleString, OK]
+  final def swapdb(index1: DbIndex, index2: DbIndex): Protocol.Aux[OK] = Protocol("SWAPDB", index1 :: index2 :: Nil).as[Str, OK]
 }

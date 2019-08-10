@@ -1,0 +1,51 @@
+package laserdisc
+package protocol
+
+abstract class HashExtPSpec extends BaseSpec with HashP {
+
+  "The Hash extended protocol" when {
+
+    "using hdel" should {
+
+      "roundtrip successfully" when {
+        [1..4#"given key and [#field1#]" in forAll("key", [#"field1"#], "deleted") { (k: Key, [#f1: Key#], nni: NonNegInt) =>
+          val protocol = hdel(k, [#f1#])
+
+          protocol.encode shouldBe Arr(Bulk("HDEL"), Bulk(k), [#Bulk(f1)#])
+          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+        }#
+        ]
+      }
+    }
+
+    "using hmget" should {
+
+      "roundtrip successfully" when {
+        [1..5#"given key and [#field1#]" in forAll("key", [#"field1"#]) { (k: Key, [#f1: Key#]) =>
+          forAll([#"returned value1"#]) { ([#v1: Int#]) =>
+            val protocol = hmget[[#Int#]](k, [#f1#])
+
+            protocol.encode shouldBe Arr(Bulk("HMGET"), Bulk(k), [#Bulk(f1)#])
+            protocol.decode(Arr([#Bulk(v1)#])).right.value shouldBe (([#v1#]))
+          }
+        }#
+        ]
+      }
+    }
+
+    "using hmset" should {
+
+      "roundtrip successfully" when {
+        [1..5#"given key and [#field1#]" in forAll("key", [#"field1"#]) { (k: Key, [#f1: Key#]) =>
+          forAll([#"value1"#]) { ([#v1: Int#]) =>
+            val protocol = hmset(k, [#f1, v1#])
+
+            protocol.encode shouldBe Arr(Bulk("HMSET"), Bulk(k), [#Bulk(f1), Bulk(v1)#])
+            protocol.decode(Str(OK.value)).right.value shouldBe OK
+          }
+        }#
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+package laserdisc
+package protocol
+
+trait BListExtP { this: BListBaseP =>
+  //BLPOP with no timeout specified
+  [#final def blpop[A: Bulk ==> ?]([#key1: Key#]): Protocol.Aux[Option[KV[A]]] =
+    blpop[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil), NonNegInt(##0))#
+  ]
+
+  //BLPOP with timeout specified
+  [..21#final def blpop[A: Bulk ==> ?]([#key1: Key#], seconds: PosInt): Protocol.Aux[Option[KV[A]]] =
+    blpop[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil), NonNegInt.unsafeFrom(seconds.value))#
+  ]
+
+  //BRPOP with no timeout specified
+  [#final def brpop[A: Bulk ==> ?]([#key1: Key#]): Protocol.Aux[Option[KV[A]]] =
+    brpop[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil), NonNegInt(##0))#
+  ]
+
+  //BRPOP with timeout specified
+  [..21#final def brpop[A: Bulk ==> ?]([#key1: Key#], seconds: PosInt): Protocol.Aux[Option[KV[A]]] =
+    brpop[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil), NonNegInt.unsafeFrom(seconds.value))#
+  ]
+}

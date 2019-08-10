@@ -12,7 +12,7 @@ import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.traverse._
-import eu.timepit.refined.auto._
+import laserdisc.auto._
 import log.effect.fs2.Fs2LogWriter.noOpLogStreamF
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
@@ -183,7 +183,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
     "handle correctly hundreds of read requests in parallel for an array payload" in {
 
       implicit object myShow1 extends Show[List[String]] {
-        final def show(a: List[String]): String = a mkString ","
+        final def show(a: List[String]): String = a mkString COMMA
       }
 
       val testKey  = Key("test-key-list")

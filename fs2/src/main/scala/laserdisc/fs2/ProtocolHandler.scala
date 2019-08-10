@@ -16,11 +16,12 @@ sealed trait ProtocolHandler[F[_], In <: HList] extends DepFn2[In, (Queue[F], Fi
 
 object ProtocolHandler {
   @implicitNotFound(
-    "Cannot derive ProtocolHandler.\n\nThis usually depends on:\n" +
+    "Cannot derive ProtocolHandler.\n\n" +
+      "This usually depends on:\n" +
       "  - Not having an HList of only Protocols\n" +
       "  - Not having available in implicit scope an instance of a cats.effect.Concurrent for the chosen F\n" +
-      "  - Not having available in implicit scope an instance of a cats.effect.Timer for the chosen F")
-  type Aux[F[_], In <: HList, LOut0 <: HList] = ProtocolHandler[F, In] { type LOut = LOut0 }
+      "  - Not having available in implicit scope an instance of a cats.effect.Timer for the chosen F"
+  ) type Aux[F[_], In <: HList, LOut0 <: HList] = ProtocolHandler[F, In] { type LOut = LOut0 }
 
   implicit final def derive[
       F[_]: Concurrent: Timer,

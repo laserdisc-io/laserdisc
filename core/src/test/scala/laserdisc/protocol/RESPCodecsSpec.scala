@@ -3,20 +3,14 @@ package protocol
 
 import java.nio.charset.StandardCharsets.UTF_8
 
-import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck.Gen.{chooseNum, listOfN, option, oneOf => genOneOf}
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{EitherValues, MustMatchers, WordSpec}
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import org.scalacheck.Arbitrary.arbitrary
+import org.scalacheck.Gen._
+import org.scalatest.EitherValues
 import scodec.bits.BitVector
-import scodec.{Codec, Err}
+import scodec.{Codec, Err => SErr}
 
 object RESPCodecsSpec extends EitherValues {
-
-  private final case class InvalidDiscriminator(c: Char) {
-    val toHex: String             = BitVector.fromByte(c.toByte).toHex
-    override val toString: String = s"$c"
-  }
 
   private[this] final object functions {
     private[this] final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
@@ -40,136 +34,147 @@ object RESPCodecsSpec extends EitherValues {
     final val roundTripAttempt = requireEncode andThen attemptDecode
   }
 
-  implicit final class RichString(private val underlying: String) extends AnyVal {
-    def RESP: Err | RESP = functions.stringToRESPAttempt(underlying).toEither
-    def asRESP: RESP            = RESP.right.value
-    def bytesLength: Int        = functions.stringToBytesLength(underlying)
+  private implicit final class RichChar(private val underlying: Char) extends AnyVal {
+    def toHex: String = BitVector.fromByte(underlying.toByte).toHex
   }
 
-  implicit final class RichRESP(private val underlying: RESP) extends AnyVal {
+  private implicit final class RichString(private val underlying: String) extends AnyVal {
+    def RESP: SErr | RESP = functions.stringToRESPAttempt(underlying).toEither
+    def asRESP: RESP      = RESP.right.value
+    def bytesLength: Int  = functions.stringToBytesLength(underlying)
+  }
+
+  private implicit final class RichRESP(private val underlying: RESP) extends AnyVal {
     def wireFormat: String = functions.respToString(underlying)
     def roundTrip: RESP    = functions.roundTripAttempt(underlying).require
   }
 
-  implicit final class RichSeqRESP(private val underlying: Seq[RESP]) extends AnyVal {
+  private implicit final class RichSeqRESP(private val underlying: Seq[RESP]) extends AnyVal {
     def wireFormat: String = functions.respSeqToString(underlying)
   }
 }
 
-final class RESPCodecsSpec extends WordSpec with MustMatchers with ScalaCheckPropertyChecks with EitherValues {
-  import RESP._
+final class RESPCodecsSpec extends BaseSpec {
   import RESPCodecsSpec._
 
-  private[this] val smallListSize = chooseNum(0, 20)
-  private[this] implicit def invalidProtocolDiscriminator: Gen[InvalidDiscriminator] = {
+  private[this] val smallNumGen: Gen[Int] = chooseNum(0, 20)
+  private[this] val invalidProtocolGen: Gen[Char] = {
     val exclusions = List('+', '-', ':', '$', '*')
-    Gen.choose[Char](0, 127).suchThat(!exclusions.contains(_)).map(InvalidDiscriminator)
-  }
-  private[this] implicit val _                                  = Gen.choose(Char.MinValue, Char.MaxValue).filter(Character.isDefined)
-  private[this] implicit val genSimpleString: Gen[SimpleString] = arbitrary[String].map(str)
-  private[this] implicit val genError: Gen[Error]               = arbitrary[String].map(err)
-  private[this] implicit val genInteger: Gen[Integer]           = arbitrary[Long].map(int)
-  private[this] implicit val genBulkString: Gen[BulkString] = arbitrary[Option[String]].map {
-    case None    => NullBulkString
-    case Some(s) => bulk(s)
-  }
-  private[this] implicit def genArray: Gen[Array] = smallListSize.flatMap { size =>
-    option(listOfN(size, genRESP)).map {
-      case None    => NilArray
-      case Some(v) => arr(v)
-    }
-  }
-  private[this] implicit def genRESP: Gen[RESP] =
-    genOneOf(genSimpleString, genError, genInteger, genBulkString, genArray)
-  private[this] implicit def genOptionListRESP: Gen[Option[List[RESP]]] = smallListSize.flatMap { size =>
-    option(listOfN(size, genRESP))
-  }
+    choose[Char](0, 127).suchThat(!exclusions.contains(_))
+  } :| "invalid protocol discriminator"
+  private[this] val stringGen: Gen[String] = listOf(utf8BMPCharGen).map(_.mkString) :| "string"
+  private[this] val strGen: Gen[Str]       = stringGen.map(Str.apply) :| "simple string RESP"
+  private[this] val errGen: Gen[Err]       = stringGen.map(Err.apply) :| "error RESP"
+  private[this] val numGen: Gen[Num]       = arbitrary[Long].map(Num.apply) :| "integer RESP"
+  private[this] val genBulkGen: Gen[GenBulk] = option(stringGen).map {
+    case None    => NullBulk
+    case Some(s) => Bulk(s)
+  } :| "bulk string RESP"
+  private[this] def genArrGen: Gen[GenArr] =
+    smallNumGen.flatMap { size =>
+      option(listOfN(size, respGen)).map {
+        case None    => NilArr
+        case Some(v) => Arr(v)
+      }
+    } :| "array RESP"
+  private[this] def respGen: Gen[RESP] =
+    lzy {
+      frequency(2 -> strGen, 1 -> errGen, 2 -> numGen, 4 -> genBulkGen, 1 -> genArrGen)
+    } :| "RESP"
+  private[this] def respListGen: Gen[List[RESP]] = smallNumGen.flatMap(listOfN(_, respGen)) :| "list of RESPs"
 
-  private[this] implicit def arb[A](implicit A: Gen[A]): Arbitrary[A] = Arbitrary(A)
+  private[this] implicit final val stringArb: Arbitrary[String]        = Arbitrary(stringGen)
+  private[this] implicit final val invalidProtocolArb: Arbitrary[Char] = Arbitrary(invalidProtocolGen)
+  private[this] implicit final val strArb: Arbitrary[Str]              = Arbitrary(strGen)
+  private[this] implicit final val errArb: Arbitrary[Err]              = Arbitrary(errGen)
+  private[this] implicit final val numArb: Arbitrary[Num]              = Arbitrary(numGen)
+  private[this] implicit final val genBulkArb: Arbitrary[GenBulk]      = Arbitrary(genBulkGen)
+  private[this] implicit final val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
+  private[this] implicit final val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
 
   "A RESP codec" when {
 
-    "handling unknown protocol type" must {
-      "fail with correct error message" in forAll { invalidDiscriminator: InvalidDiscriminator =>
-        s"$invalidDiscriminator".RESP.left.value.messageWithContext mustBe s"unidentified RESP type (Hex: ${invalidDiscriminator.toHex})"
+    "handling unknown protocol type" should {
+      "fail with correct error message" in forAll { c: Char =>
+        s"$c".RESP.left.value.messageWithContext shouldBe s"unidentified RESP type (Hex: ${c.toHex})"
       }
     }
 
-    "handling simple strings" must {
+    "handling simple strings" should {
       "decode them correctly" in forAll { s: String =>
-        s"+$s\r\n".asRESP mustBe str(s)
+        s"+$s$CRLF".asRESP shouldBe Str(s)
       }
-      "encode them correctly" in forAll { simpleString: SimpleString =>
-        simpleString.wireFormat mustBe s"+${simpleString.value}\r\n"
+      "encode them correctly" in forAll { s: Str =>
+        s.wireFormat shouldBe s"+${s.value}$CRLF"
       }
-      "round-trip with no errors" in forAll { simpleString: SimpleString =>
-        simpleString.roundTrip mustBe simpleString
-      }
-    }
-
-    "handling errors" must {
-      "decode them correctly" in forAll { msg: String =>
-        s"-$msg\r\n".asRESP mustBe err(msg)
-      }
-      "encode them correctly" in forAll { error: Error =>
-        error.wireFormat mustBe s"-${error.message}\r\n"
-      }
-      "round-trip with no errors" in forAll { error: Error =>
-        error.roundTrip mustBe error
+      "roundtrip with no errors" in forAll { s: Str =>
+        s.roundTrip shouldBe s
       }
     }
 
-    "handling integers" must {
+    "handling errors" should {
+      "decode them correctly" in forAll { s: String =>
+        s"-$s$CRLF".asRESP shouldBe Err(s)
+      }
+      "encode them correctly" in forAll { e: Err =>
+        e.wireFormat shouldBe s"-${e.message}$CRLF"
+      }
+      "roundtrip with no errors" in forAll { e: Err =>
+        e.roundTrip shouldBe e
+      }
+    }
+
+    "handling integers" should {
       "decode them correctly" in forAll { l: Long =>
-        s":$l\r\n".asRESP mustBe int(l)
+        s":$l$CRLF".asRESP shouldBe Num(l)
       }
-      "encode them correctly" in forAll { integer: Integer =>
-        integer.wireFormat mustBe s":${integer.value}\r\n"
+      "encode them correctly" in forAll { n: Num =>
+        n.wireFormat shouldBe s":${n.value}$CRLF"
       }
-      "round-trip with no errors" in forAll { integer: Integer =>
-        integer.roundTrip mustBe integer
-      }
-    }
-
-    "handling bulk strings" must {
-      "fail with correct error message when decoding size < -1" in {
-        "$-2\r\nbla\r\n".RESP.left.value.messageWithContext mustBe "size: failed to decode bulk-string of size -2"
-      }
-      "decode them correctly" in forAll { maybeString: Option[String] =>
-        maybeString match {
-          case None    => "$-1\r\n".asRESP mustBe nullBulk
-          case Some(s) => s"$$${s.bytesLength}\r\n$s\r\n".asRESP mustBe bulk(s)
-        }
-      }
-      "encode them correctly" in forAll { bulkString: BulkString =>
-        bulkString -> bulkString.wireFormat match {
-          case (NullBulkString, s)        => s mustBe "$-1\r\n"
-          case (NonNullBulkString(bs), s) => s mustBe s"$$${bs.bytesLength}\r\n$bs\r\n"
-        }
-      }
-      "round-trip with no errors" in forAll { bulkString: BulkString =>
-        bulkString.roundTrip mustBe bulkString
+      "roundtrip with no errors" in forAll { n: Num =>
+        n.roundTrip shouldBe n
       }
     }
 
-    "handling arrays" must {
+    "handling bulk strings" should {
       "fail with correct error message when decoding size < -1" in {
-        "*-2\r\nbla\r\n".RESP.left.value.messageWithContext mustBe "size: failed to decode array of size -2"
+        s"$$-2${CRLF}bla$CRLF".RESP.left.value.messageWithContext shouldBe "size: failed to decode bulk-string of size -2"
       }
-      "decode them correctly" in forAll { maybeRESPList: Option[List[RESP]] =>
-        maybeRESPList match {
-          case None     => "*-1\r\n".asRESP mustBe nilArray
-          case Some(xs) => s"*${xs.length}\r\n${xs.wireFormat}".asRESP mustBe arr(xs)
+      "decode them correctly" in forAll { os: Option[String] =>
+        os match {
+          case None    => s"$$-1$CRLF".asRESP shouldBe NullBulk
+          case Some(s) => s"$$${s.bytesLength}$CRLF$s$CRLF".asRESP shouldBe Bulk(s)
         }
       }
-      "encode them correctly" in forAll { array: Array =>
-        array -> array.wireFormat match {
-          case (NilArray, s)        => s mustBe "*-1\r\n"
-          case (NonNilArray(xs), s) => s mustBe s"*${xs.length}\r\n${xs.wireFormat}"
+      "encode them correctly" in forAll { b: GenBulk =>
+        b match {
+          case NullBulk => b.wireFormat shouldBe s"$$-1$CRLF"
+          case Bulk(bs) => b.wireFormat shouldBe s"$$${bs.bytesLength}$CRLF$bs$CRLF"
         }
       }
-      "round-trip with no errors" in forAll { array: Array =>
-        array.roundTrip mustBe array
+      "roundtrip with no errors" in forAll { b: GenBulk =>
+        b.roundTrip shouldBe b
+      }
+    }
+
+    "handling arrays" should {
+      "fail with correct error message when decoding size < -1" in {
+        s"*-2${CRLF}bla$CRLF".RESP.left.value.messageWithContext shouldBe "size: failed to decode array of size -2"
+      }
+      "decode them correctly" in forAll { ors: Option[List[RESP]] =>
+        ors match {
+          case None     => s"*-1$CRLF".asRESP shouldBe NilArr
+          case Some(xs) => s"*${xs.length}$CRLF${xs.wireFormat}".asRESP shouldBe Arr(xs)
+        }
+      }
+      "encode them correctly" in forAll { a: GenArr =>
+        a match {
+          case NilArr  => a.wireFormat shouldBe s"*-1$CRLF"
+          case Arr(xs) => a.wireFormat shouldBe s"*${xs.length}$CRLF${xs.wireFormat}"
+        }
+      }
+      "roundtrip with no errors" in forAll { a: GenArr =>
+        a.roundTrip shouldBe a
       }
     }
   }

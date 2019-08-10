@@ -6,16 +6,22 @@ import eu.timepit.refined.api.Refined
 import scala.annotation.implicitNotFound
 
 @implicitNotFound(
-  "Implicit not found: Show[${A}].\n\n" +
-    "Try writing your own, for example:\n\n" +
-    "implicit final val myShow: Show[${A}] = new Show[${A}] {\n" +
-    "  override final def show(a: ${A}): String = ???\n" +
-    "}\n"
+  """Implicit not found Show[${A}].
+
+Try writing your own, for example:
+
+implicit final val myShow: Show[${A}] = new Show[${A}] {
+  override final def show(a: ${A}): String = ???
+}
+"""
 ) trait Show[A] {
+
   def show(a: A): String
+
+  final def contramap[B](f: B => A): Show[B] = Show.instance(show _ compose f)
 }
 
-object Show extends LowPriorityShowInstances {
+object Show extends ShowInstances {
   @inline final def apply[A](implicit instance: Show[A]): Show[A] = instance
 
   final def const[A](s: => String): Show[A] = new Show[A] {
@@ -29,7 +35,7 @@ object Show extends LowPriorityShowInstances {
   }
 }
 
-trait LowPriorityShowInstances {
+private[protocol] sealed trait ShowInstances {
   private[this] final val refinedDoubleCases: PartialFunction[Refined[Double, _], String] = {
     case d if d.value == Double.NegativeInfinity => "-inf"
     case d if d.value == Double.PositiveInfinity => "+inf"
@@ -48,6 +54,10 @@ trait LowPriorityShowInstances {
   implicit final val hostShow: Show[Host]                     = Show.unsafeFromToString
   implicit final val indexShow: Show[Index]                   = Show.unsafeFromToString
   implicit final val keyShow: Show[Key]                       = Show.unsafeFromToString
+  implicit final val latitudeShow: Show[Latitude]             = Show.unsafeFromToString
+  implicit final val longitudeShow: Show[Longitude]           = Show.unsafeFromToString
+  implicit final val nodeIdShow: Show[NodeId]                 = Show.unsafeFromToString
+  implicit final val nonNegDoubleShow: Show[NonNegDouble]     = Show.instance(refinedDoubleCases)
   implicit final val nonNegIntShow: Show[NonNegInt]           = Show.unsafeFromToString
   implicit final val nonNegLongShow: Show[NonNegLong]         = Show.unsafeFromToString
   implicit final val nonZeroDoubleShow: Show[NonZeroDouble]   = Show.instance(refinedDoubleCases)
@@ -57,6 +67,7 @@ trait LowPriorityShowInstances {
   implicit final val posIntShow: Show[PosInt]                 = Show.unsafeFromToString
   implicit final val posLongShow: Show[PosLong]               = Show.unsafeFromToString
   implicit final val rangeOffsetShow: Show[RangeOffset]       = Show.unsafeFromToString
+  implicit final val slotShow: Show[Slot]                     = Show.unsafeFromToString
   implicit final val stringLengthShow: Show[StringLength]     = Show.unsafeFromToString
   implicit final val validDoubleShow: Show[ValidDouble]       = Show.instance(refinedDoubleCases)
 }

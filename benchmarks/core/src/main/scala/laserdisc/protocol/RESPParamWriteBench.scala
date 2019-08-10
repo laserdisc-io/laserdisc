@@ -1,4 +1,5 @@
-package laserdisc.protocol
+package laserdisc
+package protocol
 
 import org.openjdk.jmh.annotations.{Benchmark, Scope, State}
 import shapeless._
@@ -10,5 +11,5 @@ class RESPParamWriteBench {
 
   private final val value = 0 :: "a" :: 1L :: 2.0d :: HNil
 
-  @Benchmark def write(): Seq[BulkString] = respParamWrite.write(value)
+  @Benchmark def write(): Seq[GenBulk] = respParamWrite.write(value)
 }

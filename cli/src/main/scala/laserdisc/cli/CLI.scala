@@ -122,7 +122,7 @@ object CLI extends IOApp.WithContext { self =>
                   }.attempt
 
                 _.evalMap(mkProtocol).flatMap {
-                  case Left(t)  => Stream.eval_(prompt(s"${t.getLocalizedMessage}\n"))
+                  case Left(t)  => Stream.eval_(prompt(s"${t.getLocalizedMessage}$LF"))
                   case Right(p) => Stream.emit(p)
                 }
               }
@@ -140,8 +140,8 @@ object CLI extends IOApp.WithContext { self =>
                     } yield maybeProtocolResponse.asInstanceOf[Maybe[Any]] -> (endTime - startTime)
                   }
                   .evalMap {
-                    case (Left(t), ToMillis(ms))         => prompt(f"<<< ERROR ${t.getLocalizedMessage} - [$ms%.2fms]\n")
-                    case (Right(response), ToMillis(ms)) => prompt(f"<<< $response - [$ms%.2fms]\n")
+                    case (Left(t), ToMillis(ms))         => prompt(f"<<< ERROR ${t.getLocalizedMessage} - [$ms%.2fms]$LF")
+                    case (Right(response), ToMillis(ms)) => prompt(f"<<< $response - [$ms%.2fms]$LF")
                   }
                   .compile
                   .drain

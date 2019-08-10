@@ -1,4 +1,13 @@
-**/target/
+# Metals + Bloop
+.metals/
+.bloop/
+
+# Intellij
 .idea
+
+# MacOS
 *.DS_Store
+
+# Anything else
+**/target/
 local.*

@@ -1,9 +1,8 @@
 package laserdisc
 package protocol
 
-trait StringPExtra { this: StringP =>
+trait StringExtP { this: StringBaseP =>
   import StringP.Bitwise
-  import Read.==>
   import shapeless._
 
   //BITOP
@@ -12,9 +11,7 @@ trait StringPExtra { this: StringP =>
   ]
 
   //MGET
-  [#final def mget[A]([#key1: Key#])(
-      implicit ev: NonNilArray ==> A
-  ): Protocol.Aux[A] =
+  [#final def mget[A: Arr ==> ?]([#key1: Key#]): Protocol.Aux[A] =
     mget[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil))#
   ]
 

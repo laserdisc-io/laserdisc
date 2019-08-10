@@ -1,0 +1,21 @@
+package laserdisc
+package protocol
+
+trait GeoExtP { this: GeoBaseP =>
+  import geotypes._
+
+  //GEOADD
+  [..21#final def geoadd(key: Key, [#position1: GeoPosition#]): Protocol.Aux[NonNegInt] =
+    geoadd(key, OneOrMore.unsafeFrom([#position1# :: ] :: Nil))#
+  ]
+
+  //GEOHASH
+  [..21#final def geohash(key: Key, [#member1: Key#]): Protocol.Aux[Seq[Option[GeoHash]]] =
+    geohash(key, OneOrMoreKeys.unsafeFrom([#member1# :: ] :: Nil))#
+  ]
+
+  //GEOPOS
+  [..21#final def geopos(key: Key, [#member1: Key#]): Protocol.Aux[Seq[Option[GeoCoordinates]]] =
+    geopos(key, OneOrMoreKeys.unsafeFrom([#member1# :: ] :: Nil))#
+  ]
+}

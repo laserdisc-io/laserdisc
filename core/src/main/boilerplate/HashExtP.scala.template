@@ -1,9 +1,9 @@
 package laserdisc
 package protocol
 
-trait HashPExtra { this: HashP =>
-  import Read.==>
+trait HashExtP { this: HashBaseP =>
   import shapeless._
+  import shapeless.ops.hlist.Tupler
 
   //HDEL
   [..21#final def hdel(key: Key, [#field1: Key#]): Protocol.Aux[NonNegInt] =
@@ -12,12 +12,12 @@ trait HashPExtra { this: HashP =>
 
   //HMGET
   final def hmget[A1](key: Key, field1: Key)(
-      implicit ev: NonNilArray ==> (A1 :: HNil)
+      implicit ev: Arr ==> (A1 :: HNil)
   ): Protocol.Aux[A1] =
     hmget[A1 :: HNil](key, OneOrMoreKeys.unsafeFrom(field1 :: Nil)).map(_.head)
   [2..21#final def hmget[[#A1#]](key: Key, [#field1: Key#])(
-      implicit ev0: NonNilArray ==> ([#A1# :: ] :: HNil),
-      ev1: ops.hlist.Tupler.Aux[[#A1# :: ] :: HNil, ([#A1#])]
+      implicit ev##0: Arr ==> ([#A1# :: ] :: HNil),
+      ev##1: Tupler.Aux[[#A1# :: ] :: HNil, ([#A1#])]
   ): Protocol.Aux[([#A1#])] =
     hmget[[#A1# :: ] :: HNil](key, OneOrMoreKeys.unsafeFrom([#field1# :: ] :: Nil)).map(_.tupled)#
   ]

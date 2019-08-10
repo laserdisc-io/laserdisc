@@ -1,0 +1,34 @@
+package laserdisc
+package protocol
+
+abstract class ListExtPSpec extends BaseSpec with ListP {
+
+  "The List extended protocol" when {
+
+    "using lpush" should {
+
+      "roundtrip successfully" when {
+        [1..4#"given key and [#value1#]" in forAll("key", [#"value1"#], "pushed") { (k: Key, [#v1: Int#], pi: PosInt) =>
+          val protocol = lpush(k, [#v1#])
+
+          protocol.encode shouldBe Arr(Bulk("LPUSH"), Bulk(k), [#Bulk(v1)#])
+          protocol.decode(Num(pi.value.toLong)).right.value shouldBe pi
+        }#
+        ]
+      }
+    }
+
+    "using rpush" should {
+
+      "roundtrip successfully" when {
+        [1..4#"given key and [#value1#]" in forAll("key", [#"value1"#], "pushed") { (k: Key, [#v1: Int#], pi: PosInt) =>
+          val protocol = rpush(k, [#v1#])
+
+          protocol.encode shouldBe Arr(Bulk("RPUSH"), Bulk(k), [#Bulk(v1)#])
+          protocol.decode(Num(pi.value.toLong)).right.value shouldBe pi
+        }#
+        ]
+      }
+    }
+  }
+}

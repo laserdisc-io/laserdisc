@@ -6,29 +6,32 @@ import shapeless.labelled.FieldType
 import scala.annotation.implicitNotFound
 
 @implicitNotFound(
-  "Implicit not found: RESPParamWrite[${A}].\n\n" +
-    "Normally you would not need to define one manually, as one will be derived for you automatically iff:\n" +
-    "- an instance of Show[${A}] is in scope\n" +
-    "- ${A} is a List whose LUB has a RESPParamWrite instance defined\n" +
-    "- ${A} is an HList whose elements all have a RESPParamWrite instance defined\n"
+  """Implicit not found RESPParamWrite[${A}].
+
+Normally you would not need to define one manually, as one will be derived for you automatically iff:
+- an instance of Show[${A}] is in scope
+- ${A} is a List whose LUB has a RESPParamWrite instance defined
+- ${A} is an HList whose elements all have a RESPParamWrite instance defined
+"""
 ) trait RESPParamWrite[A] {
-  def write(a: A): Seq[BulkString]
+
+  def write(a: A): Seq[GenBulk]
 }
 
-object RESPParamWrite extends LowPriorityRESPParamWrite {
+object RESPParamWrite extends RESPParamWriteInstances {
   @inline final def apply[A](implicit instance: RESPParamWrite[A]): RESPParamWrite[A] = instance
 
-  final def const[A](thunk: => Seq[BulkString]): RESPParamWrite[A] = new RESPParamWrite[A] {
-    override def write(a: A): Seq[BulkString] = thunk
+  final def const[A](thunk: => Seq[GenBulk]): RESPParamWrite[A] = new RESPParamWrite[A] {
+    override def write(a: A): Seq[GenBulk] = thunk
   }
-  final def instance[A](f: A => Seq[BulkString]): RESPParamWrite[A] = new RESPParamWrite[A] {
-    override def write(a: A): Seq[BulkString] = f(a)
+  final def instance[A](f: A => Seq[GenBulk]): RESPParamWrite[A] = new RESPParamWrite[A] {
+    override def write(a: A): Seq[GenBulk] = f(a)
   }
 }
 
-trait LowPriorityRESPParamWrite extends LowestPriorityRESPParamWrite {
-  implicit final def showRESPParamWrite[A](implicit A: Show[A]): RESPParamWrite[A] = RESPParamWrite.instance { a =>
-    Seq(RESP.bulk(A.show(a)))
+private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteInstances1 {
+  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A] = RESPParamWrite.instance { a =>
+    Seq(Bulk(a))
   }
   implicit final def pairRESPParamWrite[A, B](
       implicit A: RESPParamWrite[A],
@@ -41,12 +44,10 @@ trait LowPriorityRESPParamWrite extends LowestPriorityRESPParamWrite {
   implicit final def taggedRESPParamWrite[K <: Symbol, V](
       implicit K: Witness.Aux[K],
       V: RESPParamWrite[V]
-  ): RESPParamWrite[FieldType[K, V]] = RESPParamWrite.instance { v =>
-    RESP.bulk(K.value.name) +: V.write(v)
-  }
+  ): RESPParamWrite[FieldType[K, V]] = RESPParamWrite.instance(Bulk(K.value.name) +: V.write(_))
 }
 
-sealed trait LowestPriorityRESPParamWrite {
+private[protocol] sealed trait RESPParamWriteInstances1 {
   implicit final val nilRESPParamWrite: RESPParamWrite[Nil.type] = RESPParamWrite.const(Seq.empty)
   implicit final val hNilRESPParamWrite: RESPParamWrite[HNil]    = RESPParamWrite.const(Seq.empty)
 

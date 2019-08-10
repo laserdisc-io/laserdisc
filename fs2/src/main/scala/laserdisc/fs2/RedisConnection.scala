@@ -71,7 +71,7 @@ object RedisConnection {
 
       _.through(framing)
         .flatMap(complete => streamDecoder.decode(complete.bits))
-        .evalMap(resp => log.debug(s"receiving $resp") >> resp.pure)
+        .evalTap(resp => log.debug(s"receiving $resp"))
     }
 
   }

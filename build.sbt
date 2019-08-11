@@ -206,7 +206,6 @@ lazy val publishSettings = Seq(
 )
 
 lazy val testSettings = Seq(
-  Test / parallelExecution := false,
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oDF")
 )
 
@@ -231,12 +230,6 @@ lazy val scoverageSettings = Seq(
 
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 
-lazy val scalaJsTLSSettings = Seq(
-  coverageEnabled := false,
-  libraryDependencies := `scalajs-compiler-plugin`.value +:
-    libraryDependencies.value.filterNot(_.name == `scalajs-compiler-plugin`.value.name)
-)
-
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Pure)
@@ -258,14 +251,12 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
       |import shapeless._
       |""".stripMargin
   )
-  .jsSettings(scalaJsTLSSettings: _*)
-
-lazy val coreJVM = core.jvm.enablePlugins(BoilerplatePlugin)
-lazy val coreJS  = core.js.enablePlugins(BoilerplatePlugin)
+  .jsConfigure(_.enablePlugins(BoilerplatePlugin))
+  .jvmConfigure(_.enablePlugins(BoilerplatePlugin))
 
 lazy val fs2 = project
   .in(file("fs2"))
-  .dependsOn(coreJVM)
+  .dependsOn(core.jvm)
   .settings(allSettings)
   .settings(
     name := "laserdisc-fs2",
@@ -274,7 +265,7 @@ lazy val fs2 = project
 
 lazy val `core-bench` = project
   .in(file("benchmarks/core"))
-  .dependsOn(coreJVM)
+  .dependsOn(core.jvm)
   .enablePlugins(JmhPlugin)
   .settings(
     name := "laserdisc-core-benchmarks",
@@ -300,11 +291,10 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
     name := "laserdisc-circe",
     libraryDependencies ++= circeDeps.value
   )
-  .jsSettings(scalaJsTLSSettings: _*)
 
 lazy val laserdisc = project
   .in(file("."))
-  .aggregate(coreJVM, coreJS, fs2, cli, circe.jvm, circe.js)
+  .aggregate(core.jvm, core.js, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
     publishArtifact := false

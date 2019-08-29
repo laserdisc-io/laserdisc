@@ -241,6 +241,9 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     Compile / boilerplateSource := baseDirectory.value.getParentFile / "src" / "main" / "boilerplate",
     Test / boilerplateSource := baseDirectory.value.getParentFile / "src" / "test" / "boilerplate"
   )
+  .jsSettings(
+    coverageEnabled := false
+  )
   .jvmSettings(
     javaOptions += "-Djava.net.preferIPv4Stack=true",
     Test / fork := true,
@@ -290,6 +293,9 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
   .settings(
     name := "laserdisc-circe",
     libraryDependencies ++= circeDeps.value
+  )
+  .jsSettings(
+    coverageEnabled := false
   )
 
 lazy val laserdisc = project

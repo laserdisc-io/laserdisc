@@ -1,7 +1,7 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-val `scala 2.12` = "2.12.8"
+val `scala 2.12` = "2.12.9"
 val `scala 2.13` = "2.13.0"
 
 val V = new {

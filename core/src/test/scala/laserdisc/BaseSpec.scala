@@ -6,11 +6,12 @@ import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInst
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen._
-import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
+import org.scalatest.{Assertion, EitherValues, Matchers, OptionValues, WordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import scala.Double.{MinValue => DMin, MaxValue => DMax, NaN}
-import scala.Int.{MinValue => IMin, MaxValue => IMax}
-import scala.Long.{MinValue => LMin, MaxValue => LMax}
+
+import scala.Double.{NaN, MaxValue => DMax, MinValue => DMin}
+import scala.Int.{MaxValue => IMax, MinValue => IMin}
+import scala.Long.{MaxValue => LMax, MinValue => LMin}
 
 abstract class BaseSpec
     extends WordSpec
@@ -81,10 +82,10 @@ abstract class BaseSpec
   final val latitudeGen: Gen[Double]          = chooseNum(LatitudeMinValueWit.value, LatitudeMaxValueWit.value) :| "latitude"
   final val longitudeGen: Gen[Double]         = chooseNum(LongitudeMinValueWit.value, LongitudeMaxValueWit.value) :| "longitude"
   final val nodeIdGen: Gen[String]            = strOfNSameFreqGen(40, hexGen) :| "node id"
-  final val nonNegDoubleGen: Gen[Double]      = chooseNum(0.0D, DMax) :| "double >= 0.0D"
+  final val nonNegDoubleGen: Gen[Double]      = chooseNum(0.0d, DMax) :| "double >= 0.0D"
   final val nonNegIntGen: Gen[Int]            = chooseNum(0, IMax) :| "int >= 0"
   final val nonNegLongGen: Gen[Long]          = chooseNum(0L, LMax) :| "long >= 0L"
-  final val nonZeroDoubleGen: Gen[Double]     = chooseNum(DMin, DMax).suchThat(d => d != 0.0D && d != NaN) :| "double != 0.0D and != NaN"
+  final val nonZeroDoubleGen: Gen[Double]     = chooseNum(DMin, DMax).suchThat(d => d != 0.0d && d != NaN) :| "double != 0.0D and != NaN"
   final val nonZeroIntGen: Gen[Int]           = chooseNum(IMin, IMax).suchThat(_ != 0) :| "int != 0"
   final val nonZeroLongGen: Gen[Long]         = chooseNum(LMin, LMax).suchThat(_ != 0L) :| "long != 0L"
   final val portGen: Gen[Int]                 = chooseNum(PortMinValueWit.value, PortMaxValueWit.value) :| "port"
@@ -145,4 +146,12 @@ abstract class BaseSpec
   implicit final val validDoubleArb: Arbitrary[ValidDouble]                     = arbitraryRefType(validDoubleGen)
 
   final val boolToNum: Boolean => Num = b => Num(if (b) 1 else 0)
+
+  protected[this] implicit final class EitherSyntax[A, B](private val eab: Either[A, B]) {
+    def onRight[C](f: B => Assertion): Assertion =
+      eab.fold(err => fail(s"It Should be right but was left with $err"), f)
+
+    def onRightAll[C](f: B => Unit): Unit =
+      eab.fold(err => fail(s"It Should be right but was left with $err"), f)
+  }
 }

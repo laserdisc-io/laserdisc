@@ -51,7 +51,8 @@ final class RESPFunctionsSpec extends BaseSpec {
             CompleteWithRemainder(
               BitVector("$16\r\nTest bulk string\r\n".toCharArray.map(_.toByte)),
               BitVector("$16\r\nTest bulk".toCharArray.map(_.toByte))
-            ))
+            )
+          )
         )
       }
     }
@@ -63,7 +64,8 @@ final class RESPFunctionsSpec extends BaseSpec {
             CompleteWithRemainder(
               BitVector("$16\r\nTest bulk string\r\n".toCharArray.map(_.toByte)),
               BitVector("$16\r\nTest bulk string\r\n$16\r\nTest bulk string\r\n".toCharArray.map(_.toByte))
-            ))
+            )
+          )
         )
       }
     }
@@ -75,7 +77,8 @@ final class RESPFunctionsSpec extends BaseSpec {
             CompleteWithRemainder(
               BitVector("$-1\r\n".toCharArray.map(_.toByte)),
               BitVector("$-1\r\n$-1\r\n".toCharArray.map(_.toByte))
-            ))
+            )
+          )
         )
       }
     }

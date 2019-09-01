@@ -22,7 +22,7 @@ abstract class BListExtPSpec extends BaseSpec with BListP {
           val protocol = blpop[Int]([#k1#])
 
           protocol.encode shouldBe Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(##0))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))).right.value.value shouldBe KV(k##1, i)
+          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, i))
         }#
         ]
         //BLPOP with no timeout specified and specific read instance
@@ -30,7 +30,7 @@ abstract class BListExtPSpec extends BaseSpec with BListP {
           val protocol = blpop[Foo]([#k1#])
 
           protocol.encode shouldBe Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(##0))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))).right.value.value shouldBe KV(k##1, Foo(i))
+          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, Foo(i)))
         }#
         ]
         //BLPOP with timeout specified
@@ -38,7 +38,7 @@ abstract class BListExtPSpec extends BaseSpec with BListP {
           val protocol = blpop[Int]([#k1#], pi)
 
           protocol.encode shouldBe Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(pi))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))).right.value.value shouldBe KV(k##1, i)
+          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, i))
         }#
         ]
         //BLPOP with timeout specified and specific read instance
@@ -46,7 +46,7 @@ abstract class BListExtPSpec extends BaseSpec with BListP {
           val protocol = blpop[Foo]([#k1#], pi)
 
           protocol.encode shouldBe Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(pi))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))).right.value.value shouldBe KV(k##1, Foo(i))
+          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, Foo(i)))
         }#
         ]
       }
@@ -70,7 +70,7 @@ abstract class BListExtPSpec extends BaseSpec with BListP {
           val protocol = brpop[Int]([#k1#])
 
           protocol.encode shouldBe Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(##0))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))).right.value.value shouldBe KV(k##1, i)
+          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, i))
         }#
         ]
         //BRPOP with no timeout specified and specific read instance
@@ -78,7 +78,7 @@ abstract class BListExtPSpec extends BaseSpec with BListP {
           val protocol = brpop[Foo]([#k1#])
 
           protocol.encode shouldBe Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(##0))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))).right.value.value shouldBe KV(k##1, Foo(i))
+          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, Foo(i)))
         }#
         ]
         //BRPOP with timeout specified
@@ -86,7 +86,7 @@ abstract class BListExtPSpec extends BaseSpec with BListP {
           val protocol = brpop[Int]([#k1#], pi)
 
           protocol.encode shouldBe Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(pi))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))).right.value.value shouldBe KV(k##1, i)
+          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, i))
         }#
         ]
         //BRPOP with timeout specified and specific read instance
@@ -94,7 +94,7 @@ abstract class BListExtPSpec extends BaseSpec with BListP {
           val protocol = brpop[Foo]([#k1#], pi)
 
           protocol.encode shouldBe Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(pi))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))).right.value.value shouldBe KV(k##1, Foo(i))
+          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, Foo(i)))
         }#
         ]
       }

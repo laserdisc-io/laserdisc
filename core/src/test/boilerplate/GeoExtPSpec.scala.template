@@ -50,7 +50,7 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
           val protocol = geoadd(k, [#p1#])
 
           protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: List([#p1#]).flatMap(geoPositionToBulkList))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }#
         ]
       }
@@ -63,7 +63,7 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
           val protocol = geohash(k, [#m1#])
 
           protocol.encode shouldBe Arr(Bulk("GEOHASH") :: Bulk(k) :: List([#Bulk(m1)#]))
-          protocol.decode(oneOrMoreGeoHashOptionToArr(oghs)).right.value shouldBe oghs.value
+          protocol.decode(oneOrMoreGeoHashOptionToArr(oghs)) onRight (_ shouldBe oghs.value)
         }#
         ]
       }
@@ -76,7 +76,7 @@ abstract class GeoExtPSpec extends BaseSpec with GeoP {
           val protocol = geopos(k, [#m1#])
 
           protocol.encode shouldBe Arr(Bulk("GEOPOS") :: Bulk(k) :: List([#Bulk(m1)#]))
-          protocol.decode(oneOrMoreGeoCoordinatesOptionToArr(ocs)).right.value shouldBe ocs.value
+          protocol.decode(oneOrMoreGeoCoordinatesOptionToArr(ocs)) onRight (_ shouldBe ocs.value)
         }#
         ]
       }

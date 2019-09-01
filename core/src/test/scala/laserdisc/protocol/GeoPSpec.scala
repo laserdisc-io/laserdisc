@@ -93,7 +93,7 @@ final class GeoPSpec extends GeoExtPSpec {
           val protocol = geoadd(k, ps)
 
           protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: ps.value.flatMap(geoPositionToBulkList))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
 
@@ -107,7 +107,7 @@ final class GeoPSpec extends GeoExtPSpec {
             val protocol = geodist(k, m1, m2)
 
             protocol.encode shouldBe Arr(Bulk("GEODIST"), Bulk(k), Bulk(m1), Bulk(m2))
-            protocol.decode(nonNegDoubleOptionToBulk(onnd)).right.value shouldBe onnd
+            protocol.decode(nonNegDoubleOptionToBulk(onnd)) onRight (_ shouldBe onnd)
           }
         }
         "given key, members and unit" in {
@@ -116,7 +116,7 @@ final class GeoPSpec extends GeoExtPSpec {
               val protocol = geodist(k, m1, m2, u)
 
               protocol.encode shouldBe Arr(Bulk("GEODIST"), Bulk(k), Bulk(m1), Bulk(m2), Bulk(u))
-              protocol.decode(nonNegDoubleOptionToBulk(onnd)).right.value shouldBe onnd
+              protocol.decode(nonNegDoubleOptionToBulk(onnd)) onRight (_ shouldBe onnd)
           }
         }
       }
@@ -130,7 +130,7 @@ final class GeoPSpec extends GeoExtPSpec {
             val protocol = geohash(k, ms)
 
             protocol.encode shouldBe Arr(Bulk("GEOHASH") :: Bulk(k) :: ms.value.map(m => Bulk(m)))
-            protocol.decode(oneOrMoreGeoHashOptionToArr(oghs)).right.value shouldBe oghs.value
+            protocol.decode(oneOrMoreGeoHashOptionToArr(oghs)) onRight (_ shouldBe oghs.value)
           }
         }
       }
@@ -145,7 +145,7 @@ final class GeoPSpec extends GeoExtPSpec {
             val protocol = geopos(k, ms)
 
             protocol.encode shouldBe Arr(Bulk("GEOPOS") :: Bulk(k) :: ms.value.map(m => Bulk(m)))
-            protocol.decode(oneOrMoreGeoCoordinatesOptionToArr(ocs)).right.value shouldBe ocs.value
+            protocol.decode(oneOrMoreGeoCoordinatesOptionToArr(ocs)) onRight (_ shouldBe ocs.value)
           }
         }
       }
@@ -159,7 +159,7 @@ final class GeoPSpec extends GeoExtPSpec {
                 val protocol = georadius(k, c, r, u)
 
                 protocol.encode shouldBe Arr(Bulk("GEORADIUS"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u))
-                protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, coordinates, radius, unit and limit" in {
@@ -177,7 +177,7 @@ final class GeoPSpec extends GeoExtPSpec {
                   Bulk("COUNT"),
                   Bulk(l)
                 )
-                protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, coordinates, radius, unit and direction" in {
@@ -186,7 +186,7 @@ final class GeoPSpec extends GeoExtPSpec {
                 val protocol = georadius(k, c, r, u, d)
 
                 protocol.encode shouldBe Arr(Bulk("GEORADIUS"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u), Bulk(d))
-                protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, coordinates, radius, unit, limit and direction" in {
@@ -206,16 +206,16 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(l),
                     Bulk(d)
                   )
-                  protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                  protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
                 }
             }
           }
           "given key, coordinates, radius, unit and radius mode" in {
             forAll("key", "coordinates", "radius", "unit", "radius mode & result") {
               (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = georadius(k, c, r, u, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = georadius(k, c, r, u, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUS") ::
@@ -226,15 +226,15 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(u) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, coordinates, radius, unit, limit and radius mode" in {
             forAll("key", "coordinates", "radius", "unit", "limit", "radius mode & result") {
               (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = georadius(k, c, r, u, l, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = georadius(k, c, r, u, l, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUS") ::
@@ -247,15 +247,15 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(l) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, coordinates, radius, unit, direction and radius mode" in {
             forAll("key", "coordinates", "radius", "unit", "direction", "radius mode & result") {
               (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = georadius(k, c, r, u, d, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = georadius(k, c, r, u, d, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUS") ::
@@ -267,16 +267,16 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(d) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, coordinates, radius, unit, limit, direction and radius mode" in {
             forAll("key", "coordinates", "radius", "unit", "limit", "direction") {
               (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
                 forAll("radius mode & result") { rmAndRes: (GeoRadiusMode, List[_]) =>
-                  val (rm, res)  = rmAndRes
-                  implicit val _ = rm.r
-                  val protocol   = georadius(k, c, r, u, l, d, rm)
+                  val (rm, res)   = rmAndRes
+                  implicit val ev = rm.r
+                  val protocol    = georadius(k, c, r, u, l, d, rm)
 
                   protocol.encode shouldBe Arr(
                     Bulk("GEORADIUS") ::
@@ -290,7 +290,7 @@ final class GeoPSpec extends GeoExtPSpec {
                       Bulk(d) ::
                       rm.params.map(Bulk(_))
                   )
-                  protocol.decode(listToArr(res)).right.value shouldBe res
+                  protocol.decode(listToArr(res)) onRight (_ shouldBe res)
                 }
             }
           }
@@ -302,7 +302,7 @@ final class GeoPSpec extends GeoExtPSpec {
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUS") :: Bulk(k) :: Bulk(c.longitude) :: Bulk(c.latitude) :: Bulk(r) :: Bulk(u) :: sm.params.map(Bulk(_))
                 )
-                protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
             }
           }
           "given key, coordinates, radius, unit, limit and store mode" in {
@@ -322,7 +322,7 @@ final class GeoPSpec extends GeoExtPSpec {
                       Bulk(l) ::
                       sm.params.map(Bulk(_))
                   )
-                  protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
                 }
             }
           }
@@ -342,7 +342,7 @@ final class GeoPSpec extends GeoExtPSpec {
                       Bulk(d) ::
                       sm.params.map(Bulk(_))
                   )
-                  protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
                 }
             }
           }
@@ -364,7 +364,7 @@ final class GeoPSpec extends GeoExtPSpec {
                       Bulk(d) ::
                       sm.params.map(Bulk(_))
                   )
-                  protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
                 }
             }
           }
@@ -374,7 +374,7 @@ final class GeoPSpec extends GeoExtPSpec {
               val protocol = georadius(k, m, r, u)
 
               protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER"), Bulk(k), Bulk(m), Bulk(r), Bulk(u))
-              protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, member, radius, unit and limit" in {
@@ -391,7 +391,7 @@ final class GeoPSpec extends GeoExtPSpec {
                   Bulk("COUNT"),
                   Bulk(l)
                 )
-                protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, member, radius, unit and direction" in {
@@ -400,7 +400,7 @@ final class GeoPSpec extends GeoExtPSpec {
                 val protocol = georadius(k, m, r, u, d)
 
                 protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER"), Bulk(k), Bulk(m), Bulk(r), Bulk(u), Bulk(d))
-                protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, member, radius, unit, limit and direction" in {
@@ -419,16 +419,16 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(l),
                     Bulk(d)
                   )
-                  protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                  protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
                 }
             }
           }
           "given key, member, radius, unit and radius mode" in {
             forAll("key", "member", "radius", "unit", "radius mode & result") {
               (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = georadius(k, m, r, u, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = georadius(k, m, r, u, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUSBYMEMBER") ::
@@ -438,15 +438,15 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(u) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, member, radius, unit, limit and radius mode" in {
             forAll("key", "member", "radius", "unit", "limit", "radius mode & result") {
               (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = georadius(k, m, r, u, l, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = georadius(k, m, r, u, l, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUSBYMEMBER") ::
@@ -458,15 +458,15 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(l) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, member, radius, unit, direction and radius mode" in {
             forAll("key", "member", "radius", "unit", "direction", "radius mode & result") {
               (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = georadius(k, m, r, u, d, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = georadius(k, m, r, u, d, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUSBYMEMBER") ::
@@ -477,16 +477,16 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(d) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, member, radius, unit, limit, direction and radius mode" in {
             forAll("key", "member", "radius", "unit", "limit", "direction") {
               (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
                 forAll("radius mode & result") { rmAndRes: (GeoRadiusMode, List[_]) =>
-                  val (rm, res)  = rmAndRes
-                  implicit val _ = rm.r
-                  val protocol   = georadius(k, m, r, u, l, d, rm)
+                  val (rm, res)   = rmAndRes
+                  implicit val ev = rm.r
+                  val protocol    = georadius(k, m, r, u, l, d, rm)
 
                   protocol.encode shouldBe Arr(
                     Bulk("GEORADIUSBYMEMBER") ::
@@ -499,7 +499,7 @@ final class GeoPSpec extends GeoExtPSpec {
                       Bulk(d) ::
                       rm.params.map(Bulk(_))
                   )
-                  protocol.decode(listToArr(res)).right.value shouldBe res
+                  protocol.decode(listToArr(res)) onRight (_ shouldBe res)
                 }
             }
           }
@@ -511,7 +511,7 @@ final class GeoPSpec extends GeoExtPSpec {
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUSBYMEMBER") :: Bulk(k) :: Bulk(m) :: Bulk(r) :: Bulk(u) :: sm.params.map(Bulk(_))
                 )
-                protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
             }
           }
           "given key, member, radius, unit, limit and store mode" in {
@@ -530,7 +530,7 @@ final class GeoPSpec extends GeoExtPSpec {
                       Bulk(l) ::
                       sm.params.map(Bulk(_))
                   )
-                  protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
                 }
             }
           }
@@ -543,7 +543,7 @@ final class GeoPSpec extends GeoExtPSpec {
                   protocol.encode shouldBe Arr(
                     Bulk("GEORADIUSBYMEMBER") :: Bulk(k) :: Bulk(m) :: Bulk(r) :: Bulk(u) :: Bulk(d) :: sm.params.map(Bulk(_))
                   )
-                  protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
                 }
             }
           }
@@ -564,7 +564,7 @@ final class GeoPSpec extends GeoExtPSpec {
                       Bulk(d) ::
                       sm.params.map(Bulk(_))
                   )
-                  protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
                 }
             }
           }
@@ -580,7 +580,7 @@ final class GeoPSpec extends GeoExtPSpec {
                 val protocol = ro.georadius(k, c, r, u)
 
                 protocol.encode shouldBe Arr(Bulk("GEORADIUS_RO"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u))
-                protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, coordinates, radius, unit and limit" in {
@@ -598,7 +598,7 @@ final class GeoPSpec extends GeoExtPSpec {
                   Bulk("COUNT"),
                   Bulk(l)
                 )
-                protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, coordinates, radius, unit and direction" in {
@@ -607,7 +607,7 @@ final class GeoPSpec extends GeoExtPSpec {
                 val protocol = ro.georadius(k, c, r, u, d)
 
                 protocol.encode shouldBe Arr(Bulk("GEORADIUS_RO"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u), Bulk(d))
-                protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, coordinates, radius, unit, limit and direction" in {
@@ -627,16 +627,16 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(l),
                     Bulk(d)
                   )
-                  protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                  protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
                 }
             }
           }
           "given key, coordinates, radius, unit and radius mode" in {
             forAll("key", "coordinates", "radius", "unit", "radius mode & result") {
               (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = ro.georadius(k, c, r, u, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = ro.georadius(k, c, r, u, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUS_RO") ::
@@ -647,15 +647,15 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(u) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, coordinates, radius, unit, limit and radius mode" in {
             forAll("key", "coordinates", "radius", "unit", "limit", "radius mode & result") {
               (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = ro.georadius(k, c, r, u, l, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = ro.georadius(k, c, r, u, l, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUS_RO") ::
@@ -668,15 +668,15 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(l) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, coordinates, radius, unit, direction and radius mode" in {
             forAll("key", "coordinates", "radius", "unit", "direction", "radius mode & result") {
               (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = ro.georadius(k, c, r, u, d, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = ro.georadius(k, c, r, u, d, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUS_RO") ::
@@ -688,16 +688,16 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(d) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, coordinates, radius, unit, limit, direction and radius mode" in {
             forAll("key", "coordinates", "radius", "unit", "limit", "direction") {
               (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
                 forAll("radius mode & result") { rmAndRes: (GeoRadiusMode, List[_]) =>
-                  val (rm, res)  = rmAndRes
-                  implicit val _ = rm.r
-                  val protocol   = ro.georadius(k, c, r, u, l, d, rm)
+                  val (rm, res)   = rmAndRes
+                  implicit val ev = rm.r
+                  val protocol    = ro.georadius(k, c, r, u, l, d, rm)
 
                   protocol.encode shouldBe Arr(
                     Bulk("GEORADIUS_RO") ::
@@ -711,7 +711,7 @@ final class GeoPSpec extends GeoExtPSpec {
                       Bulk(d) ::
                       rm.params.map(Bulk(_))
                   )
-                  protocol.decode(listToArr(res)).right.value shouldBe res
+                  protocol.decode(listToArr(res)) onRight (_ shouldBe res)
                 }
             }
           }
@@ -721,7 +721,7 @@ final class GeoPSpec extends GeoExtPSpec {
               val protocol = ro.georadius(k, m, r, u)
 
               protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER_RO"), Bulk(k), Bulk(m), Bulk(r), Bulk(u))
-              protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, member, radius, unit and limit" in {
@@ -738,7 +738,7 @@ final class GeoPSpec extends GeoExtPSpec {
                   Bulk("COUNT"),
                   Bulk(l)
                 )
-                protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, member, radius, unit and direction" in {
@@ -747,7 +747,7 @@ final class GeoPSpec extends GeoExtPSpec {
                 val protocol = ro.georadius(k, m, r, u, d)
 
                 protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER_RO"), Bulk(k), Bulk(m), Bulk(r), Bulk(u), Bulk(d))
-                protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
             }
           }
           "given key, member, radius, unit, limit and direction" in {
@@ -766,16 +766,16 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(l),
                     Bulk(d)
                   )
-                  protocol.decode(Arr(ms.map(Bulk(_)))).right.value shouldBe ms
+                  protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
                 }
             }
           }
           "given key, member, radius, unit and radius mode" in {
             forAll("key", "member", "radius", "unit", "radius mode & result") {
               (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = ro.georadius(k, m, r, u, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = ro.georadius(k, m, r, u, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUSBYMEMBER_RO") ::
@@ -785,15 +785,15 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(u) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, member, radius, unit, limit and radius mode" in {
             forAll("key", "member", "radius", "unit", "limit", "radius mode & result") {
               (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = ro.georadius(k, m, r, u, l, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = ro.georadius(k, m, r, u, l, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUSBYMEMBER_RO") ::
@@ -805,15 +805,15 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(l) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, member, radius, unit, direction and radius mode" in {
             forAll("key", "member", "radius", "unit", "direction", "radius mode & result") {
               (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)  = rmAndRes
-                implicit val _ = rm.r
-                val protocol   = ro.georadius(k, m, r, u, d, rm)
+                val (rm, res)   = rmAndRes
+                implicit val ev = rm.r
+                val protocol    = ro.georadius(k, m, r, u, d, rm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUSBYMEMBER_RO") ::
@@ -824,16 +824,16 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(d) ::
                     rm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)).right.value shouldBe res
+                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
             }
           }
           "given key, member, radius, unit, limit, direction and radius mode" in {
             forAll("key", "member", "radius", "unit", "limit", "direction") {
               (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
                 forAll("radius mode & result") { rmAndRes: (GeoRadiusMode, List[_]) =>
-                  val (rm, res)  = rmAndRes
-                  implicit val _ = rm.r
-                  val protocol   = ro.georadius(k, m, r, u, l, d, rm)
+                  val (rm, res)   = rmAndRes
+                  implicit val ev = rm.r
+                  val protocol    = ro.georadius(k, m, r, u, l, d, rm)
 
                   protocol.encode shouldBe Arr(
                     Bulk("GEORADIUSBYMEMBER_RO") ::
@@ -846,7 +846,7 @@ final class GeoPSpec extends GeoExtPSpec {
                       Bulk(d) ::
                       rm.params.map(Bulk(_))
                   )
-                  protocol.decode(listToArr(res)).right.value shouldBe res
+                  protocol.decode(listToArr(res)) onRight (_ shouldBe res)
                 }
             }
           }

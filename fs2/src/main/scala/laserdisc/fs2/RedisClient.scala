@@ -1,10 +1,8 @@
 package laserdisc
 package fs2
 
-import java.nio.channels.AsynchronousChannelGroup
-
 import cats.Eq
-import cats.effect.{ConcurrentEffect, ContextShift, Sync, Timer}
+import cats.effect.{Blocker, ConcurrentEffect, ContextShift, Resource, Sync, Timer}
 import cats.effect.concurrent.Ref
 import cats.instances.option.catsStdInstancesForOption
 import cats.instances.option.catsKernelStdEqForOption
@@ -67,19 +65,20 @@ trait RedisClient[F[_]] {
 }
 
 object RedisClient {
+
   final def apply[F[_]: ConcurrentEffect: ContextShift: Timer: LogWriter](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
-  )(
-      implicit acg: AsynchronousChannelGroup
-  ): Stream[F, RedisClient[F]] = {
+  )(b: Resource[F, Blocker]): Stream[F, RedisClient[F]] = {
 
     def redisConnection(address: RedisAddress): Pipe[F, RESP, RESP] =
       stream =>
-        Stream
-          .eval(address.toInetSocketAddress)
-          .flatMap(socketAddress => stream.through(RedisConnection(socketAddress, writeTimeout, readMaxBytes)))
+        Stream.eval(address.toInetSocketAddress) >>= { socketAddress =>
+          stream.through(
+            RedisConnection(socketAddress, writeTimeout, readMaxBytes)(b)
+          )
+        }
 
     def connection: F[impl.Connection[F]] =
       impl.connection(redisConnection, impl.currentServer(addresses.toSeq))

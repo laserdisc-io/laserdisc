@@ -1,7 +1,6 @@
 package laserdisc
 package fs2
 
-import java.nio.channels.AsynchronousChannelGroup
 import java.util.concurrent.TimeUnit.SECONDS
 
 import cats.effect.{Resource, Sync}
@@ -21,17 +20,7 @@ object MkResource {
               ec.shutdown()
               ec.awaitTermination(3, SECONDS)
               ()
-          }
-      }
-    implicit val canShutdownAsynchronousChannelGroup: CanShutdown[AsynchronousChannelGroup] =
-      new CanShutdown[AsynchronousChannelGroup] {
-        override def shutdown[F[_]](implicit F: Sync[F]): AsynchronousChannelGroup => F[Unit] =
-          acg =>
-            F.delay {
-              acg.shutdown()
-              acg.awaitTermination(3, SECONDS)
-              ()
-          }
+            }
       }
   }
 

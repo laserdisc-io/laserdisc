@@ -8,7 +8,7 @@ final class HashPSpec extends HashExtPSpec {
     Arr(
       Bulk(scanKV.cursor.value),
       scanKV.maybeValues.fold(NilArr: GenArr)(kvs => Arr(kvs.flatMap { case KV(k, v) => List(Bulk(k.value), Bulk(v)) }.toList))
-  )
+    )
 
   "The Hash protocol" when {
 
@@ -19,7 +19,7 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hdel(k, fs)
 
           protocol.encode shouldBe Arr(Bulk("HDEL") :: Bulk(k) :: fs.value.map(Bulk(_)))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -31,7 +31,7 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hexists(k, f)
 
           protocol.encode shouldBe Arr(Bulk("HEXISTS"), Bulk(k), Bulk(f))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
 
@@ -50,13 +50,13 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hget(k, f)
 
           protocol.encode shouldBe Arr(Bulk("HGET"), Bulk(k), Bulk(f))
-          protocol.decode(Bulk(s)).right.value shouldBe Some(Bulk(s))
+          protocol.decode(Bulk(s)) onRight (_ shouldBe Some(Bulk(s)))
         }
         "given key, field and specific read instance" in forAll("key", "field", "returned value") { (k: Key, f: Key, i: Int) =>
           val protocol = hget[Foo](k, f)
 
           protocol.encode shouldBe Arr(Bulk("HGET"), Bulk(k), Bulk(f))
-          protocol.decode(Bulk(i)).right.value shouldBe Some(Foo(i))
+          protocol.decode(Bulk(i)) onRight (_ shouldBe Some(Foo(i)))
         }
       }
     }
@@ -74,14 +74,14 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hgetall(k)
 
           protocol.encode shouldBe Arr(Bulk("HGETALL"), Bulk(k))
-          protocol.decode(Arr(Bulk(f), Bulk(v))).right.value shouldBe Arr(Bulk(f), Bulk(v))
+          protocol.decode(Arr(Bulk(f), Bulk(v))) onRight (_ shouldBe Arr(Bulk(f), Bulk(v)))
         }
         "given key and specific read instance (Map[Key, String])" in {
           forAll("key", "returned field", "returned value") { (k: Key, f: Key, v: String) =>
             val protocol = hgetall[Map[Key, String]](k)
 
             protocol.encode shouldBe Arr(Bulk("HGETALL"), Bulk(k))
-            protocol.decode(Arr(Bulk(f), Bulk(v))).right.value shouldBe Map(f -> v)
+            protocol.decode(Arr(Bulk(f), Bulk(v))) onRight (_ shouldBe Map(f -> v))
           }
         }
         "given key and specific read instance (Key :: String :: HNil)" in {
@@ -89,7 +89,7 @@ final class HashPSpec extends HashExtPSpec {
             val protocol = hgetall[Key :: String :: HNil](k)
 
             protocol.encode shouldBe Arr(Bulk("HGETALL"), Bulk(k))
-            protocol.decode(Arr(Bulk(f), Bulk(v))).right.value shouldBe f :: v :: HNil
+            protocol.decode(Arr(Bulk(f), Bulk(v))) onRight (_ shouldBe f :: v :: HNil)
           }
         }
       }
@@ -103,7 +103,7 @@ final class HashPSpec extends HashExtPSpec {
             val protocol = hincrby(k, f, nzl)
 
             protocol.encode shouldBe Arr(Bulk("HINCRBY"), Bulk(k), Bulk(f), Bulk(nzl))
-            protocol.decode(Num(l)).right.value shouldBe l
+            protocol.decode(Num(l)) onRight (_ shouldBe l)
           }
         }
         "given key, field and double increment" in {
@@ -111,7 +111,7 @@ final class HashPSpec extends HashExtPSpec {
             val protocol = hincrby(k, f, nzd)
 
             protocol.encode shouldBe Arr(Bulk("HINCRBYFLOAT"), Bulk(k), Bulk(f), Bulk(nzd))
-            protocol.decode(Bulk(d)).right.value shouldBe d
+            protocol.decode(Bulk(d)) onRight (_ shouldBe d)
           }
         }
       }
@@ -125,7 +125,7 @@ final class HashPSpec extends HashExtPSpec {
             val protocol = hkeys(k)
 
             protocol.encode shouldBe Arr(Bulk("HKEYS"), Bulk(k))
-            protocol.decode(Arr(ks.map(Bulk(_)))).right.value shouldBe ks
+            protocol.decode(Arr(ks.map(Bulk(_)))) onRight (_ shouldBe ks)
           }
         }
       }
@@ -138,7 +138,7 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hlen(k)
 
           protocol.encode shouldBe Arr(Bulk("HLEN"), Bulk(k))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -150,13 +150,13 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hmget[Int](k, f)
 
           protocol.encode shouldBe Arr(Bulk("HMGET"), Bulk(k), Bulk(f))
-          protocol.decode(Arr(Bulk(i))).right.value shouldBe i
+          protocol.decode(Arr(Bulk(i))) onRight (_ shouldBe i)
         }
         "given key and two fields" in forAll { (k: Key, f1: Key, f2: Key, i: Int, s: String) =>
           val protocol = hmget[Int, String](k, f1, f2)
 
           protocol.encode shouldBe Arr(Bulk("HMGET"), Bulk(k), Bulk(f1), Bulk(f2))
-          protocol.decode(Arr(Bulk(i), Bulk(s))).right.value shouldBe (i -> s)
+          protocol.decode(Arr(Bulk(i), Bulk(s))) onRight (_ shouldBe (i -> s))
         }
       }
 
@@ -173,13 +173,13 @@ final class HashPSpec extends HashExtPSpec {
             val protocol = hmset(k, (f1 -> i) :: (f2 -> s) :: HNil)
 
             protocol.encode shouldBe Arr(Bulk("HMSET"), Bulk(k), Bulk(f1), Bulk(i), Bulk(f2), Bulk(s))
-            protocol.decode(Str(OK.value)).right.value shouldBe OK
+            protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
           }
           "given key and a Product (Baz)" in forAll { (k: Key, baz: Baz) =>
             val protocol = hmset(k, baz)
 
             protocol.encode shouldBe Arr(Bulk("HMSET"), Bulk(k), Bulk("f1"), Bulk(baz.f1), Bulk("f2"), Bulk(baz.f2))
-            protocol.decode(Str(OK.value)).right.value shouldBe OK
+            protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
           }
         }
       }
@@ -192,14 +192,14 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hscan(k, nnl)
 
           protocol.encode shouldBe Arr(Bulk("HSCAN"), Bulk(k), Bulk(nnl))
-          protocol.decode(scanKVToArr(skv)).right.value shouldBe skv
+          protocol.decode(scanKVToArr(skv)) onRight (_ shouldBe skv)
         }
         "given key, cursor and glob pattern" in {
           forAll("key", "cursor", "glob pattern", "scan result") { (k: Key, nnl: NonNegLong, g: GlobPattern, skv: ScanKV) =>
             val protocol = hscan(k, nnl, g)
 
             protocol.encode shouldBe Arr(Bulk("HSCAN"), Bulk(k), Bulk(nnl), Bulk("MATCH"), Bulk(g))
-            protocol.decode(scanKVToArr(skv)).right.value shouldBe skv
+            protocol.decode(scanKVToArr(skv)) onRight (_ shouldBe skv)
           }
         }
         "given key, cursor and count" in {
@@ -207,7 +207,7 @@ final class HashPSpec extends HashExtPSpec {
             val protocol = hscan(k, nnl, pi)
 
             protocol.encode shouldBe Arr(Bulk("HSCAN"), Bulk(k), Bulk(nnl), Bulk("COUNT"), Bulk(pi))
-            protocol.decode(scanKVToArr(skv)).right.value shouldBe skv
+            protocol.decode(scanKVToArr(skv)) onRight (_ shouldBe skv)
           }
         }
         "given key, cursor, glob pattern and count" in forAll("key", "cursor", "glob pattern", "count", "scan result") {
@@ -215,7 +215,7 @@ final class HashPSpec extends HashExtPSpec {
             val protocol = hscan(k, nnl, g, pi)
 
             protocol.encode shouldBe Arr(Bulk("HSCAN"), Bulk(k), Bulk(nnl), Bulk("MATCH"), Bulk(g), Bulk("COUNT"), Bulk(pi))
-            protocol.decode(scanKVToArr(skv)).right.value shouldBe skv
+            protocol.decode(scanKVToArr(skv)) onRight (_ shouldBe skv)
         }
       }
     }
@@ -227,7 +227,7 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hset(k, f, v)
 
           protocol.encode shouldBe Arr(Bulk("HSET"), Bulk(k), Bulk(f), Bulk(v))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
     }
@@ -239,7 +239,7 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hsetnx(k, f, v)
 
           protocol.encode shouldBe Arr(Bulk("HSETNX"), Bulk(k), Bulk(f), Bulk(v))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
     }
@@ -251,7 +251,7 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hstrlen(k, f)
 
           protocol.encode shouldBe Arr(Bulk("HSTRLEN"), Bulk(k), Bulk(f))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -263,13 +263,13 @@ final class HashPSpec extends HashExtPSpec {
           val protocol = hvals[Int :: HNil](k)
 
           protocol.encode shouldBe Arr(Bulk("HVALS"), Bulk(k))
-          protocol.decode(Arr(Bulk(i))).right.value shouldBe (i :: HNil)
+          protocol.decode(Arr(Bulk(i))) onRight (_ shouldBe (i :: HNil))
         }
         "given key (expecting two fields)" in forAll { (k: Key, i: Int, s: String) =>
           val protocol = hvals[Int :: String :: HNil](k)
 
           protocol.encode shouldBe Arr(Bulk("HVALS"), Bulk(k))
-          protocol.decode(Arr(Bulk(i), Bulk(s))).right.value shouldBe (i :: s :: HNil)
+          protocol.decode(Arr(Bulk(i), Bulk(s))) onRight (_ shouldBe (i :: s :: HNil))
         }
       }
     }

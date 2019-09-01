@@ -67,26 +67,28 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   private[this] implicit final val nodesShow: Show[RawNodes] = Show.instance {
     _.map(rawNodeToString).mkString(LF)
   }
-  private[this] final val validateNodes: (ClusterNodes, RawNodes) => Unit = (ns, rns) =>
-    ns.nodes.zip(rns).foreach {
-      case (ClusterNode(n0, ClusterAddress(h0, p0, cp0), fs0, m0, ps0, pr0, ce0, l0, ss0), (n, h, p, cp, fs, m, ps, pr, ce, l, ss)) =>
-        n0.value shouldBe n
-        h0.value shouldBe (if (h.isEmpty) LoopbackEqWit.value else h)
-        p0.value shouldBe p
-        cp0.value shouldBe cp.getOrElse(p)
-        (if (fs0.isEmpty) Seq("noflags") else fs0.map(Show[ClusterFlag].show)) shouldBe fs
-        m0.fold("-")(_.value) shouldBe m
-        ps0.value shouldBe ps
-        pr0.value shouldBe pr
-        ce0.value shouldBe ce
-        Show[ClusterLinkState].show(l0) shouldBe l
-        ss0.map {
-          case ClusterSingleSlotType(s)        => s.toString
-          case ClusterRangeSlotType(f, t)      => s"$f-$t"
-          case ClusterImportingSlotType(s, in) => s"[$s-<-$in]"
-          case ClusterMigratingSlotType(s, mn) => s"[$s->-$mn]"
-        } shouldBe ss
-  }
+  private[this] final val validateNodes: RawNodes => ClusterNodes => Unit =
+    rns =>
+      ns =>
+        ns.nodes.zip(rns).foreach {
+          case (ClusterNode(n0, ClusterAddress(h0, p0, cp0), fs0, m0, ps0, pr0, ce0, l0, ss0), (n, h, p, cp, fs, m, ps, pr, ce, l, ss)) =>
+            n0.value shouldBe n
+            h0.value shouldBe (if (h.isEmpty) LoopbackEqWit.value else h)
+            p0.value shouldBe p
+            cp0.value shouldBe cp.getOrElse(p)
+            (if (fs0.isEmpty) Seq("noflags") else fs0.map(Show[ClusterFlag].show)) shouldBe fs
+            m0.fold("-")(_.value) shouldBe m
+            ps0.value shouldBe ps
+            pr0.value shouldBe pr
+            ce0.value shouldBe ce
+            Show[ClusterLinkState].show(l0) shouldBe l
+            ss0.map {
+              case ClusterSingleSlotType(s)        => s.toString
+              case ClusterRangeSlotType(f, t)      => s"$f-$t"
+              case ClusterImportingSlotType(s, in) => s"[$s-<-$in]"
+              case ClusterMigratingSlotType(s, mn) => s"[$s->-$mn]"
+            } shouldBe ss
+        }
 
   private[this] final type RawSlot  = (Int, Int, Seq[(String, Int, Option[String])])
   private[this] final type RawSlots = List[RawSlot]
@@ -122,7 +124,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             case (h, p, None)       => Arr(Bulk(h), Num(p.toLong))
           }))
       }
-  )
+    )
 
   "The Cluster protocol" when {
 
@@ -133,7 +135,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = addslots(ss)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER") :: Bulk("ADDSLOTS") :: ss.value.map(Bulk(_)))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -146,8 +148,9 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             val protocol = clusterinfo
 
             protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("INFO"))
-            val result = protocol.decode(Bulk(info)).right.value
-            info.forall { case (k, v) => result.selectDynamic(k).right.value == v } shouldBe true
+            protocol.decode(Bulk(info)) onRight (
+                result => info.forall { case (k, v) => result.selectDynamic(k).fold(_ => false, _ == v) } shouldBe true
+            )
           }
         }
       }
@@ -160,7 +163,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = countfailurereports(n)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("COUNT-FAILURE-REPORTS"), Bulk(n))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -172,7 +175,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = countkeysinslot(s)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("COUNTKEYSINSLOT"), Bulk(s))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -184,7 +187,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = delslots(ss)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER") :: Bulk("DELSLOTS") :: ss.value.map(Bulk(_)))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -196,13 +199,13 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = failover
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FAILOVER"))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
         "given mode" in forAll("failover mode") { m: ClusterFailoverMode =>
           val protocol = failover(m)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FAILOVER"), Bulk(m))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -214,7 +217,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = forget(n)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FORGET"), Bulk(n))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -226,7 +229,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = getkeysinslot(s, pi)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("GETKEYSINSLOT"), Bulk(s), Bulk(pi))
-          protocol.decode(Arr(ks.map(Bulk(_)))).right.value shouldBe ks
+          protocol.decode(Arr(ks.map(Bulk(_)))) onRight (_ shouldBe ks)
         }
       }
     }
@@ -238,7 +241,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = keyslot(k)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("KEYSLOT"), Bulk(k))
-          protocol.decode(Num(s.value.toLong)).right.value shouldBe s
+          protocol.decode(Num(s.value.toLong)) onRight (_ shouldBe s)
         }
       }
     }
@@ -250,7 +253,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = meet(h, p)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("MEET"), Bulk(h), Bulk(p))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -263,7 +266,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             val protocol = nodes
 
             protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("NODES"))
-            validateNodes(protocol.decode(Bulk(ns)).right.value, ns)
+            protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
           }
         }
       }
@@ -276,7 +279,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = readonly
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("READONLY"))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -288,7 +291,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = readwrite
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("READWRITE"))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -301,7 +304,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             val protocol = replicas(n)
 
             protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("REPLICAS"), Bulk(n))
-            validateNodes(protocol.decode(Bulk(ns)).right.value, ns)
+            protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
           }
         }
       }
@@ -314,7 +317,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = replicate(n)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("REPLICATE"), Bulk(n))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -326,13 +329,13 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = reset
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk("SOFT"))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
         "given reset mode" in forAll("reset mode") { m: ClusterResetMode =>
           val protocol = reset(m)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk(m))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -344,7 +347,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = saveconfig
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SAVECONFIG"))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -356,7 +359,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = setconfigepoch(nni)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SET-CONFIG-EPOCH"), Bulk(nni))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -368,13 +371,13 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = setslot(s)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk("STABLE"))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
         "given a slot, mode and a node id" in forAll("slot", "mode", "node id") { (s: Slot, m: ClusterSetSlotMode, nid: NodeId) =>
           val protocol = setslot(s, m, nid)
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk(m), Bulk(nid))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -387,7 +390,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             val protocol = slaves(n)
 
             protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLAVES"), Bulk(n))
-            validateNodes(protocol.decode(Bulk(ns)).right.value, ns)
+            protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
           }
         }
       }
@@ -401,7 +404,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             val protocol = slots
 
             protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLOTS"))
-            protocol.decode(slotsToArr(ss)).right.value.slots.foreach {
+            protocol.decode(slotsToArr(ss)) onRightAll (_.slots.foreach {
               case (ClusterRangeSlotType(f, t), ClusterNewSlotInfo(ClusterHostPortNodeId(mh, mp, mid), rs)) =>
                 val mrs = (mh.value, mp.value, Some(mid.value)) :: rs.foldLeft(List.empty[(String, Int, Option[String])]) {
                   case (acc, ClusterHostPortNodeId(h, p, nid)) => acc :+ ((h.value, p.value, Some(nid.value)))
@@ -412,7 +415,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
                   case (acc, ClusterHostPort(h, p)) => acc :+ ((h.value, p.value, None))
                 }
                 ss should contain((f.value, t.value, mrs))
-            }
+            })
           }
         }
       }

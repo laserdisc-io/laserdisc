@@ -315,7 +315,7 @@ sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
             else stateOfArr(value.decoded, remainder, bits.take(size))
         }
       case (other, _) => Left(s"unidentified RESP type when checking the state: ${other.toUtf8} (${other.toHex})")
-  }
+    }
 
   @tailrec
   private[this] final def stateOfArr(missing: Long, remainder: BitVector, bits: BitVector): String | State = missing match {

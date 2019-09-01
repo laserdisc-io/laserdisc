@@ -30,7 +30,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of non empty Strings with no spaces" in forAll(connectionNameGen) { s =>
         whenever(connectionNameIsValid(s)) {
-          ConnectionName.from(s).right.value.value shouldBe s
+          ConnectionName.from(s) onRight (_.value shouldBe s)
         }
       }
     }
@@ -64,7 +64,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of in range Ints" in forAll(dbIndexGen) { i =>
         whenever(dbIndexIsValid(i)) {
-          DbIndex.from(i).right.value.value shouldBe i
+          DbIndex.from(i) onRight (_.value shouldBe i)
         }
       }
     }
@@ -104,7 +104,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of conformant Strings" in forAll(geoHashGen) { s =>
         whenever(geoHashIsValid(s)) {
-          GeoHash.from(s).right.value.value shouldBe s
+          GeoHash.from(s) onRight (_.value shouldBe s)
         }
       }
     }
@@ -139,7 +139,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of conformant Strings" in forAll(globPatternGen) { s =>
         whenever(globPatternIsValid(s)) {
-          GlobPattern.from(s).right.value.value shouldBe s
+          GlobPattern.from(s) onRight (_.value shouldBe s)
         }
       }
     }
@@ -239,7 +239,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of valid hosts" in forAll(hostGen) { s =>
         whenever(hostIsValid(s)) {
-          Host.from(s).right.value.value shouldBe s
+          Host.from(s) onRight (_.value shouldBe s)
         }
       }
     }
@@ -262,7 +262,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of non empty Strings" in forAll { (s: String) =>
         whenever(keyIsValid(s)) {
-          Key.from(s).right.value.value shouldBe s
+          Key.from(s) onRight (_.value shouldBe s)
         }
       }
     }
@@ -299,7 +299,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of in range Doubles (-85.05112878D <= d <= 85.05112878D)" in forAll(latitudeGen) { d =>
         whenever(latitudeIsValid(d)) {
-          Latitude.from(d).right.value.value shouldBe d
+          Latitude.from(d) onRight (_.value shouldBe d)
         }
       }
     }
@@ -336,7 +336,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of in range Doubles (-180.0D <= d <= 180.0D)" in forAll(longitudeGen) { d =>
         whenever(longitudeIsValid(d)) {
-          Longitude.from(d).right.value.value shouldBe d
+          Longitude.from(d) onRight (_.value shouldBe d)
         }
       }
     }
@@ -376,7 +376,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of conformant Strings" in forAll(nodeIdGen) { s =>
         whenever(nodeIdIsValid(s)) {
-          NodeId.from(s).right.value.value shouldBe s
+          NodeId.from(s) onRight (_.value shouldBe s)
         }
       }
     }
@@ -410,7 +410,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of in range Doubles (d >= 0.0D)" in forAll(nonNegDoubleGen) { d =>
         whenever(nonNegDoubleIsValid(d)) {
-          NonNegDouble.from(d).right.value.value shouldBe d
+          NonNegDouble.from(d) onRight (_.value shouldBe d)
         }
       }
     }
@@ -441,7 +441,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of in range Ints (i > 0)" in forAll(nonNegIntGen) { i =>
         whenever(nonNegIntIsValid(i)) {
-          NonNegInt.from(i).right.value.value shouldBe i
+          NonNegInt.from(i) onRight (_.value shouldBe i)
         }
       }
     }
@@ -472,7 +472,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of in range Longs (l > 0L)" in forAll(nonNegLongGen) { l =>
         whenever(nonNegLongIsValid(l)) {
-          NonNegLong.from(l).right.value.value shouldBe l
+          NonNegLong.from(l) onRight (_.value shouldBe l)
         }
       }
     }
@@ -492,7 +492,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of valid Doubles (d != 0.0D)" in forAll(nonZeroDoubleGen) { d =>
         whenever(nonZeroDoubleIsValid(d)) {
-          NonZeroDouble.from(d).right.value.value shouldBe d
+          NonZeroDouble.from(d) onRight (_.value shouldBe d)
         }
       }
     }
@@ -509,7 +509,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of valid Ints (i != 0)" in forAll(nonZeroIntGen) { i =>
         whenever(nonZeroIntIsValid(i)) {
-          NonZeroInt.from(i).right.value.value shouldBe i
+          NonZeroInt.from(i) onRight (_.value shouldBe i)
         }
       }
     }
@@ -526,7 +526,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of valid Longs (l != 0L)" in forAll(nonZeroLongGen) { l =>
         whenever(nonZeroLongIsValid(l)) {
-          NonZeroLong.from(l).right.value.value shouldBe l
+          NonZeroLong.from(l) onRight (_.value shouldBe l)
         }
       }
     }
@@ -543,7 +543,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of non empty Lists (length > 0)" in forAll { (is: List[Int]) =>
         whenever(is.nonEmpty) {
-          OneOrMore.from(is).right.value.value shouldBe is
+          OneOrMore.from(is) onRight (_.value shouldBe is)
         }
       }
     }
@@ -569,7 +569,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of non empty Lists (length > 0)" in forAll { (ks: List[Key]) =>
         whenever(ks.nonEmpty) {
-          OneOrMoreKeys.from(ks).right.value.value shouldBe ks
+          OneOrMoreKeys.from(ks) onRight (_.value shouldBe ks)
         }
       }
     }
@@ -606,7 +606,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of in range Ints (0 <= i <= 536870911)" in forAll(rangeOffsetGen) { i =>
         whenever(rangeOffsetIsValid(i)) {
-          RangeOffset.from(i).right.value.value shouldBe i
+          RangeOffset.from(i) onRight (_.value shouldBe i)
         }
       }
     }
@@ -643,7 +643,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of in range Ints (0 <= i <= 16383)" in forAll(slotGen) { i =>
         whenever(slotIsValid(i)) {
-          Slot.from(i).right.value.value shouldBe i
+          Slot.from(i) onRight (_.value shouldBe i)
         }
       }
     }
@@ -680,7 +680,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of in range Longs (0L <= l <= 4294967295L)" in forAll(stringLengthGen) { l =>
         whenever(stringLengthIsValid(l)) {
-          StringLength.from(l).right.value.value shouldBe l
+          StringLength.from(l) onRight (_.value shouldBe l)
         }
       }
     }
@@ -712,7 +712,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of Lists of length > 1" in forAll { (ks: List[Key]) =>
         whenever(ks.size > 1) {
-          TwoOrMoreKeys.from(ks).right.value.value shouldBe ks
+          TwoOrMoreKeys.from(ks) onRight (_.value shouldBe ks)
         }
       }
     }
@@ -737,14 +737,14 @@ final class RefinedTypesSpec extends BaseSpec {
         an[IllegalArgumentException] should be thrownBy TwoOrMoreWeightedKeys.unsafeFrom(List.empty)
       }
       "provided single element List" in {
-        an[IllegalArgumentException] should be thrownBy TwoOrMoreWeightedKeys.unsafeFrom(List(Key("a") -> ValidDouble(42.0D)))
+        an[IllegalArgumentException] should be thrownBy TwoOrMoreWeightedKeys.unsafeFrom(List(Key("a") -> ValidDouble(42.0d)))
       }
     }
 
     "refine correctly" when {
       "provided non literal cases of Lists of length > 1" in forAll { (kvds: List[(Key, ValidDouble)]) =>
         whenever(kvds.size > 1) {
-          TwoOrMoreWeightedKeys.from(kvds).right.value.value shouldBe kvds
+          TwoOrMoreWeightedKeys.from(kvds) onRight (_.value shouldBe kvds)
         }
       }
     }
@@ -770,7 +770,7 @@ final class RefinedTypesSpec extends BaseSpec {
     "refine correctly" when {
       "provided non literal cases of valid Doubles (d != Double.NaN)" in forAll { (d: Double) =>
         whenever(validDoubleIsValid(d)) {
-          ValidDouble.from(d).right.value.value shouldBe d
+          ValidDouble.from(d) onRight (_.value shouldBe d)
         }
       }
     }

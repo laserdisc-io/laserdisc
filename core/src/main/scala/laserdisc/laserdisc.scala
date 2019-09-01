@@ -49,10 +49,10 @@ package object laserdisc {
   final val GeoHashRegexWit             = W("[a-z0-9]{11}")
   final val GlobPatternRegexWit         = W("(\\[?[\\w\\*\\?]+\\]?)+") //TODO good enough but needs regex' TLC
   final val IPv4RegexWit                = W("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
-  final val LatitudeMinValueWit         = W(-85.05112878D)
-  final val LatitudeMaxValueWit         = W(85.05112878D)
-  final val LongitudeMinValueWit        = W(-180.0D)
-  final val LongitudeMaxValueWit        = W(180.0D)
+  final val LatitudeMinValueWit         = W(-85.05112878d)
+  final val LatitudeMaxValueWit         = W(85.05112878d)
+  final val LongitudeMinValueWit        = W(-180.0d)
+  final val LongitudeMaxValueWit        = W(180.0d)
   final val LoopbackEqWit               = W("127.0.0.1")
   final val NodeIdRegexWit              = W("[0-9a-f]{40}")
   final val NOKEYEqWit                  = W("NOKEY")
@@ -137,7 +137,7 @@ package object laserdisc {
   // New types' ops
   final object OneOrMore {
     def from[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): String | OneOrMore[A] = rt.refine(l)
-    def unapply[A](l: List[A]): Option[OneOrMore[A]]                                                     = from(l).right.toOption
+    def unapply[A](l: List[A]): Option[OneOrMore[A]]                                                     = from(l).toOption
     def unsafeFrom[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): OneOrMore[A]    = rt.unsafeRefine(l)
   }
 
@@ -182,14 +182,26 @@ package object laserdisc {
   private[laserdisc] final val SPACE    = s"$SPACE_CH"
 
   private[laserdisc] final object ToInt {
-    def unapply(l: Long): Option[Int]   = try { Some(j.Math.toIntExact(l)) } catch { case _: ArithmeticException    => None }
-    def unapply(s: String): Option[Int] = try { Some(j.Integer.parseInt(s)) } catch { case _: NumberFormatException => None }
+    def unapply(l: Long): Option[Int] =
+      try {
+        Some(j.Math.toIntExact(l))
+      } catch { case _: ArithmeticException => None }
+    def unapply(s: String): Option[Int] =
+      try {
+        Some(j.Integer.parseInt(s))
+      } catch { case _: NumberFormatException => None }
   }
   private[laserdisc] final object ToLong {
-    def unapply(s: String): Option[Long] = try { Some(j.Long.parseLong(s)) } catch { case _: NumberFormatException => None }
+    def unapply(s: String): Option[Long] =
+      try {
+        Some(j.Long.parseLong(s))
+      } catch { case _: NumberFormatException => None }
   }
   private[laserdisc] final object ToDouble {
-    def unapply(s: String): Option[Double] = try { Some(j.Double.parseDouble(s)) } catch { case _: NumberFormatException => None }
+    def unapply(s: String): Option[Double] =
+      try {
+        Some(j.Double.parseDouble(s))
+      } catch { case _: NumberFormatException => None }
   }
 
   private[laserdisc] implicit final class WidenOps1[F[_], A](private val fa: F[A]) extends AnyVal {

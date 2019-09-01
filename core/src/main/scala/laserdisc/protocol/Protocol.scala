@@ -25,7 +25,7 @@ sealed trait Protocol extends Request with Response { self =>
     override type A = B
     override def codec: ProtocolCodec[B] = new ProtocolCodec[B] {
       override def encode(protocol: Protocol): RESP = self.codec.encode(protocol)
-      override def decode(resp: RESP): Maybe[B]     = self.codec.decode(resp).right.map(f(_))
+      override def decode(resp: RESP): Maybe[B]     = self.codec.decode(resp).map(f(_))
     }
     override def command: String          = self.command
     override def parameters: Seq[GenBulk] = self.parameters

@@ -24,8 +24,8 @@ object RESPCodecsSpec extends EitherValues {
       bitVectorFromString andThen attemptDecode
     }
 
-    final val respToString = {
-      val stringify = (bits: BitVector) => bits.bytes.decodeUtf8.right.value
+    final val respToString: RESP => String = {
+      val stringify = (bits: BitVector) => bits.bytes.decodeUtf8.fold(_.getMessage, identity)
       requireEncode andThen stringify
     }
 
@@ -40,7 +40,6 @@ object RESPCodecsSpec extends EitherValues {
 
   private implicit final class RichString(private val underlying: String) extends AnyVal {
     def RESP: SErr | RESP = functions.stringToRESPAttempt(underlying).toEither
-    def asRESP: RESP      = RESP.right.value
     def bytesLength: Int  = functions.stringToBytesLength(underlying)
   }
 
@@ -102,7 +101,7 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling simple strings" should {
       "decode them correctly" in forAll { s: String =>
-        s"+$s$CRLF".asRESP shouldBe Str(s)
+        s"+$s$CRLF".RESP onRight (_ shouldBe Str(s))
       }
       "encode them correctly" in forAll { s: Str =>
         s.wireFormat shouldBe s"+${s.value}$CRLF"
@@ -114,7 +113,7 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling errors" should {
       "decode them correctly" in forAll { s: String =>
-        s"-$s$CRLF".asRESP shouldBe Err(s)
+        s"-$s$CRLF".RESP onRight (_ shouldBe Err(s))
       }
       "encode them correctly" in forAll { e: Err =>
         e.wireFormat shouldBe s"-${e.message}$CRLF"
@@ -126,7 +125,7 @@ final class RESPCodecsSpec extends BaseSpec {
 
     "handling integers" should {
       "decode them correctly" in forAll { l: Long =>
-        s":$l$CRLF".asRESP shouldBe Num(l)
+        s":$l$CRLF".RESP onRight (_ shouldBe Num(l))
       }
       "encode them correctly" in forAll { n: Num =>
         n.wireFormat shouldBe s":${n.value}$CRLF"
@@ -142,8 +141,8 @@ final class RESPCodecsSpec extends BaseSpec {
       }
       "decode them correctly" in forAll { os: Option[String] =>
         os match {
-          case None    => s"$$-1$CRLF".asRESP shouldBe NullBulk
-          case Some(s) => s"$$${s.bytesLength}$CRLF$s$CRLF".asRESP shouldBe Bulk(s)
+          case None    => s"$$-1$CRLF".RESP onRight (_ shouldBe NullBulk)
+          case Some(s) => s"$$${s.bytesLength}$CRLF$s$CRLF".RESP onRight (_ shouldBe Bulk(s))
         }
       }
       "encode them correctly" in forAll { b: GenBulk =>
@@ -163,8 +162,8 @@ final class RESPCodecsSpec extends BaseSpec {
       }
       "decode them correctly" in forAll { ors: Option[List[RESP]] =>
         ors match {
-          case None     => s"*-1$CRLF".asRESP shouldBe NilArr
-          case Some(xs) => s"*${xs.length}$CRLF${xs.wireFormat}".asRESP shouldBe Arr(xs)
+          case None     => s"*-1$CRLF".RESP onRight (_ shouldBe NilArr)
+          case Some(xs) => s"*${xs.length}$CRLF${xs.wireFormat}".RESP onRight (_ shouldBe Arr(xs))
         }
       }
       "encode them correctly" in forAll { a: GenArr =>

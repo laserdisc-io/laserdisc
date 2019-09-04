@@ -62,7 +62,7 @@ object CLI extends IOApp.WithContext { self =>
       |""".stripMargin
 
   override final protected val executionContextResource: Resource[SyncIO, ExecutionContext] =
-    MkResource(SyncIO(fromExecutorService(newWorkStealingPool()))).widenRight[ExecutionContext]
+    MkResource.of(SyncIO(fromExecutorService(newWorkStealingPool())))
 
   override final def run(args: List[String]): IO[ExitCode] = args match {
     case arg1 :: arg2 :: Nil =>
@@ -83,7 +83,7 @@ object CLI extends IOApp.WithContext { self =>
     def mkStream(host: Host, port: Port): Stream[IO, ExitCode] =
       Stream.resource(Blocker.fromExecutorService[IO](IO(fromExecutorService(newSingleThreadExecutor())))) >>= { replBlockingEC =>
         Fs2LogWriter.consoleLogStream[IO] >>= { implicit log =>
-          RedisClient[IO](Set(RedisAddress(host, port)))(Blocker[IO]).evalMap { redisClient =>
+          RedisClient[IO](Set(RedisAddress(host, port))).evalMap { redisClient =>
             val promptStream: Stream[IO, String] = Stream.emit(s"$host:$port> ").repeat
 
             val emptyPrompt: IO[Unit] =

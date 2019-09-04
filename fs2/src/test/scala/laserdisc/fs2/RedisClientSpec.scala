@@ -17,10 +17,6 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
-/**
-  * This test will be enabled back when the docker support
-  * for the CI tests will be complete
-  */
 final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
 
   override def beforeAll(): Unit = super.beforeAll()
@@ -34,9 +30,9 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
   private[this] final val testText = "test text"
   private[this] final val correct  = "correct"
 
-  def clientUnderTest[F[_]: ContextShift: Timer](implicit F: ConcurrentEffect[F]): Stream[F, RedisClient[F]] =
-    noOpLogStreamF >>= { implicit log =>
-      RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))(Blocker[F])
+  def clientUnderTest[F[_]: ContextShift: Timer: ConcurrentEffect]: Stream[F, RedisClient[F]] =
+    noOpLogStreamF >>= { implicit l =>
+      RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))
     }
 
   "an fs2 redis client" should {

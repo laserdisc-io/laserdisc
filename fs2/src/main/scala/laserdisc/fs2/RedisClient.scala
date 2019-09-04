@@ -66,11 +66,27 @@ trait RedisClient[F[_]] {
 
 object RedisClient {
 
-  final def apply[F[_]: ConcurrentEffect: ContextShift: Timer: LogWriter](
+  /**
+    * Creates a redis client that will handle the blocking network
+    * connection's operations on a cached thread pool.
+    */
+  @inline final def apply[F[_]: ConcurrentEffect: ContextShift: Timer: LogWriter](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
-  )(b: Resource[F, Blocker]): Stream[F, RedisClient[F]] = {
+  ): Stream[F, RedisClient[F]] =
+    blockingOn(Blocker[F])(addresses, writeTimeout, readMaxBytes)
+
+  /**
+    * Creates a redis client allowing to specify what blocking
+    * thread pool will be used to handle the blocking network
+    * connection's operations.
+    */
+  @inline final def blockingOn[F[_]: ConcurrentEffect: ContextShift: Timer: LogWriter](b: Resource[F, Blocker])(
+      addresses: Set[RedisAddress],
+      writeTimeout: Option[FiniteDuration] = Some(10.seconds),
+      readMaxBytes: Int = 256 * 1024
+  ): Stream[F, RedisClient[F]] = {
 
     def redisConnection(address: RedisAddress): Pipe[F, RESP, RESP] =
       stream =>

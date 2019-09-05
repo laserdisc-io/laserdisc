@@ -33,14 +33,14 @@ before_script:
 - docker run -p 6379:6379 -d redis:alpine
 
 script:
-- sbt -Dfile.encoding=UTF8 ++$TRAVIS_SCALA_VERSION clean coverage test coverageReport
+- sbt -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false ++$TRAVIS_SCALA_VERSION clean coverage test coverageReport
 
 before_cache:
 - find $HOME/.sbt -name "*.lock" | xargs rm
 - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
 
 after_success:
-- if [[ -n "${TRAVIS_TAG}" && "${TRAVIS_PULL_REQUEST}" = "false" ]]; then sbt ++$TRAVIS_SCALA_VERSION releaseEarly;
+- if [[ -n "${TRAVIS_TAG}" && "${TRAVIS_PULL_REQUEST}" = "false" ]]; then sbt -Dsbt.color=always -Dsbt.supershell=false ++$TRAVIS_SCALA_VERSION releaseEarly;
   fi
 - bash <(curl -s https://codecov.io/bash)
 

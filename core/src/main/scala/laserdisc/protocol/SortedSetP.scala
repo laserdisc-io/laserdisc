@@ -175,23 +175,23 @@ trait SortedSetBaseP {
   final def zlexcount(key: Key, range: LexRange): Protocol.Aux[NonNegInt] =
     Protocol("ZLEXCOUNT", key :: range.min :: range.max :: HNil).as[Num, NonNegInt]
 
-  final def zrange[A: Bulk ==> ?](key: Key, start: Index, stop: Index): Protocol.Aux[Seq[A]] =
+  final def zrange[A: Bulk ==> *](key: Key, start: Index, stop: Index): Protocol.Aux[Seq[A]] =
     Protocol("ZRANGE", key :: start :: stop :: HNil).as[Arr, Seq[A]]
 
-  final def zrangebylex[A: Bulk ==> ?](key: Key, range: LexRange): Protocol.Aux[Seq[A]] =
+  final def zrangebylex[A: Bulk ==> *](key: Key, range: LexRange): Protocol.Aux[Seq[A]] =
     Protocol("ZRANGEBYLEX", key :: range.min :: range.max :: HNil).as[Arr, Seq[A]]
 
-  final def zrangebylex[A: Bulk ==> ?](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
+  final def zrangebylex[A: Bulk ==> *](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
     Protocol("ZRANGEBYLEX", key :: range.min :: range.max :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[A]]
 
-  final def zrangebyscore[A: Bulk ==> ?](key: Key, range: ScoreRange): Protocol.Aux[Seq[A]] =
+  final def zrangebyscore[A: Bulk ==> *](key: Key, range: ScoreRange): Protocol.Aux[Seq[A]] =
     Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: HNil).as[Arr, Seq[A]]
-  final def zrangebyscore[A: Bulk ==> ?](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
+  final def zrangebyscore[A: Bulk ==> *](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
     Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[A]]
 
-  final def zrangebyscorewithscores[A: Bulk ==> ?](key: Key, range: ScoreRange): Protocol.Aux[Seq[(A, Double)]] =
+  final def zrangebyscorewithscores[A: Bulk ==> *](key: Key, range: ScoreRange): Protocol.Aux[Seq[(A, Double)]] =
     Protocol("ZRANGEBYSCORE", key :: range.min :: range.max :: "WITHSCORES" :: HNil).as[Arr, Seq[(A, Double)]]
-  final def zrangebyscorewithscores[A: Bulk ==> ?](
+  final def zrangebyscorewithscores[A: Bulk ==> *](
       key: Key,
       range: ScoreRange,
       offset: NonNegLong,
@@ -214,23 +214,23 @@ trait SortedSetBaseP {
   final def zremrangebyscore(key: Key, range: ScoreRange): Protocol.Aux[NonNegInt] =
     Protocol("ZREMRANGEBYSCORE", key :: range.min :: range.max :: HNil).as[Num, NonNegInt]
 
-  final def zrevrange[A: Bulk ==> ?](key: Key, start: Index, stop: Index): Protocol.Aux[Seq[A]] =
+  final def zrevrange[A: Bulk ==> *](key: Key, start: Index, stop: Index): Protocol.Aux[Seq[A]] =
     Protocol("ZREVRANGE", key :: start :: stop :: HNil).as[Arr, Seq[A]]
 
-  final def zrevrangebylex[A: Bulk ==> ?](key: Key, range: LexRange): Protocol.Aux[Seq[A]] =
+  final def zrevrangebylex[A: Bulk ==> *](key: Key, range: LexRange): Protocol.Aux[Seq[A]] =
     Protocol("ZREVRANGEBYLEX", key :: range.max :: range.min :: HNil).as[Arr, Seq[A]]
 
-  final def zrevrangebylex[A: Bulk ==> ?](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
+  final def zrevrangebylex[A: Bulk ==> *](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
     Protocol("ZREVRANGEBYLEX", key :: range.max :: range.min :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[A]]
 
-  final def zrevrangebyscore[A: Bulk ==> ?](key: Key, range: ScoreRange): Protocol.Aux[Seq[A]] =
+  final def zrevrangebyscore[A: Bulk ==> *](key: Key, range: ScoreRange): Protocol.Aux[Seq[A]] =
     Protocol("ZREVRANGEBYSCORE", key :: range.max :: range.min :: HNil).as[Arr, Seq[A]]
-  final def zrevrangebyscore[A: Bulk ==> ?](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
+  final def zrevrangebyscore[A: Bulk ==> *](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
     Protocol("ZREVRANGEBYSCORE", key :: range.max :: range.min :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[A]]
 
-  final def zrevrangebyscorewithscores[A: Bulk ==> ?](key: Key, range: ScoreRange): Protocol.Aux[Seq[(A, Double)]] =
+  final def zrevrangebyscorewithscores[A: Bulk ==> *](key: Key, range: ScoreRange): Protocol.Aux[Seq[(A, Double)]] =
     Protocol("ZREVRANGEBYSCORE", key :: range.max :: range.min :: "WITHSCORES" :: HNil).as[Arr, Seq[(A, Double)]]
-  final def zrevrangebyscorewithscores[A: Bulk ==> ?](
+  final def zrevrangebyscorewithscores[A: Bulk ==> *](
       key: Key,
       range: ScoreRange,
       offset: NonNegLong,

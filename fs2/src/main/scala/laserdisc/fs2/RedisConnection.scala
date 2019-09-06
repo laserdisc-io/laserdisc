@@ -39,7 +39,7 @@ object RedisConnection {
 
   private[fs2] final object impl {
 
-    def send[F[_]: MonadError[?[_], Throwable]](sink: Pipe[F, Byte, Unit])(
+    def send[F[_]: MonadError[*[_], Throwable]](sink: Pipe[F, Byte, Unit])(
         implicit log: LogWriter[F]
     ): Pipe[F, RESP, Unit] =
       _.evalTap(resp => log.debug(s"sending $resp"))

@@ -200,12 +200,12 @@ trait KeyBaseP {
     Protocol("SCAN", cursor :: "MATCH" :: pattern :: "COUNT" :: count :: HNil).as[Arr, Scan[Key]]
 
   //FIXME sort has many more combinations
-  final def sort[A: Bulk ==> ?](key: Key): Protocol.Aux[Seq[A]] = Protocol("SORT", key).as[Arr, Seq[A]]
-  final def sort[A: Bulk ==> ?](key: Key, pattern: GlobPattern): Protocol.Aux[Seq[A]] =
+  final def sort[A: Bulk ==> *](key: Key): Protocol.Aux[Seq[A]] = Protocol("SORT", key).as[Arr, Seq[A]]
+  final def sort[A: Bulk ==> *](key: Key, pattern: GlobPattern): Protocol.Aux[Seq[A]] =
     Protocol("SORT", key :: "BY" :: pattern :: HNil).as[Arr, Seq[A]]
-  final def sort[A: Bulk ==> ?](key: Key, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
+  final def sort[A: Bulk ==> *](key: Key, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
     Protocol("SORT", key :: "LIMIT" :: offset :: count :: HNil).as[Arr, Seq[A]]
-  final def sort[A: Bulk ==> ?](key: Key, direction: Direction): Protocol.Aux[Seq[A]] =
+  final def sort[A: Bulk ==> *](key: Key, direction: Direction): Protocol.Aux[Seq[A]] =
     Protocol("SORT", key :: direction :: HNil).as[Arr, Seq[A]]
   final def sort(key: Key, destination: Key): Protocol.Aux[NonNegInt] =
     Protocol("SORT", key.value :: "STORE" :: destination.value :: Nil).as[Num, NonNegInt]

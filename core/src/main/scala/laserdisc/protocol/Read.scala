@@ -51,10 +51,10 @@ object Read extends ReadInstances0 {
     case Inl(_)                    => None
   }
 
-  final def numMinusOneIsNone[A: Read[Num, ?]]: Read[Num :+: CNil, Option[A]] =
+  final def numMinusOneIsNone[A: Read[Num, *]]: Read[Num :+: CNil, Option[A]] =
     lift2OptionWhen(_.value == -1L)
 
-  final def numZeroIsNone[A: Read[Num, ?]]: Read[Num :+: CNil, Option[A]] =
+  final def numZeroIsNone[A: Read[Num, *]]: Read[Num :+: CNil, Option[A]] =
     lift2OptionWhen(_.value == 0L)
 }
 
@@ -209,7 +209,7 @@ trait ReadInstances1 extends ReadInstances2 {
     case _                                             => None
   }
 
-  implicit final def arr2HCons[H: <:!<[?, FieldType[_, _]], T <: HList](
+  implicit final def arr2HCons[H: <:!<[*, FieldType[_, _]], T <: HList](
       implicit RH: Read[Bulk, H],
       RT: Read[Arr, T]
   ): Read[Arr, H :: T] = Read.instance {
@@ -228,7 +228,7 @@ sealed trait ReadInstances2 {
     case Inl(R(b)) => Some(b)
     case Inr(_)    => None
   }
-  implicit final def liftSimpleToSum[A: <:!<[?, Coproduct], B](implicit R: Read[A, B]): Read[A :+: CNil, B] = Read.instancePF {
+  implicit final def liftSimpleToSum[A: <:!<[*, Coproduct], B](implicit R: Read[A, B]): Read[A :+: CNil, B] = Read.instancePF {
     case Inl(R(b)) => b
   }
 }

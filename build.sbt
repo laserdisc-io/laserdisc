@@ -328,5 +328,6 @@ lazy val laserdisc = project
   .aggregate(core.jvm, core.js, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
-    publishArtifact := false
+    publishArtifact := false,
+    addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt")
   )

@@ -28,7 +28,7 @@ trait ListBaseP {
   private[this] final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[PosInt])
   private[this] final val zeroIsNone     = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  final def lindex[A: Bulk ==> ?](key: Key, index: Index): Protocol.Aux[Option[A]] =
+  final def lindex[A: Bulk ==> *](key: Key, index: Index): Protocol.Aux[Option[A]] =
     Protocol("LINDEX", key :: index :: HNil).opt[GenBulk].as[A]
 
   final def linsert[A: Show](key: Key, position: ListPosition, pivot: A, value: A): Protocol.Aux[Option[PosInt]] =
@@ -36,14 +36,14 @@ trait ListBaseP {
 
   final def llen(key: Key): Protocol.Aux[NonNegInt] = Protocol("LLEN", key).as[Num, NonNegInt]
 
-  final def lpop[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]] = Protocol("LPOP", key).opt[GenBulk].as[A]
+  final def lpop[A: Bulk ==> *](key: Key): Protocol.Aux[Option[A]] = Protocol("LPOP", key).opt[GenBulk].as[A]
 
   final def lpush[A: Show](key: Key, values: OneOrMore[A]): Protocol.Aux[PosInt] =
     Protocol("LPUSH", key :: values.value :: HNil).as[Num, PosInt]
 
   final def lpushx[A: Show](key: Key, value: A): Protocol.Aux[Option[PosInt]] = Protocol("LPUSHX", key :: value :: HNil).using(zeroIsNone)
 
-  final def lrange[A: Bulk ==> ?](key: Key, start: Index, end: Index): Protocol.Aux[Seq[A]] =
+  final def lrange[A: Bulk ==> *](key: Key, start: Index, end: Index): Protocol.Aux[Seq[A]] =
     Protocol("LRANGE", key :: start :: end :: HNil).as[Arr, Seq[A]]
 
   final def lrem[A: Show](key: Key, count: Index, value: A): Protocol.Aux[NonNegInt] =
@@ -53,9 +53,9 @@ trait ListBaseP {
 
   final def ltrim(key: Key, start: Index, stop: Index): Protocol.Aux[OK] = Protocol("LTRIM", key :: start :: stop :: HNil).as[Str, OK]
 
-  final def rpop[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]] = Protocol("RPOP", key).opt[GenBulk].as[A]
+  final def rpop[A: Bulk ==> *](key: Key): Protocol.Aux[Option[A]] = Protocol("RPOP", key).opt[GenBulk].as[A]
 
-  final def rpoplpush[A: Bulk ==> ?](source: Key, destination: Key): Protocol.Aux[Option[A]] =
+  final def rpoplpush[A: Bulk ==> *](source: Key, destination: Key): Protocol.Aux[Option[A]] =
     Protocol("RPOPLPUSH", source :: destination :: Nil).opt[GenBulk].as[A]
 
   final def rpush[A: Show](key: Key, values: OneOrMore[A]): Protocol.Aux[PosInt] =

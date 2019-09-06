@@ -105,31 +105,31 @@ trait StringBaseP {
   final def bitpos(key: Key, bit: Bit, start: Index, end: Index): Protocol.Aux[Option[NonNegInt]] =
     Protocol("BITPOS", key :: bit :: start :: end :: HNil).using(minusOneIsNone)
 
-  final def decr[A: Num ==> ?](key: Key): Protocol.Aux[A] = Protocol("DECR", key).as[Num, A]
+  final def decr[A: Num ==> *](key: Key): Protocol.Aux[A] = Protocol("DECR", key).as[Num, A]
 
   //TODO verify ok to limit DECRBY to only positive values, REDIS happily accepts 0 and negatives and x + (-decrement)
-  final def decrby[A: Num ==> ?](key: Key, decrement: PosLong): Protocol.Aux[A] = Protocol("DECRBY", key :: decrement :: HNil).as[Num, A]
+  final def decrby[A: Num ==> *](key: Key, decrement: PosLong): Protocol.Aux[A] = Protocol("DECRBY", key :: decrement :: HNil).as[Num, A]
 
-  final def get[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]] = Protocol("GET", key).opt[GenBulk].as[A]
+  final def get[A: Bulk ==> *](key: Key): Protocol.Aux[Option[A]] = Protocol("GET", key).opt[GenBulk].as[A]
 
   final def getbit(key: Key, offset: PosLong): Protocol.Aux[Bit] = Protocol("GETBIT", key :: offset :: HNil).as[Num, Bit]
 
-  final def getrange[A: Bulk ==> ?](key: Key, start: Index, end: Index): Protocol.Aux[A] =
+  final def getrange[A: Bulk ==> *](key: Key, start: Index, end: Index): Protocol.Aux[A] =
     Protocol("GETRANGE", key :: start :: end :: HNil).as[Bulk, A]
 
   final def getset[A]: PartiallyAppliedGetSet[A] = new PartiallyAppliedGetSet[A](false)
 
-  final def incr[A: Num ==> ?](key: Key): Protocol.Aux[A] = Protocol("INCR", key).as[Num, A]
+  final def incr[A: Num ==> *](key: Key): Protocol.Aux[A] = Protocol("INCR", key).as[Num, A]
 
   //TODO verify ok to limit INCRBY to only positive values, REDIS happily accepts 0 and negatives
-  final def incrby[A: Num ==> ?](key: Key, increment: PosLong): Protocol.Aux[A] = Protocol("INCRBY", key :: increment :: HNil).as[Num, A]
+  final def incrby[A: Num ==> *](key: Key, increment: PosLong): Protocol.Aux[A] = Protocol("INCRBY", key :: increment :: HNil).as[Num, A]
 
   final def incrbyfloat(key: Key, increment: NonZeroDouble): Protocol.Aux[Double] =
     Protocol("INCRBYFLOAT", key :: increment :: HNil).as[Bulk, Double]
 
-  final def mget[A: Arr ==> ?](keys: OneOrMoreKeys): Protocol.Aux[A] = Protocol("MGET", keys.value).as[Arr, A]
+  final def mget[A: Arr ==> *](keys: OneOrMoreKeys): Protocol.Aux[A] = Protocol("MGET", keys.value).as[Arr, A]
 
-  final def mset[L <: HList: RESPParamWrite: LUBConstraint[?, (Key, _)], N <: Nat](l: L)(
+  final def mset[L <: HList: RESPParamWrite: LUBConstraint[*, (Key, _)], N <: Nat](l: L)(
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1
   ): Protocol.Aux[OK] = Protocol("MSET", l).as[Str, OK]
@@ -143,7 +143,7 @@ trait StringBaseP {
 
   final def mset[A: Show](values: OneOrMore[(Key, A)]): Protocol.Aux[OK] = Protocol("MSET", values.value).as[Str, OK]
 
-  final def msetnx[L <: HList: RESPParamWrite: LUBConstraint[?, (Key, _)], N <: Nat](l: L)(
+  final def msetnx[L <: HList: RESPParamWrite: LUBConstraint[*, (Key, _)], N <: Nat](l: L)(
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1
   ): Protocol.Aux[Boolean] = Protocol("MSETNX", l).as[Num, Boolean]

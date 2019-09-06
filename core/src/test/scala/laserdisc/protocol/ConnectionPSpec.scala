@@ -12,7 +12,7 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
           val protocol = auth(key)
 
           protocol.encode shouldBe Arr(Bulk("AUTH"), Bulk(key.value))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -24,13 +24,13 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
           val protocol = echo(s)
 
           protocol.encode shouldBe Arr(Bulk("ECHO"), Bulk(s))
-          protocol.decode(Bulk(s)).right.value shouldBe s
+          protocol.decode(Bulk(s)) onRight (_ shouldBe s)
         }
         "given any Int message" in forAll("int") { i: Int =>
           val protocol = echo(i)
 
           protocol.encode shouldBe Arr(Bulk("ECHO"), Bulk(i))
-          protocol.decode(Bulk(i)).right.value shouldBe i
+          protocol.decode(Bulk(i)) onRight (_ shouldBe i)
         }
       }
     }
@@ -42,19 +42,19 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
           val protocol = ping(s)
 
           protocol.encode shouldBe Arr(Bulk("PING"), Bulk(s))
-          protocol.decode(Bulk(s)).right.value shouldBe s
+          protocol.decode(Bulk(s)) onRight (_ shouldBe s)
         }
         "given any Int message" in forAll("int") { i: Int =>
           val protocol = ping(i)
 
           protocol.encode shouldBe Arr(Bulk("PING"), Bulk(i))
-          protocol.decode(Bulk(i)).right.value shouldBe i
+          protocol.decode(Bulk(i)) onRight (_ shouldBe i)
         }
         "using val to get back PONG message" in {
           val protocol = ping
 
           protocol.encode shouldBe Arr(Bulk("PING"))
-          protocol.decode(Str(PONG.value)).right.value shouldBe PONG
+          protocol.decode(Str(PONG.value)) onRight (_ shouldBe PONG)
         }
       }
     }
@@ -65,7 +65,7 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
         val protocol = quit
 
         protocol.encode shouldBe Arr(Bulk("QUIT"))
-        protocol.decode(Str(OK.value)).right.value shouldBe OK
+        protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
       }
     }
 
@@ -76,7 +76,7 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
           val protocol = select(dbi)
 
           protocol.encode shouldBe Arr(Bulk("SELECT"), Bulk(dbi))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -88,7 +88,7 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
           val protocol = swapdb(dbi1, dbi2)
 
           protocol.encode shouldBe Arr(Bulk("SWAPDB"), Bulk(dbi1), Bulk(dbi2))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }

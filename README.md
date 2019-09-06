@@ -99,27 +99,23 @@ import laserdisc.fs2._
 import log.effect.fs2.Fs2LogWriter
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.fromExecutorService
+import java.util.concurrent.Executors.newWorkStealingPool
 
 object Main extends IOApp.WithContext {
 
   override final protected val executionContextResource: Resource[SyncIO, ExecutionContext] =
-    MkResource(SyncIO(ExecutionContext.fromExecutorService(Executors.newWorkStealingPool())))
-      .widenRight[ExecutionContext]
-
-  private[this] final val asynchronousChannelGroupResource: Resource[IO, AsynchronousChannelGroup] =
-    MkResource(IO(AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(2))))
+    MkResource.of(SyncIO(fromExecutorService(newWorkStealingPool())))
 
   override final def run(args: List[String]): IO[ExitCode] =
-    Stream.resource(asynchronousChannelGroupResource).flatMap { implicit acg =>
-      Fs2LogWriter.consoleLogStream[IO].flatMap { implicit logger =>
-        RedisClient[IO](Set(RedisAddress("localhost", 6379))).evalMap { client =>
-          client.send2(strings.set("a", 23), strings.get[PosInt]("a")).flatMap {
-            case (Right(OK), Right(Some(getResponse))) if getResponse.value == 23 =>
-              logger.info("yay!")
-            case other =>
-              logger.error(s"something went terribly wrong $other") *>
-                IO.raiseError(new RuntimeException("boom"))
-          }
+    Fs2LogWriter.consoleLogStream[IO].flatMap { implicit logger =>
+      RedisClient[IO](Set(RedisAddress("localhost", 6379))).evalMap { client =>
+        client.send2(strings.set("a", 23), strings.get[PosInt]("a")).flatMap {
+          case (Right(OK), Right(Some(getResponse))) if getResponse.value == 23 =>
+            logger.info("yay!")
+          case other =>
+            logger.error(s"something went terribly wrong $other") *>
+              IO.raiseError(new RuntimeException("boom"))
         }
       }
     }

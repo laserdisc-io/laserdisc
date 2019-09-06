@@ -45,7 +45,7 @@ final class KeyPSpec extends KeyExtPSpec {
     Arr(
       Bulk(scanKey.cursor.value),
       scanKey.values.fold(NilArr: GenArr)(ks => Arr(ks.map(k => Bulk(k.value)).toList))
-  )
+    )
 
   "The Key protocol" when {
 
@@ -56,7 +56,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = del(ks)
 
           protocol.encode shouldBe Arr(Bulk("DEL") :: ks.value.map(Bulk(_)))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -68,7 +68,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = dump(k)
 
           protocol.encode shouldBe Arr(Bulk("DUMP"), Bulk(k))
-          protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))).right.value shouldBe os.map(Bulk(_))
+          protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))) onRight (_ shouldBe os.map(Bulk(_)))
         }
       }
     }
@@ -80,7 +80,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = exists(ks)
 
           protocol.encode shouldBe Arr(Bulk("EXISTS") :: ks.value.map(Bulk(_)))
-          protocol.decode(Num(opi.fold(0L)(_.value.toLong))).right.value shouldBe opi
+          protocol.decode(Num(opi.fold(0L)(_.value.toLong))) onRight (_ shouldBe opi)
         }
       }
     }
@@ -92,7 +92,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = expire(k, nni)
 
           protocol.encode shouldBe Arr(Bulk("EXPIRE"), Bulk(k), Bulk(nni))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
     }
@@ -104,7 +104,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = expireat(k, nni)
 
           protocol.encode shouldBe Arr(Bulk("EXPIREAT"), Bulk(k), Bulk(nni))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
     }
@@ -116,7 +116,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = keys(g)
 
           protocol.encode shouldBe Arr(Bulk("KEYS"), Bulk(g))
-          protocol.decode(Arr(ks.map(Bulk(_)))).right.value shouldBe ks
+          protocol.decode(Arr(ks.map(Bulk(_)))) onRight (_ shouldBe ks)
         }
       }
     }
@@ -129,7 +129,7 @@ final class KeyPSpec extends KeyExtPSpec {
             val protocol = migrate(k, h, p, dbi, nni)
 
             protocol.encode shouldBe Arr(Bulk("MIGRATE"), Bulk(h), Bulk(p), Bulk(k), Bulk(dbi), Bulk(nni))
-            protocol.decode(noKeyOrOkToStr(nkOrOk)).right.value shouldBe nkOrOk
+            protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
         }
         "given keys, host, port, db index and timeout" in forAll("keys", "host", "port", "db index", "timeout", "response") {
           (ks: TwoOrMoreKeys, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: NOKEY | OK) =>
@@ -138,7 +138,7 @@ final class KeyPSpec extends KeyExtPSpec {
             protocol.encode shouldBe Arr(
               Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: Bulk("KEYS") :: ks.value.map(Bulk(_))
             )
-            protocol.decode(noKeyOrOkToStr(nkOrOk)).right.value shouldBe nkOrOk
+            protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
         }
         "given key, host, port, db index, timeout and migrate mode" in {
           forAll("key", "host", "port", "db index", "timeout", "response") {
@@ -149,7 +149,7 @@ final class KeyPSpec extends KeyExtPSpec {
                 protocol.encode shouldBe Arr(
                   Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk(k) :: Bulk(dbi) :: Bulk(nni) :: mm.params.map(Bulk(_))
                 )
-                protocol.decode(noKeyOrOkToStr(nkOrOk)).right.value shouldBe nkOrOk
+                protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
               }
           }
         }
@@ -163,7 +163,7 @@ final class KeyPSpec extends KeyExtPSpec {
                   Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) ::
                     mm.params.map(Bulk(_)) ::: (Bulk("KEYS") :: ks.value.map(Bulk(_)))
                 )
-                protocol.decode(noKeyOrOkToStr(nkOrOk)).right.value shouldBe nkOrOk
+                protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
               }
           }
         }
@@ -177,7 +177,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = move(k, db)
 
           protocol.encode shouldBe Arr(Bulk("MOVE"), Bulk(k), Bulk(db))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
     }
@@ -189,7 +189,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = obj.encoding(k)
 
           protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("ENCODING"), Bulk(k))
-          protocol.decode(oe.fold(NullBulk: GenBulk)(Bulk(_))).right.value shouldBe oe
+          protocol.decode(oe.fold(NullBulk: GenBulk)(Bulk(_))) onRight (_ shouldBe oe)
         }
       }
     }
@@ -201,7 +201,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = obj.freq(k)
 
           protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("FREQ"), Bulk(k))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -213,7 +213,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = obj.idletime(k)
 
           protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("IDLETIME"), Bulk(k))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -225,7 +225,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = obj.refcount(k)
 
           protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("REFCOUNT"), Bulk(k))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -237,7 +237,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = persist(k)
 
           protocol.encode shouldBe Arr(Bulk("PERSIST"), Bulk(k))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
     }
@@ -249,7 +249,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = pexpire(k, nnl)
 
           protocol.encode shouldBe Arr(Bulk("PEXPIRE"), Bulk(k), Bulk(nnl))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
     }
@@ -261,7 +261,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = pexpireat(k, nnl)
 
           protocol.encode shouldBe Arr(Bulk("PEXPIREAT"), Bulk(k), Bulk(nnl))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
     }
@@ -273,7 +273,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = pttl(k)
 
           protocol.encode shouldBe Arr(Bulk("PTTL"), Bulk(k))
-          protocol.decode(ttlResponseToNum(ttl)).right.value shouldBe ttl
+          protocol.decode(ttlResponseToNum(ttl)) onRight (_ shouldBe ttl)
         }
       }
     }
@@ -285,7 +285,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = randomkey
 
           protocol.encode shouldBe Arr(Bulk("RANDOMKEY"))
-          protocol.decode(ok.fold(NullBulk: GenBulk)(Bulk(_))).right.value shouldBe ok
+          protocol.decode(ok.fold(NullBulk: GenBulk)(Bulk(_))) onRight (_ shouldBe ok)
         }
       }
     }
@@ -297,7 +297,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = rename(ok, nk)
 
           protocol.encode shouldBe Arr(Bulk("RENAME"), Bulk(ok), Bulk(nk))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -309,7 +309,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = renamenx(ok, nk)
 
           protocol.encode shouldBe Arr(Bulk("RENAMENX"), Bulk(ok), Bulk(nk))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
     }
@@ -321,14 +321,14 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = restore(k, nnl, Bulk(s))
 
           protocol.encode shouldBe Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk(s))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
         "given key, ttl, serialized value and mode" in {
           forAll("key", "ttl", "serialized value", "mode") { (k: Key, nnl: NonNegLong, s: String, m: KeyRestoreMode) =>
             val protocol = restore(k, nnl, Bulk(s), m)
 
             protocol.encode shouldBe Arr(Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)))
-            protocol.decode(Str(OK.value)).right.value shouldBe OK
+            protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
           }
         }
         "given key, ttl, serialized value and eviction" in {
@@ -336,7 +336,7 @@ final class KeyPSpec extends KeyExtPSpec {
             val protocol = restore(k, nnl, Bulk(s), e)
 
             protocol.encode shouldBe Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk(s), Bulk(e.param), Bulk(e.seconds))
-            protocol.decode(Str(OK.value)).right.value shouldBe OK
+            protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
           }
         }
         "given key, ttl, serialized value, mode and eviction" in forAll("key", "ttl", "serialized value", "mode", "eviction") {
@@ -346,7 +346,7 @@ final class KeyPSpec extends KeyExtPSpec {
             protocol.encode shouldBe Arr(
               Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)) ::: (Bulk(e.param) :: Bulk(e.seconds) :: Nil)
             )
-            protocol.decode(Str(OK.value)).right.value shouldBe OK
+            protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -358,14 +358,14 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = scan(nnl)
 
           protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl))
-          protocol.decode(scanKeyToArr(sk)).right.value shouldBe sk
+          protocol.decode(scanKeyToArr(sk)) onRight (_ shouldBe sk)
         }
         "given cursor and glob pattern" in {
           forAll("cursor", "glob pattern", "scan result") { (nnl: NonNegLong, g: GlobPattern, sk: Scan[Key]) =>
             val protocol = scan(nnl, g)
 
             protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g))
-            protocol.decode(scanKeyToArr(sk)).right.value shouldBe sk
+            protocol.decode(scanKeyToArr(sk)) onRight (_ shouldBe sk)
           }
         }
         "given cursor and count" in {
@@ -373,7 +373,7 @@ final class KeyPSpec extends KeyExtPSpec {
             val protocol = scan(nnl, pi)
 
             protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl), Bulk("COUNT"), Bulk(pi))
-            protocol.decode(scanKeyToArr(sk)).right.value shouldBe sk
+            protocol.decode(scanKeyToArr(sk)) onRight (_ shouldBe sk)
           }
         }
         "given cursor, glob pattern and count" in forAll("cursor", "glob pattern", "count", "scan result") {
@@ -381,7 +381,7 @@ final class KeyPSpec extends KeyExtPSpec {
             val protocol = scan(nnl, g, pi)
 
             protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g), Bulk("COUNT"), Bulk(pi))
-            protocol.decode(scanKeyToArr(sk)).right.value shouldBe sk
+            protocol.decode(scanKeyToArr(sk)) onRight (_ shouldBe sk)
         }
       }
     }
@@ -395,7 +395,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = touch(ks)
 
           protocol.encode shouldBe Arr(Bulk("TOUCH") :: ks.value.map(Bulk(_)))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -407,7 +407,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = ttl(k)
 
           protocol.encode shouldBe Arr(Bulk("TTL"), Bulk(k))
-          protocol.decode(ttlResponseToNum(ttl0)).right.value shouldBe ttl0
+          protocol.decode(ttlResponseToNum(ttl0)) onRight (_ shouldBe ttl0)
         }
       }
     }
@@ -419,7 +419,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = typeof(k)
 
           protocol.encode shouldBe Arr(Bulk("TYPE"), Bulk(k))
-          protocol.decode(ot.fold(Str("none"))(Str(_))).right.value shouldBe ot
+          protocol.decode(ot.fold(Str("none"))(Str(_))) onRight (_ shouldBe ot)
         }
       }
     }
@@ -431,7 +431,7 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = unlink(ks)
 
           protocol.encode shouldBe Arr(Bulk("UNLINK") :: ks.value.map(Bulk(_)))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -443,13 +443,13 @@ final class KeyPSpec extends KeyExtPSpec {
           val protocol = wait(pi1)
 
           protocol.encode shouldBe Arr(Bulk("WAIT"), Bulk(pi1), Bulk(0))
-          protocol.decode(Num(pi2.value.toLong)).right.value shouldBe pi2
+          protocol.decode(Num(pi2.value.toLong)) onRight (_ shouldBe pi2)
         }
         "given replicas and timeout" in forAll("replicas", "timeout", "acknowledgements") { (pi1: PosInt, pl: PosLong, pi2: PosInt) =>
           val protocol = wait(pi1, pl)
 
           protocol.encode shouldBe Arr(Bulk("WAIT"), Bulk(pi1), Bulk(pl))
-          protocol.decode(Num(pi2.value.toLong)).right.value shouldBe pi2
+          protocol.decode(Num(pi2.value.toLong)) onRight (_ shouldBe pi2)
         }
       }
     }

@@ -12,7 +12,7 @@ abstract class HashExtPSpec extends BaseSpec with HashP {
           val protocol = hdel(k, [#f1#])
 
           protocol.encode shouldBe Arr(Bulk("HDEL"), Bulk(k), [#Bulk(f1)#])
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }#
         ]
       }
@@ -26,7 +26,7 @@ abstract class HashExtPSpec extends BaseSpec with HashP {
             val protocol = hmget[[#Int#]](k, [#f1#])
 
             protocol.encode shouldBe Arr(Bulk("HMGET"), Bulk(k), [#Bulk(f1)#])
-            protocol.decode(Arr([#Bulk(v1)#])).right.value shouldBe (([#v1#]))
+            protocol.decode(Arr([#Bulk(v1)#])) onRight (_ shouldBe (([#v1#])))
           }
         }#
         ]
@@ -41,7 +41,7 @@ abstract class HashExtPSpec extends BaseSpec with HashP {
             val protocol = hmset(k, [#f1, v1#])
 
             protocol.encode shouldBe Arr(Bulk("HMSET"), Bulk(k), [#Bulk(f1), Bulk(v1)#])
-            protocol.decode(Str(OK.value)).right.value shouldBe OK
+            protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
           }
         }#
         ]

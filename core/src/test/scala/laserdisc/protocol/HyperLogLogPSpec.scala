@@ -12,7 +12,7 @@ final class HyperLogLogPSpec extends HyperLogLogExtPSpec {
           val protocol = pfadd(k, es)
 
           protocol.encode shouldBe Arr(Bulk("PFADD") :: Bulk(k) :: es.value.map(Bulk(_)))
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
     }
@@ -24,7 +24,7 @@ final class HyperLogLogPSpec extends HyperLogLogExtPSpec {
           val protocol = pfcount(ks)
 
           protocol.encode shouldBe Arr(Bulk("PFCOUNT") :: ks.value.map(Bulk(_)))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -36,7 +36,7 @@ final class HyperLogLogPSpec extends HyperLogLogExtPSpec {
           val protocol = pfmerge(sks, dk)
 
           protocol.encode shouldBe Arr(Bulk("PFMERGE") :: Bulk(dk) :: sks.value.map(Bulk(_)))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }

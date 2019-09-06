@@ -1,8 +1,6 @@
 package laserdisc
 package fs2
 
-import java.nio.channels.AsynchronousChannelGroup.withThreadPool
-import java.util.concurrent.Executors.newFixedThreadPool
 import java.util.concurrent.ForkJoinPool
 
 import cats.Monad
@@ -19,10 +17,6 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
-/**
-  * This test will be enabled back when the docker support
-  * for the CI tests will be complete
-  */
 final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
 
   override def beforeAll(): Unit = super.beforeAll()
@@ -36,11 +30,9 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
   private[this] final val testText = "test text"
   private[this] final val correct  = "correct"
 
-  def clientUnderTest[F[_]: ContextShift: Timer](implicit F: ConcurrentEffect[F]): Stream[F, RedisClient[F]] =
-    Stream.resource(MkResource(F.delay(withThreadPool(newFixedThreadPool(8))))) >>= { implicit acg =>
-      noOpLogStreamF >>= { implicit log =>
-        RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))
-      }
+  def clientUnderTest[F[_]: ContextShift: Timer: ConcurrentEffect]: Stream[F, RedisClient[F]] =
+    noOpLogStreamF >>= { implicit l =>
+      RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))
     }
 
   "an fs2 redis client" should {
@@ -55,9 +47,9 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
         cl.send1(strings.set(testKey, testPayload)) >>= (_ => F.unit)
 
       def testRequests[F[_]](cl: RedisClient[F])(implicit F: Concurrent[F]): F[List[String]] =
-        (((1 to 300) map { _ =>
+        (collection.parallel.immutable.ParSeq.range(0, 300) map { _ =>
           F.start { cl.send1(strings.get[String](testKey)) }
-        }).par map { ioFib =>
+        } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
           _.map(
@@ -74,9 +66,11 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       val testResponses =
         (clientUnderTest[IO] evalMap { cl =>
           testPreset(cl) *> testRequests(cl)
-        }).compile.last map (
-          _ getOrElse Nil
-        ) unsafeRunSync ()
+        }).compile.last
+          .map(
+            _ getOrElse Nil
+          )
+          .unsafeRunSync()
 
       testResponses.size should be(300)
       testResponses map (_ should be(testPayload))
@@ -107,9 +101,11 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       val testResponses =
         (clientUnderTest[IO] evalMap { cl =>
           testPreset(cl) *> testRequests(cl)
-        }).compile.last map (
-          _ getOrElse Nil
-        ) unsafeRunSync ()
+        }).compile.last
+          .map(
+            _ getOrElse Nil
+          )
+          .unsafeRunSync()
 
       testResponses.size should be(50)
       testResponses map (_ should be(testPayload))
@@ -123,9 +119,9 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
         cl.send1(strings.set(testKey, testPayload)) >>= (_ => F.unit)
 
       def testRequests[F[_]](cl: RedisClient[F])(implicit F: Concurrent[F]): F[List[String]] =
-        (((1 to 1000) map { _ =>
+        (collection.parallel.immutable.ParSeq.range(0, 1000) map { _ =>
           F.start { cl.send1(strings.get[String](testKey)) }
-        }).par map { ioFib =>
+        } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
           _.map(
@@ -142,9 +138,11 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       val testResponses =
         (clientUnderTest[IO] evalMap { cl =>
           testPreset(cl) *> testRequests(cl)
-        }).compile.last map (
-          _ getOrElse Nil
-        ) unsafeRunSync ()
+        }).compile.last
+          .map(
+            _ getOrElse Nil
+          )
+          .unsafeRunSync()
 
       testResponses.size should be(1000)
       testResponses map (_ should be(testPayload))
@@ -155,9 +153,9 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       val testKey = Key("non-existent-test-key")
 
       def testRequests[F[_]](cl: RedisClient[F])(implicit F: Concurrent[F]): F[List[String]] =
-        (((1 to 1000) map { _ =>
+        (collection.parallel.immutable.ParSeq.range(0, 1000) map { _ =>
           F.start { cl.send1(strings.get[String](testKey)) }
-        }).par map { ioFib =>
+        } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
           _.map(
@@ -172,9 +170,11 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
         }).toList.sequence
 
       val testResponses =
-        (clientUnderTest[IO] evalMap (cl => testRequests(cl))).compile.last map (
-          _ getOrElse Nil
-        ) unsafeRunSync ()
+        (clientUnderTest[IO] evalMap (cl => testRequests(cl))).compile.last
+          .map(
+            _ getOrElse Nil
+          )
+          .unsafeRunSync()
 
       testResponses.size should be(1000)
       testResponses map (_ should be(correct))
@@ -196,9 +196,9 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
         (1 to 100).map(_ => cl.send1(lists.rpush(testKey, testBulk :: Nil))).toList.sequence >>= (_ => F.unit)
 
       def testRequests[F[_]](cl: RedisClient[F])(implicit F: Concurrent[F]): F[List[String]] =
-        (((1 to 50) map { _ =>
+        (collection.parallel.immutable.ParSeq.range(0, 50) map { _ =>
           F.start { cl.send1(lists.lrange[String](testKey, 0L, 1000L)) }
-        }).par map { ioFib =>
+        } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
           _.map(
@@ -215,9 +215,11 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
       val testResponses =
         (clientUnderTest[IO] evalMap { cl =>
           testCleanup(cl) *> testPreset(cl) *> testRequests(cl)
-        }).compile.last map (
-          _ getOrElse Nil
-        ) unsafeRunSync ()
+        }).compile.last
+          .map(
+            _ getOrElse Nil
+          )
+          .unsafeRunSync()
 
       testResponses.size should be(50 * 100)
       testResponses map (_ should be(testBulk))

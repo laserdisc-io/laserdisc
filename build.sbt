@@ -1,21 +1,24 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-val `scala 2.12` = "2.12.8"
+val `scala 2.12` = "2.12.9"
+val `scala 2.13` = "2.13.0"
 
 val V = new {
-  val circe             = "0.11.1"
-  val fs2               = "1.0.5"
-  val `kind-projector`  = "0.10.3"
-  val kittens           = "1.2.1"
-  val `log-effect-fs2`  = "0.9.0"
-  val refined           = "0.9.9"
-  val scalacheck        = "1.14.0"
-  val scalatest         = "3.0.8"
-  val `scodec-bits`     = "1.1.12"
-  val `scodec-core`     = "1.11.4"
-  val `scodec-stream`   = "1.2.1"
-  val shapeless         = "2.3.3"
+  val circe               = "0.12.0-RC4"
+  val fs2                 = "1.1.0-M2"
+  val `kind-projector`    = "0.10.3"
+  val kittens             = "2.0.0-M1"
+  val `log-effect-fs2`    = "0.9.0"
+  val parallelCollections = "0.2.0"
+  val refined             = "0.9.9"
+  val `scala-java-time`   = "2.0.0-RC3"
+  val scalacheck          = "1.14.0"
+  val scalatest           = "3.0.8"
+  val `scodec-bits`       = "1.1.12"
+  val `scodec-core`       = "1.11.4"
+  val `scodec-stream`     = "2.0.0-SNAPSHOT"
+  val shapeless           = "2.3.3"
 }
 
 val `circe-core`     = Def.setting("io.circe"      %%% "circe-core"     % V.circe)
@@ -30,10 +33,20 @@ val `scodec-core`    = Def.setting("org.scodec"    %%% "scodec-core"    % V.`sco
 val `scodec-stream`  = Def.setting("org.scodec"    %%% "scodec-stream"  % V.`scodec-stream`)
 val shapeless        = Def.setting("com.chuusai"   %%% "shapeless"      % V.shapeless)
 
-val `circe-generic`      = Def.setting("io.circe"       %%% "circe-generic"      % V.circe      % Test)
-val `refined-scalacheck` = Def.setting("eu.timepit"     %%% "refined-scalacheck" % V.refined    % Test)
-val scalacheck           = Def.setting("org.scalacheck" %%% "scalacheck"         % V.scalacheck % Test)
-val scalatest            = Def.setting("org.scalatest"  %%% "scalatest"          % V.scalatest  % Test)
+val `circe-generic`      = Def.setting("io.circe"          %%% "circe-generic"      % V.circe             % Test)
+val `refined-scalacheck` = Def.setting("eu.timepit"        %%% "refined-scalacheck" % V.refined           % Test)
+val scalacheck           = Def.setting("org.scalacheck"    %%% "scalacheck"         % V.scalacheck        % Test)
+val scalatest            = Def.setting("org.scalatest"     %%% "scalatest"          % V.scalatest         % Test)
+val scalaJavaTime        = Def.setting("io.github.cquiroz" %%% "scala-java-time"    % V.`scala-java-time` % Test)
+
+val parallelCollectionsInTest = Def.setting {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, major)) if major >= 13 =>
+      Seq("org.scala-lang.modules" %%% "scala-parallel-collections" % V.parallelCollections % Test)
+    case _ =>
+      Seq()
+  }
+}
 
 val `kind-projector-compiler-plugin` = Def.setting {
   compilerPlugin("org.typelevel" % "kind-projector" % V.`kind-projector` cross CrossVersion.binary)
@@ -74,7 +87,8 @@ val circeDeps = Def.Initialize.join {
     `circe-parser`,
     `circe-generic`,
     scalacheck,
-    scalatest
+    scalatest,
+    scalaJavaTime
   )
 }
 
@@ -111,16 +125,18 @@ val externalApiMappings = Def.task {
 val versionDependantScalacOptions = Def.setting {
   def versionDependent(scalaVersion: String, flags: Seq[String]) =
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((2, major)) if major >= 12 =>
-        flags ++ Seq(
-          "-Xlint:constant", // Evaluation of a constant arithmetic expression results in an error.
-          "-Ywarn-extra-implicit", // Warn when more than one implicit parameter section is defined.
-          "-Ywarn-unused:explicits", // Warn if a parameter is unused.
-          "-Ywarn-unused:imports", // Warn if an import selector is not referenced.
-          "-Ywarn-unused:locals", // Warn if a local definition is unused.
-          "-Ywarn-unused:patvars", // Warn if a variable bound in a pattern is unused.
-          "-Ywarn-unused:privates", // Warn if a private member is unused.
-          "-Ywarn-value-discard" // Warn when non-Unit expression results are unused.
+      case Some((2, major)) if major == 12 => flags
+      case Some((2, major)) if major >= 13 =>
+        flags diff Seq(
+          "-Ywarn-nullary-override",
+          "-Ypartial-unification",
+          "-Ywarn-nullary-unit",
+          "-Ywarn-inaccessible",
+          "-Ywarn-infer-any",
+          "-Yno-adapted-args",
+          "-Xfuture",
+          "-Xlint:by-name-right-associative",
+          "-Xlint:unsound-match"
         )
       case _ => flags
     }
@@ -128,41 +144,49 @@ val versionDependantScalacOptions = Def.setting {
   val flags = Seq(
     "-deprecation", // Emit warning and location for usages of deprecated APIs.
     "-encoding",
-    "utf-8", // Specify character encoding used by source files.
-    "-explaintypes", // Explain type errors in more detail.
-    "-feature", // Emit warning and location for usages of features that should be imported explicitly.
-    "-language:existentials", // Existential types (besides wildcard types) can be written and inferred
-    "-language:experimental.macros", // Allow macro definition (besides implementation and application)
-    "-language:higherKinds", // Allow higher-kinded types
-    "-language:implicitConversions", // Allow definition of implicit functions called views
-    "-unchecked", // Enable additional warnings where generated code depends on assumptions.
-    "-Xcheckinit", // Wrap field accessors to throw an exception on uninitialized access.
-    "-Xfatal-warnings", // Fail the compilation if there are any warnings.
-    "-Xfuture", // Turn on future language features.
-    "-Xlint:adapted-args", // Warn if an argument list is modified to match the receiver.
+    "utf-8",                            // Specify character encoding used by source files.
+    "-explaintypes",                    // Explain type errors in more detail.
+    "-feature",                         // Emit warning and location for usages of features that should be imported explicitly.
+    "-language:existentials",           // Existential types (besides wildcard types) can be written and inferred
+    "-language:experimental.macros",    // Allow macro definition (besides implementation and application)
+    "-language:higherKinds",            // Allow higher-kinded types
+    "-language:implicitConversions",    // Allow definition of implicit functions called views
+    "-unchecked",                       // Enable additional warnings where generated code depends on assumptions.
+    "-Xcheckinit",                      // Wrap field accessors to throw an exception on uninitialized access.
+    "-Xfatal-warnings",                 // Fail the compilation if there are any warnings.
+    "-Xfuture",                         // Turn on future language features.
+    "-Xlint:adapted-args",              // Warn if an argument list is modified to match the receiver.
     "-Xlint:by-name-right-associative", // By-name parameter of right associative operator.
-    "-Xlint:delayedinit-select", // Selecting member of DelayedInit.
-    "-Xlint:doc-detached", // A Scaladoc comment appears to be detached from its element.
-    "-Xlint:inaccessible", // Warn about inaccessible types in method signatures.
-    "-Xlint:infer-any", // Warn when a type argument is inferred to be `Any`.
-    "-Xlint:missing-interpolator", // A string literal appears to be missing an interpolator id.
-    "-Xlint:nullary-override", // Warn when non-nullary `def f()' overrides nullary `def f'.
-    "-Xlint:nullary-unit", // Warn when nullary methods return Unit.
-    "-Xlint:option-implicit", // Option.apply used implicit view.
-    "-Xlint:package-object-classes", // Class or object defined in package object.
-    "-Xlint:poly-implicit-overload", // Parameterized overloaded implicit methods are not visible as view bounds.
-    "-Xlint:private-shadow", // A private field (or class parameter) shadows a superclass field.
-    "-Xlint:stars-align", // Pattern sequence wildcard must align with sequence component.
-    "-Xlint:type-parameter-shadow", // A local type parameter shadows a type already in scope.
-    "-Xlint:unsound-match", // Pattern match may not be typesafe.
-    "-Yno-adapted-args", // Do not adapt an argument list (either by inserting () or creating a tuple) to match the receiver.
-    "-Ypartial-unification", // Enable partial unification in type constructor inference
-    "-Ywarn-dead-code", // Warn when dead code is identified.
-    "-Ywarn-inaccessible", // Warn about inaccessible types in method signatures.
-    "-Ywarn-infer-any", // Warn when a type argument is inferred to be `Any`.
-    "-Ywarn-nullary-override", // Warn when non-nullary `def f()' overrides nullary `def f'.
-    "-Ywarn-nullary-unit", // Warn when nullary methods return Unit.
-    "-Ywarn-numeric-widen" // Warn when numerics are widened.
+    "-Xlint:delayedinit-select",        // Selecting member of DelayedInit.
+    "-Xlint:doc-detached",              // A Scaladoc comment appears to be detached from its element.
+    "-Xlint:inaccessible",              // Warn about inaccessible types in method signatures.
+    "-Xlint:infer-any",                 // Warn when a type argument is inferred to be `Any`.
+    "-Xlint:missing-interpolator",      // A string literal appears to be missing an interpolator id.
+    "-Xlint:nullary-override",          // Warn when non-nullary `def f()' overrides nullary `def f'.
+    "-Xlint:nullary-unit",              // Warn when nullary methods return Unit.
+    "-Xlint:option-implicit",           // Option.apply used implicit view.
+    "-Xlint:package-object-classes",    // Class or object defined in package object.
+    "-Xlint:poly-implicit-overload",    // Parameterized overloaded implicit methods are not visible as view bounds.
+    "-Xlint:private-shadow",            // A private field (or class parameter) shadows a superclass field.
+    "-Xlint:stars-align",               // Pattern sequence wildcard must align with sequence component.
+    "-Xlint:type-parameter-shadow",     // A local type parameter shadows a type already in scope.
+    "-Xlint:unsound-match",             // Pattern match may not be typesafe.
+    "-Yno-adapted-args",                // Do not adapt an argument list (either by inserting () or creating a tuple) to match the receiver.
+    "-Ypartial-unification",            // Enable partial unification in type constructor inference
+    "-Ywarn-dead-code",                 // Warn when dead code is identified.
+    "-Ywarn-inaccessible",              // Warn about inaccessible types in method signatures.
+    "-Ywarn-infer-any",                 // Warn when a type argument is inferred to be `Any`.
+    "-Ywarn-nullary-override",          // Warn when non-nullary `def f()' overrides nullary `def f'.
+    "-Ywarn-nullary-unit",              // Warn when nullary methods return Unit.
+    "-Ywarn-numeric-widen",             // Warn when numerics are widened.
+    "-Xlint:constant",                  // Evaluation of a constant arithmetic expression results in an error.
+    "-Ywarn-extra-implicit",            // Warn when more than one implicit parameter section is defined.
+    "-Ywarn-unused:explicits",          // Warn if a parameter is unused.
+    "-Ywarn-unused:imports",            // Warn if an import selector is not referenced.
+    "-Ywarn-unused:locals",             // Warn if a local definition is unused.
+    "-Ywarn-unused:patvars",            // Warn if a variable bound in a pattern is unused.
+    "-Ywarn-unused:privates",           // Warn if a private member is unused.
+    "-Ywarn-value-discard"              // Warn when non-Unit expression results are unused.
   )
 
   versionDependent(scalaVersion.value, flags)
@@ -171,13 +195,14 @@ val versionDependantScalacOptions = Def.setting {
 inThisBuild {
   Def.settings(
     organization := "io.laserdisc",
-    scalaVersion := `scala 2.12`
+    scalaVersion := `scala 2.13`
   )
 }
 
 lazy val commonSettings = Seq(
+  resolvers += Resolver.sonatypeRepo("snapshots"), // needed because of scodec-stream snapshot
   scalaOrganization := "org.scala-lang",
-  crossScalaVersions := Seq(`scala 2.12`),
+  crossScalaVersions := Seq(`scala 2.12`, `scala 2.13`),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value
@@ -225,7 +250,7 @@ lazy val scaladocSettings = Seq(
 lazy val scoverageSettings = Seq(
   coverageMinimum := 60,
   coverageFailOnMinimum := false,
-  coverageHighlighting := true,
+  coverageHighlighting := true
 )
 
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
@@ -263,7 +288,7 @@ lazy val fs2 = project
   .settings(allSettings)
   .settings(
     name := "laserdisc-fs2",
-    libraryDependencies ++= fs2Deps.value
+    libraryDependencies ++= fs2Deps.value ++ parallelCollectionsInTest.value
   )
 
 lazy val `core-bench` = project

@@ -29,7 +29,7 @@ abstract class KeyExtPSpec extends BaseSpec with KeyP {
           val protocol = del([#k1#])
 
           protocol.encode shouldBe Arr(Bulk("DEL"), [#Bulk(k1)#])
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }#
         ]
       }
@@ -42,7 +42,7 @@ abstract class KeyExtPSpec extends BaseSpec with KeyP {
           val protocol = exists([#k1#])
 
           protocol.encode shouldBe Arr(Bulk("EXISTS"), [#Bulk(k1)#])
-          protocol.decode(Num(opi.fold(##0L)(_.value.toLong))).right.value shouldBe opi
+          protocol.decode(Num(opi.fold(##0L)(_.value.toLong))) onRight (_ shouldBe opi)
         }#
         ]
       }
@@ -58,7 +58,7 @@ abstract class KeyExtPSpec extends BaseSpec with KeyP {
             protocol.encode shouldBe Arr(
               Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: Bulk("KEYS") :: [#Bulk(k1)# ::] :: Nil
             )
-            protocol.decode(noKeyOrOkToStr(nkOrOk)).right.value shouldBe nkOrOk
+            protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
           }
         }#
         ]
@@ -69,7 +69,7 @@ abstract class KeyExtPSpec extends BaseSpec with KeyP {
             protocol.encode shouldBe Arr(
               Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: mm.params.map(Bulk(_)) ::: (Bulk("KEYS") :: [#Bulk(k1)# ::] :: Nil)
             )
-            protocol.decode(noKeyOrOkToStr(nkOrOk)).right.value shouldBe nkOrOk
+            protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
           }
         }#
         ]
@@ -83,7 +83,7 @@ abstract class KeyExtPSpec extends BaseSpec with KeyP {
           val protocol = touch([#k1#])
 
           protocol.encode shouldBe Arr(Bulk("TOUCH"), [#Bulk(k1)#])
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }#
         ]
       }
@@ -96,7 +96,7 @@ abstract class KeyExtPSpec extends BaseSpec with KeyP {
           val protocol = unlink([#k1#])
 
           protocol.encode shouldBe Arr(Bulk("UNLINK"), [#Bulk(k1)#])
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }#
         ]
       }

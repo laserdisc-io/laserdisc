@@ -12,7 +12,7 @@ abstract class HyperLogLogExtPSpec extends BaseSpec with HyperLogLogP {
           val protocol = pfadd(k, [#e1#])
 
           protocol.encode shouldBe Arr(Bulk("PFADD"), Bulk(k), [#Bulk(e1)#])
-          protocol.decode(boolToNum(b)).right.value shouldBe b
+          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }#
         ]
       }
@@ -25,7 +25,7 @@ abstract class HyperLogLogExtPSpec extends BaseSpec with HyperLogLogP {
           val protocol = pfcount([#k1#])
 
           protocol.encode shouldBe Arr(Bulk("PFCOUNT"), [#Bulk(k1)#])
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }#
         ]
       }
@@ -38,7 +38,7 @@ abstract class HyperLogLogExtPSpec extends BaseSpec with HyperLogLogP {
           val protocol = pfmerge([#sk1#], dk)
 
           protocol.encode shouldBe Arr(Bulk("PFMERGE"), Bulk(dk), [#Bulk(sk1)#])
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }#
         ]
       }

@@ -18,7 +18,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = lindex[Int](k, i)
 
           protocol.encode shouldBe Arr(Bulk("LINDEX"), Bulk(k), Bulk(i))
-          protocol.decode(oi.fold(NullBulk: GenBulk)(Bulk(_))).right.value shouldBe oi
+          protocol.decode(oi.fold(NullBulk: GenBulk)(Bulk(_))) onRight (_ shouldBe oi)
         }
       }
     }
@@ -31,7 +31,7 @@ final class ListPSpec extends ListExtPSpec {
             val protocol = linsert(k, p, pi, v)
 
             protocol.encode shouldBe Arr(Bulk("LINSERT"), Bulk(k), Bulk(p), Bulk(pi), Bulk(v))
-            protocol.decode(Num(opi.fold(-1L)(_.value.toLong))).right.value shouldBe opi
+            protocol.decode(Num(opi.fold(-1L)(_.value.toLong))) onRight (_ shouldBe opi)
           }
         }
       }
@@ -44,7 +44,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = llen(k)
 
           protocol.encode shouldBe Arr(Bulk("LLEN"), Bulk(k))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -56,7 +56,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = lpop[String](k)
 
           protocol.encode shouldBe Arr(Bulk("LPOP"), Bulk(k))
-          protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))).right.value shouldBe os
+          protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))) onRight (_ shouldBe os)
         }
       }
     }
@@ -68,7 +68,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = lpush(k, is)
 
           protocol.encode shouldBe Arr(Bulk("LPUSH") :: Bulk(k) :: is.value.map(Bulk(_)))
-          protocol.decode(Num(pi.value.toLong)).right.value shouldBe pi
+          protocol.decode(Num(pi.value.toLong)) onRight (_ shouldBe pi)
         }
       }
     }
@@ -80,7 +80,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = lpushx(k, i)
 
           protocol.encode shouldBe Arr(Bulk("LPUSHX"), Bulk(k), Bulk(i))
-          protocol.decode(Num(opi.fold(0L)(_.value.toLong))).right.value shouldBe opi
+          protocol.decode(Num(opi.fold(0L)(_.value.toLong))) onRight (_ shouldBe opi)
         }
       }
     }
@@ -93,7 +93,7 @@ final class ListPSpec extends ListExtPSpec {
             val protocol = lrange[Int](k, si, ei)
 
             protocol.encode shouldBe Arr(Bulk("LRANGE"), Bulk(k), Bulk(si), Bulk(ei))
-            protocol.decode(Arr(is.map(Bulk(_)))).right.value shouldBe is
+            protocol.decode(Arr(is.map(Bulk(_)))) onRight (_ shouldBe is)
           }
         }
       }
@@ -106,7 +106,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = lrem(k, i, s)
 
           protocol.encode shouldBe Arr(Bulk("LREM"), Bulk(k), Bulk(i), Bulk(s))
-          protocol.decode(Num(nni.value.toLong)).right.value shouldBe nni
+          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
     }
@@ -118,7 +118,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = lset(k, i, s)
 
           protocol.encode shouldBe Arr(Bulk("LSET"), Bulk(k), Bulk(i), Bulk(s))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -130,7 +130,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = ltrim(k, si, ei)
 
           protocol.encode shouldBe Arr(Bulk("LTRIM"), Bulk(k), Bulk(si), Bulk(ei))
-          protocol.decode(Str(OK.value)).right.value shouldBe OK
+          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
         }
       }
     }
@@ -142,7 +142,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = rpop[String](k)
 
           protocol.encode shouldBe Arr(Bulk("RPOP"), Bulk(k))
-          protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))).right.value shouldBe os
+          protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))) onRight (_ shouldBe os)
         }
       }
     }
@@ -155,7 +155,7 @@ final class ListPSpec extends ListExtPSpec {
             val protocol = rpoplpush[String](sk, dk)
 
             protocol.encode shouldBe Arr(Bulk("RPOPLPUSH"), Bulk(sk), Bulk(dk))
-            protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))).right.value shouldBe os
+            protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))) onRight (_ shouldBe os)
           }
         }
       }
@@ -168,7 +168,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = rpush(k, is)
 
           protocol.encode shouldBe Arr(Bulk("RPUSH") :: Bulk(k) :: is.value.map(Bulk(_)))
-          protocol.decode(Num(pi.value.toLong)).right.value shouldBe pi
+          protocol.decode(Num(pi.value.toLong)) onRight (_ shouldBe pi)
         }
       }
     }
@@ -180,7 +180,7 @@ final class ListPSpec extends ListExtPSpec {
           val protocol = rpushx(k, i)
 
           protocol.encode shouldBe Arr(Bulk("RPUSHX"), Bulk(k), Bulk(i))
-          protocol.decode(Num(opi.fold(0L)(_.value.toLong))).right.value shouldBe opi
+          protocol.decode(Num(opi.fold(0L)(_.value.toLong))) onRight (_ shouldBe opi)
         }
       }
     }

@@ -12,7 +12,7 @@ abstract class ListExtPSpec extends BaseSpec with ListP {
           val protocol = lpush(k, [#v1#])
 
           protocol.encode shouldBe Arr(Bulk("LPUSH"), Bulk(k), [#Bulk(v1)#])
-          protocol.decode(Num(pi.value.toLong)).right.value shouldBe pi
+          protocol.decode(Num(pi.value.toLong)) onRight (_ shouldBe pi)
         }#
         ]
       }
@@ -25,7 +25,7 @@ abstract class ListExtPSpec extends BaseSpec with ListP {
           val protocol = rpush(k, [#v1#])
 
           protocol.encode shouldBe Arr(Bulk("RPUSH"), Bulk(k), [#Bulk(v1)#])
-          protocol.decode(Num(pi.value.toLong)).right.value shouldBe pi
+          protocol.decode(Num(pi.value.toLong)) onRight (_ shouldBe pi)
         }#
         ]
       }

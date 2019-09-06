@@ -36,7 +36,8 @@ final class RESPFrameBulkSpec extends BaseSpec {
             MoreThanOneFrame(
               List.fill(3)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector.empty
-            ))
+            )
+          )
         )
       }
     }
@@ -49,7 +50,8 @@ final class RESPFrameBulkSpec extends BaseSpec {
             MoreThanOneFrame(
               List.fill(2)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector("$16\r\nTest bulk".getBytes())
-            ))
+            )
+          )
         )
       }
     }
@@ -62,7 +64,8 @@ final class RESPFrameBulkSpec extends BaseSpec {
             MoreThanOneFrame(
               List.fill(6)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector.empty
-            ))
+            )
+          )
         )
       }
     }
@@ -75,7 +78,8 @@ final class RESPFrameBulkSpec extends BaseSpec {
             MoreThanOneFrame(
               List.fill(4)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector("$".getBytes())
-            ))
+            )
+          )
         )
       }
     }
@@ -84,7 +88,8 @@ final class RESPFrameBulkSpec extends BaseSpec {
 
       "produce MoreThanOne with a list of the complete ones in the inverted order and a remainder with the incomplete bits" in {
         val inputVector = BitVector(
-          "$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes)
+          "$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes
+        )
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
@@ -93,13 +98,15 @@ final class RESPFrameBulkSpec extends BaseSpec {
                 CompleteFrame(BitVector("$18\r\nTest bulk string 2\r\n".getBytes())) ::
                 CompleteFrame(BitVector("$18\r\nTest bulk string 1\r\n".getBytes())) :: Nil,
               BitVector("$18\r\nTest bulk".getBytes())
-            ))
+            )
+          )
         )
       }
 
       "produce MoreThanOne where the call to complete should give a vector with the complete ones in the original order" in {
         val inputVector = BitVector(
-          "$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes)
+          "$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes
+        )
         EmptyFrame
           .append(inputVector.toByteBuffer)
           .fold(
@@ -148,7 +155,8 @@ final class RESPFrameBulkSpec extends BaseSpec {
             MoreThanOneFrame(
               List.fill(3)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector.empty
-            ))
+            )
+          )
         )
       }
     }
@@ -162,7 +170,8 @@ final class RESPFrameBulkSpec extends BaseSpec {
             MoreThanOneFrame(
               List.fill(2)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector("$16\r\nTest bulk".getBytes())
-            ))
+            )
+          )
         )
       }
     }
@@ -176,7 +185,8 @@ final class RESPFrameBulkSpec extends BaseSpec {
             MoreThanOneFrame(
               List.fill(6)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector.empty
-            ))
+            )
+          )
         )
       }
     }
@@ -190,7 +200,8 @@ final class RESPFrameBulkSpec extends BaseSpec {
             MoreThanOneFrame(
               List.fill(4)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector("$".getBytes())
-            ))
+            )
+          )
         )
       }
     }
@@ -200,7 +211,8 @@ final class RESPFrameBulkSpec extends BaseSpec {
       "produce MoreThanOne with a list of the complete ones in the inverted order and a remainder with the incomplete bits" in {
         val nonEmptyFrame = IncompleteFrame(BitVector("$21\r\nTest bulk s".getBytes), 0)
         val inputVector = BitVector(
-          "tring 1 11\r\n$17\r\nTest bulk string2\r\n$20\r\nTest bulk string 3 1\r\n$19\r\nTest bulk string 40\r\n$18\r\nTest bulk".getBytes)
+          "tring 1 11\r\n$17\r\nTest bulk string2\r\n$20\r\nTest bulk string 3 1\r\n$19\r\nTest bulk string 40\r\n$18\r\nTest bulk".getBytes
+        )
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
@@ -209,14 +221,16 @@ final class RESPFrameBulkSpec extends BaseSpec {
                 CompleteFrame(BitVector("$17\r\nTest bulk string2\r\n".getBytes())) ::
                 CompleteFrame(BitVector("$21\r\nTest bulk string 1 11\r\n".getBytes())) :: Nil,
               BitVector("$18\r\nTest bulk".getBytes())
-            ))
+            )
+          )
         )
       }
 
       "produce MoreThanOne where the call to complete should give a vector with the complete ones in the original order" in {
         val nonEmptyFrame = IncompleteFrame(BitVector("$21\r\nTest bulk s".getBytes), 0)
         val inputVector = BitVector(
-          "tring 1 11\r\n$17\r\nTest bulk string2\r\n$20\r\nTest bulk string 3 1\r\n$19\r\nTest bulk string 40\r\n$18\r\nTest bulk".getBytes)
+          "tring 1 11\r\n$17\r\nTest bulk string2\r\n$20\r\nTest bulk string 3 1\r\n$19\r\nTest bulk string 40\r\n$18\r\nTest bulk".getBytes
+        )
         nonEmptyFrame
           .append(inputVector.toByteBuffer)
           .fold(

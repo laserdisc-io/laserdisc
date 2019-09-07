@@ -23,17 +23,17 @@ trait SetBaseP {
 
   final def sismember[A: Show](key: Key, member: A): Protocol.Aux[Boolean] = Protocol("SISMEMBER", key :: member :: HNil).as[Num, Boolean]
 
-  final def smembers[A: Bulk ==> ?](key: Key): Protocol.Aux[Seq[A]] = Protocol("SMEMBERS", key).as[Arr, Seq[A]]
+  final def smembers[A: Bulk ==> *](key: Key): Protocol.Aux[Seq[A]] = Protocol("SMEMBERS", key).as[Arr, Seq[A]]
 
   final def smove[A: Show](source: Key, destination: Key, member: A): Protocol.Aux[Boolean] =
     Protocol("SMOVE", source :: destination :: member :: HNil).as[Num, Boolean]
 
-  final def spop[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]]             = Protocol("SPOP", key).opt[GenBulk].as[A]
-  final def spop[A: Bulk ==> ?](key: Key, count: PosInt): Protocol.Aux[Seq[A]] = Protocol("SPOP", key :: count :: HNil).as[Arr, Seq[A]]
+  final def spop[A: Bulk ==> *](key: Key): Protocol.Aux[Option[A]]             = Protocol("SPOP", key).opt[GenBulk].as[A]
+  final def spop[A: Bulk ==> *](key: Key, count: PosInt): Protocol.Aux[Seq[A]] = Protocol("SPOP", key :: count :: HNil).as[Arr, Seq[A]]
 
-  final def srandmember[A: Bulk ==> ?](key: Key): Protocol.Aux[Option[A]] =
+  final def srandmember[A: Bulk ==> *](key: Key): Protocol.Aux[Option[A]] =
     Protocol("SRANDMEMBER", key).opt[GenBulk].as[A]
-  final def srandmembers[A: Bulk ==> ?](key: Key, count: NonZeroInt): Protocol.Aux[Seq[A]] =
+  final def srandmembers[A: Bulk ==> *](key: Key, count: NonZeroInt): Protocol.Aux[Seq[A]] =
     Protocol("SRANDMEMBER", key :: count :: HNil).as[Arr, Seq[A]]
 
   final def srem[A: Show](key: Key, members: OneOrMore[A]): Protocol.Aux[NonNegInt] =

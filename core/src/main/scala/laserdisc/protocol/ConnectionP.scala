@@ -6,10 +6,10 @@ trait ConnectionP {
 
   final def auth(password: Key): Protocol.Aux[OK] = Protocol("AUTH", password).as[Str, OK]
 
-  final def echo[A: Show: Bulk ==> ?](message: A): Protocol.Aux[A] = Protocol("ECHO", message).as[Bulk, A]
+  final def echo[A: Show: Bulk ==> *](message: A): Protocol.Aux[A] = Protocol("ECHO", message).as[Bulk, A]
 
   final val ping: Protocol.Aux[PONG]                               = Protocol("PING", Nil).as[Str, PONG]
-  final def ping[A: Show: Bulk ==> ?](message: A): Protocol.Aux[A] = Protocol("PING", message).as[Bulk, A]
+  final def ping[A: Show: Bulk ==> *](message: A): Protocol.Aux[A] = Protocol("PING", message).as[Bulk, A]
 
   final val quit: Protocol.Aux[OK] = Protocol("QUIT", Nil).as[Str, OK]
 

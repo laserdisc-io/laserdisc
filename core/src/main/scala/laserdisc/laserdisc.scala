@@ -205,17 +205,17 @@ package object laserdisc {
   }
 
   private[laserdisc] implicit final class WidenOps1[F[_], A](private val fa: F[A]) extends AnyVal {
-    def widen[AA: <:<[A, ?]: =:!=[A, ?]]: F[AA] = fa.asInstanceOf[F[AA]]
+    def widen[AA: <:<[A, *]: =:!=[A, *]]: F[AA] = fa.asInstanceOf[F[AA]]
   }
 
   private[laserdisc] implicit final class WidenOps2[F[_, _], A, B](private val fab: F[A, B]) extends AnyVal {
-    def widenLeft[AA: <:<[A, ?]: =:!=[A, ?]]: F[AA, B]                            = fab.asInstanceOf[F[AA, B]]
-    def widenRight[BB: <:<[B, ?]: =:!=[B, ?]]: F[A, BB]                           = fab.asInstanceOf[F[A, BB]]
+    def widenLeft[AA: <:<[A, *]: =:!=[A, *]]: F[AA, B]                            = fab.asInstanceOf[F[AA, B]]
+    def widenRight[BB: <:<[B, *]: =:!=[B, *]]: F[A, BB]                           = fab.asInstanceOf[F[A, BB]]
     def coerceLeft[AA, FF[_, _]](implicit ev: F[AA, B] <:< FF[AA, B]): FF[AA, B]  = fab.asInstanceOf[FF[AA, B]]
     def coerceRight[FF[_, _], BB](implicit ev: F[A, BB] <:< FF[A, BB]): FF[A, BB] = fab.asInstanceOf[FF[A, BB]]
   }
 
   private[laserdisc] implicit final class WidenOps3[F[_[_], _], G[_], A](private val fga: F[G, A]) extends AnyVal {
-    def widenRight[AA: <:<[A, ?]: =:!=[A, ?]]: F[G, AA] = fga.asInstanceOf[F[G, AA]]
+    def widenRight[AA: <:<[A, *]: =:!=[A, *]]: F[G, AA] = fga.asInstanceOf[F[G, AA]]
   }
 }

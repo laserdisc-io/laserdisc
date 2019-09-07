@@ -12,10 +12,10 @@ trait HashBaseP {
 
   final def hexists(key: Key, field: Key): Protocol.Aux[Boolean] = Protocol("HEXISTS", key :: field :: Nil).as[Num, Boolean]
 
-  final def hget[A: Bulk ==> ?](key: Key, field: Key): Protocol.Aux[Option[A]] =
+  final def hget[A: Bulk ==> *](key: Key, field: Key): Protocol.Aux[Option[A]] =
     Protocol("HGET", key :: field :: Nil).opt[GenBulk].as[A]
 
-  final def hgetall[A: Arr ==> ?](key: Key): Protocol.Aux[A] = Protocol("HGETALL", key).as[Arr, A]
+  final def hgetall[A: Arr ==> *](key: Key): Protocol.Aux[A] = Protocol("HGETALL", key).as[Arr, A]
 
   final def hincrby(key: Key, field: Key, increment: NonZeroLong): Protocol.Aux[Long] =
     Protocol("HINCRBY", key :: field :: increment :: HNil).as[Num, Long]
@@ -26,10 +26,10 @@ trait HashBaseP {
 
   final def hlen(key: Key): Protocol.Aux[NonNegInt] = Protocol("HLEN", key).as[Num, NonNegInt]
 
-  final def hmget[L <: HList: Arr ==> ?](key: Key, fields: OneOrMoreKeys): Protocol.Aux[L] =
+  final def hmget[L <: HList: Arr ==> *](key: Key, fields: OneOrMoreKeys): Protocol.Aux[L] =
     Protocol("HMGET", key :: fields.value).as[Arr, L]
 
-  final def hmset[L <: HList: RESPParamWrite: LUBConstraint[?, (Key, _)], N <: Nat](key: Key, l: L)(
+  final def hmset[L <: HList: RESPParamWrite: LUBConstraint[*, (Key, _)], N <: Nat](key: Key, l: L)(
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1
   ): Protocol.Aux[OK] = Protocol("HMSET", key :: l).as[Str, OK]
@@ -57,7 +57,7 @@ trait HashBaseP {
 
   final def hstrlen(key: Key, field: Key): Protocol.Aux[NonNegInt] = Protocol("HSTRLEN", key :: field :: Nil).as[Num, NonNegInt]
 
-  final def hvals[L <: HList: Arr ==> ?](key: Key): Protocol.Aux[L] = Protocol("HVALS", key).as[Arr, L]
+  final def hvals[L <: HList: Arr ==> *](key: Key): Protocol.Aux[L] = Protocol("HVALS", key).as[Arr, L]
 }
 
 trait HashP extends HashBaseP with HashExtP

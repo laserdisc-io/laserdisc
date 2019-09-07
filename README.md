@@ -86,42 +86,40 @@ of the JSON data structure, i.e. no spacing is used
 ### Example usage
 With a running Redis instance on `localhost:6379` try running the following:
 ```scala
-import java.nio.channels.AsynchronousChannelGroup
-import java.util.concurrent.Executors
+import java.util.concurrent.Executors.newWorkStealingPool
 
-import cats.effect._
-import cats.syntax.apply._
+import _root_.fs2.Stream
+import cats.effect.{ExitCode, IO, IOApp, Resource, SyncIO}
+import cats.syntax.flatMap._
 import cats.syntax.functor._
-import fs2.Stream
-import laserdisc._
 import laserdisc.auto._
-import laserdisc.fs2._
+import laserdisc.fs2.{MkResource, RedisClient}
+import laserdisc.{OK, PosInt, strings}
 import log.effect.fs2.Fs2LogWriter
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutorService
-import java.util.concurrent.Executors.newWorkStealingPool
 
 object Main extends IOApp.WithContext {
 
   override final protected val executionContextResource: Resource[SyncIO, ExecutionContext] =
     MkResource.of(SyncIO(fromExecutorService(newWorkStealingPool())))
 
-  override final def run(args: List[String]): IO[ExitCode] =
-    Fs2LogWriter.consoleLogStream[IO].flatMap { implicit logger =>
-      RedisClient[IO](Set(RedisAddress("localhost", 6379))).evalMap { client =>
-        client.send2(strings.set("a", 23), strings.get[PosInt]("a")).flatMap {
+  private def redisTest: Stream[IO, Unit] =
+    Fs2LogWriter.consoleLogStream[IO] >>= { implicit log =>
+      RedisClient.toNode[IO]("localhost", 6379) evalMap { client =>
+        client.send2(strings.set("a", 23), strings.get[PosInt]("a")) >>= {
           case (Right(OK), Right(Some(getResponse))) if getResponse.value == 23 =>
-            logger.info("yay!")
+            log info "yay!"
           case other =>
-            logger.error(s"something went terribly wrong $other") *>
+            log.error(s"something went terribly wrong $other") >>
               IO.raiseError(new RuntimeException("boom"))
         }
       }
     }
-    .compile
-    .drain
-    .as(ExitCode.Success)
+
+  override final def run(args: List[String]): IO[ExitCode] =
+    redisTest.compile.drain.as(ExitCode.Success)
 }
 ```
 

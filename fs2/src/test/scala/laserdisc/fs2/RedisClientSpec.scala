@@ -32,7 +32,7 @@ final class RedisClientSpec extends WordSpecLike with Matchers with BeforeAndAft
 
   def clientUnderTest[F[_]: ContextShift: Timer: ConcurrentEffect]: Stream[F, RedisClient[F]] =
     noOpLogStreamF >>= { implicit l =>
-      RedisClient[F](Set(RedisAddress("127.0.0.1", 6379)))
+      RedisClient.toNode("127.0.0.1", 6379)
     }
 
   "an fs2 redis client" should {

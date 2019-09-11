@@ -83,7 +83,7 @@ object CLI extends IOApp.WithContext { self =>
     def mkStream(host: Host, port: Port): Stream[IO, ExitCode] =
       Stream.resource(Blocker.fromExecutorService[IO](IO(fromExecutorService(newSingleThreadExecutor())))) >>= { replBlockingEC =>
         Fs2LogWriter.consoleLogStream[IO] >>= { implicit log =>
-          RedisClient[IO](Set(RedisAddress(host, port))).evalMap { redisClient =>
+          RedisClient.toNode[IO](host, port) evalMap { redisClient =>
             val promptStream: Stream[IO, String] = Stream.emit(s"$host:$port> ").repeat
 
             val emptyPrompt: IO[Unit] =

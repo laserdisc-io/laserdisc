@@ -1,14 +1,14 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-val `scala 2.12` = "2.12.9"
+val `scala 2.12` = "2.12.10"
 val `scala 2.13` = "2.13.0"
 
 val V = new {
-  val circe               = "0.12.0-RC4"
-  val fs2                 = "1.1.0-M2"
+  val circe               = "0.12.1"
+  val fs2                 = "2.0.0"
   val `kind-projector`    = "0.10.3"
-  val kittens             = "2.0.0-M1"
+  val kittens             = "2.0.0"
   val `log-effect-fs2`    = "0.9.0"
   val parallelCollections = "0.2.0"
   val refined             = "0.9.9"
@@ -17,7 +17,7 @@ val V = new {
   val scalatest           = "3.0.8"
   val `scodec-bits`       = "1.1.12"
   val `scodec-core`       = "1.11.4"
-  val `scodec-stream`     = "2.0.0-SNAPSHOT"
+  val `scodec-stream`     = "2.0.0"
   val shapeless           = "2.3.3"
 }
 

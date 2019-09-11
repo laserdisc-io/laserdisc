@@ -88,13 +88,12 @@ With a running Redis instance on `localhost:6379` try running the following:
 ```scala
 import java.util.concurrent.Executors.newWorkStealingPool
 
-import _root_.fs2.Stream
+import laserdisc._
+import laserdisc.fs2._
+import laserdisc.auto._
 import cats.effect.{ExitCode, IO, IOApp, Resource, SyncIO}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import laserdisc.auto._
-import laserdisc.fs2.{MkResource, RedisClient}
-import laserdisc.{OK, PosInt, strings}
 import log.effect.fs2.Fs2LogWriter
 
 import scala.concurrent.ExecutionContext

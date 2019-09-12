@@ -12,19 +12,19 @@ import scala.concurrent.TimeoutException
 import scala.concurrent.duration.FiniteDuration
 
 object PromiseMapper extends Poly1 {
-  implicit def mkOne[F[_]: Timer, A](implicit F: Concurrent[F]) =
-    at[Protocol.Aux[A]] { protocol => (queueAndDuration: (Queue[F], FiniteDuration)) =>
-      queueAndDuration match {
-        case (queue: Queue[F], duration: FiniteDuration) =>
-          Deferred[F, Maybe[A]].flatMap { promise =>
-            queue.enqueue1(Request(protocol, promise.complete)) >> {
-              promise.get
-                .timeout(duration)
-                .adaptError {
-                  case _: TimeoutException => RequestTimedOut(protocol)
-                }
+  private[this] final def mapper[F[_]: Concurrent: Timer, A](protocol: Protocol.Aux[A]): ((Queue[F], FiniteDuration)) => F[Maybe[A]] = {
+    case (queue, duration) =>
+      Deferred[F, Maybe[A]] >>= { promise =>
+        queue.enqueue1(Request(protocol, promise.complete)) >> {
+          promise.get
+            .timeout(duration)
+            .adaptError {
+              case _: TimeoutException => RequestTimedOut(protocol)
             }
-          }
+        }
       }
-    }
+  }
+
+  implicit def mkOne[F[_]: Concurrent: Timer, A]: Case.Aux[Protocol.Aux[A], ((Queue[F], FiniteDuration)) => F[Maybe[A]]] =
+    at[Protocol.Aux[A]](mapper(_))
 }

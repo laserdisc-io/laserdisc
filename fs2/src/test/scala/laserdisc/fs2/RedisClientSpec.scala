@@ -10,8 +10,9 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.traverse._
 import laserdisc.auto._
-import log.effect.fs2.Fs2LogWriter.noOpLogStreamF
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+import log.effect.LogWriter
+import log.effect.fs2.SyncLogWriter.noOpLogF
+import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.parallel.immutable.ParSeq
 import scala.concurrent.ExecutionContext
@@ -23,26 +24,26 @@ final class RedisClientSpec extends RedisClientBaseSpec[IO] {
   override implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
   override implicit val timer: Timer[IO]               = IO.timer(ec)
   override implicit val concurrent: Concurrent[IO]     = IO.ioConcurrentEffect
+  override implicit val logger: LogWriter[IO]          = noOpLogF[IO]
 
-  override def run[A](fa: IO[A]): A = fa.unsafeRunSync()
+  override def run[A]: IO[A] => A = _.unsafeRunSync()
 }
 
-abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with BeforeAndAfterAll {
+abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
 
   implicit def contextShift: ContextShift[F]
   implicit def timer: Timer[F]
   implicit def concurrent: Concurrent[F]
+  implicit def logger: LogWriter[F]
 
-  def run[A](fa: F[A]): A
+  def run[A]: F[A] => A
 
   private[this] final val key: Key = "test-key"
   private[this] final val text     = "test text"
   private[this] final val correct  = "correct"
 
-  final def clientUnderTest: Stream[F, RedisClient[F]] =
-    noOpLogStreamF >>= { implicit l =>
-      RedisClient.toNode("127.0.0.1", 6379)
-    }
+  def clientUnderTest: Resource[F, RedisClient[F]] =
+    RedisClient.toNode("127.0.0.1", 6379)
 
   "an fs2 redis client" should {
 
@@ -72,14 +73,10 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with
           )
         }).toList.sequence
 
-      val responses = run {
-        (clientUnderTest evalMap { cl =>
+      val responses =
+        (run[List[String]] compose clientUnderTest.use) { cl =>
           preset(cl) *> requests(cl)
-        }).compile.last
-          .map(
-            _ getOrElse Nil
-          )
-      }
+        }
 
       responses.size should be(300)
       responses map (_ should be(payload))
@@ -107,14 +104,10 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with
           )
         )
 
-      val responses = run {
-        (clientUnderTest evalMap { cl =>
+      val responses =
+        (run[List[String]] compose clientUnderTest.use) { cl =>
           preset(cl) *> requests(cl)
-        }).compile.last
-          .map(
-            _ getOrElse Nil
-          )
-      }
+        }
 
       responses.size should be(50)
       responses map (_ should be(payload))
@@ -144,14 +137,10 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with
           )
         }).toList.sequence
 
-      val responses = run {
-        (clientUnderTest evalMap { cl =>
+      val responses =
+        (run[List[String]] compose clientUnderTest.use) { cl =>
           preset(cl) *> requests(cl)
-        }).compile.last
-          .map(
-            _ getOrElse Nil
-          )
-      }
+        }
 
       responses.size should be(1000)
       responses map (_ should be(payload))
@@ -178,12 +167,10 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with
           )
         }).toList.sequence
 
-      val responses = run {
-        (clientUnderTest evalMap (cl => requests(cl))).compile.last
-          .map(
-            _ getOrElse Nil
-          )
-      }
+      val responses =
+        (run[List[String]] compose clientUnderTest.use) { cl =>
+          requests(cl)
+        }
 
       responses.size should be(1000)
       responses map (_ should be(correct))
@@ -219,14 +206,10 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with
           )
         }).toList.sequence map (_.flatten)
 
-      val responses = run {
-        (clientUnderTest evalMap { cl =>
+      val responses =
+        (run[List[String]] compose clientUnderTest.use) { cl =>
           cleanup(cl) *> preset(cl) *> requests(cl)
-        }).compile.last
-          .map(
-            _ getOrElse Nil
-          )
-      }
+        }
 
       responses.size should be(50 * 100)
       responses map (_ should be(bulk))

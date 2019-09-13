@@ -133,7 +133,7 @@ object CLI extends IOApp.WithContext { self =>
                 .evalMap { protocol =>
                   for {
                     startTime             <- IO(System.nanoTime())
-                    maybeProtocolResponse <- redisClient.send1(protocol.asInstanceOf[Protocol.Aux[protocol.A]])
+                    maybeProtocolResponse <- redisClient.send(protocol.asInstanceOf[Protocol.Aux[protocol.A]])
                     endTime               <- IO(System.nanoTime())
                   } yield maybeProtocolResponse.asInstanceOf[Maybe[Any]] -> (endTime - startTime)
                 }

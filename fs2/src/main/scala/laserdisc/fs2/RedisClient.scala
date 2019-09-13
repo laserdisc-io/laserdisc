@@ -11,58 +11,8 @@ import cats.syntax.all._
 import log.effect.LogWriter
 import log.effect.fs2.syntax._
 import shapeless._
-import shapeless.ops.hlist._
-import shapeless.ops.sized.ToHList
 
-import scala.collection.LinearSeq
 import scala.concurrent.duration._
-
-trait RedisClient[F[_]] {
-  import Protocol.Aux
-
-  def defaultTimeout: FiniteDuration = 20.seconds
-
-  def send1[A](pA: Aux[A], timeout: FiniteDuration = defaultTimeout): F[Maybe[A]]
-
-  def send2[A, B](pA: Aux[A], pB: Aux[B], timeout: FiniteDuration = defaultTimeout): F[(Maybe[A], Maybe[B])]
-
-  def send3[A, B, C](
-      pA: Aux[A],
-      pB: Aux[B],
-      pC: Aux[C],
-      timeout: FiniteDuration = defaultTimeout
-  ): F[(Maybe[A], Maybe[B], Maybe[C])]
-
-  def send4[A, B, C, D](
-      pA: Aux[A],
-      pB: Aux[B],
-      pC: Aux[C],
-      pD: Aux[D],
-      timeout: FiniteDuration = defaultTimeout
-  ): F[(Maybe[A], Maybe[B], Maybe[C], Maybe[D])]
-
-  def send5[A, B, C, D, E](
-      pA: Aux[A],
-      pB: Aux[B],
-      pC: Aux[C],
-      pD: Aux[D],
-      pE: Aux[E],
-      timeout: FiniteDuration = defaultTimeout
-  ): F[(Maybe[A], Maybe[B], Maybe[C], Maybe[D], Maybe[E])]
-
-  def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration = defaultTimeout)(
-      implicit protocolHandler: ProtocolHandler.Aux[F, In, Out]
-  ): F[Out]
-
-  def sendN[CC[_] <: LinearSeq[_], A, N <: Nat, In <: HList, Out <: HList](
-      sizedSeq: Sized[CC[Aux[A]], N],
-      timeout: FiniteDuration = defaultTimeout
-  )(
-      implicit toHList: ToHList.Aux[CC[Aux[A]], N, In],
-      protocolHandler: ProtocolHandler.Aux[F, In, Out],
-      toSized: ToSized.Aux[Out, CC, Maybe[A], N]
-  ): F[Sized[CC[Maybe[A]], N]]
-}
 
 object RedisClient {
 
@@ -121,69 +71,23 @@ object RedisClient {
       def run: F[Unit]
       def shutdown: F[Unit]
       def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
-          implicit protocolHandler: ProtocolHandler.Aux[F, In, Out]
+          implicit handler: RedisHandler.Aux[F, In, Out]
       ): F[Out]
     }
 
     sealed trait Publisher[F[_]] {
       def shutdown: F[Unit]
       def publish[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
-          implicit protocolHandler: ProtocolHandler.Aux[F, In, Out]
+          implicit handler: RedisHandler.Aux[F, In, Out]
       ): F[Out]
     }
 
     def mkClient[F[_]: ConcurrentEffect: Timer: LogWriter](connection: F[Connection[F]]): F[(RedisClient[F], F[Unit])] =
       mkPublisher(connection).map { publisher =>
         new RedisClient[F] {
-          import Protocol.Aux
-
-          override final def send1[A](pA: Aux[A], timeout: FiniteDuration): F[Maybe[A]] =
-            publisher.publish(pA :: HNil, timeout).map(_.head)
-
-          override final def send2[A, B](pA: Aux[A], pB: Aux[B], timeout: FiniteDuration): F[(Maybe[A], Maybe[B])] =
-            publisher.publish(pA :: pB :: HNil, timeout).map(_.tupled)
-
-          override final def send3[A, B, C](
-              pA: Aux[A],
-              pB: Aux[B],
-              pC: Aux[C],
-              timeout: FiniteDuration
-          ): F[(Maybe[A], Maybe[B], Maybe[C])] =
-            publisher.publish(pA :: pB :: pC :: HNil, timeout).map(_.tupled)
-
-          override final def send4[A, B, C, D](
-              pA: Aux[A],
-              pB: Aux[B],
-              pC: Aux[C],
-              pD: Aux[D],
-              timeout: FiniteDuration
-          ): F[(Maybe[A], Maybe[B], Maybe[C], Maybe[D])] =
-            publisher.publish(pA :: pB :: pC :: pD :: HNil, timeout).map(_.tupled)
-
-          override final def send5[A, B, C, D, E](
-              pA: Aux[A],
-              pB: Aux[B],
-              pC: Aux[C],
-              pD: Aux[D],
-              pE: Aux[E],
-              timeout: FiniteDuration
-          ): F[(Maybe[A], Maybe[B], Maybe[C], Maybe[D], Maybe[E])] =
-            publisher.publish(pA :: pB :: pC :: pD :: pE :: HNil, timeout).map(_.tupled)
-
           override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
-              implicit protocolHandler: ProtocolHandler.Aux[F, In, Out]
+              implicit handler: RedisHandler.Aux[F, In, Out]
           ): F[Out] = publisher.publish(in, timeout)
-
-          override final def sendN[CC[_] <: LinearSeq[_], A, N <: Nat, In <: HList, Out <: HList](
-              sizedSeq: Sized[CC[Aux[A]], N],
-              timeout: FiniteDuration
-          )(
-              implicit toHList: ToHList.Aux[CC[Aux[A]], N, In],
-              protocolHandler: ProtocolHandler.Aux[F, In, Out],
-              toSized: ToSized.Aux[Out, CC, Maybe[A], N]
-          ): F[Sized[CC[Maybe[A]], N]] =
-            publisher.publish(toHList(sizedSeq), timeout).map(_.toSized)
-
         } -> publisher.shutdown
       }
 
@@ -277,8 +181,8 @@ object RedisClient {
                 logger.info("Shutting down connection") >> termSignal.set(true)
 
               override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
-                  implicit protocolHandler: ProtocolHandler.Aux[F, In, Out]
-              ): F[Out] = protocolHandler(in, queue -> timeout)
+                  implicit handler: RedisHandler.Aux[F, In, Out]
+              ): F[Out] = handler(queue -> timeout, in)
             }
           }
         }
@@ -308,7 +212,7 @@ object RedisClient {
               .flatMap(_.maybeConnection.traverse_(_.shutdown))
 
           def publish[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
-              implicit ev: ProtocolHandler.Aux[F, In, Out]
+              implicit ev: RedisHandler.Aux[F, In, Out]
           ): F[Out] = state.get.map(_.maybeConnection).flatMap {
             case Some(connection) => connection.send(in, timeout)
             case None =>

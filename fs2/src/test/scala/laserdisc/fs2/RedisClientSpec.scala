@@ -20,18 +20,18 @@ import scala.concurrent.ExecutionContext.fromExecutor
 final class RedisClientSpec extends RedisClientBaseSpec[IO] {
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
-  override implicit val timer: Timer[IO]                       = IO.timer(ec)
-  override implicit val contextShift: ContextShift[IO]         = IO.contextShift(ec)
-  override implicit val concurrentEffect: ConcurrentEffect[IO] = IO.ioConcurrentEffect
+  override implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
+  override implicit val timer: Timer[IO]               = IO.timer(ec)
+  override implicit val concurrent: Concurrent[IO]     = IO.ioConcurrentEffect
 
   override def run[A](fa: IO[A]): A = fa.unsafeRunSync()
 }
 
 abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with BeforeAndAfterAll {
 
-  implicit def timer: Timer[F]
   implicit def contextShift: ContextShift[F]
-  implicit def concurrentEffect: ConcurrentEffect[F]
+  implicit def timer: Timer[F]
+  implicit def concurrent: Concurrent[F]
 
   def run[A](fa: F[A]): A
 
@@ -53,11 +53,11 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with
       val payload = (1 to 1000).toList map (_ => text) mkString " - "
 
       def preset(cl: RedisClient[F]): F[Unit] =
-        cl.send(strings.set(key, payload)) >>= (_ => concurrentEffect.unit)
+        cl.send(strings.set(key, payload)) >>= (_ => concurrent.unit)
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (collection.parallel.immutable.ParSeq.range(0, 300) map { _ =>
-          concurrentEffect.start { cl.send(strings.get[String](key)): F[Maybe[Option[String]]] }
+          concurrent.start { cl.send(strings.get[String](key)): F[Maybe[Option[String]]] }
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -90,7 +90,7 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with
       val payload = (1 to 1000).toList map (_ => text) mkString " - "
 
       def preset(cl: RedisClient[F]): F[Unit] =
-        cl.send(strings.set(key, payload)) >>= (_ => concurrentEffect.unit)
+        cl.send(strings.set(key, payload)) >>= (_ => concurrent.unit)
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         ((1 to 50) map { _ =>
@@ -125,11 +125,11 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with
       val payload = "test text"
 
       def preset(cl: RedisClient[F]): F[Unit] =
-        cl.send(strings.set(key, payload)) >>= (_ => concurrentEffect.unit)
+        cl.send(strings.set(key, payload)) >>= (_ => concurrent.unit)
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 1000) map { _ =>
-          concurrentEffect.start { cl.send(strings.get[String](key)) }
+          concurrent.start { cl.send(strings.get[String](key)) }
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -163,7 +163,7 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 1000) map { _ =>
-          concurrentEffect.start { cl.send(strings.get[String](key)) }
+          concurrent.start { cl.send(strings.get[String](key)) }
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -197,14 +197,14 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers with
       val bulk     = (1 to 1000).toList map (_ => text) mkString " - "
 
       def cleanup(cl: RedisClient[F]): F[Unit] =
-        cl.send(lists.lrem(key, 0L, bulk)) >>= (_ => concurrentEffect.unit)
+        cl.send(lists.lrem(key, 0L, bulk)) >>= (_ => concurrent.unit)
 
       def preset(cl: RedisClient[F]): F[Unit] =
-        (1 to 100).map(_ => cl.send(lists.rpush(key, bulk :: Nil))).toList.sequence >>= (_ => concurrentEffect.unit)
+        (1 to 100).map(_ => cl.send(lists.rpush(key, bulk :: Nil))).toList.sequence >>= (_ => concurrent.unit)
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 50) map { _ =>
-          concurrentEffect.start { cl.send(lists.lrange[String](key, 0L, 1000L)) }
+          concurrent.start { cl.send(lists.lrange[String](key, 0L, 1000L)) }
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {

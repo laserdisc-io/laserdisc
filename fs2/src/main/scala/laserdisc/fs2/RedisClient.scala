@@ -2,7 +2,7 @@ package laserdisc
 package fs2
 
 import cats.Eq
-import cats.effect.{Blocker, ConcurrentEffect, ContextShift, Resource, Sync, Timer}
+import cats.effect.{Blocker, Concurrent, ContextShift, Resource, Sync, Timer}
 import cats.effect.concurrent.Ref
 import cats.instances.option.catsStdInstancesForOption
 import cats.instances.option.catsKernelStdEqForOption
@@ -20,7 +20,7 @@ object RedisClient {
     * Creates a redis client that will handle the blocking network
     * connection's operations on a cached thread pool.
     */
-  @inline final def apply[F[_]: ConcurrentEffect: ContextShift: Timer: LogWriter](
+  @inline final def apply[F[_]: Concurrent: ContextShift: Timer: LogWriter](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
@@ -32,7 +32,7 @@ object RedisClient {
     * that will handle the blocking network connection's
     * operations on a cached thread pool.
     */
-  @inline final def toNode[F[_]: ConcurrentEffect: ContextShift: Timer: LogWriter](
+  @inline final def toNode[F[_]: Concurrent: ContextShift: Timer: LogWriter](
       host: Host,
       port: Port,
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
@@ -45,7 +45,7 @@ object RedisClient {
     * thread pool will be used to handle the blocking network
     * connection's operations.
     */
-  @inline final def blockingOn[F[_]: ConcurrentEffect: ContextShift: Timer: LogWriter](b: Resource[F, Blocker])(
+  @inline final def blockingOn[F[_]: Concurrent: ContextShift: Timer: LogWriter](b: Resource[F, Blocker])(
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
@@ -82,7 +82,7 @@ object RedisClient {
       ): F[Out]
     }
 
-    def mkClient[F[_]: ConcurrentEffect: Timer: LogWriter](connection: F[Connection[F]]): F[(RedisClient[F], F[Unit])] =
+    def mkClient[F[_]: Concurrent: Timer: LogWriter](connection: F[Connection[F]]): F[(RedisClient[F], F[Unit])] =
       mkPublisher(connection).map { publisher =>
         new RedisClient[F] {
           override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
@@ -94,7 +94,7 @@ object RedisClient {
     def currentServer[F[_]: Sync](addresses: Seq[RedisAddress]): F[Option[RedisAddress]] =
       Stream.emits(addresses).covary[F].compile.last //FIXME yeah, well...
 
-    def connection[F[_]: ConcurrentEffect: Timer](
+    def connection[F[_]: Concurrent: Timer](
         redisConnection: RedisAddress => Pipe[F, RESP, RESP],
         leader: F[Option[RedisAddress]]
     )(
@@ -188,7 +188,7 @@ object RedisClient {
         }
       }
 
-    def mkPublisher[F[_]](createPublisher: => F[Connection[F]])(implicit F: ConcurrentEffect[F]): F[Publisher[F]] = {
+    def mkPublisher[F[_]](createPublisher: => F[Connection[F]])(implicit F: Concurrent[F]): F[Publisher[F]] = {
 
       final class State(val hasShutdown: Boolean, val maybeConnection: Option[Connection[F]]) {
         def maybeSwapConnection(connection: Connection[F]): State =

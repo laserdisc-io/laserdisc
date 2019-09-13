@@ -6,6 +6,7 @@ import java.util.concurrent.Executors._
 import _root_.fs2.{io, text}
 import cats.effect._
 import cats.syntax.all._
+import laserdisc.fs2._
 import log.effect.fs2.Fs2LogWriter
 
 import scala.concurrent.ExecutionContext
@@ -13,9 +14,9 @@ import scala.concurrent.ExecutionContext.fromExecutorService
 import scala.reflect.runtime.universe
 import scala.tools.reflect.ToolBox
 
-import laserdisc.fs2._
-
 object CLI extends IOApp.WithContext { self =>
+
+  private[this] implicit final val concurrentEffect: ConcurrentEffect[IO] = IO.ioConcurrentEffect
 
   private[this] final val logo =
     """

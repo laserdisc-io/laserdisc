@@ -3,10 +3,10 @@ package fs2
 
 import java.net.InetSocketAddress
 
-import _root_.fs2._
-import _root_.fs2.io.tcp.{SocketGroup, Socket}
+import _root_.fs2.{Chunk, Pull}
+import _root_.fs2.io.tcp.{Socket, SocketGroup}
 import cats.MonadError
-import cats.effect.{Blocker, ConcurrentEffect, ContextShift, Effect, Resource}
+import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
 import cats.syntax.flatMap._
 import laserdisc.protocol._
 import log.effect.LogWriter
@@ -19,7 +19,7 @@ object RedisConnection {
   private[this] final val streamDecoder = StreamDecoder.many(Codec[RESP])
   private[this] final val streamEncoder = StreamEncoder.many(Codec[RESP])
 
-  final def apply[F[_]: ConcurrentEffect: ContextShift: LogWriter](
+  final def apply[F[_]: Concurrent: ContextShift: LogWriter](
       address: InetSocketAddress,
       writeTimeout: Option[FiniteDuration] = None,
       readMaxBytes: Int = 256 * 1024
@@ -47,7 +47,7 @@ object RedisConnection {
         .flatMap(bits => Stream.chunk(Chunk.array(bits.toByteArray)))
         .through(sink)
 
-    def receive[F[_]: Effect](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
+    def receive[F[_]: MonadError[*[_], Throwable]](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
 
       def framing: Pipe[F, Byte, CompleteFrame] = {
 

@@ -1,0 +1,26 @@
+package laserdisc
+
+trait ClientExt[F[_], Env] { this: Client[F, Env] =>
+  import shapeless._
+  import shapeless.ops.hlist.Tupler
+
+  import scala.concurrent.duration.FiniteDuration
+
+  [2..#final def send[[#A1#]]([#
+    protocolA1: Protocol.Aux[A1]#],
+    timeout: FiniteDuration
+  )(
+    implicit F: Functor[F],
+    ev##0: Handler.Aux[F, Env, [#Protocol.Aux[A1]# :: ] :: HNil, [#Maybe[A1]# :: ] :: HNil],
+    ev##1: Tupler[[#Maybe[A1]# :: ] :: HNil]
+  ): F[ev##1.Out] = F.map(send([#protocolA1# :: ] :: HNil, timeout))(_.tupled)
+  final def send[[#A1#]]([#
+    protocolA1: Protocol.Aux[A1]#]
+  )(
+    implicit F: Functor[F],
+    ev##0: Handler.Aux[F, Env, [#Protocol.Aux[A1]# :: ] :: HNil, [#Maybe[A1]# :: ] :: HNil],
+    ev##1: Tupler[[#Maybe[A1]# :: ] :: HNil]
+  ): F[ev##1.Out] = F.map(send([#protocolA1# :: ] :: HNil, defaultTimeout))(_.tupled)#
+
+  ]
+}

@@ -2,7 +2,7 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 val `scala 2.12` = "2.12.10"
-val `scala 2.13` = "2.13.0"
+val `scala 2.13` = "2.13.1"
 
 val V = new {
   val circe               = "0.12.1"

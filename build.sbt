@@ -6,7 +6,7 @@ val `scala 2.13` = "2.13.1"
 
 val V = new {
   val circe               = "0.12.1"
-  val fs2                 = "2.0.0"
+  val fs2                 = "2.0.1"
   val `kind-projector`    = "0.10.3"
   val kittens             = "2.0.0"
   val `log-effect-fs2`    = "0.9.0"

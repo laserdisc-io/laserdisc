@@ -7,7 +7,7 @@ val `scala 2.13` = "2.13.1"
 val V = new {
   val circe               = "0.12.1"
   val fs2                 = "2.0.0"
-  val `kind-projector`    = "0.10.3"
+  val `kind-projector`    = "0.10.4"
   val kittens             = "2.0.0"
   val `log-effect-fs2`    = "0.9.0"
   val parallelCollections = "0.2.0"
@@ -49,7 +49,7 @@ val parallelCollectionsInTest = Def.setting {
 }
 
 val `kind-projector-compiler-plugin` = Def.setting {
-  compilerPlugin("org.typelevel" % "kind-projector" % V.`kind-projector` cross CrossVersion.binary)
+  compilerPlugin("org.typelevel" % "kind-projector" % V.`kind-projector` cross CrossVersion.full)
 }
 val `scalajs-compiler-plugin` = Def.setting {
   compilerPlugin("org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.patch)

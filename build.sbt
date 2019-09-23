@@ -6,14 +6,13 @@ val `scala 2.13` = "2.13.1"
 
 val V = new {
   val circe               = "0.12.1"
-  val fs2                 = "2.0.0"
+  val fs2                 = "2.0.1"
   val `kind-projector`    = "0.10.4"
   val kittens             = "2.0.0"
-  val `log-effect-fs2`    = "0.9.0"
+  val `log-effect-fs2`    = "0.10.1"
   val parallelCollections = "0.2.0"
   val refined             = "0.9.10"
-  val `scala-java-time`   = "2.0.0-RC3"
-  val scalacheck          = "1.14.0"
+  val scalacheck          = "1.14.1"
   val scalatest           = "3.0.8"
   val `scodec-bits`       = "1.1.12"
   val `scodec-core`       = "1.11.4"
@@ -33,11 +32,10 @@ val `scodec-core`    = Def.setting("org.scodec"    %%% "scodec-core"    % V.`sco
 val `scodec-stream`  = Def.setting("org.scodec"    %%% "scodec-stream"  % V.`scodec-stream`)
 val shapeless        = Def.setting("com.chuusai"   %%% "shapeless"      % V.shapeless)
 
-val `circe-generic`      = Def.setting("io.circe"          %%% "circe-generic"      % V.circe             % Test)
-val `refined-scalacheck` = Def.setting("eu.timepit"        %%% "refined-scalacheck" % V.refined           % Test)
-val scalacheck           = Def.setting("org.scalacheck"    %%% "scalacheck"         % V.scalacheck        % Test)
-val scalatest            = Def.setting("org.scalatest"     %%% "scalatest"          % V.scalatest         % Test)
-val scalaJavaTime        = Def.setting("io.github.cquiroz" %%% "scala-java-time"    % V.`scala-java-time` % Test)
+val `circe-generic`      = Def.setting("io.circe"       %%% "circe-generic"      % V.circe      % Test)
+val `refined-scalacheck` = Def.setting("eu.timepit"     %%% "refined-scalacheck" % V.refined    % Test)
+val scalacheck           = Def.setting("org.scalacheck" %%% "scalacheck"         % V.scalacheck % Test)
+val scalatest            = Def.setting("org.scalatest"  %%% "scalatest"          % V.scalatest  % Test)
 
 val parallelCollectionsInTest = Def.setting {
   CrossVersion.partialVersion(scalaVersion.value) match {
@@ -87,8 +85,7 @@ val circeDeps = Def.Initialize.join {
     `circe-parser`,
     `circe-generic`,
     scalacheck,
-    scalatest,
-    scalaJavaTime
+    scalatest
   )
 }
 

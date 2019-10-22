@@ -1,4 +1,4 @@
-dist: xenial
+dist: bionic
 sudo: false
 
 language: scala
@@ -8,6 +8,7 @@ scala:
 
 jdk:
 - openjdk8
+- openjdk11
 
 services:
 - docker

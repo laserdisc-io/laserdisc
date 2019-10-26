@@ -16,8 +16,6 @@ import scala.tools.reflect.ToolBox
 
 object CLI extends IOApp.WithContext { self =>
 
-  private[this] implicit final val concurrent: Concurrent[IO] = IO.ioConcurrentEffect
-
   private[this] final val logo =
     """
       |                                   ./oydmNmmmmmmmmmmmmmmmmmmNmdyo/-

@@ -33,7 +33,7 @@ before_script:
 - docker run -p 6379:6379 -d redis:alpine
 
 script:
-- sbt -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false ++$TRAVIS_SCALA_VERSION clean coverage test coverageReport
+- sbt -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false ++$TRAVIS_SCALA_VERSION fullBuild
 
 before_cache:
 - find $HOME/.sbt -name "*.lock" | xargs rm

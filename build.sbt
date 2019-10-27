@@ -315,5 +315,7 @@ lazy val laserdisc = project
   .settings(publishSettings)
   .settings(
     publishArtifact := false,
-    addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt")
+    addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt"),
+    addCommandAlias("fmtCheck", ";scalafmtCheck;test:scalafmtCheck;scalafmtSbtCheck"),
+    addCommandAlias("fullBuild", ";fmtCheck;clean;coverage;test;coverageReport")
   )

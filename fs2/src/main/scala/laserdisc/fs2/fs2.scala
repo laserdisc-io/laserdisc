@@ -1,6 +1,5 @@
 package laserdisc
 
-import cats.effect.{Concurrent, Timer}
 import cats.sequence.Sequencer
 import shapeless.HList
 import shapeless.ops.hlist.{ConstMapper, Mapper, ZipApply}
@@ -26,7 +25,7 @@ package object fs2 {
   }
 
   implicit final def derive[
-      F[_]: Concurrent: Timer,
+      F[_],
       In <: HList,
       AL <: HList,
       FL <: HList,

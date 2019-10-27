@@ -86,54 +86,55 @@ of the JSON data structure, i.e. no spacing is used
 ### Example usage
 With a running Redis instance on `localhost:6379` try running the following:
 ```scala
-import java.util.concurrent.Executors.newWorkStealingPool
-
-import laserdisc._
-import laserdisc.fs2._
-import laserdisc.auto._
-import cats.effect.{ExitCode, IO, IOApp, Resource, SyncIO}
+import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import log.effect.fs2.Fs2LogWriter
+import laserdisc._
+import laserdisc.auto._
+import laserdisc.fs2._
+import log.effect.LogWriter
+import log.effect.fs2.SyncLogWriter
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.fromExecutorService
+object Main extends IOApp {
 
-object Main extends IOApp.WithContext {
-
-  override final protected val executionContextResource: Resource[SyncIO, ExecutionContext] =
-    MkResource.of(SyncIO(fromExecutorService(newWorkStealingPool())))
-
-  private def redisTest: Stream[IO, Unit] =
-    Fs2LogWriter.consoleLogStream[IO] >>= { implicit log =>
-      RedisClient.toNode[IO]("localhost", 6379) evalMap { client =>
-        client.send2(strings.set("a", 23), strings.get[PosInt]("a")) >>= {
-          case (Right(OK), Right(Some(getResponse))) if getResponse.value == 23 =>
-            log info "yay!"
-          case other =>
-            log.error(s"something went terribly wrong $other") >>
-              IO.raiseError(new RuntimeException("boom"))
-        }
+  def redisTest(implicit log: LogWriter[IO]): IO[Unit] =
+    RedisClient.toNode[IO]("localhost", 6379).use { client =>
+      client.send(
+        strings.set("a", 23),
+        strings.set("b", 55),
+        strings.get[PosInt]("b"),
+        strings.get[PosInt]("a")
+      ) >>= {
+        case (Right(OK), Right(OK), Right(Some(getOfb)), Right(Some(getOfa)))
+          if getOfb.value == 55 && getOfa.value == 23 =>
+          log info "yay!"
+        case other =>
+          log.error(s"something went terribly wrong $other") >>
+            IO.raiseError(new RuntimeException("boom"))
       }
     }
 
   override final def run(args: List[String]): IO[ExitCode] =
-    redisTest.compile.drain.as(ExitCode.Success)
+    redisTest(SyncLogWriter.consoleLog[IO]).as(ExitCode.Success)
 }
 ```
 
 This should produce an output similar to the following one:
 ```
-[info] Running Main
-[info] - [ForkJoinPool-3-worker-2] Starting connection
-[info] - [ForkJoinPool-3-worker-2] Server available for publishing: localhost:6379
-[debug] - [ForkJoinPool-3-worker-5] sending Arr(Bulk(SET),Bulk(a),Bulk(23))
-[debug] - [ForkJoinPool-3-worker-0] receiving Str(OK)
-[debug] - [ForkJoinPool-3-worker-1] sending Arr(Bulk(GET),Bulk(a))
-[debug] - [ForkJoinPool-3-worker-5] receiving Bulk(23)
-[info] - [ForkJoinPool-3-worker-2] yay!
-[info] - [ForkJoinPool-3-worker-2] Shutting down connection
-[info] - [ForkJoinPool-3-worker-0] Connection terminated: Right(())
+[info] - [ioapp-compute-0] Starting connection
+[info] - [ioapp-compute-6] Server available for publishing: localhost:6379
+[debug] - [ioapp-compute-7] sending Arr(Bulk(SET),Bulk(a),Bulk(23))
+[debug] - [ioapp-compute-1] receiving Str(OK)
+[debug] - [ioapp-compute-2] sending Arr(Bulk(SET),Bulk(b),Bulk(55))
+[debug] - [ioapp-compute-2] receiving Str(OK)
+[debug] - [ioapp-compute-2] sending Arr(Bulk(GET),Bulk(b))
+[debug] - [ioapp-compute-6] receiving Bulk(55)
+[debug] - [ioapp-compute-6] sending Arr(Bulk(GET),Bulk(a))
+[debug] - [ioapp-compute-1] receiving Bulk(23)
+[info] - [ioapp-compute-6] yay!
+[info] - [ioapp-compute-6] Shutting down connection
+[info] - [ioapp-compute-6] Shutdown complete
+[info] - [ioapp-compute-7] Connection terminated: No issues
 ```
 
 ## Dependencies

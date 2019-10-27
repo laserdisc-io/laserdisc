@@ -117,7 +117,6 @@ object Main extends IOApp {
   override final def run(args: List[String]): IO[ExitCode] =
     redisTest(SyncLogWriter.consoleLog[IO]).as(ExitCode.Success)
 }
-
 ```
 
 This should produce an output similar to the following one:

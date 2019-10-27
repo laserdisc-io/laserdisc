@@ -2,14 +2,13 @@ package laserdisc
 package fs2
 
 import cats.Eq
-import cats.effect.{Blocker, Concurrent, ContextShift, Resource, Sync, Timer}
 import cats.effect.concurrent.{Deferred, Ref}
-import cats.effect.syntax.concurrent._
 import cats.effect.{Blocker, Concurrent, ContextShift, Fiber, Resource, Sync, Timer}
 import cats.syntax.all._
 import log.effect.LogWriter
-import log.effect.fs2.syntax._
 import shapeless._
+import cats.effect.syntax.concurrent._
+import log.effect.fs2.syntax._
 
 import scala.concurrent.duration._
 

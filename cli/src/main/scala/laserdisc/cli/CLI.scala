@@ -111,6 +111,7 @@ object CLI extends IOApp { self =>
                     tb.parse {
                       s"""import laserdisc._
                         |import laserdisc.auto._
+                        |import laserdisc.all._
                         |import laserdisc.fs2._
                         |import shapeless._
                         |

@@ -180,7 +180,7 @@ object RedisClient {
                       LogWriter.warnS(s"New server is same like the old one ($address): currently unavailable") >>
                         serverUnavailable.flatMap(address => runner(Stream.emit(Some(address))))
 
-                    case None =>
+                    case _ =>
                       // connection with address will always fail with error.
                       // TODO so when that happens, all open requests are completed
                       // and runner is rerun to switch likely to serverUnavailable.

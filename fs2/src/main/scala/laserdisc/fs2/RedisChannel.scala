@@ -3,7 +3,6 @@ package fs2
 
 import java.net.InetSocketAddress
 
-import _root_.fs2.{Chunk, Pull}
 import _root_.fs2._
 import _root_.fs2.io.tcp.{Socket, SocketGroup}
 import cats.MonadError

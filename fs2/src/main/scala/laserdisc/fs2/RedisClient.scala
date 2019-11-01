@@ -13,7 +13,6 @@ import log.effect.fs2.syntax._
 import scala.concurrent.duration._
 
 object RedisClient {
-
   /**
     * Creates a redis client that will handle the blocking network
     * connection's operations on a cached thread pool.
@@ -65,7 +64,6 @@ object RedisClient {
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
   ): Resource[F, RedisClient[F]] = {
-
     def redisConnection(address: RedisAddress): Pipe[F, RESP, RESP] =
       stream =>
         Stream.eval(address.toInetSocketAddress) >>= { address =>
@@ -83,7 +81,6 @@ object RedisClient {
   }
 
   private[laserdisc] final object impl {
-
     sealed trait Connection[F[_]] {
       def run: F[Fiber[F, Unit]]
       def shutdown: F[Unit]
@@ -224,10 +221,8 @@ object RedisClient {
       }
 
     def mkPublisher[F[_]: Concurrent](establishedConn: Connection[F]): F[Publisher[F]] = {
-
       sealed trait State extends Product with Serializable
       object State {
-
         final case class ConnectedState(established: Connection[F]) extends State
         final case object ShutDownState                             extends State
         final type ShutDownState = ShutDownState.type
@@ -254,7 +249,6 @@ object RedisClient {
 
       Ref.of(State.empty).map { state =>
         new Publisher[F] {
-
           val start: F[Connection[F]] =
             (state update { currentState =>
               State.tryStart(currentState, establishedConn)

@@ -10,9 +10,7 @@ final class ListPSpec extends ListExtPSpec {
   }
 
   "The List protocol" when {
-
     "using lindex" should {
-
       "roundtrip successfully" when {
         "given key and index" in forAll("key", "index", "value") { (k: Key, i: Index, oi: Option[Int]) =>
           val protocol = lindex[Int](k, i)
@@ -24,7 +22,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using linsert" should {
-
       "roundtrip successfully" when {
         "given key, position, pivot and value" in {
           forAll("key", "position", "pivot", "value", "inserted") { (k: Key, p: ListPosition, pi: String, v: String, opi: Option[PosInt]) =>
@@ -38,7 +35,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using llen" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "length") { (k: Key, nni: NonNegInt) =>
           val protocol = llen(k)
@@ -50,7 +46,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using lpop" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "popped value") { (k: Key, os: Option[String]) =>
           val protocol = lpop[String](k)
@@ -62,7 +57,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using lpush" should {
-
       "roundtrip successfully" when {
         "given key and values" in forAll("key", "values", "pushed") { (k: Key, is: OneOrMore[Int], pi: PosInt) =>
           val protocol = lpush(k, is)
@@ -74,7 +68,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using lpushx" should {
-
       "roundtrip successfully" when {
         "given key and value" in forAll("key", "value", "pushed") { (k: Key, i: Int, opi: Option[PosInt]) =>
           val protocol = lpushx(k, i)
@@ -86,7 +79,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using lrange" should {
-
       "roundtrip successfully" when {
         "given key, start index and end index" in {
           forAll("key", "start index", "end index", "values") { (k: Key, si: Index, ei: Index, is: List[Int]) =>
@@ -100,7 +92,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using lrem" should {
-
       "roundtrip successfully" when {
         "given key, count and value" in forAll("key", "count", "value", "removed") { (k: Key, i: Index, s: String, nni: NonNegInt) =>
           val protocol = lrem(k, i, s)
@@ -112,7 +103,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using lset" should {
-
       "roundtrip successfully" when {
         "given key, count and value" in forAll("key", "count", "value") { (k: Key, i: Index, s: String) =>
           val protocol = lset(k, i, s)
@@ -124,7 +114,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using ltrim" should {
-
       "roundtrip successfully" when {
         "given key, start index and end index" in forAll("key", "start index", "end index") { (k: Key, si: Index, ei: Index) =>
           val protocol = ltrim(k, si, ei)
@@ -136,7 +125,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using rpop" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "popped value") { (k: Key, os: Option[String]) =>
           val protocol = rpop[String](k)
@@ -148,7 +136,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using rpoplpush" should {
-
       "roundtrip successfully" when {
         "given source key and destination key" in {
           forAll("source key", "destination", "popped value") { (sk: Key, dk: Key, os: Option[String]) =>
@@ -162,7 +149,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using rpush" should {
-
       "roundtrip successfully" when {
         "given key and values" in forAll("key", "values", "pushed") { (k: Key, is: OneOrMore[Int], pi: PosInt) =>
           val protocol = rpush(k, is)
@@ -174,7 +160,6 @@ final class ListPSpec extends ListExtPSpec {
     }
 
     "using rpushx" should {
-
       "roundtrip successfully" when {
         "given key and value" in forAll("key", "value", "pushed") { (k: Key, i: Int, opi: Option[PosInt]) =>
           val protocol = rpushx(k, i)

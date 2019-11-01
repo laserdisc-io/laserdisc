@@ -10,7 +10,6 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
 final class ReadmeExampleSpec extends WordSpecLike with Matchers {
-
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
   private[this] implicit val timer: Timer[IO]               = IO.timer(ec)
@@ -27,7 +26,6 @@ final class ReadmeExampleSpec extends WordSpecLike with Matchers {
   }
 
   "The readme example should give the expected output" in {
-
     import cats.effect.IO
     import cats.syntax.flatMap._
     import laserdisc._

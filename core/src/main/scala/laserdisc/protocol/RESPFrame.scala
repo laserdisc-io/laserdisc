@@ -39,7 +39,6 @@ private[protocol] sealed trait NonEmptyRESPFrame extends RESPFrame
 final case class CompleteFrame(bits: BitVector) extends NonEmptyRESPFrame
 final case class MoreThanOneFrame(private[protocol] val invertedComplete: List[CompleteFrame], remainder: BitVector)
     extends NonEmptyRESPFrame {
-
   def complete: Vector[CompleteFrame] = invertedComplete.foldRight(Vector.empty[CompleteFrame])((c, v) => v :+ c)
 }
 final case class IncompleteFrame(partial: BitVector, bitsToComplete: Long) extends NonEmptyRESPFrame {

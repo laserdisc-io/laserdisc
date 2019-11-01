@@ -2,11 +2,8 @@ package laserdisc
 package protocol
 
 final class BListPSpec extends BListExtPSpec {
-
   "The Blocking List protocol" when {
-
     "using blpop" should {
-
       "fail to compile" when {
         "given one key and timeout but missing read instance" in {
           """blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))""" shouldNot compile
@@ -32,7 +29,6 @@ final class BListPSpec extends BListExtPSpec {
     }
 
     "using brpop" should {
-
       "fail to compile" when {
         "given one key and timeout but missing read instance" in {
           """brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))""" shouldNot compile
@@ -58,7 +54,6 @@ final class BListPSpec extends BListExtPSpec {
     }
 
     "using brpoplpush" should {
-
       "roundtrip successfully" when {
         "given source key and destination key" in forAll("source key", "destination key", "returned value") { (s: Key, d: Key, i: Int) =>
           val protocol = brpoplpush[Int](s, d)

@@ -4,9 +4,7 @@ package protocol
 import scodec.bits.BitVector
 
 final class RESPFrameBulkSpec extends BaseSpec {
-
   "An empty Bulk Frame" when {
-
     "appending a bit vector that's complete" should {
       "produce Complete with all the bits" in {
         val inputVector = BitVector("$16\r\nTest bulk string\r\n".getBytes)
@@ -85,7 +83,6 @@ final class RESPFrameBulkSpec extends BaseSpec {
     }
 
     "appending a bit vector with multiple different messages with the last not complete" should {
-
       "produce MoreThanOne with a list of the complete ones in the inverted order and a remainder with the incomplete bits" in {
         val inputVector = BitVector(
           "$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes
@@ -123,11 +120,9 @@ final class RESPFrameBulkSpec extends BaseSpec {
           )
       }
     }
-
   }
 
   "A non empty Bulk Frame" when {
-
     "appending a bit vector that completes it" should {
       "produce Complete with all the bits" in {
         val nonEmptyFrame = IncompleteFrame(BitVector("$16\r\nTest bulk str".getBytes), 0)
@@ -207,7 +202,6 @@ final class RESPFrameBulkSpec extends BaseSpec {
     }
 
     "appending a bit vector with multiple different messages with the last not complete" should {
-
       "produce MoreThanOne with a list of the complete ones in the inverted order and a remainder with the incomplete bits" in {
         val nonEmptyFrame = IncompleteFrame(BitVector("$21\r\nTest bulk s".getBytes), 0)
         val inputVector = BitVector(

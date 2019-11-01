@@ -1,9 +1,7 @@
 package laserdisc
 
 final class RefinedTypesSpec extends BaseSpec {
-
   "ConnectionName" should {
-
     "fail to compile" when {
       "given an empty String" in {
         """ConnectionName("")""" shouldNot compile
@@ -37,7 +35,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "DbIndex" should {
-
     "fail to compile" when {
       "given out of range Int (< 0)" in {
         "DbIndex(-1)" shouldNot compile
@@ -71,7 +68,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "GeoHash" should {
-
     "fail to compile" when {
       "given a non conformant String (length < 11)" in {
         """GeoHash("abcdefghij")""" shouldNot compile
@@ -111,7 +107,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "GlobPattern" should {
-
     "fail to compile" when {
       "given an empty String" in {
         """GlobPattern("")""" shouldNot compile
@@ -146,7 +141,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "Host" should {
-
     "fail to compile" when {
       "given an empty String" in {
         """Host("")""" shouldNot compile
@@ -246,7 +240,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "Key" should {
-
     "fail to compile" when {
       "given an empty String" in {
         """Key("")""" shouldNot compile
@@ -269,7 +262,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "Latitude" should {
-
     "fail to compile" when {
       "given out of range Double (< -85.05112878D)" in {
         "Latitude(-85.05112879D)" shouldNot compile
@@ -306,7 +298,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "Longitude" should {
-
     "fail to compile" when {
       "given out of range Double (< -180.0D)" in {
         "Longitude(-180.00000001D)" shouldNot compile
@@ -343,7 +334,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "NodeId" should {
-
     "fail to compile" when {
       "given a non conformant String (length < 40)" in {
         """NodeId("0123456789abcdef0123456789abcdef0123456")""" shouldNot compile
@@ -383,7 +373,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "NonNegDouble" should {
-
     "fail to compile" when {
       "given out of range Double (< 0.0D)" in {
         "NonNegDouble(-0.00000001D)" shouldNot compile
@@ -417,7 +406,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "NonNegInt" should {
-
     "fail to compile" when {
       "given out of range Ints (< 0)" in {
         "NonNegInt(-1)" shouldNot compile
@@ -448,7 +436,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "NonNegLong" should {
-
     "fail to compile" when {
       "given out of range Longs (< 0L)" in {
         "NonNegLong(-1L)" shouldNot compile
@@ -479,7 +466,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "NonZeroDouble" should {
-
     "fail to compile" when {
       "given 0.0D" in {
         "NonZeroDouble(0.0D)" shouldNot compile
@@ -499,7 +485,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "NonZeroInt" should {
-
     "fail to compile" when {
       "given 0" in {
         "NonZeroInt(0)" shouldNot compile
@@ -516,7 +501,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "NonZeroLong" should {
-
     "fail to compile" when {
       "given 0L" in {
         "NonZeroLong(0L)" shouldNot compile
@@ -533,7 +517,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "OneOrMore" should {
-
     "fail at runtime" when {
       "provided empty List" in {
         an[IllegalArgumentException] should be thrownBy OneOrMore.unsafeFrom(List.empty[Int])
@@ -550,7 +533,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "OneOrMoreKeys" should {
-
     "fail to compile" when {
       "given non literal empty List" in {
         "OneOrMoreKeys(List.empty)" shouldNot compile
@@ -576,7 +558,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "RangeOffset" should {
-
     "fail to compile" when {
       "given out of range Int (< 0)" in {
         "RangeOffset(-1)" shouldNot compile
@@ -613,7 +594,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "Slot" should {
-
     "fail to compile" when {
       "given out of range Int (< 0)" in {
         "Slot(-1)" shouldNot compile
@@ -650,7 +630,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "StringLength" should {
-
     "fail to compile" when {
       "given out of range Long (< 0L)" in {
         "StringLength(-1L)" shouldNot compile
@@ -687,7 +666,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "TwoOrMoreKeys" should {
-
     "fail to compile" when {
       "given non literal empty List" in {
         "TwoOrMoreKeys(List.empty)" shouldNot compile
@@ -719,7 +697,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "TwoOrMoreWeightedKeys" should {
-
     "fail to compile" when {
       "given non literal empty List" in {
         "TwoOrMoreWeightedKeys(List.empty)" shouldNot compile
@@ -751,7 +728,6 @@ final class RefinedTypesSpec extends BaseSpec {
   }
 
   "ValidDouble" should {
-
     "fail to compile" when {
       "given Double.NaN" in {
         "ValidDouble(Double.NaN)" shouldNot compile

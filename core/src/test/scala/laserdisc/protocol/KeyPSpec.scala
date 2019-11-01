@@ -48,9 +48,7 @@ final class KeyPSpec extends KeyExtPSpec {
     )
 
   "The Key protocol" when {
-
     "using del" should {
-
       "roundtrip successfully" when {
         "given keys" in forAll("keys", "deleted") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
           val protocol = del(ks)
@@ -62,7 +60,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using dump" should {
-
       "roundtrip successfully" when {
         "given a key" in forAll("key", "dump") { (k: Key, os: Option[String]) =>
           val protocol = dump(k)
@@ -74,7 +71,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using exists" should {
-
       "roundtrip successfully" when {
         "given keys" in forAll("keys", "exists") { (ks: OneOrMoreKeys, opi: Option[PosInt]) =>
           val protocol = exists(ks)
@@ -86,7 +82,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using expire" should {
-
       "roundtrip successfully" when {
         "given key and expiration" in forAll("key", "expiration", "expired") { (k: Key, nni: NonNegInt, b: Boolean) =>
           val protocol = expire(k, nni)
@@ -98,7 +93,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using expireat" should {
-
       "roundtrip successfully" when {
         "given key and expire timestamp" in forAll("key", "timestamp", "expired") { (k: Key, nni: NonNegInt, b: Boolean) =>
           val protocol = expireat(k, nni)
@@ -110,7 +104,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using keys" should {
-
       "roundtrip successfully" when {
         "given glob pattern" in forAll("glob pattern", "keys") { (g: GlobPattern, ks: List[Key]) =>
           val protocol = keys(g)
@@ -122,7 +115,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using migrate" should {
-
       "roundtrip successfully" when {
         "given key, host, port, db index and timeout" in forAll("key", "host", "port", "db index", "timeout", "response") {
           (k: Key, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: NOKEY | OK) =>
@@ -171,7 +163,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using move" should {
-
       "roundtrip successfully" when {
         "given key and db" in forAll("key", "db", "moved") { (k: Key, db: DbIndex, b: Boolean) =>
           val protocol = move(k, db)
@@ -183,7 +174,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using obj.encoding" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "encoding") { (k: Key, oe: Option[KeyEncoding]) =>
           val protocol = obj.encoding(k)
@@ -195,7 +185,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using obj.freq" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "frequency") { (k: Key, nni: NonNegInt) =>
           val protocol = obj.freq(k)
@@ -207,7 +196,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using obj.idletime" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "idle time") { (k: Key, nni: NonNegInt) =>
           val protocol = obj.idletime(k)
@@ -219,7 +207,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using obj.refcount" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "ref count") { (k: Key, nni: NonNegInt) =>
           val protocol = obj.refcount(k)
@@ -231,7 +218,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using persist" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "persisted") { (k: Key, b: Boolean) =>
           val protocol = persist(k)
@@ -243,7 +229,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using pexpire" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "timeout", "persisted") { (k: Key, nnl: NonNegLong, b: Boolean) =>
           val protocol = pexpire(k, nnl)
@@ -255,7 +240,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using pexpireat" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "timestamp", "persisted") { (k: Key, nnl: NonNegLong, b: Boolean) =>
           val protocol = pexpireat(k, nnl)
@@ -267,7 +251,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using pttl" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "ttl") { (k: Key, ttl: KeyTTLResponse) =>
           val protocol = pttl(k)
@@ -279,7 +262,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using randomkey" should {
-
       "roundtrip successfully" when {
         "using val" in { (ok: Option[Key]) =>
           val protocol = randomkey
@@ -291,7 +273,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using rename" should {
-
       "roundtrip successfully" when {
         "given old key and new key" in forAll("old key", "new key") { (ok: Key, nk: Key) =>
           val protocol = rename(ok, nk)
@@ -303,7 +284,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using renamenx" should {
-
       "roundtrip successfully" when {
         "given old key and new key" in forAll("old key", "new key", "renamed") { (ok: Key, nk: Key, b: Boolean) =>
           val protocol = renamenx(ok, nk)
@@ -315,7 +295,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using restore" should {
-
       "roundtrip successfully" when {
         "given key, ttl and serialized value" in forAll("key", "ttl", "serialized value") { (k: Key, nnl: NonNegLong, s: String) =>
           val protocol = restore(k, nnl, Bulk(s))
@@ -352,7 +331,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using scan" should {
-
       "roundtrip successfully" when {
         "given cursor" in forAll("cursor", "scan result") { (nnl: NonNegLong, sk: Scan[Key]) =>
           val protocol = scan(nnl)
@@ -389,7 +367,6 @@ final class KeyPSpec extends KeyExtPSpec {
     //FIXME add SORT
 
     "using touch" should {
-
       "roundtrip successfully" when {
         "given keys" in forAll("keys", "touched") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
           val protocol = touch(ks)
@@ -401,7 +378,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using ttl" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "ttl") { (k: Key, ttl0: KeyTTLResponse) =>
           val protocol = ttl(k)
@@ -413,7 +389,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using typeof" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "type") { (k: Key, ot: Option[KeyType]) =>
           val protocol = typeof(k)
@@ -425,7 +400,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using unlink" should {
-
       "roundtrip successfully" when {
         "given keys" in forAll("keys", "unlinked") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
           val protocol = unlink(ks)
@@ -437,7 +411,6 @@ final class KeyPSpec extends KeyExtPSpec {
     }
 
     "using wait" should {
-
       "roundtrip successfully" when {
         "given replicas" in forAll("replicas", "acknowledgements") { (pi1: PosInt, pi2: PosInt) =>
           val protocol = wait(pi1)

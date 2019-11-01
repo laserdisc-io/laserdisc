@@ -37,7 +37,6 @@ final class CirceSpec extends WordSpec with Matchers with ScalaCheckPropertyChec
   private[this] implicit val bazArbitrary: Arbitrary[Baz] = Arbitrary(bazGen)
 
   "Circe interop" when {
-
     "handling a simple type" should {
       "roundtrip with no errors" in forAll { bar: Bar =>
         Read[Bulk, Bar].read(Bulk(bar)).value shouldBe bar

@@ -11,9 +11,7 @@ final class HashPSpec extends HashExtPSpec {
     )
 
   "The Hash protocol" when {
-
     "using hdel" should {
-
       "roundtrip successfully" when {
         "given key and fields" in forAll { (k: Key, fs: OneOrMoreKeys, nni: NonNegInt) =>
           val protocol = hdel(k, fs)
@@ -25,7 +23,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hexists" should {
-
       "roundtrip successfully" when {
         "given key and field" in forAll { (k: Key, f: Key, b: Boolean) =>
           val protocol = hexists(k, f)
@@ -34,11 +31,9 @@ final class HashPSpec extends HashExtPSpec {
           protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
         }
       }
-
     }
 
     "using hget" should {
-
       "fail to compile" when {
         "given key and field but missing read instance" in {
           """hget[Bar](Key("a"), Key("f"))""" shouldNot compile
@@ -62,7 +57,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hgetall" should {
-
       "fail to compile" when {
         "given key but missing read instance" in {
           """hgetall[Map[String, Int]](Key("a"))""" shouldNot compile
@@ -96,7 +90,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hincrby" should {
-
       "roundtrip successfully" when {
         "given key, field and long increment" in {
           forAll("key", "field", "increment", "incremented value") { (k: Key, f: Key, nzl: NonZeroLong, l: Long) =>
@@ -118,7 +111,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hkeys" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "returned keys") { (k: Key, ks: List[Key]) =>
           whenever(keyIsValid(k.value) && ks.forall(k => keyIsValid(k.value))) {
@@ -132,7 +124,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hlen" should {
-
       "roundtrip successfully" when {
         "given key" in forAll("key", "length") { (k: Key, nni: NonNegInt) =>
           val protocol = hlen(k)
@@ -144,7 +135,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hmget" should {
-
       "roundtrip successfully" when {
         "given key and one field" in forAll { (k: Key, f: Key, i: Int) =>
           val protocol = hmget[Int](k, f)
@@ -161,7 +151,6 @@ final class HashPSpec extends HashExtPSpec {
       }
 
       "using hmset" should {
-
         "fail to compile" when {
           "given key and HNil" in {
             """hmset(Key("a"), HNil)""" shouldNot compile
@@ -186,7 +175,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hscan" should {
-
       "roundtrip successfully" when {
         "given key and cursor" in forAll("key", "cursor", "scan result") { (k: Key, nnl: NonNegLong, skv: ScanKV) =>
           val protocol = hscan(k, nnl)
@@ -221,7 +209,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hset" should {
-
       "roundtrip successfully" when {
         "given key, field and value" in forAll("key", "field", "value", "success") { (k: Key, f: Key, v: Int, b: Boolean) =>
           val protocol = hset(k, f, v)
@@ -233,7 +220,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hsetnx" should {
-
       "roundtrip successfully" when {
         "given key, field and value" in forAll("key", "field", "value", "success") { (k: Key, f: Key, v: Int, b: Boolean) =>
           val protocol = hsetnx(k, f, v)
@@ -245,7 +231,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hstrlen" should {
-
       "roundtrip successfully" when {
         "given key and field" in forAll("key", "field", "length") { (k: Key, f: Key, nni: NonNegInt) =>
           val protocol = hstrlen(k, f)
@@ -257,7 +242,6 @@ final class HashPSpec extends HashExtPSpec {
     }
 
     "using hvals" should {
-
       "roundtrip successfully" when {
         "given key (expecting one field)" in forAll { (k: Key, i: Int) =>
           val protocol = hvals[Int :: HNil](k)

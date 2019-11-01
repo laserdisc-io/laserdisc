@@ -5,9 +5,7 @@ import BitVectorDecoding.{Complete, CompleteWithRemainder, Incomplete, MissingBi
 import scodec.bits.BitVector
 
 final class RESPFunctionsSpec extends BaseSpec {
-
   "A RESP codec" when {
-
     "checking the state of a bit vector with the size prefix not complete" should {
       "produce IncompleteVector" in {
         RESP.stateOf(BitVector("$2362".getBytes)) should be(Right(Incomplete))

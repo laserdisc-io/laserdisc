@@ -30,7 +30,6 @@ final class RedisClientSpec extends RedisClientBaseSpec[IO] {
 }
 
 abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
-
   implicit def contextShift: ContextShift[F]
   implicit def timer: Timer[F]
   implicit def concurrent: Concurrent[F]
@@ -46,11 +45,9 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
     RedisClient.toNode("127.0.0.1", 6379)
 
   "an fs2 redis client" should {
-
     import cats.instances.list.catsStdInstancesForList
 
     "handle correctly hundreds of read requests in parallel for a large bulk text payload" in {
-
       val payload = (1 to 1000).toList map (_ => text) mkString " - "
 
       def preset(cl: RedisClient[F]): F[Unit] =
@@ -83,7 +80,6 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
     }
 
     "handle correctly some read requests in a row for a bulk text payload" in {
-
       val payload = (1 to 1000).toList map (_ => text) mkString " - "
 
       def preset(cl: RedisClient[F]): F[Unit] =
@@ -114,7 +110,6 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
     }
 
     "handle correctly hundreds of read requests in parallel for a small bulk text payload" in {
-
       val payload = "test text"
 
       def preset(cl: RedisClient[F]): F[Unit] =
@@ -147,7 +142,6 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
     }
 
     "handle correctly hundreds of read requests in parallel for a null bulk payload" in {
-
       val key: Key = "non-existent-test-key"
 
       def requests(cl: RedisClient[F]): F[List[String]] =
@@ -177,7 +171,6 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
     }
 
     "handle correctly hundreds of read requests in parallel for an array payload" in {
-
       implicit val listStringShow: Show[List[String]] = _ mkString COMMA
 
       val key: Key = "test-key-list"

@@ -4,9 +4,7 @@ package protocol
 import scodec.bits.BitVector
 
 final class RESPFrameArrSpec extends BaseSpec {
-
   "An empty GenArr Frame" when {
-
     "appending a bit vector that represent an empty array" should {
       "produce a complete frame with the bits of an empty bulk" in {
         val inputVector = BitVector("*0\r\n".getBytes)
@@ -16,7 +14,6 @@ final class RESPFrameArrSpec extends BaseSpec {
   }
 
   "A non empty GenArr Frame" when {
-
     "appending a bit vector that completes it" should {
       "produce a complete frame with the correct bits" in {
         val nonEmptyFrame = IncompleteFrame(BitVector("*1\r\n$16\r\nTest bulk str".getBytes), 0)

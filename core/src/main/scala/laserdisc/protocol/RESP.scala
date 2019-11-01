@@ -351,7 +351,6 @@ sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
 }
 
 object BitVectorDecoding {
-
   type Incomplete = Incomplete.type
   type Complete   = Complete.type
 

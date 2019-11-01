@@ -8,7 +8,6 @@ import cats.effect.{Resource, Sync}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 object MkResource {
-
   sealed trait CanShutdown[A] { def shutdown[F[_]](implicit F: Sync[F]): A => F[Unit] }
 
   final object CanShutdown {

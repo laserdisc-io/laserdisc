@@ -2,11 +2,8 @@ package laserdisc
 package protocol
 
 final class ConnectionPSpec extends BaseSpec with ConnectionP {
-
   "The Connection protocol" when {
-
     "using auth" should {
-
       "roundtrip successfully" when {
         "given non empty password" in forAll("non empty password") { key: Key =>
           val protocol = auth(key)
@@ -18,7 +15,6 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     }
 
     "using echo" should {
-
       "roundtrip successfully" when {
         "given any String message" in forAll("string") { s: String =>
           val protocol = echo(s)
@@ -36,7 +32,6 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     }
 
     "using ping" should {
-
       "roundript successfully" when {
         "given any String message" in forAll("string") { s: String =>
           val protocol = ping(s)
@@ -60,7 +55,6 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     }
 
     "using quit" should {
-
       "roundtrip successfully" in {
         val protocol = quit
 
@@ -70,7 +64,6 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     }
 
     "using select" should {
-
       "roundtrip successfully" when {
         "given valid DbIndexes" in forAll("db index") { dbi: DbIndex =>
           val protocol = select(dbi)
@@ -82,7 +75,6 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     }
 
     "using swapdb" should {
-
       "roundtrip successfully" when {
         "given valid DbIndexes" in forAll("db index 1", "db index 2") { (dbi1: DbIndex, dbi2: DbIndex) =>
           val protocol = swapdb(dbi1, dbi2)

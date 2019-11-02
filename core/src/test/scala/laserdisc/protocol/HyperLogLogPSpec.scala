@@ -2,11 +2,8 @@ package laserdisc
 package protocol
 
 final class HyperLogLogPSpec extends HyperLogLogExtPSpec {
-
   "The HyperLogLog protocol" when {
-
     "using pfadd" should {
-
       "roundtrip successfully" when {
         "given key and elements" in forAll("key", "elements", "added") { (k: Key, es: OneOrMoreKeys, b: Boolean) =>
           val protocol = pfadd(k, es)
@@ -18,7 +15,6 @@ final class HyperLogLogPSpec extends HyperLogLogExtPSpec {
     }
 
     "using pfcount" should {
-
       "roundtrip successfully" when {
         "given keys" in forAll("keys", "count") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
           val protocol = pfcount(ks)
@@ -30,7 +26,6 @@ final class HyperLogLogPSpec extends HyperLogLogExtPSpec {
     }
 
     "using pfmerge" should {
-
       "roundtrip successfully" when {
         "given two or more source keys and a destination key" in forAll("source keys", "destination key") { (sks: TwoOrMoreKeys, dk: Key) =>
           val protocol = pfmerge(sks, dk)

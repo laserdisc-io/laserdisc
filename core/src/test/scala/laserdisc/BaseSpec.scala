@@ -22,7 +22,6 @@ abstract class BaseSpec
     with CollectionInstancesBinCompat1
     with NumericInstances
     with StringInstances {
-
   private[this] final val dashChar: Char     = 0x002D.toChar
   private[this] final val dashString: String = dashChar.toString
   private[this] final val dotString: String  = 0x002E.toChar.toString

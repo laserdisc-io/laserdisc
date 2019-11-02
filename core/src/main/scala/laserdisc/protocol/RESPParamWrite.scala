@@ -14,7 +14,6 @@ Normally you would not need to define one manually, as one will be derived for y
 - ${A} is an HList whose elements all have a RESPParamWrite instance defined
 """
 ) trait RESPParamWrite[A] {
-
   def write(a: A): Seq[GenBulk]
 }
 

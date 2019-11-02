@@ -16,7 +16,6 @@ import scodec.stream.{StreamDecoder, StreamEncoder}
 import scala.concurrent.duration.FiniteDuration
 
 object RedisChannel {
-
   private[this] final val streamDecoder = StreamDecoder.many(Codec[RESP])
   private[this] final val streamEncoder = StreamEncoder.many(Codec[RESP])
 
@@ -25,7 +24,6 @@ object RedisChannel {
       writeTimeout: Option[FiniteDuration] = None,
       readMaxBytes: Int = 256 * 1024
   )(blocker: Blocker): Pipe[F, RESP, RESP] = {
-
     def connectedSocket: Resource[F, Socket[F]] =
       SocketGroup(blocker) >>= (_.client(address))
 
@@ -44,7 +42,6 @@ object RedisChannel {
   }
 
   private[this] final object impl {
-
     def send[F[_]: MonadError[*[_], Throwable]](socketChannel: Pipe[F, Byte, Unit])(
         implicit log: LogWriter[F]
     ): Pipe[F, RESP, Unit] =
@@ -54,9 +51,7 @@ object RedisChannel {
         .through(socketChannel)
 
     def receive[F[_]: MonadError[*[_], Throwable]](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
-
       def framing: Pipe[F, Byte, CompleteFrame] = {
-
         def loopScan(bytesIn: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteFrame, Unit] =
           bytesIn.pull.uncons.flatMap {
             case Some((chunk, rest)) =>

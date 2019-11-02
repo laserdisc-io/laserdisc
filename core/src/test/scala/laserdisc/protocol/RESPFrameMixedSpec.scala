@@ -6,9 +6,7 @@ import org.scalacheck.{Arbitrary, Gen}
 import scodec.bits.BitVector
 
 final class RESPFrameMixedSpec extends BaseSpec {
-
   "A non empty mixed Frame" when {
-
     "appending a bit vector composed of a complete sequence of integers, simple strings, bulk strings and errors" should {
       "produce MoreThanOne with a list of all the complete items" in {
         val nonEmptyFrame = IncompleteFrame(BitVector("$16\r\nTest bulk str".getBytes), 0)
@@ -75,7 +73,6 @@ final class RESPFrameMixedSpec extends BaseSpec {
           )
       }
     }
-
   }
 
   "An empty Frame" when {

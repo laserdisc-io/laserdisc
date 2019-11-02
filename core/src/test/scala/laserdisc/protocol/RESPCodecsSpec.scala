@@ -11,7 +11,6 @@ import scodec.bits.BitVector
 import scodec.{Codec, Err => SErr}
 
 object RESPCodecsSpec extends EitherValues {
-
   private[this] final object functions {
     private[this] final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
     private[this] final val requireEncode = (resp: RESP) => Codec[RESP].encode(resp).require
@@ -92,7 +91,6 @@ final class RESPCodecsSpec extends BaseSpec {
   private[this] implicit final val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
 
   "A RESP codec" when {
-
     "handling unknown protocol type" should {
       "fail with correct error message" in forAll { c: Char =>
         s"$c".RESP.left.value.messageWithContext shouldBe s"unidentified RESP type (Hex: ${c.toHex})"

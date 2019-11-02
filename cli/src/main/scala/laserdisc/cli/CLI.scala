@@ -76,7 +76,6 @@ object CLI extends IOApp { self =>
   }
 
   private[cli] final object impl {
-
     private[this] val tb = universe.runtimeMirror(self.getClass.getClassLoader).mkToolBox()
 
     def mkStream(host: Host, port: Port)(implicit `_`: LogWriter[IO]): Stream[IO, ExitCode] =

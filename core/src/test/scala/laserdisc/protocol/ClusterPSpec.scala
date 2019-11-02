@@ -127,9 +127,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     )
 
   "The Cluster protocol" when {
-
     "using addslots" should {
-
       "roundtrip successfully" when {
         "given one or more slots" in forAll("slots") { ss: OneOrMore[Slot] =>
           val protocol = addslots(ss)
@@ -141,7 +139,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using clusterinfo" should {
-
       "roundtrip successfully" when {
         "using val" in forAll(infoGen) { info =>
           whenever(infoIsValid(info)) {
@@ -157,7 +154,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using countfailurereports" should {
-
       "roundtrip successfully" when {
         "given a nodeId" in forAll("node id", "failure reports") { (n: NodeId, nni: NonNegInt) =>
           val protocol = countfailurereports(n)
@@ -169,7 +165,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using countkeysinslot" should {
-
       "roundtrip successfully" when {
         "given a slot" in forAll("slot", "keys in slot") { (s: Slot, nni: NonNegInt) =>
           val protocol = countkeysinslot(s)
@@ -181,7 +176,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using delslots" should {
-
       "roundtrip successfully" when {
         "given one or more slots" in forAll("slots") { ss: OneOrMore[Slot] =>
           val protocol = delslots(ss)
@@ -193,7 +187,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using failover" should {
-
       "roundtrip successfully" when {
         "using val" in {
           val protocol = failover
@@ -211,7 +204,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using forget" should {
-
       "roundtrip successfully" when {
         "given a nodeId" in forAll("node id") { n: NodeId =>
           val protocol = forget(n)
@@ -223,7 +215,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using getkeysinslot" should {
-
       "roundtrip successfully" when {
         "given a slot and a count" in forAll("slot", "count", "keys in slot") { (s: Slot, pi: PosInt, ks: List[Key]) =>
           val protocol = getkeysinslot(s, pi)
@@ -235,7 +226,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using keyslot" should {
-
       "roundtrip successfully" when {
         "given a key" in forAll("key", "slot") { (k: Key, s: Slot) =>
           val protocol = keyslot(k)
@@ -247,7 +237,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using meet" should {
-
       "roundtrip successfully" when {
         "given a host and a port" in forAll("host", "port") { (h: Host, p: Port) =>
           val protocol = meet(h, p)
@@ -259,7 +248,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using nodes" should {
-
       "roundtrip successfully" when {
         "using val" in forAll(nodesGen) { ns =>
           whenever(nodesIsValid(ns)) {
@@ -273,7 +261,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using readonly" should {
-
       "roundtrip successfully" when {
         "using val" in {
           val protocol = readonly
@@ -285,7 +272,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using readwrite" should {
-
       "roundtrip successfully" when {
         "using val" in {
           val protocol = readwrite
@@ -297,7 +283,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using replicas" should {
-
       "roundtrip successfully" when {
         "given a nodeId" in forAll(nodeIdArb.arbitrary, nodesGen) { (n, ns) =>
           whenever(nodesIsValid(ns)) {
@@ -311,7 +296,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using replicate" should {
-
       "roundtrip successfully" when {
         "given a nodeId" in forAll("node id") { n: NodeId =>
           val protocol = replicate(n)
@@ -323,7 +307,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using reset" should {
-
       "roundtrip successfully" when {
         "using val" in {
           val protocol = reset
@@ -341,7 +324,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using saveconfig" should {
-
       "roundtrip successfully" when {
         "using val" in {
           val protocol = saveconfig
@@ -353,7 +335,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using setconfigepoch" should {
-
       "roundtrip successfully" when {
         "given a config epoch" in forAll("config epoch") { nni: NonNegInt =>
           val protocol = setconfigepoch(nni)
@@ -365,7 +346,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using setslot" should {
-
       "roundtrip successfully" when {
         "given a slot" in forAll("slot") { s: Slot =>
           val protocol = setslot(s)
@@ -383,7 +363,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using slaves" should {
-
       "roundtrip successfully" when {
         "given a nodeId" in forAll(nodeIdArb.arbitrary, nodesGen) { (n, ns) =>
           whenever(nodesIsValid(ns)) {
@@ -397,7 +376,6 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
 
     "using slots" should {
-
       "roundtrip successfully" when {
         "using val" in forAll(slotsGen) { ss =>
           whenever(slotsIsValid(ss)) {

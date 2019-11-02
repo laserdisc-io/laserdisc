@@ -14,7 +14,6 @@ You should not need to define one manually, as one will be derived for you autom
 - this sum/co-product is a subset of the sum-co-product for RESP
   """
 ) trait RESPRead[A] {
-
   type Sub
 
   def read(resp: RESP): Maybe[A]

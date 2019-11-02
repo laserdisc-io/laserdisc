@@ -85,9 +85,7 @@ final class GeoPSpec extends GeoExtPSpec {
     })
 
   "The Geo protocol" when {
-
     "using geoadd" should {
-
       "roundtrip successfully" when {
         "given key and positions" in forAll("key", "positions", "added") { (k: Key, ps: OneOrMore[GeoPosition], nni: NonNegInt) =>
           val protocol = geoadd(k, ps)
@@ -96,11 +94,9 @@ final class GeoPSpec extends GeoExtPSpec {
           protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
         }
       }
-
     }
 
     "using geodist" should {
-
       "roundtrip successfully" when {
         "given key and members" in {
           forAll("key", "member 1", "member 2", "maybe distance") { (k: Key, m1: Key, m2: Key, onnd: Option[NonNegDouble]) =>
@@ -123,7 +119,6 @@ final class GeoPSpec extends GeoExtPSpec {
     }
 
     "using geohash" should {
-
       "roundtrip successfully" when {
         "given key and members" in {
           forAll("key", "members", "geo hashes") { (k: Key, ms: OneOrMoreKeys, oghs: OneOrMore[Option[GeoHash]]) =>
@@ -134,11 +129,9 @@ final class GeoPSpec extends GeoExtPSpec {
           }
         }
       }
-
     }
 
     "using geopos" should {
-
       "roundtrip successfully" when {
         "given key and members" in {
           forAll("key", "members", "coordinates") { (k: Key, ms: OneOrMoreKeys, ocs: OneOrMore[Option[GeoCoordinates]]) =>
@@ -151,7 +144,6 @@ final class GeoPSpec extends GeoExtPSpec {
       }
 
       "using georadius" should {
-
         "roundtrip successfully" when {
           "given key, coordinates, radius and unit" in {
             forAll("key", "coordinates", "radius", "unit", "members") {
@@ -572,7 +564,6 @@ final class GeoPSpec extends GeoExtPSpec {
       }
 
       "using ro.georadius" should {
-
         "roundtrip successfully" when {
           "given key, coordinates, radius and unit" in {
             forAll("key", "coordinates", "radius", "unit", "members") {

@@ -11,7 +11,7 @@ import cats.syntax.functor._
 import cats.syntax.traverse._
 import laserdisc.auto._
 import log.effect.LogWriter
-import log.effect.fs2.SyncLogWriter.noOpLogF
+import log.effect.fs2.SyncLogWriter.noOpLog
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.parallel.immutable.ParSeq
@@ -24,7 +24,7 @@ final class RedisClientSpec extends RedisClientBaseSpec[IO] {
   override implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
   override implicit val timer: Timer[IO]               = IO.timer(ec)
   override implicit val concurrent: Concurrent[IO]     = IO.ioConcurrentEffect
-  override implicit val logger: LogWriter[IO]          = noOpLogF[IO]
+  override implicit val logger: LogWriter[IO]          = noOpLog[IO]
 
   override def run[A]: IO[A] => A = _.unsafeRunSync()
 }

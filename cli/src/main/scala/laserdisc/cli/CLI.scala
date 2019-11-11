@@ -68,7 +68,7 @@ object CLI extends IOApp { self =>
 
       (maybeHost, maybePort) match {
         case (Some(ip), Some(port)) =>
-          IO(println(logo)) >> impl.mkStream(ip, port)(SyncLogWriter.noOpLogF[IO]).compile.drain.as(ExitCode.Success)
+          IO(println(logo)) >> impl.mkStream(ip, port)(SyncLogWriter.noOpLog[IO]).compile.drain.as(ExitCode.Success)
         case _ => IO(println("please supply valid host and port (space separated)")).as(ExitCode.Error)
       }
 

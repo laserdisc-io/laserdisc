@@ -2,12 +2,12 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 val `scala 2.12` = "2.12.10"
-val `scala 2.13` = "2.13.0"
+val `scala 2.13` = "2.13.1"
 
 val V = new {
   val circe                  = "0.12.3"
   val fs2                    = "2.1.0"
-  val `kind-projector`       = "0.10.3"
+  val `kind-projector`       = "0.11.0"
   val kittens                = "2.0.0"
   val `log-effect-fs2`       = "0.12.0"
   val `parallel-collections` = "0.2.0"
@@ -46,7 +46,7 @@ val `scala-parallel-collections` = Def.setting {
 }
 
 val `kind-projector-compiler-plugin` = Def.setting {
-  compilerPlugin("org.typelevel" % "kind-projector" % V.`kind-projector` cross CrossVersion.binary)
+  compilerPlugin("org.typelevel" % "kind-projector" % V.`kind-projector` cross CrossVersion.full)
 }
 
 val coreDeps = Def.Initialize.join {

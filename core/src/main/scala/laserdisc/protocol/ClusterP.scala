@@ -8,7 +8,11 @@ object ClusterP {
 
   final class Info(private val properties: Map[String, String]) extends AnyVal with Dynamic {
     def selectDynamic[A](field: String)(implicit R: String ==> A): Maybe[A] =
-      properties.get(field).flatMap(R.read).toRight(Err(s"no key $field of the provided type found"))
+      properties
+        .get(field)
+        .toRight(Err(s"no key $field of the provided type found"))
+        .flatMap(R.read)
+        .widenLeft[Throwable]
   }
   final object Info {
     implicit final val infoRead: Bulk ==> Info = Read.instancePF {
@@ -81,8 +85,8 @@ object ClusterP {
           s.split(LF_CH)
             .flatMap {
               _.split(SPACE_CH).toSeq match {
-                case NodeId(id) +: A(a) +: Fs(fs) +: MM(mm) +:
-                      ToInt(NonNegInt(ps)) +: ToInt(NonNegInt(pr)) +: ToInt(NonNegInt(ce)) +: L(l) +: Ss(ss) =>
+                case NodeId(id) +: A(Right(a)) +: Fs(Right(fs)) +: MM(Right(mm)) +:
+                      ToInt(NonNegInt(ps)) +: ToInt(NonNegInt(pr)) +: ToInt(NonNegInt(ce)) +: L(Right(l)) +: Ss(Right(ss)) =>
                   Some(Node(id, a, fs, mm, ps, pr, ce, l, ss))
                 case _ => None
               }
@@ -192,26 +196,28 @@ object ClusterP {
     }
     private val NSI: Seq[RESP] ==> NewSlotInfo = {
       val HPNIs: Seq[RESP] ==> Seq[HostPortNodeId] = Read.instancePF {
-        case arr => arr.collect { case Arr(H(h) +: Num(ToInt(Port(p))) +: Bulk(NodeId(id)) +: Seq()) => HostPortNodeId(h, p, id) }.toList
+        case arr =>
+          arr.collect { case Arr(H(Right(h)) +: Num(ToInt(Port(p))) +: Bulk(NodeId(id)) +: Seq()) => HostPortNodeId(h, p, id) }.toList
       }
       Read.instancePF {
-        case Arr(H(h) +: Num(ToInt(Port(p))) +: Bulk(NodeId(id)) +: Seq()) +: HPNIs(rs) => NewSlotInfo(HostPortNodeId(h, p, id), rs)
+        case Arr(H(Right(h)) +: Num(ToInt(Port(p))) +: Bulk(NodeId(id)) +: Seq()) +: HPNIs(Right(rs)) =>
+          NewSlotInfo(HostPortNodeId(h, p, id), rs)
       }
     }
     private val OSI: Seq[RESP] ==> OldSlotInfo = {
       val HPs: Seq[RESP] ==> Seq[HostPort] = Read.instancePF {
-        case arr => arr.collect { case Arr(H(h) +: Num(ToInt(Port(p))) +: Seq()) => HostPort(h, p) }.toList
+        case arr => arr.collect { case Arr(H(Right(h)) +: Num(ToInt(Port(p))) +: Seq()) => HostPort(h, p) }.toList
       }
       Read.instancePF {
-        case Arr(H(h) +: Num(ToInt(Port(p))) +: Seq()) +: HPs(rs) => OldSlotInfo(HostPort(h, p), rs)
+        case Arr(H(Right(h)) +: Num(ToInt(Port(p))) +: Seq()) +: HPs(Right(rs)) => OldSlotInfo(HostPort(h, p), rs)
       }
     }
 
     implicit final val slotsRead: Arr ==> Slots = Read.instancePF {
       case arr =>
         Slots(arr.elements.collect {
-          case Arr(Num(ToInt(Slot(from))) +: Num(ToInt(Slot(to))) +: OSI(osi)) => Range(from, to) -> osi
-          case Arr(Num(ToInt(Slot(from))) +: Num(ToInt(Slot(to))) +: NSI(nsi)) => Range(from, to) -> nsi
+          case Arr(Num(ToInt(Slot(from))) +: Num(ToInt(Slot(to))) +: OSI(Right(osi))) => Range(from, to) -> osi
+          case Arr(Num(ToInt(Slot(from))) +: Num(ToInt(Slot(to))) +: NSI(Right(nsi))) => Range(from, to) -> nsi
         }.toMap)
     }
   }

@@ -25,17 +25,17 @@ object RESPRead {
   final type Aux[Sub0, A] = RESPRead[A] { type Sub = Sub0 }
   final def apply[Sub, A](implicit instance: RESPRead.Aux[Sub, A]): RESPRead.Aux[Sub, A] = instance
 
-  private[this] implicit val respInject: Inject[RESPCoproduct, RESP] = new Inject[RESPCoproduct, RESP] {
-    override def apply(resp: RESP): RESPCoproduct = resp match {
-      case arr: Arr   => Inl(arr)
-      case bulk: Bulk => Inr(Inl(bulk))
-      case err: Err   => Inr(Inr(Inl(err)))
-      case NilArr     => Inr(Inr(Inr(Inl(NilArr))))
-      case NullBulk   => Inr(Inr(Inr(Inr(Inl(NullBulk)))))
-      case num: Num   => Inr(Inr(Inr(Inr(Inr(Inl(num))))))
-      case str: Str   => Inr(Inr(Inr(Inr(Inr(Inr(Inl(str)))))))
-    }
-  }
+  private[this] implicit val respInject: Inject[RESPCoproduct, RESP] =
+    (resp: RESP) =>
+      resp match {
+        case arr: Arr   => Inl(arr)
+        case bulk: Bulk => Inr(Inl(bulk))
+        case err: Err   => Inr(Inr(Inl(err)))
+        case NilArr     => Inr(Inr(Inr(Inl(NilArr))))
+        case NullBulk   => Inr(Inr(Inr(Inr(Inl(NullBulk)))))
+        case num: Num   => Inr(Inr(Inr(Inr(Inr(Inl(num))))))
+        case str: Str   => Inr(Inr(Inr(Inr(Inr(Inr(Inl(str)))))))
+      }
 
   sealed abstract class DefaultRESPRead[A <: Coproduct, B, Rest <: Coproduct](R: A ==> B)(
       implicit ev0: Basis.Aux[RESPCoproduct, A, Rest],
@@ -43,9 +43,9 @@ object RESPRead {
   ) extends RESPRead[B] {
     override final type Sub = A
     override def read(resp: RESP): Maybe[B] = Coproduct[RESPCoproduct](resp).deembed match {
-      case Right(R(b)) => Right(b)
-      case Right(_) =>
-        Left(Err(s"RESP type(s) matched but failed to deserialize correctly: $resp")).widenLeft[Throwable]
+      case Right(R(Right(b))) => Right(b)
+      case Right(R(Left(Err(m)))) =>
+        Left(Err(s"RESP type(s) of $resp matched but failed to deserialize correctly with error $m")).widenLeft[Throwable]
       case Left(rest) =>
         rest.select[Err].fold(Left(Err(s"RESP type(s) did not match: $resp")))(Left(_)).widenLeft[Throwable]
     }

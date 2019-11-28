@@ -5,7 +5,7 @@ import io.circe.generic.semiauto._
 import io.circe.{Decoder, Encoder}
 import laserdisc.interop.circe._
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.{Assertion, Matchers, OptionValues, WordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 sealed trait Foo                        extends Product with Serializable
@@ -26,6 +26,12 @@ object Baz {
 }
 
 final class CirceSpec extends WordSpec with Matchers with ScalaCheckPropertyChecks with OptionValues {
+
+  private[this] implicit final class EitherSyntax[A, B](private val eab: Either[A, B]) {
+    def onRight[C](f: B => Assertion): Assertion =
+      eab.fold(err => fail(s"It Should be right but was left with $err"), f)
+  }
+
   private[this] val barGen: Gen[Bar] = Arbitrary.arbitrary[Int].map(Bar.apply)
   private[this] val bazGen: Gen[Baz] = for {
     s   <- Arbitrary.arbitrary[String]
@@ -39,25 +45,25 @@ final class CirceSpec extends WordSpec with Matchers with ScalaCheckPropertyChec
   "Circe interop" when {
     "handling a simple type" should {
       "roundtrip with no errors" in forAll { bar: Bar =>
-        Read[Bulk, Bar].read(Bulk(bar)).value shouldBe bar
+        Read[Bulk, Bar].read(Bulk(bar)) onRight (_ shouldBe bar)
       }
     }
 
     "handling a recursive type" should {
       "roundtrip with no errors" in forAll { baz: Baz =>
-        Read[Bulk, Baz].read(Bulk(baz)).value shouldBe baz
+        Read[Bulk, Baz].read(Bulk(baz)) onRight (_ shouldBe baz)
       }
     }
 
     "handling a json that does not respect the contract" should {
       "fail to decode" in {
-        Read[Bulk, Bar].read(Bulk("""{"i": null}""")) shouldBe empty
+        Read[Bulk, Bar].read(Bulk("""{"i": null}""")).isLeft shouldBe true
       }
     }
 
     "handling an invalid json" should {
       "fail to decode" in {
-        Read[Bulk, Bar].read(Bulk("{")) shouldBe empty
+        Read[Bulk, Bar].read(Bulk("{")).isLeft shouldBe true
       }
     }
   }

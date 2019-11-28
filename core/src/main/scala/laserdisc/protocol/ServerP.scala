@@ -79,21 +79,27 @@ object ServerP {
       Read.instance {
         case Arr(Bulk("master") +: Num(NonNegLong(offset)) +: Arr(v) +: Seq()) =>
           val (vLength, (clients, clientsLength)) = v.foldLeft(0 -> (List.empty[Client] -> 0)) {
-            case ((vl, (cs, csl)), CR(client)) => (vl + 1) -> ((client :: cs) -> (csl + 1))
-            case ((vl, acc), _)                => (vl + 1) -> acc
+            case ((vl, (cs, csl)), CR(Right(client))) => (vl + 1) -> ((client :: cs) -> (csl + 1))
+            case ((vl, acc), _)                       => (vl + 1) -> acc
           }
-          if (vLength == clientsLength) Some(Master(offset, clients.reverse)) else None
-        case Arr(Bulk("slave") +: Bulk(Host(host)) +: Num(ToInt(Port(port))) +: RSR(replicaStatus) +: Num(NonNegLong(offset)) +: Seq()) =>
-          Some(Slave(host, port, replicaStatus, offset))
-        case Arr(Bulk("sentinel") +: MR(masters) +: Seq()) => Some(Sentinel(masters))
-        case _                                             => None
+          if (vLength == clientsLength) Right(Master(offset, clients.reverse)) else Left(Err("TODO: FILIPPO"))
+        case Arr(
+            Bulk("slave") +: Bulk(Host(host)) +: Num(ToInt(Port(port))) +: RSR(Right(replicaStatus)) +: Num(NonNegLong(offset)) +: Seq()
+            ) =>
+          Right(Slave(host, port, replicaStatus, offset))
+        case Arr(Bulk("sentinel") +: MR(Right(masters)) +: Seq()) => Right(Sentinel(masters))
+        case _                                                    => Left(Err("TODO: FILIPPO"))
       }
     }
   }
 
   final class Parameters(private val properties: Map[String, String]) extends AnyVal with Dynamic {
     def selectDynamic[A](field: String)(implicit R: String ==> A): Maybe[A] =
-      properties.get(field).flatMap(R.read).toRight(Err(s"no key $field of the provided type found"))
+      properties
+        .get(field)
+        .toRight(Err(s"no key $field of the provided type found"))
+        .flatMap(R.read)
+        .widenLeft[Throwable]
   }
 
   final case class ConnectedClients(clients: Seq[Parameters])
@@ -141,8 +147,8 @@ object ServerP {
           s.split(LF * 2)
             .flatMap {
               _.split(LF_CH).toSeq match {
-                case ISR(infoSection) +: PR(parameters) => Some(infoSection -> parameters)
-                case _                                  => None
+                case ISR(Right(infoSection)) +: PR(Right(parameters)) => Some(infoSection -> parameters)
+                case _                                                => None
               }
             }
             .toMap

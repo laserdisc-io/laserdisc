@@ -150,6 +150,9 @@ abstract class BaseSpec
     def onRight[C](f: B => Assertion): Assertion =
       eab.fold(err => fail(s"It Should be right but was left with $err"), f)
 
+    def onLeft[C](e: A => Assertion): Assertion =
+      eab.fold(e, res => fail(s"It Should be left but was right with $res"))
+
     def onRightAll[C](f: B => Unit): Unit =
       eab.fold(err => fail(s"It Should be right but was left with $err"), f)
   }

@@ -28,10 +28,17 @@ Note 2: make sure to inspect the combinators as you may be able to leverage some
 
   final def contramap[C](f: C => A): Read[C, B] = Read.instance(read _ compose f)
 
-  final def unapply(a: A): Option[Err | B] = Some(read(a))
+  private[this] final val _extract: Any => Read.Extract[Any] = new Read.Extract[Any](_)
+  final def unapply(a: A): Read.Extract[Err | B] =
+    _extract(read(a)).asInstanceOf[Read.Extract[Err | B]]
 }
 
 object Read extends ReadInstances0 {
+  private[Read] final class Extract[T](private val t: T) extends AnyVal {
+    def isEmpty: Boolean = false
+    def get: T           = t
+  }
+
   @inline final def apply[A, B](implicit instance: Read[A, B]): Read[A, B] = instance
 
   final def instance[A, B](f: A => Err | B): Read[A, B] = (a: A) => f(a)

@@ -5,7 +5,7 @@ import io.circe.generic.semiauto._
 import io.circe.{Decoder, Encoder}
 import laserdisc.interop.circe._
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{Assertion, Matchers, OptionValues, WordSpec}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 sealed trait Foo                        extends Product with Serializable
@@ -25,13 +25,7 @@ object Baz {
   implicit val encoder: Encoder[Baz] = deriveEncoder
 }
 
-final class CirceSpec extends WordSpec with Matchers with ScalaCheckPropertyChecks with OptionValues {
-
-  private[this] implicit final class EitherSyntax[A, B](private val eab: Either[A, B]) {
-    def onRight[C](f: B => Assertion): Assertion =
-      eab.fold(err => fail(s"It Should be right but was left with $err"), f)
-  }
-
+final class CirceSpec extends WordSpec with Matchers with ScalaCheckPropertyChecks with OptionValues with EitherTestSyntax {
   private[this] val barGen: Gen[Bar] = Arbitrary.arbitrary[Int].map(Bar.apply)
   private[this] val bazGen: Gen[Baz] = for {
     s   <- Arbitrary.arbitrary[String]
@@ -57,13 +51,7 @@ final class CirceSpec extends WordSpec with Matchers with ScalaCheckPropertyChec
 
     "handling a json that does not respect the contract" should {
       "fail to decode" in {
-        Read[Bulk, Bar].read(Bulk("""{"i": null}""")).isLeft shouldBe true
-      }
-    }
-
-    "handling an invalid json" should {
-      "fail to decode" in {
-        Read[Bulk, Bar].read(Bulk("{")).isLeft shouldBe true
+        Read[Bulk, Bar].read(Bulk("""{"i": null}""")) onLeft (_.message shouldBe "DecodingFailure at .x: Attempt to decode value on failed cursor")
       }
     }
   }

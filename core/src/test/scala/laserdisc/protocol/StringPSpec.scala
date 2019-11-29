@@ -5,12 +5,12 @@ final class StringPSpec extends BaseSpec {
   import laserdisc.auto._
 
   "The String protocol" when {
-    "aaaaaa" should {
-      "bbbbbbbb" in {
+    "decoding the correct type with the wrong encoding" should {
+      "give details about the decoding error" in {
         val correct = strings.set("a", 23)
-
-        correct.encode shouldBe Arr(Bulk("SET"), Bulk("a"), Bulk(23))
-        correct.decode(Str("wrong")) onRight (_ shouldBe "RESP type(s) of Str(wrong) matched but failed to deserialize correctly with error TODO FILIPPO")
+        correct.decode(Str("wrong")) onLeft { e =>
+          e.getMessage shouldBe "RESP type(s) of Str(wrong) matched but failed to deserialize correctly with error TODO FILIPPO"
+        }
       }
     }
   }

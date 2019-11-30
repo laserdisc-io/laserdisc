@@ -40,8 +40,7 @@ final class ReadmeExampleSpec extends WordSpecLike with Matchers {
           strings.get[PosInt]("b"),
           strings.get[PosInt]("a")
         ) >>= {
-          case (Right(OK), Right(OK), Right(Some(getOfb)), Right(Some(getOfa)))
-            if getOfb.value == 55 && getOfa.value == 23 =>
+          case (Right(OK), Right(OK), Right(Some(getOfb)), Right(Some(getOfa))) if getOfb.value == 55 && getOfa.value == 23 =>
             log info "yay!"
           case other =>
             log.error(s"something went terribly wrong $other") >>

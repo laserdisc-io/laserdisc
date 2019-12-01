@@ -5,7 +5,10 @@ import org.scalacheck.Arbitrary.arbitrary
 
 final case class Foo(x: Int)
 object Foo {
-  implicit final val fooRead: Bulk ==> Foo = Read.instancePF { case Bulk(ToInt(i)) => Foo(i) }
+  implicit final val fooRead: Bulk ==> Foo = Read.instance {
+    case Bulk(ToInt(i)) => Right(Foo(i))
+    case Bulk(other)    => Left(Err(s"Boom: $other"))
+  }
 }
 
 final case class Bar(x: String)

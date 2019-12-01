@@ -2,7 +2,10 @@ package laserdisc
 package protocol
 
 trait ConnectionP {
-  private[this] implicit final val pongRead: Str ==> PONG = Read.instancePF { case Str(PONG.`value`) => PONG }
+  private[this] implicit final val pongRead: Str ==> PONG = Read.instance {
+    case Str(PONG.`value`) => Right(PONG)
+    case Str(other)        => Left(Err(s"Incorrect PONG encoding: was $other"))
+  }
 
   final def auth(password: Key): Protocol.Aux[OK] = Protocol("AUTH", password).as[Str, OK]
 

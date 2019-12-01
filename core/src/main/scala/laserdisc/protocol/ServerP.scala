@@ -65,30 +65,34 @@ object ServerP {
     final case class Sentinel(masterNames: Seq[Key]) extends Role
 
     implicit val roleRead: Arr ==> Role = {
-      val CR: Arr ==> Client = Read.instancePF {
-        case Arr(Bulk(Host(host)) +: Bulk(ToInt(Port(port))) +: Bulk(ToLong(NonNegLong(offset))) +: Seq()) => Client(host, port, offset)
+      val CR: Arr ==> Client = Read.instance {
+        case Arr(Bulk(Host(host)) +: Bulk(ToInt(Port(port))) +: Bulk(ToLong(NonNegLong(offset))) +: Seq()) =>
+          Right(Client(host, port, offset))
+        case Arr(other) => Left(Err(s"Unexpected role: it should be [host, port, offset] but was $other"))
       }
-      val RSR: Bulk ==> ReplicaStatus = Read.instancePF {
-        case Bulk("connect")    => connect
-        case Bulk("connecting") => connecting
-        case Bulk("sync")       => sync
-        case Bulk("connected")  => connected
+      val RSR: Bulk ==> ReplicaStatus = Read.instance {
+        case Bulk("connect")    => Right(connect)
+        case Bulk("connecting") => Right(connecting)
+        case Bulk("sync")       => Right(sync)
+        case Bulk("connected")  => Right(connected)
+        case Bulk(other)        => Left(Err(s"Unexpected replica status. Was $other"))
       }
       val MR: Arr ==> Seq[Key] = Read[Arr, Seq[Key]]
 
       Read.instance {
         case Arr(Bulk("master") +: Num(NonNegLong(offset)) +: Arr(v) +: Seq()) =>
-          val (vLength, (clients, clientsLength)) = v.foldLeft(0 -> (List.empty[Client] -> 0)) {
-            case ((vl, (cs, csl)), CR(Right(client))) => (vl + 1) -> ((client :: cs) -> (csl + 1))
-            case ((vl, acc), _)                       => (vl + 1) -> acc
-          }
-          if (vLength == clientsLength) Right(Master(offset, clients.reverse)) else Left(Err("TODO: FILIPPO"))
-        case Arr(
-            Bulk("slave") +: Bulk(Host(host)) +: Num(ToInt(Port(port))) +: RSR(Right(replicaStatus)) +: Num(NonNegLong(offset)) +: Seq()
-            ) =>
-          Right(Slave(host, port, replicaStatus, offset))
+          v.foldRight[Err | (List[Client], Int)](Right(Nil -> 0)) {
+            case (CR(Right(client)), Right((cs, csl))) => Right((client :: cs) -> (csl + 1))
+            case (CR(Left(e)), Right((_, csl)))        => Left(Err(s"Arr ==> Role clients error at element ${csl + 1}: ${e.message}"))
+            case (_, Left(err))                        => Left(err)
+          } map (r => Master(offset, r._1))
+        case Arr(Bulk("slave") +: Bulk(Host(host)) +: Num(ToInt(Port(port))) +: RSR(Right(status)) +: Num(NonNegLong(offset)) +: Seq()) =>
+          Right(Slave(host, port, status, offset))
+        case Arr(Bulk("slave") +: Bulk(Host(_)) +: Num(ToInt(Port(_))) +: RSR(Left(e)) +: Num(NonNegLong(_)) +: Seq()) =>
+          Left(Err(s"Slave replica status read error: $e"))
         case Arr(Bulk("sentinel") +: MR(Right(masters)) +: Seq()) => Right(Sentinel(masters))
-        case _                                                    => Left(Err("TODO: FILIPPO"))
+        case Arr(Bulk("sentinel") +: MR(Left(e)) +: Seq())        => Left(Err(s"Sentinel masters read error: $e"))
+        case other                                                => Left(Err(s"Unexpected role encoding. Was $other"))
       }
     }
   }
@@ -106,12 +110,14 @@ object ServerP {
   final object ConnectedClients {
     private val KVPair = "(.*)=(.*)".r
 
-    implicit val connectedClientsRead: Bulk ==> ConnectedClients = Read.instancePF {
+    implicit val connectedClientsRead: Bulk ==> ConnectedClients = Read.instance {
       case Bulk(s) =>
-        ConnectedClients(
-          s.split(LF_CH).toIndexedSeq.map { clientData =>
-            new Parameters(clientData.split(SPACE_CH).collect { case KVPair(k, v) => k -> v }.toMap)
-          }
+        Right(
+          ConnectedClients(
+            s.split(LF_CH).toIndexedSeq.map { clientData =>
+              new Parameters(clientData.split(SPACE_CH).collect { case KVPair(k, v) => k -> v }.toMap)
+            }
+          )
         )
     }
   }
@@ -124,34 +130,37 @@ object ServerP {
 
   final case class Info(sections: Map[InfoSection, Parameters])
   final object Info {
-    private val ISR: String ==> InfoSection = Read.instancePF {
-      case "server"       => InfoSection.server
-      case "clients"      => InfoSection.clients
-      case "memory"       => InfoSection.memory
-      case "persistence"  => InfoSection.persistence
-      case "stats"        => InfoSection.stats
-      case "replication"  => InfoSection.replication
-      case "cpu"          => InfoSection.cpu
-      case "commandstats" => InfoSection.commandstats
-      case "cluster"      => InfoSection.cluster
-      case "keyspace"     => InfoSection.keyspace
+    private val ISR: String ==> InfoSection = Read.instance {
+      case "server"       => Right(InfoSection.server)
+      case "clients"      => Right(InfoSection.clients)
+      case "memory"       => Right(InfoSection.memory)
+      case "persistence"  => Right(InfoSection.persistence)
+      case "stats"        => Right(InfoSection.stats)
+      case "replication"  => Right(InfoSection.replication)
+      case "cpu"          => Right(InfoSection.cpu)
+      case "commandstats" => Right(InfoSection.commandstats)
+      case "cluster"      => Right(InfoSection.cluster)
+      case "keyspace"     => Right(InfoSection.keyspace)
+      case other          => Left(Err(s"Unexpected server info specification. Was $other"))
     }
     private val KVPair = "(.*):(.*)".r
-    private val PR: Seq[String] ==> Parameters = Read.instancePF {
-      case ss => new Parameters(ss.collect { case KVPair(k, v) => k -> v }.toMap)
+    private val PR: Seq[String] ==> Parameters = Read.instance { ss =>
+      Right(new Parameters(ss.collect { case KVPair(k, v) => k -> v }.toMap))
     }
 
-    implicit val infoRead: Bulk ==> Info = Read.instancePF {
+    implicit val infoRead: Bulk ==> Info = Read.instance {
       case Bulk(s) =>
-        Info(
-          s.split(LF * 2)
-            .flatMap {
-              _.split(LF_CH).toSeq match {
-                case ISR(Right(infoSection)) +: PR(Right(parameters)) => Some(infoSection -> parameters)
-                case _                                                => None
+        Right(
+          Info(
+            s.split(LF * 2)
+              .flatMap {
+                _.split(LF_CH).toSeq match {
+                  case ISR(Right(infoSection)) +: PR(Right(parameters)) => Some(infoSection -> parameters)
+                  case _                                                => None
+                }
               }
-            }
-            .toMap
+              .toMap
+          )
         )
     }
   }

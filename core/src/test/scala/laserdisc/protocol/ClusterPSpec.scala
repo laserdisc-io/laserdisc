@@ -21,7 +21,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   private[this] final val infoGen: Gen[Map[String, String]]            = nonEmptyMap(identifier.flatMap(k => alphaStr.map(k -> _))) :| "info map"
   private[this] implicit final val infoShow: Show[Map[String, String]] = Show.instance { _.map { case (k, v) => s"$k:$v" }.mkString(CRLF) }
 
-  private[this] final type RawNode  = (String, String, Int, Option[Int], Seq[String], String, Int, Int, Int, String, Seq[String])
+  private[this] final type RawNode  = (String, Host, Port, Option[Port], Seq[String], String, Int, Int, Int, String, Seq[String])
   private[this] final type RawNodes = List[RawNode]
   private[this] final val rawNodeToString: RawNode => String = {
     case (nid, h, p, None, fs, mnid, ps, pr, ce, l, ss) =>
@@ -50,7 +50,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     )
     val rawNode = for {
       nid   <- nodeIdGen
-      h     <- Gen.oneOf(const(""), hostGen)
+      h     <- hostGen
       p     <- portGen
       mcp   <- option(portGen)
       fs    <- Gen.oneOf(const("noflags").map(Seq(_)), choose(1, 7).flatMap(containerOfN[Set, String](_, flag).map(_.toSeq)))
@@ -73,9 +73,9 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
         ns.nodes.zip(rns).foreach {
           case (ClusterNode(n0, ClusterAddress(h0, p0, cp0), fs0, m0, ps0, pr0, ce0, l0, ss0), (n, h, p, cp, fs, m, ps, pr, ce, l, ss)) =>
             n0.value shouldBe n
-            h0.value shouldBe (if (h.isEmpty) LoopbackEqWit.value else h)
-            p0.value shouldBe p
-            cp0.value shouldBe cp.getOrElse(p)
+            h0 shouldBe h
+            p0 shouldBe p
+            cp0 shouldBe cp.getOrElse(p)
             (if (fs0.isEmpty) Seq("noflags") else fs0.map(Show[ClusterFlag].show)) shouldBe fs
             m0.fold("-")(_.value) shouldBe m
             ps0.value shouldBe ps
@@ -90,12 +90,8 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             } shouldBe ss
         }
 
-  private[this] final type RawSlot  = (Int, Int, Seq[(String, Int, Option[String])])
+  private[this] final type RawSlot  = (Slot, Slot, Seq[(Host, Port, Option[NodeId])])
   private[this] final type RawSlots = List[RawSlot]
-  private[this] final val slotsIsValid: RawSlots => Boolean = _.forall {
-    case (Slot(_), Slot(_), mrs) if mrs.forall { case (Host(_) | "", Port(_), Some(NodeId(_)) | None) => true; case _ => false } => true
-    case _ => false
-  }
   private[this] final val slotsGen: Gen[RawSlots] = (for {
     isOld <- Gen.oneOf(true, false)
     rss <- choose(1, 10).flatMap {
@@ -105,13 +101,16 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           fst <- slotGen
           snd <- slotGen
           mrs <- choose(1, 10).flatMap {
-            listOfN(_, for {
-              h    <- Gen.oneOf(const(""), hostGen)
-              p    <- portGen
-              mrid <- if (isOld) const(None) else nodeIdGen.map(Some(_))
-            } yield (h, p, mrid))
+            listOfN(
+              _,
+              for {
+                h    <- hostGen
+                p    <- portGen
+                mrid <- if (isOld) const(None) else nodeIdGen.map(s => Some(NodeId.unsafeFrom(s)))
+              } yield (h, p, mrid)
+            )
           }
-        } yield if (fst < snd) (fst, snd, mrs) else (snd, fst, mrs)
+        } yield if (fst.value < snd.value) (fst, snd, mrs) else (snd, fst, mrs)
       )
     }
   } yield rss) :| "raw slots info"
@@ -119,10 +118,14 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     Arr(
       ss.map {
         case (f, t, rs) =>
-          Arr(Num(f.toLong), Num(t.toLong), Arr(rs.toList.map {
-            case (h, p, Some(mrid)) => Arr(Bulk(h), Num(p.toLong), Bulk(mrid))
-            case (h, p, None)       => Arr(Bulk(h), Num(p.toLong))
-          }))
+          Arr(
+            Num(f.value.toLong),
+            Num(t.value.toLong),
+            Arr(rs.toList.map {
+              case (h, p, Some(mrid)) => Arr(Bulk(h.value), Num(p.value.toLong), Bulk(mrid.value))
+              case (h, p, None)       => Arr(Bulk(h.value), Num(p.value.toLong))
+            })
+          )
       }
     )
 
@@ -378,23 +381,21 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     "using slots" should {
       "roundtrip successfully" when {
         "using val" in forAll(slotsGen) { ss =>
-          whenever(slotsIsValid(ss)) {
-            val protocol = slots
+          val protocol = slots
 
-            protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLOTS"))
-            protocol.decode(slotsToArr(ss)) onRightAll (_.slots.foreach {
-              case (ClusterRangeSlotType(f, t), ClusterNewSlotInfo(ClusterHostPortNodeId(mh, mp, mid), rs)) =>
-                val mrs = (mh.value, mp.value, Some(mid.value)) :: rs.foldLeft(List.empty[(String, Int, Option[String])]) {
-                  case (acc, ClusterHostPortNodeId(h, p, nid)) => acc :+ ((h.value, p.value, Some(nid.value)))
-                }
-                ss should contain((f.value, t.value, mrs))
-              case (ClusterRangeSlotType(f, t), ClusterOldSlotInfo(ClusterHostPort(mh, mp), rs)) =>
-                val mrs = (mh.value, mp.value, None) :: rs.foldLeft(List.empty[(String, Int, Option[String])]) {
-                  case (acc, ClusterHostPort(h, p)) => acc :+ ((h.value, p.value, None))
-                }
-                ss should contain((f.value, t.value, mrs))
-            })
-          }
+          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLOTS"))
+          protocol.decode(slotsToArr(ss)) onRightAll (_.slots.foreach {
+            case (ClusterRangeSlotType(f, t), ClusterNewSlotInfo(ClusterHostPortNodeId(mh, mp, mid), rs)) =>
+              val mrs = (mh, mp, Some(mid)) :: rs.foldLeft(List.empty[(Host, Port, Option[NodeId])]) {
+                case (acc, ClusterHostPortNodeId(h, p, nid)) => acc :+ ((h, p, Some(nid)))
+              }
+              ss should contain((f, t, mrs))
+            case (ClusterRangeSlotType(f, t), ClusterOldSlotInfo(ClusterHostPort(mh, mp), rs)) =>
+              val mrs = (mh, mp, None) :: rs.foldLeft(List.empty[(Host, Port, Option[NodeId])]) {
+                case (acc, ClusterHostPort(h, p)) => acc :+ ((h, p, None))
+              }
+              ss should contain((f, t, mrs))
+          })
         }
       }
     }

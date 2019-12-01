@@ -229,14 +229,6 @@ final class RefinedTypesSpec extends BaseSpec {
         """Host("198.19.1.2")""" should compile
       }
     }
-
-    "refine correctly" when {
-      "provided non literal cases of valid hosts" in forAll(hostGen) { s =>
-        whenever(hostIsValid(s)) {
-          Host.from(s) onRight (_.value shouldBe s)
-        }
-      }
-    }
   }
 
   "Key" should {
@@ -617,14 +609,6 @@ final class RefinedTypesSpec extends BaseSpec {
       }
       "given edge cases (16383)" in {
         "Slot(16383)" should compile
-      }
-    }
-
-    "refine correctly" when {
-      "provided non literal cases of in range Ints (0 <= i <= 16383)" in forAll(slotGen) { i =>
-        whenever(slotIsValid(i)) {
-          Slot.from(i) onRight (_.value shouldBe i)
-        }
       }
     }
   }

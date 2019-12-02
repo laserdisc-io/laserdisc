@@ -12,11 +12,12 @@ import cats.syntax.traverse._
 import laserdisc.auto._
 import log.effect.LogWriter
 import log.effect.fs2.SyncLogWriter.noOpLog
-import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection.parallel.immutable.ParSeq
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
 final class RedisClientSpec extends RedisClientBaseSpec[IO] {
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
@@ -29,7 +30,7 @@ final class RedisClientSpec extends RedisClientBaseSpec[IO] {
   override def run[A]: IO[A] => A = _.unsafeRunSync()
 }
 
-abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
+abstract class RedisClientBaseSpec[F[_]] extends AnyWordSpecLike with Matchers {
   implicit def contextShift: ContextShift[F]
   implicit def timer: Timer[F]
   implicit def concurrent: Concurrent[F]

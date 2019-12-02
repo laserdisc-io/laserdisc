@@ -6,15 +6,17 @@ import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInst
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen._
-import org.scalatest.{Assertion, EitherValues, Matchers, OptionValues, WordSpec}
+import org.scalatest.{Assertion, EitherValues, OptionValues}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.Double.{NaN, MaxValue => DMax, MinValue => DMin}
 import scala.Int.{MaxValue => IMax, MinValue => IMin}
 import scala.Long.{MaxValue => LMax, MinValue => LMin}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 abstract class BaseSpec
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with EitherValues
     with OptionValues

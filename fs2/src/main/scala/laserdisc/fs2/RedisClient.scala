@@ -13,6 +13,7 @@ import log.effect.fs2.syntax._
 import scala.concurrent.duration._
 
 object RedisClient {
+
   /**
     * Creates a redis client that will handle the blocking network
     * connection's operations on a cached thread pool.

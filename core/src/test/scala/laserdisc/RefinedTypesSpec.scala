@@ -243,14 +243,6 @@ final class RefinedTypesSpec extends BaseSpec {
         """Key("a")""" should compile
       }
     }
-
-    "refine correctly" when {
-      "provided non literal cases of non empty Strings" in forAll { (s: String) =>
-        whenever(keyIsValid(s)) {
-          Key.from(s) onRight (_.value shouldBe s)
-        }
-      }
-    }
   }
 
   "Latitude" should {

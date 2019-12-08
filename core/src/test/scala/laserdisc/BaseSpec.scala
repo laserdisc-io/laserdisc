@@ -86,7 +86,7 @@ abstract class BaseSpec
       ),
       (1, LoopbackHost)
     ) :| "host"
-  final val keyGen: Gen[String]               = strGen(nonEmptyListOf(utf8BMPCharGen)) :| "key"
+  final val keyGen: Gen[Key]                  = strGen(nonEmptyListOf(utf8BMPCharGen)).map(ks => Key.unsafeFrom(ks)) :| "key"
   final val latitudeGen: Gen[Double]          = chooseNum(LatitudeMinValueWit.value, LatitudeMaxValueWit.value) :| "latitude"
   final val longitudeGen: Gen[Double]         = chooseNum(LongitudeMinValueWit.value, LongitudeMaxValueWit.value) :| "longitude"
   final val nodeIdGen: Gen[String]            = strOfNSameFreqGen(40, hexGen) :| "node id"
@@ -107,7 +107,6 @@ abstract class BaseSpec
   final val dbIndexIsValid: Int => Boolean                                    = Validate[Int, DbIndexRef].isValid
   final val geoHashIsValid: String => Boolean                                 = Validate[String, GeoHashRef].isValid
   final val globPatternIsValid: String => Boolean                             = Validate[String, GlobPatternRef].isValid
-  final val keyIsValid: String => Boolean                                     = Validate[String, KeyRef].isValid
   final val latitudeIsValid: Double => Boolean                                = Validate[Double, LatitudeRef].isValid
   final val longitudeIsValid: Double => Boolean                               = Validate[Double, LongitudeRef].isValid
   final val nodeIdIsValid: String => Boolean                                  = Validate[String, NodeIdRef].isValid
@@ -133,7 +132,7 @@ abstract class BaseSpec
   implicit final val globPatternArb: Arbitrary[GlobPattern]       = arbitraryRefType(globPatternGen)
   implicit final val hostArb: Arbitrary[Host]                     = Arbitrary(hostGen)
   implicit final val indexArb: Arbitrary[Index]                   = arbitraryRefType(arbitrary[Long])
-  implicit final val keyArb: Arbitrary[Key]                       = arbitraryRefType(keyGen)
+  implicit final val keyArb: Arbitrary[Key]                       = Arbitrary(keyGen)
   implicit final def kvArb[A](implicit A: Arbitrary[A]): Arbitrary[KV[A]] =
     Arbitrary(keyArb.arbitrary.flatMap(k => A.arbitrary.map(KV(k, _))))
   implicit final val nodeIdArb: Arbitrary[NodeId]               = arbitraryRefType(nodeIdGen)

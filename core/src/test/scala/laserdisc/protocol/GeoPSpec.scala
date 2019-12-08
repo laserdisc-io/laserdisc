@@ -523,37 +523,35 @@ final class GeoPSpec extends GeoExtPSpec {
           }
         }
         "given key, member, radius, unit, direction and store mode" in {
-          forAll("key", "member", "radius", "unit", "direction", "store mode") {
-            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, sm: GeoStoreMode) =>
-              forAll("stored") { nni: NonNegInt =>
-                val protocol = georadius(k, m, r, u, d, sm)
+          forAll("key, member, radius, unit, direction, store mode", "stored") {
+            (input: (Key, Key, NonNegDouble, GeoUnit, Direction, GeoStoreMode), nni: NonNegInt) =>
+              val (k, m, r, u, d, sm) = input
+              val protocol            = georadius(k, m, r, u, d, sm)
 
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUSBYMEMBER") :: Bulk(k) :: Bulk(m) :: Bulk(r) :: Bulk(u) :: Bulk(d) :: sm.params.map(Bulk(_))
-                )
-                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-              }
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER") :: Bulk(k) :: Bulk(m) :: Bulk(r) :: Bulk(u) :: Bulk(d) :: sm.params.map(Bulk(_))
+              )
+              protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
           }
         }
         "given key, member, radius, unit, limit, direction and store mode" in {
-          forAll("key", "member", "radius", "unit", "limit", "direction") {
-            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-              forAll("store mode", "stored") { (sm: GeoStoreMode, nni: NonNegInt) =>
-                val protocol = georadius(k, m, r, u, l, d, sm)
+          forAll("key, member, radius, unit, limit, direction", "store mode", "stored") {
+            (input: (Key, Key, NonNegDouble, GeoUnit, PosInt, Direction), sm: GeoStoreMode, nni: NonNegInt) =>
+              val (k, m, r, u, l, d) = input
+              val protocol           = georadius(k, m, r, u, l, d, sm)
 
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUSBYMEMBER") ::
-                    Bulk(k) ::
-                    Bulk(m) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    Bulk("COUNT") ::
-                    Bulk(l) ::
-                    Bulk(d) ::
-                    sm.params.map(Bulk(_))
-                )
-                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-              }
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER") ::
+                  Bulk(k) ::
+                  Bulk(m) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk("COUNT") ::
+                  Bulk(l) ::
+                  Bulk(d) ::
+                  sm.params.map(Bulk(_))
+              )
+              protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
           }
         }
       }

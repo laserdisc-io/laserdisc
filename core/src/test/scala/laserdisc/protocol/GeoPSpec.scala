@@ -339,25 +339,23 @@ final class GeoPSpec extends GeoExtPSpec {
         }
         "given key, coordinates, radius, unit, limit, direction and store mode" in {
           forAll("key, coordinates, radius, unit, limit, direction", "store mode", "stored") {
-            (input: (Key, GeoCoordinates, NonNegDouble, GeoUnit, PosInt, Direction), (sm: GeoStoreMode, nni: NonNegInt)) =>
-              forAll() { (sm: GeoStoreMode, nni: NonNegInt) =>
-                val (k, c, r, u, l, d) = input
-                val protocol = georadius(k, c, r, u, l, d, sm)
+            (input: (Key, GeoCoordinates, NonNegDouble, GeoUnit, PosInt, Direction), sm: GeoStoreMode, nni: NonNegInt) =>
+              val (k, c, r, u, l, d) = input
+              val protocol           = georadius(k, c, r, u, l, d, sm)
 
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUS") ::
-                    Bulk(k) ::
-                    Bulk(c.longitude) ::
-                    Bulk(c.latitude) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    Bulk("COUNT") ::
-                    Bulk(l) ::
-                    Bulk(d) ::
-                    sm.params.map(Bulk(_))
-                )
-                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-              }
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS") ::
+                  Bulk(k) ::
+                  Bulk(c.longitude) ::
+                  Bulk(c.latitude) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk("COUNT") ::
+                  Bulk(l) ::
+                  Bulk(d) ::
+                  sm.params.map(Bulk(_))
+              )
+              protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
           }
         }
 

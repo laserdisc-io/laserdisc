@@ -142,303 +142,372 @@ final class GeoPSpec extends GeoExtPSpec {
           }
         }
       }
+    }
 
-      "using georadius" should {
-        "roundtrip successfully" when {
-          "given key, coordinates, radius and unit" in {
-            forAll("key", "coordinates", "radius", "unit", "members") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, ms: List[Key]) =>
-                val protocol = georadius(k, c, r, u)
+    "using georadius" should {
+      "roundtrip successfully" when {
+        "given key, coordinates, radius and unit" in {
+          forAll("key", "coordinates", "radius", "unit", "members") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, ms: List[Key]) =>
+              val protocol = georadius(k, c, r, u)
 
-                protocol.encode shouldBe Arr(Bulk("GEORADIUS"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u))
-                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
-          }
-          "given key, coordinates, radius, unit and limit" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "members") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, ms: List[Key]) =>
-                val protocol = georadius(k, c, r, u, l)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUS"),
-                  Bulk(k),
-                  Bulk(c.longitude),
-                  Bulk(c.latitude),
-                  Bulk(r),
-                  Bulk(u),
-                  Bulk("COUNT"),
-                  Bulk(l)
-                )
-                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
-          }
-          "given key, coordinates, radius, unit and direction" in {
-            forAll("key", "coordinates", "radius", "unit", "direction", "members") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, ms: List[Key]) =>
-                val protocol = georadius(k, c, r, u, d)
-
-                protocol.encode shouldBe Arr(Bulk("GEORADIUS"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u), Bulk(d))
-                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
-          }
-          "given key, coordinates, radius, unit, limit and direction" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "direction") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-                forAll("members") { ms: List[Key] =>
-                  val protocol = georadius(k, c, r, u, l, d)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUS"),
-                    Bulk(k),
-                    Bulk(c.longitude),
-                    Bulk(c.latitude),
-                    Bulk(r),
-                    Bulk(u),
-                    Bulk("COUNT"),
-                    Bulk(l),
-                    Bulk(d)
-                  )
-                  protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-                }
-            }
-          }
-          "given key, coordinates, radius, unit and radius mode" in {
-            forAll("key", "coordinates", "radius", "unit", "radius mode & result") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = georadius(k, c, r, u, rm)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUS") ::
-                    Bulk(k) ::
-                    Bulk(c.longitude) ::
-                    Bulk(c.latitude) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    rm.params.map(Bulk(_))
-                )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
-          }
-          "given key, coordinates, radius, unit, limit and radius mode" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "radius mode & result") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = georadius(k, c, r, u, l, rm)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUS") ::
-                    Bulk(k) ::
-                    Bulk(c.longitude) ::
-                    Bulk(c.latitude) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    Bulk("COUNT") ::
-                    Bulk(l) ::
-                    rm.params.map(Bulk(_))
-                )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
-          }
-          "given key, coordinates, radius, unit, direction and radius mode" in {
-            forAll("key", "coordinates", "radius", "unit", "direction", "radius mode & result") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = georadius(k, c, r, u, d, rm)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUS") ::
-                    Bulk(k) ::
-                    Bulk(c.longitude) ::
-                    Bulk(c.latitude) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    Bulk(d) ::
-                    rm.params.map(Bulk(_))
-                )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
-          }
-          "given key, coordinates, radius, unit, limit, direction and radius mode" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "direction") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-                forAll("radius mode & result") { rmAndRes: (GeoRadiusMode, List[_]) =>
-                  val (rm, res)   = rmAndRes
-                  implicit val ev = rm.r
-                  val protocol    = georadius(k, c, r, u, l, d, rm)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUS") ::
-                      Bulk(k) ::
-                      Bulk(c.longitude) ::
-                      Bulk(c.latitude) ::
-                      Bulk(r) ::
-                      Bulk(u) ::
-                      Bulk("COUNT") ::
-                      Bulk(l) ::
-                      Bulk(d) ::
-                      rm.params.map(Bulk(_))
-                  )
-                  protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-                }
-            }
-          }
-          "given key, coordinates, radius, unit and store mode" in {
-            forAll("key", "coordinates", "radius", "unit", "store mode", "stored") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, sm: GeoStoreMode, nni: NonNegInt) =>
-                val protocol = georadius(k, c, r, u, sm)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUS") :: Bulk(k) :: Bulk(c.longitude) :: Bulk(c.latitude) :: Bulk(r) :: Bulk(u) :: sm.params.map(Bulk(_))
-                )
-                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-            }
-          }
-          "given key, coordinates, radius, unit, limit and store mode" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "store mode") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, sm: GeoStoreMode) =>
-                forAll("stored") { nni: NonNegInt =>
-                  val protocol = georadius(k, c, r, u, l, sm)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUS") ::
-                      Bulk(k) ::
-                      Bulk(c.longitude) ::
-                      Bulk(c.latitude) ::
-                      Bulk(r) ::
-                      Bulk(u) ::
-                      Bulk("COUNT") ::
-                      Bulk(l) ::
-                      sm.params.map(Bulk(_))
-                  )
-                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-                }
-            }
-          }
-          "given key, coordinates, radius, unit, direction and store mode" in {
-            forAll("key", "coordinates", "radius", "unit", "direction", "store mode") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, sm: GeoStoreMode) =>
-                forAll("stored") { nni: NonNegInt =>
-                  val protocol = georadius(k, c, r, u, d, sm)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUS") ::
-                      Bulk(k) ::
-                      Bulk(c.longitude) ::
-                      Bulk(c.latitude) ::
-                      Bulk(r) ::
-                      Bulk(u) ::
-                      Bulk(d) ::
-                      sm.params.map(Bulk(_))
-                  )
-                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-                }
-            }
-          }
-          "given key, coordinates, radius, unit, limit, direction and store mode" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "direction") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-                forAll("store mode", "stored") { (sm: GeoStoreMode, nni: NonNegInt) =>
-                  val protocol = georadius(k, c, r, u, l, d, sm)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUS") ::
-                      Bulk(k) ::
-                      Bulk(c.longitude) ::
-                      Bulk(c.latitude) ::
-                      Bulk(r) ::
-                      Bulk(u) ::
-                      Bulk("COUNT") ::
-                      Bulk(l) ::
-                      Bulk(d) ::
-                      sm.params.map(Bulk(_))
-                  )
-                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-                }
-            }
-          }
-
-          "given key, member, radius and unit" in {
-            forAll("key", "member", "radius", "unit", "members") { (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, ms: List[Key]) =>
-              val protocol = georadius(k, m, r, u)
-
-              protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER"), Bulk(k), Bulk(m), Bulk(r), Bulk(u))
+              protocol.encode shouldBe Arr(Bulk("GEORADIUS"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u))
               protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
           }
-          "given key, member, radius, unit and limit" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "members") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, ms: List[Key]) =>
-                val protocol = georadius(k, m, r, u, l)
+        }
+        "given key, coordinates, radius, unit and limit" in {
+          forAll("key", "coordinates", "radius", "unit", "limit", "members") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, ms: List[Key]) =>
+              val protocol = georadius(k, c, r, u, l)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS"),
+                Bulk(k),
+                Bulk(c.longitude),
+                Bulk(c.latitude),
+                Bulk(r),
+                Bulk(u),
+                Bulk("COUNT"),
+                Bulk(l)
+              )
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, coordinates, radius, unit and direction" in {
+          forAll("key", "coordinates", "radius", "unit", "direction", "members") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, ms: List[Key]) =>
+              val protocol = georadius(k, c, r, u, d)
+
+              protocol.encode shouldBe Arr(Bulk("GEORADIUS"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u), Bulk(d))
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, coordinates, radius, unit, limit and direction" in {
+          forAll("key, coordinates, radius, unit, limit, direction", "members") {
+            (input: (Key, GeoCoordinates, NonNegDouble, GeoUnit, PosInt, Direction), ms: List[Key]) =>
+              val (k, c, r, u, l, d) = input
+              val protocol           = georadius(k, c, r, u, l, d)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS"),
+                Bulk(k),
+                Bulk(c.longitude),
+                Bulk(c.latitude),
+                Bulk(r),
+                Bulk(u),
+                Bulk("COUNT"),
+                Bulk(l),
+                Bulk(d)
+              )
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, coordinates, radius, unit and radius mode" in {
+          forAll("key", "coordinates", "radius", "unit", "radius mode & result") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = georadius(k, c, r, u, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS") ::
+                  Bulk(k) ::
+                  Bulk(c.longitude) ::
+                  Bulk(c.latitude) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, coordinates, radius, unit, limit and radius mode" in {
+          forAll("key", "coordinates", "radius", "unit", "limit", "radius mode & result") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = georadius(k, c, r, u, l, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS") ::
+                  Bulk(k) ::
+                  Bulk(c.longitude) ::
+                  Bulk(c.latitude) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk("COUNT") ::
+                  Bulk(l) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, coordinates, radius, unit, direction and radius mode" in {
+          forAll("key", "coordinates", "radius", "unit", "direction", "radius mode & result") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = georadius(k, c, r, u, d, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS") ::
+                  Bulk(k) ::
+                  Bulk(c.longitude) ::
+                  Bulk(c.latitude) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk(d) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, coordinates, radius, unit, limit, direction and radius mode" in {
+          forAll("key, coordinates, radius, unit, limit, direction", "radius mode & result") {
+            (input: (Key, GeoCoordinates, NonNegDouble, GeoUnit, PosInt, Direction), rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (k, c, r, u, l, d) = input
+              val (rm, res)          = rmAndRes
+              implicit val ev        = rm.r
+              val protocol           = georadius(k, c, r, u, l, d, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS") ::
+                  Bulk(k) ::
+                  Bulk(c.longitude) ::
+                  Bulk(c.latitude) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk("COUNT") ::
+                  Bulk(l) ::
+                  Bulk(d) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, coordinates, radius, unit and store mode" in {
+          forAll("key", "coordinates", "radius", "unit", "store mode", "stored") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, sm: GeoStoreMode, nni: NonNegInt) =>
+              val protocol = georadius(k, c, r, u, sm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS") :: Bulk(k) :: Bulk(c.longitude) :: Bulk(c.latitude) :: Bulk(r) :: Bulk(u) :: sm.params.map(Bulk(_))
+              )
+              protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
+          }
+        }
+        "given key, coordinates, radius, unit, limit and store mode" in {
+          forAll("key", "coordinates", "radius", "unit", "limit", "store mode") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, sm: GeoStoreMode) =>
+              forAll("stored") { nni: NonNegInt =>
+                val protocol = georadius(k, c, r, u, l, sm)
 
                 protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUSBYMEMBER"),
-                  Bulk(k),
-                  Bulk(m),
-                  Bulk(r),
-                  Bulk(u),
-                  Bulk("COUNT"),
-                  Bulk(l)
-                )
-                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
-          }
-          "given key, member, radius, unit and direction" in {
-            forAll("key", "member", "radius", "unit", "direction", "members") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, ms: List[Key]) =>
-                val protocol = georadius(k, m, r, u, d)
-
-                protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER"), Bulk(k), Bulk(m), Bulk(r), Bulk(u), Bulk(d))
-                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
-          }
-          "given key, member, radius, unit, limit and direction" in {
-            forAll("key", "member", "radius", "unit", "limit", "direction") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-                forAll("members") { ms: List[Key] =>
-                  val protocol = georadius(k, m, r, u, l, d)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUSBYMEMBER"),
-                    Bulk(k),
-                    Bulk(m),
-                    Bulk(r),
-                    Bulk(u),
-                    Bulk("COUNT"),
-                    Bulk(l),
-                    Bulk(d)
-                  )
-                  protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-                }
-            }
-          }
-          "given key, member, radius, unit and radius mode" in {
-            forAll("key", "member", "radius", "unit", "radius mode & result") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = georadius(k, m, r, u, rm)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUSBYMEMBER") ::
+                  Bulk("GEORADIUS") ::
                     Bulk(k) ::
-                    Bulk(m) ::
+                    Bulk(c.longitude) ::
+                    Bulk(c.latitude) ::
                     Bulk(r) ::
                     Bulk(u) ::
-                    rm.params.map(Bulk(_))
+                    Bulk("COUNT") ::
+                    Bulk(l) ::
+                    sm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
+                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
+              }
           }
-          "given key, member, radius, unit, limit and radius mode" in {
-            forAll("key", "member", "radius", "unit", "limit", "radius mode & result") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = georadius(k, m, r, u, l, rm)
+        }
+        "given key, coordinates, radius, unit, direction and store mode" in {
+          forAll("key", "coordinates", "radius", "unit", "direction", "store mode") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, sm: GeoStoreMode) =>
+              forAll("stored") { nni: NonNegInt =>
+                val protocol = georadius(k, c, r, u, d, sm)
+
+                protocol.encode shouldBe Arr(
+                  Bulk("GEORADIUS") ::
+                    Bulk(k) ::
+                    Bulk(c.longitude) ::
+                    Bulk(c.latitude) ::
+                    Bulk(r) ::
+                    Bulk(u) ::
+                    Bulk(d) ::
+                    sm.params.map(Bulk(_))
+                )
+                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
+              }
+          }
+        }
+        "given key, coordinates, radius, unit, limit, direction and store mode" in {
+          forAll("key", "coordinates", "radius", "unit", "limit", "direction") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
+              forAll("store mode", "stored") { (sm: GeoStoreMode, nni: NonNegInt) =>
+                val protocol = georadius(k, c, r, u, l, d, sm)
+
+                protocol.encode shouldBe Arr(
+                  Bulk("GEORADIUS") ::
+                    Bulk(k) ::
+                    Bulk(c.longitude) ::
+                    Bulk(c.latitude) ::
+                    Bulk(r) ::
+                    Bulk(u) ::
+                    Bulk("COUNT") ::
+                    Bulk(l) ::
+                    Bulk(d) ::
+                    sm.params.map(Bulk(_))
+                )
+                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
+              }
+          }
+        }
+
+        "given key, member, radius and unit" in {
+          forAll("key", "member", "radius", "unit", "members") { (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, ms: List[Key]) =>
+            val protocol = georadius(k, m, r, u)
+
+            protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER"), Bulk(k), Bulk(m), Bulk(r), Bulk(u))
+            protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, member, radius, unit and limit" in {
+          forAll("key", "coordinates", "radius", "unit", "limit", "members") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, ms: List[Key]) =>
+              val protocol = georadius(k, m, r, u, l)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER"),
+                Bulk(k),
+                Bulk(m),
+                Bulk(r),
+                Bulk(u),
+                Bulk("COUNT"),
+                Bulk(l)
+              )
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, member, radius, unit and direction" in {
+          forAll("key", "member", "radius", "unit", "direction", "members") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, ms: List[Key]) =>
+              val protocol = georadius(k, m, r, u, d)
+
+              protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER"), Bulk(k), Bulk(m), Bulk(r), Bulk(u), Bulk(d))
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, member, radius, unit, limit and direction" in {
+          forAll("key, member, radius, unit, limit, direction", "members") {
+            (input: (Key, Key, NonNegDouble, GeoUnit, PosInt, Direction), ms: List[Key]) =>
+              val (k, m, r, u, l, d) = input
+              val protocol           = georadius(k, m, r, u, l, d)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER"),
+                Bulk(k),
+                Bulk(m),
+                Bulk(r),
+                Bulk(u),
+                Bulk("COUNT"),
+                Bulk(l),
+                Bulk(d)
+              )
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, member, radius, unit and radius mode" in {
+          forAll("key", "member", "radius", "unit", "radius mode & result") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = georadius(k, m, r, u, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER") ::
+                  Bulk(k) ::
+                  Bulk(m) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, member, radius, unit, limit and radius mode" in {
+          forAll("key", "member", "radius", "unit", "limit", "radius mode & result") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = georadius(k, m, r, u, l, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER") ::
+                  Bulk(k) ::
+                  Bulk(m) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk("COUNT") ::
+                  Bulk(l) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, member, radius, unit, direction and radius mode" in {
+          forAll("key", "member", "radius", "unit", "direction", "radius mode & result") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = georadius(k, m, r, u, d, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER") ::
+                  Bulk(k) ::
+                  Bulk(m) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk(d) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, member, radius, unit, limit, direction and radius mode" in {
+          forAll("key, member, radius, unit, limit, direction", "radius mode & result") {
+            (input: (Key, Key, NonNegDouble, GeoUnit, PosInt, Direction), rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (k, m, r, u, l, d) = input
+              val (rm, res)          = rmAndRes
+              implicit val ev        = rm.r
+              val protocol           = georadius(k, m, r, u, l, d, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER") ::
+                  Bulk(k) ::
+                  Bulk(m) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk("COUNT") ::
+                  Bulk(l) ::
+                  Bulk(d) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, member, radius, unit and store mode" in {
+          forAll("key", "member", "radius", "unit", "store mode", "stored") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, sm: GeoStoreMode, nni: NonNegInt) =>
+              val protocol = georadius(k, m, r, u, sm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER") :: Bulk(k) :: Bulk(m) :: Bulk(r) :: Bulk(u) :: sm.params.map(Bulk(_))
+              )
+              protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
+          }
+        }
+        "given key, member, radius, unit, limit and store mode" in {
+          forAll("key", "member", "radius", "unit", "limit", "store mode") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, sm: GeoStoreMode) =>
+              forAll("stored") { nni: NonNegInt =>
+                val protocol = georadius(k, m, r, u, l, sm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUSBYMEMBER") ::
@@ -448,17 +517,30 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(u) ::
                     Bulk("COUNT") ::
                     Bulk(l) ::
-                    rm.params.map(Bulk(_))
+                    sm.params.map(Bulk(_))
                 )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
+                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
+              }
           }
-          "given key, member, radius, unit, direction and radius mode" in {
-            forAll("key", "member", "radius", "unit", "direction", "radius mode & result") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = georadius(k, m, r, u, d, rm)
+        }
+        "given key, member, radius, unit, direction and store mode" in {
+          forAll("key", "member", "radius", "unit", "direction", "store mode") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, sm: GeoStoreMode) =>
+              forAll("stored") { nni: NonNegInt =>
+                val protocol = georadius(k, m, r, u, d, sm)
+
+                protocol.encode shouldBe Arr(
+                  Bulk("GEORADIUSBYMEMBER") :: Bulk(k) :: Bulk(m) :: Bulk(r) :: Bulk(u) :: Bulk(d) :: sm.params.map(Bulk(_))
+                )
+                protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
+              }
+          }
+        }
+        "given key, member, radius, unit, limit, direction and store mode" in {
+          forAll("key", "member", "radius", "unit", "limit", "direction") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
+              forAll("store mode", "stored") { (sm: GeoStoreMode, nni: NonNegInt) =>
+                val protocol = georadius(k, m, r, u, l, d, sm)
 
                 protocol.encode shouldBe Arr(
                   Bulk("GEORADIUSBYMEMBER") ::
@@ -466,380 +548,290 @@ final class GeoPSpec extends GeoExtPSpec {
                     Bulk(m) ::
                     Bulk(r) ::
                     Bulk(u) ::
+                    Bulk("COUNT") ::
+                    Bulk(l) ::
                     Bulk(d) ::
-                    rm.params.map(Bulk(_))
-                )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
-          }
-          "given key, member, radius, unit, limit, direction and radius mode" in {
-            forAll("key", "member", "radius", "unit", "limit", "direction") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-                forAll("radius mode & result") { rmAndRes: (GeoRadiusMode, List[_]) =>
-                  val (rm, res)   = rmAndRes
-                  implicit val ev = rm.r
-                  val protocol    = georadius(k, m, r, u, l, d, rm)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUSBYMEMBER") ::
-                      Bulk(k) ::
-                      Bulk(m) ::
-                      Bulk(r) ::
-                      Bulk(u) ::
-                      Bulk("COUNT") ::
-                      Bulk(l) ::
-                      Bulk(d) ::
-                      rm.params.map(Bulk(_))
-                  )
-                  protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-                }
-            }
-          }
-          "given key, member, radius, unit and store mode" in {
-            forAll("key", "member", "radius", "unit", "store mode", "stored") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, sm: GeoStoreMode, nni: NonNegInt) =>
-                val protocol = georadius(k, m, r, u, sm)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUSBYMEMBER") :: Bulk(k) :: Bulk(m) :: Bulk(r) :: Bulk(u) :: sm.params.map(Bulk(_))
+                    sm.params.map(Bulk(_))
                 )
                 protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-            }
-          }
-          "given key, member, radius, unit, limit and store mode" in {
-            forAll("key", "member", "radius", "unit", "limit", "store mode") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, sm: GeoStoreMode) =>
-                forAll("stored") { nni: NonNegInt =>
-                  val protocol = georadius(k, m, r, u, l, sm)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUSBYMEMBER") ::
-                      Bulk(k) ::
-                      Bulk(m) ::
-                      Bulk(r) ::
-                      Bulk(u) ::
-                      Bulk("COUNT") ::
-                      Bulk(l) ::
-                      sm.params.map(Bulk(_))
-                  )
-                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-                }
-            }
-          }
-          "given key, member, radius, unit, direction and store mode" in {
-            forAll("key", "member", "radius", "unit", "direction", "store mode") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, sm: GeoStoreMode) =>
-                forAll("stored") { nni: NonNegInt =>
-                  val protocol = georadius(k, m, r, u, d, sm)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUSBYMEMBER") :: Bulk(k) :: Bulk(m) :: Bulk(r) :: Bulk(u) :: Bulk(d) :: sm.params.map(Bulk(_))
-                  )
-                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-                }
-            }
-          }
-          "given key, member, radius, unit, limit, direction and store mode" in {
-            forAll("key", "member", "radius", "unit", "limit", "direction") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-                forAll("store mode", "stored") { (sm: GeoStoreMode, nni: NonNegInt) =>
-                  val protocol = georadius(k, m, r, u, l, d, sm)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUSBYMEMBER") ::
-                      Bulk(k) ::
-                      Bulk(m) ::
-                      Bulk(r) ::
-                      Bulk(u) ::
-                      Bulk("COUNT") ::
-                      Bulk(l) ::
-                      Bulk(d) ::
-                      sm.params.map(Bulk(_))
-                  )
-                  protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-                }
-            }
+              }
           }
         }
       }
+    }
 
-      "using ro.georadius" should {
-        "roundtrip successfully" when {
-          "given key, coordinates, radius and unit" in {
-            forAll("key", "coordinates", "radius", "unit", "members") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, ms: List[Key]) =>
-                val protocol = ro.georadius(k, c, r, u)
+    "using ro.georadius" should {
+      "roundtrip successfully" when {
+        "given key, coordinates, radius and unit" in {
+          forAll("key", "coordinates", "radius", "unit", "members") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, ms: List[Key]) =>
+              val protocol = ro.georadius(k, c, r, u)
 
-                protocol.encode shouldBe Arr(Bulk("GEORADIUS_RO"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u))
-                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
-          }
-          "given key, coordinates, radius, unit and limit" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "members") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, ms: List[Key]) =>
-                val protocol = ro.georadius(k, c, r, u, l)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUS_RO"),
-                  Bulk(k),
-                  Bulk(c.longitude),
-                  Bulk(c.latitude),
-                  Bulk(r),
-                  Bulk(u),
-                  Bulk("COUNT"),
-                  Bulk(l)
-                )
-                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
-          }
-          "given key, coordinates, radius, unit and direction" in {
-            forAll("key", "coordinates", "radius", "unit", "direction", "members") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, ms: List[Key]) =>
-                val protocol = ro.georadius(k, c, r, u, d)
-
-                protocol.encode shouldBe Arr(Bulk("GEORADIUS_RO"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u), Bulk(d))
-                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
-          }
-          "given key, coordinates, radius, unit, limit and direction" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "direction") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-                forAll("members") { ms: List[Key] =>
-                  val protocol = ro.georadius(k, c, r, u, l, d)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUS_RO"),
-                    Bulk(k),
-                    Bulk(c.longitude),
-                    Bulk(c.latitude),
-                    Bulk(r),
-                    Bulk(u),
-                    Bulk("COUNT"),
-                    Bulk(l),
-                    Bulk(d)
-                  )
-                  protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-                }
-            }
-          }
-          "given key, coordinates, radius, unit and radius mode" in {
-            forAll("key", "coordinates", "radius", "unit", "radius mode & result") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = ro.georadius(k, c, r, u, rm)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUS_RO") ::
-                    Bulk(k) ::
-                    Bulk(c.longitude) ::
-                    Bulk(c.latitude) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    rm.params.map(Bulk(_))
-                )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
-          }
-          "given key, coordinates, radius, unit, limit and radius mode" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "radius mode & result") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = ro.georadius(k, c, r, u, l, rm)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUS_RO") ::
-                    Bulk(k) ::
-                    Bulk(c.longitude) ::
-                    Bulk(c.latitude) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    Bulk("COUNT") ::
-                    Bulk(l) ::
-                    rm.params.map(Bulk(_))
-                )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
-          }
-          "given key, coordinates, radius, unit, direction and radius mode" in {
-            forAll("key", "coordinates", "radius", "unit", "direction", "radius mode & result") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = ro.georadius(k, c, r, u, d, rm)
-
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUS_RO") ::
-                    Bulk(k) ::
-                    Bulk(c.longitude) ::
-                    Bulk(c.latitude) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    Bulk(d) ::
-                    rm.params.map(Bulk(_))
-                )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
-          }
-          "given key, coordinates, radius, unit, limit, direction and radius mode" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "direction") {
-              (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-                forAll("radius mode & result") { rmAndRes: (GeoRadiusMode, List[_]) =>
-                  val (rm, res)   = rmAndRes
-                  implicit val ev = rm.r
-                  val protocol    = ro.georadius(k, c, r, u, l, d, rm)
-
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUS_RO") ::
-                      Bulk(k) ::
-                      Bulk(c.longitude) ::
-                      Bulk(c.latitude) ::
-                      Bulk(r) ::
-                      Bulk(u) ::
-                      Bulk("COUNT") ::
-                      Bulk(l) ::
-                      Bulk(d) ::
-                      rm.params.map(Bulk(_))
-                  )
-                  protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-                }
-            }
-          }
-
-          "given key, member, radius and unit" in {
-            forAll("key", "member", "radius", "unit", "members") { (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, ms: List[Key]) =>
-              val protocol = ro.georadius(k, m, r, u)
-
-              protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER_RO"), Bulk(k), Bulk(m), Bulk(r), Bulk(u))
+              protocol.encode shouldBe Arr(Bulk("GEORADIUS_RO"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u))
               protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
           }
-          "given key, member, radius, unit and limit" in {
-            forAll("key", "coordinates", "radius", "unit", "limit", "members") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, ms: List[Key]) =>
-                val protocol = ro.georadius(k, m, r, u, l)
+        }
+        "given key, coordinates, radius, unit and limit" in {
+          forAll("key", "coordinates", "radius", "unit", "limit", "members") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, ms: List[Key]) =>
+              val protocol = ro.georadius(k, c, r, u, l)
 
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUSBYMEMBER_RO"),
-                  Bulk(k),
-                  Bulk(m),
-                  Bulk(r),
-                  Bulk(u),
-                  Bulk("COUNT"),
-                  Bulk(l)
-                )
-                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS_RO"),
+                Bulk(k),
+                Bulk(c.longitude),
+                Bulk(c.latitude),
+                Bulk(r),
+                Bulk(u),
+                Bulk("COUNT"),
+                Bulk(l)
+              )
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
           }
-          "given key, member, radius, unit and direction" in {
-            forAll("key", "member", "radius", "unit", "direction", "members") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, ms: List[Key]) =>
-                val protocol = ro.georadius(k, m, r, u, d)
+        }
+        "given key, coordinates, radius, unit and direction" in {
+          forAll("key", "coordinates", "radius", "unit", "direction", "members") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, ms: List[Key]) =>
+              val protocol = ro.georadius(k, c, r, u, d)
 
-                protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER_RO"), Bulk(k), Bulk(m), Bulk(r), Bulk(u), Bulk(d))
-                protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-            }
+              protocol.encode shouldBe Arr(Bulk("GEORADIUS_RO"), Bulk(k), Bulk(c.longitude), Bulk(c.latitude), Bulk(r), Bulk(u), Bulk(d))
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
           }
-          "given key, member, radius, unit, limit and direction" in {
-            forAll("key", "member", "radius", "unit", "limit", "direction") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-                forAll("members") { ms: List[Key] =>
-                  val protocol = ro.georadius(k, m, r, u, l, d)
+        }
+        "given key, coordinates, radius, unit, limit and direction" in {
+          forAll("key, coordinates, radius, unit, limit, direction", "members") {
+            (input: (Key, GeoCoordinates, NonNegDouble, GeoUnit, PosInt, Direction), ms: List[Key]) =>
+              val (k, c, r, u, l, d) = input
+              val protocol           = ro.georadius(k, c, r, u, l, d)
 
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUSBYMEMBER_RO"),
-                    Bulk(k),
-                    Bulk(m),
-                    Bulk(r),
-                    Bulk(u),
-                    Bulk("COUNT"),
-                    Bulk(l),
-                    Bulk(d)
-                  )
-                  protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
-                }
-            }
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS_RO"),
+                Bulk(k),
+                Bulk(c.longitude),
+                Bulk(c.latitude),
+                Bulk(r),
+                Bulk(u),
+                Bulk("COUNT"),
+                Bulk(l),
+                Bulk(d)
+              )
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
           }
-          "given key, member, radius, unit and radius mode" in {
-            forAll("key", "member", "radius", "unit", "radius mode & result") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = ro.georadius(k, m, r, u, rm)
+        }
+        "given key, coordinates, radius, unit and radius mode" in {
+          forAll("key", "coordinates", "radius", "unit", "radius mode & result") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = ro.georadius(k, c, r, u, rm)
 
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUSBYMEMBER_RO") ::
-                    Bulk(k) ::
-                    Bulk(m) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    rm.params.map(Bulk(_))
-                )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS_RO") ::
+                  Bulk(k) ::
+                  Bulk(c.longitude) ::
+                  Bulk(c.latitude) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
           }
-          "given key, member, radius, unit, limit and radius mode" in {
-            forAll("key", "member", "radius", "unit", "limit", "radius mode & result") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = ro.georadius(k, m, r, u, l, rm)
+        }
+        "given key, coordinates, radius, unit, limit and radius mode" in {
+          forAll("key", "coordinates", "radius", "unit", "limit", "radius mode & result") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = ro.georadius(k, c, r, u, l, rm)
 
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUSBYMEMBER_RO") ::
-                    Bulk(k) ::
-                    Bulk(m) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    Bulk("COUNT") ::
-                    Bulk(l) ::
-                    rm.params.map(Bulk(_))
-                )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS_RO") ::
+                  Bulk(k) ::
+                  Bulk(c.longitude) ::
+                  Bulk(c.latitude) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk("COUNT") ::
+                  Bulk(l) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
           }
-          "given key, member, radius, unit, direction and radius mode" in {
-            forAll("key", "member", "radius", "unit", "direction", "radius mode & result") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
-                val (rm, res)   = rmAndRes
-                implicit val ev = rm.r
-                val protocol    = ro.georadius(k, m, r, u, d, rm)
+        }
+        "given key, coordinates, radius, unit, direction and radius mode" in {
+          forAll("key", "coordinates", "radius", "unit", "direction", "radius mode & result") {
+            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = ro.georadius(k, c, r, u, d, rm)
 
-                protocol.encode shouldBe Arr(
-                  Bulk("GEORADIUSBYMEMBER_RO") ::
-                    Bulk(k) ::
-                    Bulk(m) ::
-                    Bulk(r) ::
-                    Bulk(u) ::
-                    Bulk(d) ::
-                    rm.params.map(Bulk(_))
-                )
-                protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-            }
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS_RO") ::
+                  Bulk(k) ::
+                  Bulk(c.longitude) ::
+                  Bulk(c.latitude) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk(d) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
           }
-          "given key, member, radius, unit, limit, direction and radius mode" in {
-            forAll("key", "member", "radius", "unit", "limit", "direction") {
-              (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-                forAll("radius mode & result") { rmAndRes: (GeoRadiusMode, List[_]) =>
-                  val (rm, res)   = rmAndRes
-                  implicit val ev = rm.r
-                  val protocol    = ro.georadius(k, m, r, u, l, d, rm)
+        }
+        "given key, coordinates, radius, unit, limit, direction and radius mode" in {
+          forAll("key, coordinates, radius, unit, limit, direction", "radius mode & result") {
+            (input: (Key, GeoCoordinates, NonNegDouble, GeoUnit, PosInt, Direction), rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (k, c, r, u, l, d) = input
+              val (rm, res)          = rmAndRes
+              implicit val ev        = rm.r
+              val protocol           = ro.georadius(k, c, r, u, l, d, rm)
 
-                  protocol.encode shouldBe Arr(
-                    Bulk("GEORADIUSBYMEMBER_RO") ::
-                      Bulk(k) ::
-                      Bulk(m) ::
-                      Bulk(r) ::
-                      Bulk(u) ::
-                      Bulk("COUNT") ::
-                      Bulk(l) ::
-                      Bulk(d) ::
-                      rm.params.map(Bulk(_))
-                  )
-                  protocol.decode(listToArr(res)) onRight (_ shouldBe res)
-                }
-            }
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUS_RO") ::
+                  Bulk(k) ::
+                  Bulk(c.longitude) ::
+                  Bulk(c.latitude) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk("COUNT") ::
+                  Bulk(l) ::
+                  Bulk(d) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+
+        "given key, member, radius and unit" in {
+          forAll("key", "member", "radius", "unit", "members") { (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, ms: List[Key]) =>
+            val protocol = ro.georadius(k, m, r, u)
+
+            protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER_RO"), Bulk(k), Bulk(m), Bulk(r), Bulk(u))
+            protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, member, radius, unit and limit" in {
+          forAll("key", "coordinates", "radius", "unit", "limit", "members") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, ms: List[Key]) =>
+              val protocol = ro.georadius(k, m, r, u, l)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER_RO"),
+                Bulk(k),
+                Bulk(m),
+                Bulk(r),
+                Bulk(u),
+                Bulk("COUNT"),
+                Bulk(l)
+              )
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, member, radius, unit and direction" in {
+          forAll("key", "member", "radius", "unit", "direction", "members") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, ms: List[Key]) =>
+              val protocol = ro.georadius(k, m, r, u, d)
+
+              protocol.encode shouldBe Arr(Bulk("GEORADIUSBYMEMBER_RO"), Bulk(k), Bulk(m), Bulk(r), Bulk(u), Bulk(d))
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, member, radius, unit, limit and direction" in {
+          forAll("key, member, radius, unit, limit, direction", "members") {
+            (input: (Key, Key, NonNegDouble, GeoUnit, PosInt, Direction), ms: List[Key]) =>
+              val (k, m, r, u, l, d) = input
+              val protocol           = ro.georadius(k, m, r, u, l, d)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER_RO"),
+                Bulk(k),
+                Bulk(m),
+                Bulk(r),
+                Bulk(u),
+                Bulk("COUNT"),
+                Bulk(l),
+                Bulk(d)
+              )
+              protocol.decode(Arr(ms.map(Bulk(_)))) onRight (_ shouldBe ms)
+          }
+        }
+        "given key, member, radius, unit and radius mode" in {
+          forAll("key", "member", "radius", "unit", "radius mode & result") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = ro.georadius(k, m, r, u, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER_RO") ::
+                  Bulk(k) ::
+                  Bulk(m) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, member, radius, unit, limit and radius mode" in {
+          forAll("key", "member", "radius", "unit", "limit", "radius mode & result") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, l: PosInt, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = ro.georadius(k, m, r, u, l, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER_RO") ::
+                  Bulk(k) ::
+                  Bulk(m) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk("COUNT") ::
+                  Bulk(l) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, member, radius, unit, direction and radius mode" in {
+          forAll("key", "member", "radius", "unit", "direction", "radius mode & result") {
+            (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (rm, res)   = rmAndRes
+              implicit val ev = rm.r
+              val protocol    = ro.georadius(k, m, r, u, d, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER_RO") ::
+                  Bulk(k) ::
+                  Bulk(m) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk(d) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
+          }
+        }
+        "given key, member, radius, unit, limit, direction and radius mode" in {
+          forAll("key, member, radius, unit, limit, direction", "radius mode & result") {
+            (input: (Key, Key, NonNegDouble, GeoUnit, PosInt, Direction), rmAndRes: (GeoRadiusMode, List[_])) =>
+              val (k, m, r, u, l, d) = input
+              val (rm, res)          = rmAndRes
+              implicit val ev        = rm.r
+              val protocol           = ro.georadius(k, m, r, u, l, d, rm)
+
+              protocol.encode shouldBe Arr(
+                Bulk("GEORADIUSBYMEMBER_RO") ::
+                  Bulk(k) ::
+                  Bulk(m) ::
+                  Bulk(r) ::
+                  Bulk(u) ::
+                  Bulk("COUNT") ::
+                  Bulk(l) ::
+                  Bulk(d) ::
+                  rm.params.map(Bulk(_))
+              )
+              protocol.decode(listToArr(res)) onRight (_ shouldBe res)
           }
         }
       }

@@ -338,9 +338,10 @@ final class GeoPSpec extends GeoExtPSpec {
           }
         }
         "given key, coordinates, radius, unit, limit, direction and store mode" in {
-          forAll("key", "coordinates", "radius", "unit", "limit", "direction") {
-            (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, l: PosInt, d: Direction) =>
-              forAll("store mode", "stored") { (sm: GeoStoreMode, nni: NonNegInt) =>
+          forAll("key, coordinates, radius, unit, limit, direction", "store mode", "stored") {
+            (input: (Key, GeoCoordinates, NonNegDouble, GeoUnit, PosInt, Direction), (sm: GeoStoreMode, nni: NonNegInt)) =>
+              forAll() { (sm: GeoStoreMode, nni: NonNegInt) =>
+                val (k, c, r, u, l, d) = input
                 val protocol = georadius(k, c, r, u, l, d, sm)
 
                 protocol.encode shouldBe Arr(

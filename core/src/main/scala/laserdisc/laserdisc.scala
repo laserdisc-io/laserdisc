@@ -17,28 +17,30 @@ package object laserdisc {
   final type Maybe[A] = Throwable | A
 
   // Type forwarders
-  final type Arr       = protocol.Arr
-  final type Bulk      = protocol.Bulk
-  final type Err       = protocol.Err
-  final type NilArr    = protocol.NilArr.type
-  final type NullBulk  = protocol.NullBulk.type
-  final type Num       = protocol.Num
-  final type Str       = protocol.Str
-  final type Protocol  = protocol.Protocol
-  final type ==>[A, B] = protocol.Read[A, B]
-  final type RESP      = protocol.RESP
-  final type Show[A]   = protocol.Show[A]
+  final type Arr        = protocol.Arr
+  final type Bulk       = protocol.Bulk
+  final type Err        = protocol.Err
+  final type NilArr     = protocol.NilArr.type
+  final type NullBulk   = protocol.NullBulk.type
+  final type Num        = protocol.Num
+  final type Str        = protocol.Str
+  final type Protocol   = protocol.Protocol
+  final type ==>[A, B]  = protocol.Read[A, B]
+  final type RESP       = protocol.RESP
+  final type Show[A]    = protocol.Show[A]
+  final type RESPDecErr = protocol.RESPDecErr
 
   // Object forwarders
-  final val Arr      = protocol.Arr
-  final val Bulk     = protocol.Bulk
-  final val Err      = protocol.Err
-  final val NilArr   = protocol.NilArr
-  final val NullBulk = protocol.NullBulk
-  final val Num      = protocol.Num
-  final val Protocol = protocol.Protocol
-  final val Read     = protocol.Read
-  final val Show     = protocol.Show
+  final val Arr        = protocol.Arr
+  final val Bulk       = protocol.Bulk
+  final val Err        = protocol.Err
+  final val NilArr     = protocol.NilArr
+  final val NullBulk   = protocol.NullBulk
+  final val Num        = protocol.Num
+  final val Protocol   = protocol.Protocol
+  final val Read       = protocol.Read
+  final val Show       = protocol.Show
+  final val RESPDecErr = protocol.RESPDecErr
 
   private[this] final type NoControlChar = Not[ControlChar]
   private[this] final type NoWhitespace  = Not[Whitespace]

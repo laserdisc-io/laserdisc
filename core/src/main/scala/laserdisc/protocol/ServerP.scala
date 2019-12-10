@@ -68,31 +68,31 @@ object ServerP {
       val CR: Arr ==> Client = Read.instance {
         case Arr(Bulk(Host(host)) +: Bulk(ToInt(Port(port))) +: Bulk(ToLong(NonNegLong(offset))) +: Seq()) =>
           Right(Client(host, port, offset))
-        case Arr(other) => Left(Err(s"Unexpected role: it should be [host, port, offset] but was $other"))
+        case Arr(other) => Left(RESPDecErr(s"Unexpected role: it should be [host, port, offset] but was $other"))
       }
       val RSR: Bulk ==> ReplicaStatus = Read.instance {
         case Bulk("connect")    => Right(connect)
         case Bulk("connecting") => Right(connecting)
         case Bulk("sync")       => Right(sync)
         case Bulk("connected")  => Right(connected)
-        case Bulk(other)        => Left(Err(s"Unexpected replica status. Was $other"))
+        case Bulk(other)        => Left(RESPDecErr(s"Unexpected replica status. Was $other"))
       }
       val MR: Arr ==> Seq[Key] = Read[Arr, Seq[Key]]
 
       Read.instance {
         case Arr(Bulk("master") +: Num(NonNegLong(offset)) +: Arr(v) +: Seq()) =>
-          v.foldRight[Err | (List[Client], Int)](Right(Nil -> 0)) {
+          v.foldRight[RESPDecErr | (List[Client], Int)](Right(Nil -> 0)) {
             case (CR(Right(client)), Right((cs, csl))) => Right((client :: cs) -> (csl + 1))
-            case (CR(Left(e)), Right((_, csl)))        => Left(Err(s"Arr ==> Role clients error at element ${csl + 1}: ${e.message}"))
-            case (_, Left(err))                        => Left(err)
+            case (CR(Left(e)), Right((_, csl)))        => Left(RESPDecErr(s"Arr ==> Role clients error at element ${csl + 1}: ${e.message}"))
+            case (_, left)                             => left
           } map (r => Master(offset, r._1))
         case Arr(Bulk("slave") +: Bulk(Host(host)) +: Num(ToInt(Port(port))) +: RSR(Right(status)) +: Num(NonNegLong(offset)) +: Seq()) =>
           Right(Slave(host, port, status, offset))
         case Arr(Bulk("slave") +: Bulk(Host(_)) +: Num(ToInt(Port(_))) +: RSR(Left(e)) +: Num(NonNegLong(_)) +: Seq()) =>
-          Left(Err(s"Slave replica status read error: $e"))
+          Left(RESPDecErr(s"Slave replica status read error: $e"))
         case Arr(Bulk("sentinel") +: MR(Right(masters)) +: Seq()) => Right(Sentinel(masters))
-        case Arr(Bulk("sentinel") +: MR(Left(e)) +: Seq())        => Left(Err(s"Sentinel masters read error: $e"))
-        case other                                                => Left(Err(s"Unexpected role encoding. Was $other"))
+        case Arr(Bulk("sentinel") +: MR(Left(e)) +: Seq())        => Left(RESPDecErr(s"Sentinel masters read error: $e"))
+        case other                                                => Left(RESPDecErr(s"Unexpected role encoding. Was $other"))
       }
     }
   }
@@ -101,7 +101,7 @@ object ServerP {
     def selectDynamic[A](field: String)(implicit R: String ==> A): Maybe[A] =
       properties
         .get(field)
-        .toRight(Err(s"no key $field of the provided type found"))
+        .toRight(RESPDecErr(s"no key $field of the provided type found"))
         .flatMap(R.read)
         .widenLeft[Throwable]
   }
@@ -141,7 +141,7 @@ object ServerP {
       case "commandstats" => Right(InfoSection.commandstats)
       case "cluster"      => Right(InfoSection.cluster)
       case "keyspace"     => Right(InfoSection.keyspace)
-      case other          => Left(Err(s"Unexpected server info specification. Was $other"))
+      case other          => Left(RESPDecErr(s"Unexpected server info specification. Was $other"))
     }
     private val KVPair = "(.*):(.*)".r
     private val PR: Seq[String] ==> Parameters = Read.instance { ss =>

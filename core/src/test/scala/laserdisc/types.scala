@@ -7,7 +7,7 @@ final case class Foo(x: Int)
 object Foo {
   implicit final val fooRead: Bulk ==> Foo = Read.instance {
     case Bulk(ToInt(i)) => Right(Foo(i))
-    case Bulk(other)    => Left(Err(s"Boom: $other"))
+    case Bulk(other)    => Left(RESPDecErr(s"Boom: $other"))
   }
 }
 

@@ -20,7 +20,7 @@ object KeyP {
       case Bulk("intset")     => Right(intset)
       case Bulk("hashtable")  => Right(hashtable)
       case Bulk("skiplist")   => Right(skiplist)
-      case Bulk(other)        => Left(Err(s"Unexpected key encoding. Was $other"))
+      case Bulk(other)        => Left(RESPDecErr(s"Unexpected key encoding. Was $other"))
     }
   }
 
@@ -67,7 +67,7 @@ object KeyP {
       case Num(-2)          => Right(NoKey)
       case Num(-1)          => Right(NoExpire)
       case Num(l) if l >= 0 => Right(ExpireAfter(NonNegLong.unsafeFrom(l)))
-      case Num(other)       => Left(Err(s"Unexpected key TTL. Was $other"))
+      case Num(other)       => Left(RESPDecErr(s"Unexpected key TTL. Was $other"))
     }
   }
 }
@@ -99,7 +99,7 @@ trait KeyBaseP {
   private[this] implicit final val str2NOKEYOrOK: Str ==> (NOKEY | OK) = Read.instance {
     case Str("NOKEY") => Right(Left(NOKEY))
     case Str("OK")    => Right(Right(OK))
-    case Str(other)   => Left(Err(s"Unexpected string for Str ==> (NOKEY | OK). Was $other"))
+    case Str(other)   => Left(RESPDecErr(s"Unexpected string for Str ==> (NOKEY | OK). Was $other"))
   }
 
   private[this] final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
@@ -110,7 +110,8 @@ trait KeyBaseP {
     case Str("set")    => Right(Some(KeyType.set))
     case Str("zset")   => Right(Some(KeyType.zset))
     case Str("hash")   => Right(Some(KeyType.hash))
-    case Str(_)        => Right(None)
+    case Str("none")   => Right(None)
+    case Str(other)    => Left(RESPDecErr(s"Unexpected string for Str ==> Option[KeyType]. Was $other"))
   }
 
   final def del(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]

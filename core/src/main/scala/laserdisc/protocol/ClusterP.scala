@@ -10,7 +10,7 @@ object ClusterP {
     def selectDynamic[A](field: String)(implicit R: String ==> A): Maybe[A] =
       properties
         .get(field)
-        .toRight(Err(s"no key $field of the provided type found"))
+        .toRight(RESPDecErr(s"no key $field of the expected type found"))
         .flatMap(R.read)
         .widenLeft[Throwable]
   }
@@ -41,13 +41,13 @@ object ClusterP {
         case HPCP(Host(h), ToInt(Port(p)), ToInt(Port(cp))) => Right(Address(h, p, cp))
         case HP("", ToInt(Port(p)))                         => Right(Address(LoopbackHost, p, p))
         case HP(Host(h), ToInt(Port(p)))                    => Right(Address(h, p, p))
-        case other                                          => Left(Err(s"Unexpected encoding for Address. Was $other"))
+        case other                                          => Left(RESPDecErr(s"Unexpected encoding for Address. Was $other"))
       }
     }
     private final val Fs: String ==> Seq[Flag] = Read.instance {
       case "noflags" => Right(Seq.empty)
       case s =>
-        s.split(COMMA_CH).foldRight[Err | List[Flag]](Right(Nil)) {
+        s.split(COMMA_CH).foldRight[RESPDecErr | List[Flag]](Right(Nil)) {
           case ("myself", Right(fgs))    => Right(Flag.myself :: fgs)
           case ("master", Right(fgs))    => Right(Flag.master :: fgs)
           case ("slave", Right(fgs))     => Right(Flag.replica :: fgs)
@@ -55,19 +55,19 @@ object ClusterP {
           case ("fail", Right(fgs))      => Right(Flag.fail :: fgs)
           case ("handshake", Right(fgs)) => Right(Flag.handshake :: fgs)
           case ("noaddr", Right(fgs))    => Right(Flag.noaddress :: fgs)
-          case (other, Right(_))         => Left(Err(s"Unexpected flag encoding. Was $other"))
-          case (_, Left(e))              => Left(e)
+          case (other, Right(_))         => Left(RESPDecErr(s"Unexpected flag encoding. Was $other"))
+          case (_, left)                 => left
         }
     }
     private final val MM: String ==> Option[NodeId] = Read.instance {
       case "-"        => Right(None)
       case NodeId(id) => Right(Some(id))
-      case other      => Left(Err(s"Incorrect encoding for Node Id. Was $other"))
+      case other      => Left(RESPDecErr(s"Incorrect encoding for Node Id. Was $other"))
     }
     private final val L: String ==> LinkState = Read.instance {
       case "connected"    => Right(LinkState.connected)
       case "disconnected" => Right(LinkState.disconnected)
-      case other          => Left(Err(s"Incorrect encoding for link state. Was $other"))
+      case other          => Left(RESPDecErr(s"Incorrect encoding for link state. Was $other"))
     }
     private final val Ss: Seq[String] ==> Seq[SlotType] = {
       val R  = raw"(\d+)-(\d+)".r
@@ -200,26 +200,26 @@ object ClusterP {
     private val H: Bulk ==> Host = Read.instance {
       case Bulk("")      => Right(LoopbackHost)
       case Bulk(Host(h)) => Right(h)
-      case Bulk(other)   => Left(Err(s"Incorrect host encoding. Was $other"))
+      case Bulk(other)   => Left(RESPDecErr(s"Incorrect host encoding. Was $other"))
     }
 
     private val SI: Seq[RESP] ==> SlotInfo = {
       val HPNIs: Seq[RESP] ==> Seq[HostPortNodeId] = Read.instance {
-        _.foldRight[Err | Seq[HostPortNodeId]](Right(Seq.empty)) {
+        _.foldRight[RESPDecErr | Seq[HostPortNodeId]](Right(Seq.empty)) {
           case (Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Bulk(NodeId(id)) :: Nil), Right(hsts)) =>
             Right(HostPortNodeId(h, p, id) +: hsts)
-          case (Arr(H(Left(e)) :: _), Right(_)) => Left(Err(s"Unexpected new replica's host encoding with error ${e.message}"))
-          case (Arr(other), Right(_))           => Left(Err(s"Unexpected new replica encoding. Expected [host, port, node id] but was $other"))
-          case (_, Left(e))                     => Left(e)
+          case (Arr(H(Left(e)) :: _), Right(_)) => Left(RESPDecErr(s"Unexpected new replica's host encoding with error ${e.message}"))
+          case (Arr(other), Right(_))           => Left(RESPDecErr(s"Unexpected new replica encoding. Expected [host, port, node id] but was $other"))
+          case (_, left)                        => left
         }
       }
       val HPs: Seq[RESP] ==> Seq[HostPort] = Read.instance {
-        _.foldRight[Err | Seq[HostPort]](Right(Seq.empty)) {
+        _.foldRight[RESPDecErr | Seq[HostPort]](Right(Seq.empty)) {
           case (Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Nil), Right(hsts)) =>
             Right(HostPort(h, p) +: hsts)
-          case (Arr(H(Left(e)) :: _), Right(_)) => Left(Err(s"Unexpected old replica's host encoding with error ${e.message}"))
-          case (Arr(other), Right(_))           => Left(Err(s"Unexpected old replica encoding. Expected [host, port] but was $other"))
-          case (_, Left(e))                     => Left(e)
+          case (Arr(H(Left(e)) :: _), Right(_)) => Left(RESPDecErr(s"Unexpected old replica's host encoding with error ${e.message}"))
+          case (Arr(other), Right(_))           => Left(RESPDecErr(s"Unexpected old replica encoding. Expected [host, port] but was $other"))
+          case (_, left)                        => left
         }
       }
 
@@ -228,29 +228,31 @@ object ClusterP {
           Right(OldSlotInfo(HostPort(h, p), rs))
         case Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Bulk(NodeId(id)) :: Nil) +: HPNIs(Right(rs)) =>
           Right(NewSlotInfo(HostPortNodeId(h, p, id), rs))
-        case Arr(H(Left(e)) :: _) +: _ => Left(Err(s"Unexpected host encoding in the slot info. ${e.message}"))
-        case Arr(_ :: otherPort) +: _  => Left(Err(s"Unexpected port encoding in the slot info. Was $otherPort"))
+        case Arr(H(Left(e)) :: _) +: _ => Left(RESPDecErr(s"Unexpected host encoding in the slot info. ${e.message}"))
+        case Arr(_ :: otherPort) +: _  => Left(RESPDecErr(s"Unexpected port encoding in the slot info. Was $otherPort"))
         case other =>
           Left(
-            Err(s"Unexpected slot info encoding. Expected [[host, port, node id], replicas]] or [[host, port], replicas] but was $other")
+            RESPDecErr(
+              s"Unexpected slot info encoding. Expected [[host, port, node id], replicas]] or [[host, port], replicas] but was $other"
+            )
           )
       }
     }
 
     implicit final val slotsRead: Arr ==> Slots = Read.instance {
       case Arr(arrays) =>
-        arrays.foldRight[Err | (Map[SlotType.Range, SlotInfo], Int)](Right(Map.empty -> 0)) {
+        arrays.foldRight[RESPDecErr | (Map[SlotType.Range, SlotInfo], Int)](Right(Map.empty -> 0)) {
           case (Arr(Num(ToInt(Slot(from))) :: Num(ToInt(Slot(to))) :: Arr(SI(Right(si))) :: Nil), Right((sts, stsl))) =>
             Right((sts + (Range(from, to) -> si)) -> (stsl + 1))
           case (Arr(Num(ToInt(Slot(_))) :: Num(ToInt(Slot(_))) :: Arr(Nil) :: Nil), Right((_, stsl))) =>
-            Left(Err(s"Unexpected slot assignment encoding at element ${stsl + 1}. The assignment list was empty"))
+            Left(RESPDecErr(s"Unexpected slot assignment encoding at element ${stsl + 1}. The assignment list was empty"))
           case (Arr(other), Right((_, stsl))) =>
             Left(
-              Err(
+              RESPDecErr(
                 s"Arr ==> Slots unexpected slot encoding at element ${stsl + 1}. Expected [from, to, [[host, port], node id, replicas]] or [from, to, [[host, port], replicas]] but was $other"
               )
             )
-          case (_, Left(e)) => Left(e)
+          case (_, left) => left
         } map (r => Slots(r._1))
     }
   }

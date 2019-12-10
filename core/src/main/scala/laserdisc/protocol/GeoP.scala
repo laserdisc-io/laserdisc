@@ -6,7 +6,7 @@ object GeoP {
   final object Coordinates {
     implicit final val coordinatesRead: Arr ==> Coordinates = Read.instance {
       case Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) => Right(Coordinates(lat, long))
-      case Arr(other)                                                                     => Left(Err(s"Unexpected coordinates encoding. Expected [longitude, latitude] but was $other"))
+      case Arr(other)                                                                     => Left(RESPDecErr(s"Unexpected coordinates encoding. Expected [longitude, latitude] but was $other"))
     }
   }
 
@@ -101,15 +101,15 @@ object GeoP {
   implicit final val radiusModeCoordinatesRead: Arr ==> RadiusMode.coordinates.Res = Read.instance {
     case Arr(Bulk(Key(k)) +: Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) +: Seq()) =>
       Right(KeyAndCoordinates(k, Coordinates(lat, long)))
-    case Arr(other) => Left(Err(s"Unexpected radius mode encoding. Expected [key, [longitude, latitude]] but was $other"))
+    case Arr(other) => Left(RESPDecErr(s"Unexpected radius mode encoding. Expected [key, [longitude, latitude]] but was $other"))
   }
   implicit final val radiusModeDistanceRead: Arr ==> RadiusMode.distance.Res = Read.instance {
     case Arr(Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +: Seq()) => Right(KeyAndDistance(k, d))
-    case Arr(other)                                                    => Left(Err(s"Unexpected radius mode encoding. Expected [key, distance] but was $other"))
+    case Arr(other)                                                    => Left(RESPDecErr(s"Unexpected radius mode encoding. Expected [key, distance] but was $other"))
   }
   implicit final val radiusModeHashRead: Arr ==> RadiusMode.hash.Res = Read.instance {
     case Arr(Bulk(Key(k)) +: Num(NonNegLong(l)) +: Seq()) => Right(KeyAndHash(k, l))
-    case Arr(other)                                       => Left(Err(s"Unexpected radius mode encoding. Expected [key, hash] but was $other"))
+    case Arr(other)                                       => Left(RESPDecErr(s"Unexpected radius mode encoding. Expected [key, hash] but was $other"))
   }
   implicit final val radiusModeCoordinatesAndDistanceRead: Arr ==> RadiusMode.coordinatesAndDistance.Res = Read.instance {
     case Arr(
@@ -118,7 +118,9 @@ object GeoP {
         ) =>
       Right(KeyCoordinatesAndDistance(k, Coordinates(lat, long), d))
     case Arr(other) =>
-      Left(Err(s"Unexpected encoding for key coordinates and distance. Expected [key, distance, [longitude, latitude]] but was $other"))
+      Left(
+        RESPDecErr(s"Unexpected encoding for key coordinates and distance. Expected [key, distance, [longitude, latitude]] but was $other")
+      )
   }
   implicit final val radiusModeCoordinatesAndHashRead: Arr ==> RadiusMode.coordinatesAndHash.Res = Read.instance {
     case Arr(
@@ -127,11 +129,11 @@ object GeoP {
         ) =>
       Right(KeyCoordinatesAndHash(k, Coordinates(lat, long), l))
     case Arr(other) =>
-      Left(Err(s"Unexpected encoding for key coordinates and hash. Expected [key, hash, [longitude, latitude]] but was $other"))
+      Left(RESPDecErr(s"Unexpected encoding for key coordinates and hash. Expected [key, hash, [longitude, latitude]] but was $other"))
   }
   implicit final val radiusModeDistanceAndHashRead: Arr ==> RadiusMode.distanceAndHash.Res = Read.instance {
     case Arr(Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +: Num(NonNegLong(l)) +: Seq()) => Right(KeyDistanceAndHash(k, d, l))
-    case Arr(other)                                                                          => Left(Err(s"Unexpected encoding for key coordinates and hash. Expected [key, distance, hash] but was $other"))
+    case Arr(other)                                                                          => Left(RESPDecErr(s"Unexpected encoding for key coordinates and hash. Expected [key, distance, hash] but was $other"))
   }
   implicit final val radiusModeAllRead: Arr ==> RadiusMode.all.Res = Read.instance {
     case Arr(
@@ -140,7 +142,11 @@ object GeoP {
         ) =>
       Right(KeyCoordinatesDistanceAndHash(k, Coordinates(lat, long), d, l))
     case Arr(other) =>
-      Left(Err(s"Unexpected encoding for key coordinates and hash. Expected [key, distance, hash, [longitude, latitude]] but was $other"))
+      Left(
+        RESPDecErr(
+          s"Unexpected encoding for key coordinates and hash. Expected [key, distance, hash, [longitude, latitude]] but was $other"
+        )
+      )
   }
 }
 

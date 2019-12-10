@@ -44,10 +44,12 @@ object RESPRead {
     override final type Sub = A
     override def read(resp: RESP): Maybe[B] = Coproduct[RESPCoproduct](resp).deembed match {
       case Right(R(Right(b))) => Right(b)
-      case Right(R(Left(Err(m)))) =>
-        Left(Err(s"RESP type(s) of $resp matched but failed to deserialize correctly with error $m")).widenLeft[Throwable]
+      case Right(R(Left(RESPDecErr(m)))) =>
+        Left(RESPDecErr(s"RESP type(s) of $resp matched but failed to deserialize correctly with error $m")).widenLeft[Throwable]
       case Left(rest) =>
-        rest.select[Err].fold(Left(Err(s"RESP type(s) did not match: $resp")))(Left(_)).widenLeft[Throwable]
+        rest
+          .select[Err]
+          .fold(Left(RESPDecErr(s"RESP type(s) did not match: $resp")).widenLeft[Throwable])(Left(_).widenLeft[Throwable])
     }
   }
 

@@ -1,7 +1,9 @@
 package laserdisc
 package protocol
 
-abstract class BListExtPSpec extends BaseSpec with BListP {
+import org.scalatest.OptionValues
+
+abstract class BListExtPSpec extends BaseSpec with OptionValues with BListP {
 
   "The Blocking List extended protocol" when {
 

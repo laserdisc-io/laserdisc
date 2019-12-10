@@ -6,7 +6,7 @@ import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInst
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen._
-import org.scalatest.{Assertion, EitherValues, Matchers, OptionValues, WordSpec}
+import org.scalatest.{Assertion, EitherValues, Matchers, WordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.Double.{NaN, MaxValue => DMax, MinValue => DMin}
@@ -17,7 +17,6 @@ abstract class BaseSpec
     extends WordSpec
     with Matchers
     with EitherValues
-    with OptionValues
     with ScalaCheckPropertyChecks
     with CollectionInstancesBinCompat1
     with NumericInstances

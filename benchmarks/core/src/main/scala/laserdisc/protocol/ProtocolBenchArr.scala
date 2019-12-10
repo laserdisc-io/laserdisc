@@ -8,11 +8,11 @@ import shapeless._
 class ProtocolBenchArr {
   final case class A(s: List[String])
   implicit val ev1: Arr ==> A =
-    Read.instance { arr =>
-      Right(A(arr.elements.map {
+    Read.infallible { arr =>
+      A(arr.elements.map {
         case Bulk(s) => s
         case _ => ""
-      }))
+      })
     }
 
   private final def protocol = Protocol("CUSTOM", _: String :: HNil).as[Arr, Seq[Long]]

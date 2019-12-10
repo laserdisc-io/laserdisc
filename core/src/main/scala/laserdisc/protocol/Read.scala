@@ -43,11 +43,13 @@ object Read extends ReadInstances0 {
 
   @inline final def instance[A, B](f: A => RESPDecErr | B): Read[A, B] = (a: A) => f(a)
 
+  @inline final def infallible[A, B](f: A => B): Read[A, B] = (a: A) => Right(f(a))
+
   @inline final def lift2OptionWhen[A, B](cond: A => Boolean)(
       implicit R: Read[A, B]
-  ): Read[A :+: CNil, Option[B]] = Read.instance {
-    case Inl(i @ R(Right(b))) if !cond(i) => Right(Some(b))
-    case Inl(_)                           => Right(None)
+  ): Read[A :+: CNil, Option[B]] = Read.infallible {
+    case Inl(i @ R(Right(b))) if !cond(i) => Some(b)
+    case Inl(_)                           => None
   }
 
   @inline final def numMinusOneIsNone[A: Read[Num, *]]: Read[Num :+: CNil, Option[A]] =
@@ -62,7 +64,7 @@ trait ReadInstances0 extends ReadInstances1 {
 }
 
 trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
-  implicit final val str2StringRead: Read[Str, String] = Read.instance(s => Right(s.value))
+  implicit final val str2StringRead: Read[Str, String] = Read.infallible(_.value)
   implicit final val str2OKRead: Read[Str, OK] = Read.instance {
     case Str("OK")  => Right(OK)
     case Str(other) => Left(readError("OK", other))
@@ -111,7 +113,7 @@ trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
     case Num(other)          => Left(readError("a Slot Int", other))
   }
 
-  implicit final val bulk2StringRead: Read[Bulk, String] = Read.instance { case Bulk(s) => Right(s) }
+  implicit final val bulk2StringRead: Read[Bulk, String] = Read.infallible(_.value)
   implicit final val bulk2DoubleRead: Read[Bulk, Double] = Read.instance {
     case Bulk(ToDouble(d)) => Right(d)
     case Bulk(other)       => Left(readError("a Double", other))
@@ -303,14 +305,14 @@ trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
 
 sealed trait ReadInstances2 {
   implicit final def liftNullBulk2Option[A, B](implicit R: Read[A, B]): Read[A :+: NullBulk :+: CNil, Option[B]] =
-    Read.instance {
-      case Inl(R(Right(b))) => Right(Some(b))
-      case Inr(_)           => Right(None)
+    Read.infallible {
+      case Inl(R(Right(b))) => Some(b)
+      case Inr(_)           => None
     }
   implicit final def liftNilArr2Option[A, B](implicit R: Read[A, B]): Read[A :+: NilArr :+: CNil, Option[B]] =
-    Read.instance {
-      case Inl(R(Right(b))) => Right(Some(b))
-      case Inr(_)           => Right(None)
+    Read.infallible {
+      case Inl(R(Right(b))) => Some(b)
+      case Inr(_)           => None
     }
   implicit final def liftSimpleToSum[A: <:!<[*, Coproduct], B](implicit R: Read[A, B]): Read[A :+: CNil, B] =
     Read.instance {

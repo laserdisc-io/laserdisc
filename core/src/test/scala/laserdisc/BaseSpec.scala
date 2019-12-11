@@ -1,11 +1,14 @@
 package laserdisc
 
+import eu.timepit.refined.W
 import eu.timepit.refined.api._
+import eu.timepit.refined.generic.Equal
 import eu.timepit.refined.scalacheck.reftype.arbitraryRefType
 import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInstances, StringInstances}
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen._
+
 import org.scalatest.{Assertion, EitherValues, Matchers, WordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
@@ -21,6 +24,19 @@ abstract class BaseSpec
     with CollectionInstancesBinCompat1
     with NumericInstances
     with StringInstances {
+
+  implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
+    PropertyCheckConfiguration(
+      minSuccessful = 100,
+      maxDiscardedFactor = 5.0,
+      minSize = 0,
+      sizeRange = 100,
+      workers = 8
+    )
+
+  protected final type EmptyString = String Refined Equal[W.`""`.T]
+  protected final val EmptyString: EmptyString = RefType.applyRefM[EmptyString]("")
+
   private[this] final val dashChar: Char     = 0x002D.toChar
   private[this] final val dashString: String = dashChar.toString
   private[this] final val dotString: String  = 0x002E.toChar.toString
@@ -109,6 +125,8 @@ abstract class BaseSpec
 
     frequency(hosts, loopbackHost)
   } :| "host"
+  final val hostOrEmptyGen: Gen[EmptyString | Host] =
+    frequency(10 -> hostGen.map(Right.apply), 1 -> const(EmptyString).map(Left.apply)) :| "host or empty string"
   final val keyGen: Gen[Key]                  = strGen(nonEmptyListOf(utf8BMPCharGen)).filter(keyIsValid).map(ks => Key.unsafeFrom(ks)) :| "key"
   final val latitudeGen: Gen[Double]          = chooseNum(LatitudeMinValueWit.value, LatitudeMaxValueWit.value) :| "latitude"
   final val longitudeGen: Gen[Double]         = chooseNum(LongitudeMinValueWit.value, LongitudeMaxValueWit.value) :| "longitude"

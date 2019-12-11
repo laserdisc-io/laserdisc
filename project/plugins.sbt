@@ -1,5 +1,5 @@
 addSbtPlugin("ch.epfl.scala"      % "sbt-release-early"        % "2.1.1")
-addSbtPlugin("org.scalameta"      % "sbt-scalafmt"             % "2.2.1")
+addSbtPlugin("org.scalameta"      % "sbt-scalafmt"             % "2.3.0")
 addSbtPlugin("io.spray"           % "sbt-boilerplate"          % "0.6.1")
 addSbtPlugin("org.portable-scala" % "sbt-crossproject"         % "0.6.1")
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "0.6.1")

@@ -62,12 +62,12 @@ object ClusterP {
     private final val MM: String ==> Option[NodeId] = Read.instance {
       case "-"        => Right(None)
       case NodeId(id) => Right(Some(id))
-      case other      => Left(RESPDecErr(s"Incorrect encoding for Node Id. Was $other"))
+      case other      => Left(RESPDecErr(s"Wrong encoding for Node Id. Was $other"))
     }
     private final val L: String ==> LinkState = Read.instance {
       case "connected"    => Right(LinkState.connected)
       case "disconnected" => Right(LinkState.disconnected)
-      case other          => Left(RESPDecErr(s"Incorrect encoding for link state. Was $other"))
+      case other          => Left(RESPDecErr(s"Wrong encoding for link state. Was $other"))
     }
     private final val Ss: Seq[String] ==> Seq[SlotType] = {
       val R  = raw"(\d+)-(\d+)".r
@@ -75,31 +75,40 @@ object ClusterP {
       val MS = raw"\[(\d+)->-(${NodeIdRegexWit.value})\]".r
       Read.instance {
         case ss =>
-          Right(ss.collect {
-            case ToInt(Slot(s))                    => SlotType.Single(s)
-            case R(ToInt(Slot(f)), ToInt(Slot(t))) => SlotType.Range(f, t)
-            case IS(ToInt(Slot(s)), NodeId(id))    => SlotType.ImportingSlot(s, id)
-            case MS(ToInt(Slot(s)), NodeId(id))    => SlotType.MigratingSlot(s, id)
-          }.toList)
+          ss.foldRight[RESPDecErr | List[SlotType]](Right(Nil)) {
+            case (ToInt(Slot(s)), Right(fgs))                    => Right(SlotType.Single(s) :: fgs)
+            case (R(ToInt(Slot(f)), ToInt(Slot(t))), Right(fgs)) => Right(SlotType.Range(f, t) :: fgs)
+            case (IS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.ImportingSlot(s, id) :: fgs)
+            case (MS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.MigratingSlot(s, id) :: fgs)
+            case (other, Right(_))                               => Left(RESPDecErr(s"Wrong encoding for Node's slot type. Was $other"))
+            case (_, left)                                       => left
+          }
+      }
+    }
+    private final val ND: String ==> Node = {
+      val errorS = "String ==> List[Node] Error decoding a cluster Node. Error was: "
+      _.split(SPACE_CH).toList match {
+        case NodeId(id) :: A(Right(a)) :: Fs(Right(fs)) :: MM(Right(mm)) :: ToInt(NonNegInt(ps)) :: ToInt(NonNegInt(pr)) ::
+              ToInt(NonNegInt(ce)) :: L(Right(l)) :: Ss(Right(ss)) =>
+          Right(Node(id, a, fs, mm, ps, pr, ce, l, ss))
+        case _ :: A(Left(e)) :: _ :: _ :: _ :: _ :: _ :: _ :: _  => Left(RESPDecErr(s"$errorS $e"))
+        case _ :: _ :: Fs(Left(e)) :: _ :: _ :: _ :: _ :: _ :: _ => Left(RESPDecErr(s"$errorS $e"))
+        case _ :: _ :: _ :: MM(Left(e)) :: _ :: _ :: _ :: _ :: _ => Left(RESPDecErr(s"$errorS $e"))
+        case _ :: _ :: _ :: _ :: _ :: _ :: _ :: L(Left(e)) :: _  => Left(RESPDecErr(s"$errorS $e"))
+        case _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: Ss(Left(e)) => Left(RESPDecErr(s"$errorS $e"))
       }
     }
 
     implicit final val nodesRead: Bulk ==> Nodes = Read.instance {
       case Bulk(s) =>
-        Right(
-          Nodes(
-            s.split(LF_CH)
-              .flatMap {
-                _.split(SPACE_CH).toSeq match {
-                  case NodeId(id) +: A(Right(a)) +: Fs(Right(fs)) +: MM(Right(mm)) +:
-                        ToInt(NonNegInt(ps)) +: ToInt(NonNegInt(pr)) +: ToInt(NonNegInt(ce)) +: L(Right(l)) +: Ss(Right(ss)) =>
-                    Some(Node(id, a, fs, mm, ps, pr, ce, l, ss))
-                  case _ => None
-                }
-              }
-              .toList
-          )
-        )
+        s.split(LF_CH)
+          .foldRight[RESPDecErr | (List[Node], Int)](Right(Nil -> 0)) {
+            case (ND(Right(node)), Right((ns, nsl))) => Right((node :: ns) -> (nsl + 1))
+            case (ND(Left(e)), Right((_, nsl))) =>
+              Left(RESPDecErr(s"Bulk ==> Nodes, Error decoding node at element ${nsl + 1}. Error was: $e"))
+            case (_, left) => left
+          }
+          .map(n => Nodes(n._1))
     }
   }
 
@@ -200,7 +209,7 @@ object ClusterP {
     private val H: Bulk ==> Host = Read.instance {
       case Bulk("")      => Right(LoopbackHost)
       case Bulk(Host(h)) => Right(h)
-      case Bulk(other)   => Left(RESPDecErr(s"Incorrect host encoding. Was $other"))
+      case Bulk(other)   => Left(RESPDecErr(s"Wrong host encoding. Was $other"))
     }
 
     private val SI: Seq[RESP] ==> SlotInfo = {

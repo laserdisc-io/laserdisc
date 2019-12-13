@@ -143,11 +143,10 @@ object ServerP {
       case "keyspace"     => Right(InfoSection.keyspace)
       case other          => Left(RESPDecErr(s"Unexpected server info specification. Was $other"))
     }
-    private val KVPair = "(.*):(.*)".r
-    private val PR: Seq[String] ==> Parameters = Read.infallible { ss =>
-      new Parameters(ss.collect { case KVPair(k, v) => k -> v }.toMap)
-    }
-    private final val IFI: String ==> (InfoSection, Parameters) = {
+    private val PR: Seq[String] ==> Parameters =
+      KVPS.map(kv => new Parameters(kv.toMap))
+
+    private val IFI: String ==> (InfoSection, Parameters) = {
       _.split(LF_CH).toList match {
         case ISR(Right(infoSection)) :: PR(Right(parameters)) => Right(infoSection -> parameters)
         case ISR(Left(e)) :: _ =>
@@ -158,6 +157,7 @@ object ServerP {
           Left(RESPDecErr(s"Unexpected encoding for server's info section. Expected [info section, [parameter: value]] but was $other"))
       }
     }
+
     implicit val infoRead: Bulk ==> Info = Read.instance {
       case Bulk(s) =>
         s.split(LF * 2)

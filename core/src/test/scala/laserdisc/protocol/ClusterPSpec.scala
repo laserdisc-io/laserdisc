@@ -16,7 +16,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     Gen.oneOf(ClusterSetSlotMode.importing, ClusterSetSlotMode.migrating, ClusterSetSlotMode.node)
   }
 
-  private[this] final val kvPairPattern                                = ClusterP.KVPairRegex.pattern
+  private[this] final val kvPairPattern                                = KVPairRegex.pattern
   private[this] final val infoIsValid: Map[String, String] => Boolean  = _.forall { case (k, v) => kvPairPattern.matcher(s"$k:$v").matches }
   private[this] final val infoGen: Gen[Map[String, String]]            = nonEmptyMap(identifier.flatMap(k => alphaStr.map(k -> _))) :| "info map"
   private[this] implicit final val infoShow: Show[Map[String, String]] = Show.instance { _.map { case (k, v) => s"$k:$v" }.mkString(CRLF) }

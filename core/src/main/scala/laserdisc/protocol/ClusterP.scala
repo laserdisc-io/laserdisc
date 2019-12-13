@@ -4,8 +4,6 @@ package protocol
 object ClusterP {
   import scala.language.dynamics
 
-  private[protocol] final val KVPairRegex = "(.*):(.*)".r
-
   final class Info(private val properties: Map[String, String]) extends AnyVal with Dynamic {
     def selectDynamic[A](field: String)(implicit R: String ==> A): Maybe[A] =
       properties
@@ -15,9 +13,8 @@ object ClusterP {
         .widenLeft[Throwable]
   }
   final object Info {
-    implicit final val infoRead: Bulk ==> Info = Read.instance {
-      case Bulk(s) => Right(new Info(s.split(CRLF).collect { case KVPairRegex(k, v) => k -> v }.toMap))
-    }
+    implicit val infoRead: Bulk ==> Info =
+      KVPS.contramap[Bulk](_.value.split(CRLF).toList).map(kv => new Info(kv.toMap))
   }
 
   final case class Node(

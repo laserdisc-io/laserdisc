@@ -86,7 +86,7 @@ object ClusterP {
       }
     }
     private final val ND: String ==> Node = {
-      val errorS = "String ==> List[Node] Error decoding a cluster Node. Error was: "
+      val errorS = "String ==> Node, Error decoding a cluster Node. Error was: "
       _.split(SPACE_CH).toList match {
         case NodeId(id) :: A(Right(a)) :: Fs(Right(fs)) :: MM(Right(mm)) :: ToInt(NonNegInt(ps)) :: ToInt(NonNegInt(pr)) ::
               ToInt(NonNegInt(ce)) :: L(Right(l)) :: Ss(Right(ss)) =>
@@ -96,6 +96,12 @@ object ClusterP {
         case _ :: _ :: _ :: MM(Left(e)) :: _ :: _ :: _ :: _ :: _ => Left(RESPDecErr(s"$errorS $e"))
         case _ :: _ :: _ :: _ :: _ :: _ :: _ :: L(Left(e)) :: _  => Left(RESPDecErr(s"$errorS $e"))
         case _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: Ss(Left(e)) => Left(RESPDecErr(s"$errorS $e"))
+        case other =>
+          Left(
+            RESPDecErr(
+              s"Unexpected encoding for a cluster node. Expected [node id, address, [flags], master id, pings, pongs, epoch, link status, slots] but was $other"
+            )
+          )
       }
     }
 
@@ -105,7 +111,7 @@ object ClusterP {
           .foldRight[RESPDecErr | (List[Node], Int)](Right(Nil -> 0)) {
             case (ND(Right(node)), Right((ns, nsl))) => Right((node :: ns) -> (nsl + 1))
             case (ND(Left(e)), Right((_, nsl))) =>
-              Left(RESPDecErr(s"Bulk ==> Nodes, Error decoding node at element ${nsl + 1}. Error was: $e"))
+              Left(RESPDecErr(s"Bulk ==> Nodes, Error decoding the cluster's node ${nsl + 1}. Error was: $e"))
             case (_, left) => left
           }
           .map(n => Nodes(n._1))

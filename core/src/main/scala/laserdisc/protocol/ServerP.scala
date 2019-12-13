@@ -144,24 +144,30 @@ object ServerP {
       case other          => Left(RESPDecErr(s"Unexpected server info specification. Was $other"))
     }
     private val KVPair = "(.*):(.*)".r
-    private val PR: Seq[String] ==> Parameters = Read.instance { ss =>
-      Right(new Parameters(ss.collect { case KVPair(k, v) => k -> v }.toMap))
+    private val PR: Seq[String] ==> Parameters = Read.infallible { ss =>
+      new Parameters(ss.collect { case KVPair(k, v) => k -> v }.toMap)
     }
-
+    private final val IFI: String ==> (InfoSection, Parameters) = {
+      _.split(LF_CH).toList match {
+        case ISR(Right(infoSection)) :: PR(Right(parameters)) => Right(infoSection -> parameters)
+        case ISR(Left(e)) :: _ =>
+          Left(RESPDecErr(s"String ==> (InfoSection, Parameters), Error decoding server's info section. Error was: $e"))
+        case _ :: PR(Left(e)) =>
+          Left(RESPDecErr(s"String ==> (InfoSection, Parameters), Error decoding server's info section parameters. Error was: $e"))
+        case other =>
+          Left(RESPDecErr(s"Unexpected encoding for server's info section. Expected [info section, [parameter: value]] but was $other"))
+      }
+    }
     implicit val infoRead: Bulk ==> Info = Read.instance {
       case Bulk(s) =>
-        Right(
-          Info(
-            s.split(LF * 2)
-              .flatMap {
-                _.split(LF_CH).toSeq match {
-                  case ISR(Right(infoSection)) +: PR(Right(parameters)) => Some(infoSection -> parameters)
-                  case _                                                => None
-                }
-              }
-              .toMap
-          )
-        )
+        s.split(LF * 2)
+          .foldRight[RESPDecErr | (List[(InfoSection, Parameters)], Int)](Right(Nil -> 0)) {
+            case (IFI(Right(infoSection)), Right((iss, isl))) => Right((infoSection :: iss) -> (isl + 1))
+            case (IFI(Left(e)), Right((_, isl))) =>
+              Left(RESPDecErr(s"Bulk ==> Info, Error decoding the server's info section at position ${isl + 1}. Error was: $e"))
+            case (_, left) => left
+          }
+          .map(is => Info(is._1.toMap))
     }
   }
 }

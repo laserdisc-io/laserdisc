@@ -70,47 +70,49 @@ trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
   import Read.{infallible, instance, instancePF}
 
   implicit final val str2StringRead: Read[Str, String] = infallible(_.value)
-  implicit final val str2OKRead: Read[Str, OK]         = instancePF("OK") { case Str("OK") => OK }
-  implicit final val str2KeyRead: Read[Str, Key]       = instancePF("a Key") { case Str(Key(s)) => s }
+  implicit final val str2OKRead: Read[Str, OK]         = instancePF("Str(OK)") { case Str("OK") => OK }
+  implicit final val str2KeyRead: Read[Str, Key]       = instancePF("Str(Key)") { case Str(Key(s)) => s }
 
   implicit final val num2LongRead: Read[Num, Long] = Read.instance(n => Right(n.value))
   implicit final val num2BooleanRead: Read[Num, Boolean] = Read.instancePF("0L or 1L") {
     case Num(0L) => false
     case Num(1L) => true
   }
-  implicit final val num2IntRead: Read[Num, Int]                 = instancePF("a Int") { case Num(ToInt(i))                     => i }
-  implicit final val num2NonNegIntRead: Read[Num, NonNegInt]     = instancePF("a NonNeg Int") { case Num(ToInt(NonNegInt(i)))   => i }
-  implicit final val num2NonNegLongRead: Read[Num, NonNegLong]   = instancePF("a NonNeg Long") { case Num(NonNegLong(l))        => l }
-  implicit final val num2NonZeroIntRead: Read[Num, NonZeroInt]   = instancePF("a NonZero Int") { case Num(ToInt(NonZeroInt(i))) => i }
-  implicit final val num2NonZeroLongRead: Read[Num, NonZeroLong] = instancePF("a NonZero Long") { case Num(NonZeroLong(l))      => l }
-  implicit final val num2PosIntRead: Read[Num, PosInt]           = instancePF("a Pos Int") { case Num(ToInt(PosInt(i)))         => i }
-  implicit final val num2PosLongRead: Read[Num, PosLong]         = instancePF("a Pos Long") { case Num(PosLong(l))              => l }
-  implicit final val num2SlotRead: Read[Num, Slot]               = instancePF("a Slot Int") { case Num(ToInt(Slot(i)))          => i }
+  implicit final val num2IntRead: Read[Num, Int]                 = instancePF("Num(Int)") { case Num(ToInt(i))                    => i }
+  implicit final val num2NonNegIntRead: Read[Num, NonNegInt]     = instancePF("Num(NonNegInt)") { case Num(ToInt(NonNegInt(i)))   => i }
+  implicit final val num2NonNegLongRead: Read[Num, NonNegLong]   = instancePF("Num(NonNegLong)") { case Num(NonNegLong(l))        => l }
+  implicit final val num2NonZeroIntRead: Read[Num, NonZeroInt]   = instancePF("Num(NonZeroInt)") { case Num(ToInt(NonZeroInt(i))) => i }
+  implicit final val num2NonZeroLongRead: Read[Num, NonZeroLong] = instancePF("Num(NonZeroLong)") { case Num(NonZeroLong(l))      => l }
+  implicit final val num2PosIntRead: Read[Num, PosInt]           = instancePF("Num(PosInt)") { case Num(ToInt(PosInt(i)))         => i }
+  implicit final val num2PosLongRead: Read[Num, PosLong]         = instancePF("Num(PosLong)") { case Num(PosLong(l))              => l }
+  implicit final val num2SlotRead: Read[Num, Slot]               = instancePF("Num(SlotInt)") { case Num(ToInt(Slot(i)))          => i }
 
   implicit final val bulk2StringRead: Read[Bulk, String] = infallible(_.value)
-  implicit final val bulk2DoubleRead: Read[Bulk, Double] = instancePF("a Double") { case Bulk(ToDouble(d)) => d }
-  implicit final val bulk2IntRead: Read[Bulk, Int]       = instancePF("a Int") { case Bulk(ToInt(i)) => i }
-  implicit final val bulk2LongRead: Read[Bulk, Long]     = instancePF("a Long") { case Bulk(ToLong(l)) => l }
-  implicit final val bulk2ValidDoubleRead: Read[Bulk, ValidDouble] = instancePF("a Valid Double") {
+  implicit final val bulk2DoubleRead: Read[Bulk, Double] = instancePF("Bulk(Double)") { case Bulk(ToDouble(d)) => d }
+  implicit final val bulk2IntRead: Read[Bulk, Int]       = instancePF("Bulk(Int)") { case Bulk(ToInt(i)) => i }
+  implicit final val bulk2LongRead: Read[Bulk, Long]     = instancePF("Bulk(Long)") { case Bulk(ToLong(l)) => l }
+  implicit final val bulk2ValidDoubleRead: Read[Bulk, ValidDouble] = instancePF("Bulk(ValidDouble)") {
     case Bulk(ToDouble(ValidDouble(d))) => d
   }
-  implicit final val bulk2NonNegIntRead: Read[Bulk, NonNegInt]   = instancePF("a NonNeg Int") { case Bulk(ToInt(NonNegInt(i)))    => i }
-  implicit final val bulk2NonNegLongRead: Read[Bulk, NonNegLong] = instancePF("a NonNeg Long") { case Bulk(ToLong(NonNegLong(l))) => l }
-  implicit final val bulk2NonNegDoubleRead: Read[Bulk, NonNegDouble] = instancePF("a NonNeg Double") {
+  implicit final val bulk2NonNegIntRead: Read[Bulk, NonNegInt]   = instancePF("Bulk(NonNegInt)") { case Bulk(ToInt(NonNegInt(i)))    => i }
+  implicit final val bulk2NonNegLongRead: Read[Bulk, NonNegLong] = instancePF("Bulk(NonNegLong)") { case Bulk(ToLong(NonNegLong(l))) => l }
+  implicit final val bulk2NonNegDoubleRead: Read[Bulk, NonNegDouble] = instancePF("Bulk(NonNegDouble)") {
     case Bulk(ToDouble(NonNegDouble(d))) => d
   }
-  implicit final val bulk2NonZeroDoubleRead: Read[Bulk, NonZeroDouble] = instancePF("a NonZero Double") {
+  implicit final val bulk2NonZeroDoubleRead: Read[Bulk, NonZeroDouble] = instancePF("Bulk(NonZeroDouble)") {
     case Bulk(ToDouble(NonZeroDouble(d))) => d
   }
-  implicit final val bulk2NonZeroIntRead: Read[Bulk, NonZeroInt]   = instancePF("a NonZero Int") { case Bulk(ToInt(NonZeroInt(i)))    => i }
-  implicit final val bulk2NonZeroLongRead: Read[Bulk, NonZeroLong] = instancePF("a NonZero Long") { case Bulk(ToLong(NonZeroLong(l))) => l }
-  implicit final val bulk2PosIntRead: Read[Bulk, PosInt]           = instancePF("a Pos Int") { case Bulk(ToInt(PosInt(i)))            => i }
-  implicit final val bulk2PosLongRead: Read[Bulk, PosLong]         = instancePF("a Pos Long") { case Bulk(ToLong(PosLong(l)))         => l }
-  implicit final val bulk2ConnectionNameRead: Read[Bulk, ConnectionName] = instancePF("a Connection Name") {
+  implicit final val bulk2NonZeroIntRead: Read[Bulk, NonZeroInt] = instancePF("Bulk(NonZeroInt)") { case Bulk(ToInt(NonZeroInt(i))) => i }
+  implicit final val bulk2NonZeroLongRead: Read[Bulk, NonZeroLong] = instancePF("Bulk(NonZeroLong)") {
+    case Bulk(ToLong(NonZeroLong(l))) => l
+  }
+  implicit final val bulk2PosIntRead: Read[Bulk, PosInt]   = instancePF("Bulk(PosInt)") { case Bulk(ToInt(PosInt(i)))    => i }
+  implicit final val bulk2PosLongRead: Read[Bulk, PosLong] = instancePF("Bulk(PosLong)") { case Bulk(ToLong(PosLong(l))) => l }
+  implicit final val bulk2ConnectionNameRead: Read[Bulk, ConnectionName] = instancePF("Bulk(ConnectionName)") {
     case Bulk(ConnectionName(cn)) => cn
   }
-  implicit final val bulk2KeyRead: Read[Bulk, Key]         = instancePF("a Key") { case Bulk(Key(k))          => k }
-  implicit final val bulk2GeoHashRead: Read[Bulk, GeoHash] = instancePF("a GeoHash") { case Bulk(GeoHash(gh)) => gh }
+  implicit final val bulk2KeyRead: Read[Bulk, Key]         = instancePF("Bulk(Key)") { case Bulk(Key(k))          => k }
+  implicit final val bulk2GeoHashRead: Read[Bulk, GeoHash] = instancePF("Bulk(GeoHash)") { case Bulk(GeoHash(gh)) => gh }
 
   implicit final def arrOfBulk2Seq[A](implicit R: Read[Bulk, A]): Read[Arr, Seq[A]] = Read.instance {
     case Arr(vector) =>
@@ -155,7 +157,7 @@ trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
       } map (_._1)
   }
   implicit final def arr2Tuple2Read[A, B](implicit RA: Read[Bulk, A], RB: Read[Bulk, B]): Read[Arr, (A, B)] =
-    instancePF("a valid Arr sequence for the pair") {
+    instancePF("Arr(A, B)") {
       case Arr(RA(Right(a)) +: RB(Right(b)) +: Seq()) => a -> b
     }
   implicit final def arr2Tuple2Seq[A, B](implicit RA: Read[Bulk, A], RB: Read[Bulk, B]): Read[Arr, Seq[(A, B)]] = instance {
@@ -203,14 +205,14 @@ trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
         case (_, left) => left
       } map (r => ScanKV(cursor, Some(r._1)))
   }
-  implicit final def arr2KV[A](implicit R: Read[Bulk, A]): Read[Arr, KV[A]] = instancePF("a valid KV") {
+  implicit final def arr2KV[A](implicit R: Read[Bulk, A]): Read[Arr, KV[A]] = instancePF("Arr(KV[A])") {
     case Arr(Bulk(Key(k)) +: R(Right(a)) +: Seq()) => KV(k, a)
   }
-  implicit final def arr2Scan[A](implicit R: Read[Arr, Seq[A]]): Read[Arr, Scan[A]] = instancePF("a valid scan") {
+  implicit final def arr2Scan[A](implicit R: Read[Arr, Seq[A]]): Read[Arr, Scan[A]] = instancePF("Arr(Scan[A])") {
     case Arr(Bulk(ToLong(NonNegLong(cursor))) +: NilArr +: Seq())       => Scan(cursor, None)
     case Arr(Bulk(ToLong(NonNegLong(cursor))) +: R(Right(as)) +: Seq()) => Scan(cursor, Some(as))
   }
-  implicit final val arr2TimeRead: Read[Arr, Time] = instancePF("a valid time") {
+  implicit final val arr2TimeRead: Read[Arr, Time] = instancePF("Arr(Time)") {
     case Arr(Bulk(ToLong(NonNegLong(ts))) +: Bulk(ToLong(NonNegLong(em))) +: Seq()) => Time(ts, em)
   }
   implicit final def arr2LabelledHCons[HK <: Symbol, HV, T <: HList](
@@ -228,7 +230,7 @@ trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
     case Arr(RH(Right(h)) +: rest) => RT.read(Arr(rest)).map(h :: _)
     case Arr(other)                => Left(RESPDecErr(s"Read Error: expected `H :: T` but was $other"))
   }
-  implicit final val arr2HNil: Read[Arr, HNil] = instancePF("Seq()") { case Arr(Seq()) => HNil }
+  implicit final val arr2HNil: Read[Arr, HNil] = instancePF("Arr(Seq())") { case Arr(Seq()) => HNil }
 }
 
 sealed trait ReadInstances2 {

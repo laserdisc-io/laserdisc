@@ -26,11 +26,9 @@ final class ReadmeExampleSpec extends WordSpecLike with Matchers {
   }
 
   "The readme example should give the expected output" in {
-    import cats.effect.IO
     import cats.syntax.flatMap._
     import laserdisc._
     import laserdisc.auto._
-    import laserdisc.fs2._
     import log.effect.LogWriter
     import log.effect.fs2.SyncLogWriter
 

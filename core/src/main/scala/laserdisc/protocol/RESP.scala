@@ -268,6 +268,8 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   }
 }
 
+final case class RESPDecErr(message: String) extends laserdisc.Platform.LaserDiscRespProtocolDecodingError(message)
+
 sealed trait RESPCoproduct {
   final val gen = Generic[RESP]
 
@@ -325,11 +327,11 @@ sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
 
     case _ =>
       stateOf(remainder) match {
-        case Left(e)                            => Left(e)
         case Right(CompleteWithRemainder(c, r)) => stateOfArr(missing - 1, r, bits ++ c)
         case Right(Complete) if missing == 1    => Right(Complete)
         case Right(Complete)                    => Right(Incomplete)
         case Right(incomplete)                  => Right(incomplete)
+        case left                               => left
       }
   }
 

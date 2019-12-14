@@ -51,26 +51,26 @@ abstract class KeyExtPSpec extends BaseSpec with KeyP {
     "using migrate" should {
 
       "roundtrip successfully" when {
-        [2..6#"given [#key1#], host, port, db index and timeout" in forAll([#"key1"#]) { ([#k1: Key#]) =>
-          forAll("host", "port", "db index", "timeout", "response") { (h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: NOKEY | OK) =>
-            val protocol = migrate([#k1#], h, p, dbi, nni)
+        [2..6#"given [#key1#], host, port, db index and timeout" in forAll("[#key1#]", "host, port, db index, timeout, response") { (keys: ([#Key#]), input: (Host, Port, DbIndex, NonNegInt, NOKEY | OK)) =>
+          val ([#k1#]) = keys
+          val (h, p, dbi, nni, nkOrOk) = input
+          val protocol = migrate([#k1#], h, p, dbi, nni)
 
-            protocol.encode shouldBe Arr(
-              Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: Bulk("KEYS") :: [#Bulk(k1)# ::] :: Nil
-            )
-            protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
-          }
+          protocol.encode shouldBe Arr(
+            Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: Bulk("KEYS") :: [#Bulk(k1)# ::] :: Nil
+          )
+          protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
         }#
         ]
-        [2..6#"given [#key1#], host, port, db index, timeout and migrate mode" in forAll([#"key1"#]) { ([#k1: Key#]) =>
-          forAll("host", "port", "db index", "timeout", "migrate mode", "response") { (h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, mm: KeyMigrateMode, nkOrOk: NOKEY | OK) =>
-            val protocol = migrate([#k1#], h, p, dbi, nni, mm)
+        [2..6#"given [#key1#], host, port, db index, timeout and migrate mode" in forAll("[#key1#]", "host, port, db index, timeout, migrate mode, response") { (keys: ([#Key#]), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, NOKEY | OK)) =>
+          val ([#k1#]) = keys
+          val (h, p, dbi, nni, mm, nkOrOk) = input
+          val protocol = migrate([#k1#], h, p, dbi, nni, mm)
 
-            protocol.encode shouldBe Arr(
-              Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: mm.params.map(Bulk(_)) ::: (Bulk("KEYS") :: [#Bulk(k1)# ::] :: Nil)
-            )
-            protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
-          }
+          protocol.encode shouldBe Arr(
+            Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: mm.params.map(Bulk(_)) ::: (Bulk("KEYS") :: [#Bulk(k1)# ::] :: Nil)
+          )
+          protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
         }#
         ]
       }

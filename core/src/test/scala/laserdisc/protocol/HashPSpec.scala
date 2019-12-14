@@ -113,12 +113,10 @@ final class HashPSpec extends HashExtPSpec {
     "using hkeys" should {
       "roundtrip successfully" when {
         "given key" in forAll("key", "returned keys") { (k: Key, ks: List[Key]) =>
-          whenever(keyIsValid(k.value) && ks.forall(k => keyIsValid(k.value))) {
-            val protocol = hkeys(k)
+          val protocol = hkeys(k)
 
-            protocol.encode shouldBe Arr(Bulk("HKEYS"), Bulk(k))
-            protocol.decode(Arr(ks.map(Bulk(_)))) onRight (_ shouldBe ks)
-          }
+          protocol.encode shouldBe Arr(Bulk("HKEYS"), Bulk(k))
+          protocol.decode(Arr(ks.map(Bulk(_)))) onRight (_ shouldBe ks)
         }
       }
     }

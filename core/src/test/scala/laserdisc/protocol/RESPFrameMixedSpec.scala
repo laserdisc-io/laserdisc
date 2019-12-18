@@ -114,35 +114,33 @@ final class RESPFrameMixedSpec extends BaseSpec {
         e <- ev2.arbitrary map (st => s"-$st\r\n")
         xs <- Gen.listOfN(
           n,
-          Gen.oneOf(
-            Seq(
-              i,
-              s,
-              e,
-              "$16\r\nTest bulk string\r\n",
-              "+OK\r\n",
-              "+a\r\n",
-              "+Another simple string\r\n",
-              "-Possible error message\r\n",
-              "-1234 Error with numbers\r\n",
-              ":1\r\n",
-              ":2\r\n",
-              ":177\r\n",
-              ":123456789\r\n",
-              ":-1\r\n",
-              "+Very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very long single line string\r\n",
-              "+Another simple string\r\n",
-              "$21\r\nTest bulk string 1 11\r\n",
-              "$-1\r\n",
-              "$0\r\n\r\n",
-              "-And an error message\r\n",
-              "$21\r\nTest bulk string 1 11\r\n",
-              "*5\r\n$16\r\nTest bulk string\r\n:13\r\n-1234 An error with numbers\r\n:100\r\n+A simple string\r\n",
-              "*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n",
-              "*2\r\n$8\r\nAnother1\r\n-An error\r\n",
-              "*0\r\n",
-              "*-1\r\n"
-            )
+          Gen.frequency(
+            1  -> i,
+            1  -> s,
+            1  -> e,
+            10 -> "$16\r\nTest bulk string\r\n",
+            10 -> "+OK\r\n",
+            5  -> "+a\r\n",
+            5  -> "+Another simple string\r\n",
+            5  -> "-Possible error message\r\n",
+            5  -> "-1234 Error with numbers\r\n",
+            5  -> ":1\r\n",
+            5  -> ":2\r\n",
+            5  -> ":177\r\n",
+            5  -> ":123456789\r\n",
+            5  -> ":-1\r\n",
+            10 -> "+Very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very long single line string\r\n",
+            5  -> "+Another simple string\r\n",
+            5  -> "$21\r\nTest bulk string 1 11\r\n",
+            5  -> "$-1\r\n",
+            50 -> "$0\r\n\r\n",
+            10 -> "-And an error message\r\n",
+            5  -> "$21\r\nTest bulk string 1 11\r\n",
+            10 -> "*5\r\n$16\r\nTest bulk string\r\n:13\r\n-1234 An error with numbers\r\n:100\r\n+A simple string\r\n",
+            50 -> "*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n",
+            10 -> "*2\r\n$8\r\nAnother1\r\n-An error\r\n",
+            50 -> "*0\r\n",
+            50 -> "*-1\r\n"
           )
         )
       } yield xs) map (xs => OneOrMore.unsafeFrom(xs))

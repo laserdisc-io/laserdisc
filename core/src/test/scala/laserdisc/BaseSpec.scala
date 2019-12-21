@@ -28,10 +28,10 @@ abstract class BaseSpec
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(
       minSuccessful = 100,
-      maxDiscardedFactor = 5.0,
+      maxDiscardedFactor = 10.0,
       minSize = 0,
       sizeRange = 100,
-      workers = 8
+      workers = 12
     )
 
   protected final type EmptyString = String Refined Equal[W.`""`.T]
@@ -127,7 +127,7 @@ abstract class BaseSpec
   } :| "host"
   final val hostOrEmptyGen: Gen[EmptyString | Host] =
     frequency(10 -> hostGen.map(Right.apply), 1 -> const(EmptyString).map(Left.apply)) :| "host or empty string"
-  final val keyGen: Gen[Key]                  = strGen(nonEmptyListOf(utf8BMPCharGen)).filter(keyIsValid).map(ks => Key.unsafeFrom(ks)) :| "key"
+  final val keyGen: Gen[Key]                  = strGen(nonEmptyListOf(utf8BMPCharGen)).filter(keyIsValid).map(Key.unsafeFrom) :| "key"
   final val latitudeGen: Gen[Double]          = chooseNum(LatitudeMinValueWit.value, LatitudeMaxValueWit.value) :| "latitude"
   final val longitudeGen: Gen[Double]         = chooseNum(LongitudeMinValueWit.value, LongitudeMaxValueWit.value) :| "longitude"
   final val nodeIdGen: Gen[String]            = strOfNSameFreqGen(40, hexGen) :| "node id"
@@ -137,9 +137,9 @@ abstract class BaseSpec
   final val nonZeroDoubleGen: Gen[Double]     = chooseNum(DMin, DMax).suchThat(d => d != 0.0d && d != NaN) :| "double != 0.0D and != NaN"
   final val nonZeroIntGen: Gen[Int]           = chooseNum(IMin, IMax).suchThat(_ != 0) :| "int != 0"
   final val nonZeroLongGen: Gen[Long]         = chooseNum(LMin, LMax).suchThat(_ != 0L) :| "long != 0L"
-  final val portGen: Gen[Port]                = chooseNum(PortMinValueWit.value, PortMaxValueWit.value).map(ps => Port.unsafeFrom(ps)) :| "port"
+  final val portGen: Gen[Port]                = chooseNum(PortMinValueWit.value, PortMaxValueWit.value).map(Port.unsafeFrom) :| "port"
   final val rangeOffsetGen: Gen[Int]          = chooseNum(0, RangeOffsetMaxValueWit.value) :| "range offset"
-  final val slotGen: Gen[Slot]                = chooseNum(0, SlotMaxValueWit.value).map(si => Slot.unsafeFrom(si)) :| "slot"
+  final val slotGen: Gen[Slot]                = chooseNum(0, SlotMaxValueWit.value).map(Slot.unsafeFrom) :| "slot"
   final val stringLengthGen: Gen[Long]        = chooseNum(0L, StringLengthMaxValueWit.value) :| "string length"
   final val stringsWithSpacesGen: Gen[String] = strGen(listOf(frequency(1 -> spaceGen, 10 -> noSpaceUtf8BMPCharGen))) :| "string w/ spaces"
   final val validDoubleGen: Gen[Double]       = chooseNum(DMin, DMax).suchThat(_ != NaN) :| "double != NaN"

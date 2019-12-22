@@ -39,7 +39,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(3)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
+              Vector.fill(3)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector.empty
             )
           )
@@ -53,7 +53,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(2)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
+              Vector.fill(2)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector("$16\r\nTest bulk".getBytes())
             )
           )
@@ -67,7 +67,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(6)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
+              Vector.fill(6)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector.empty
             )
           )
@@ -81,7 +81,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(4)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
+              Vector.fill(4)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector("$".getBytes())
             )
           )
@@ -97,10 +97,12 @@ final class RESPFrameBulkSpec extends BaseSpec {
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              CompleteFrame(BitVector("$18\r\nTest bulk string 4\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$18\r\nTest bulk string 3\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$18\r\nTest bulk string 2\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$18\r\nTest bulk string 1\r\n".getBytes())) :: Nil,
+              Vector(
+                CompleteFrame(BitVector("$18\r\nTest bulk string 1\r\n".getBytes())),
+                CompleteFrame(BitVector("$18\r\nTest bulk string 2\r\n".getBytes())),
+                CompleteFrame(BitVector("$18\r\nTest bulk string 3\r\n".getBytes())),
+                CompleteFrame(BitVector("$18\r\nTest bulk string 4\r\n".getBytes()))
+              ),
               BitVector("$18\r\nTest bulk".getBytes())
             )
           )
@@ -151,7 +153,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(3)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
+              Vector.fill(3)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector.empty
             )
           )
@@ -166,7 +168,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(2)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
+              Vector.fill(2)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector("$16\r\nTest bulk".getBytes())
             )
           )
@@ -181,7 +183,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(6)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
+              Vector.fill(6)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector.empty
             )
           )
@@ -196,7 +198,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(4)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
+              Vector.fill(4)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector("$".getBytes())
             )
           )
@@ -213,10 +215,12 @@ final class RESPFrameBulkSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              CompleteFrame(BitVector("$19\r\nTest bulk string 40\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$20\r\nTest bulk string 3 1\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$17\r\nTest bulk string2\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$21\r\nTest bulk string 1 11\r\n".getBytes())) :: Nil,
+              Vector(
+                CompleteFrame(BitVector("$21\r\nTest bulk string 1 11\r\n".getBytes())),
+                CompleteFrame(BitVector("$17\r\nTest bulk string2\r\n".getBytes())),
+                CompleteFrame(BitVector("$20\r\nTest bulk string 3 1\r\n".getBytes())),
+                CompleteFrame(BitVector("$19\r\nTest bulk string 40\r\n".getBytes()))
+              ),
               BitVector("$18\r\nTest bulk".getBytes())
             )
           )

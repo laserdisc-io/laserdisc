@@ -48,8 +48,10 @@ final class RESPFrameArrSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              CompleteFrame(BitVector("*2\r\n$8\r\nAnother1\r\n-An error\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)) :: Nil,
+              Vector(
+                CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
+                CompleteFrame(BitVector("*2\r\n$8\r\nAnother1\r\n-An error\r\n".getBytes))
+              ),
               BitVector.empty
             )
           )
@@ -64,8 +66,10 @@ final class RESPFrameArrSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              CompleteFrame(BitVector("*2\r\n$8\r\nAnother1\r\n-An error\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)) :: Nil,
+              Vector(
+                CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
+                CompleteFrame(BitVector("*2\r\n$8\r\nAnother1\r\n-An error\r\n".getBytes))
+              ),
               BitVector("$17\r\nAnother bulk ".getBytes())
             )
           )
@@ -80,12 +84,14 @@ final class RESPFrameArrSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              CompleteFrame(BitVector("*-1\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*-1\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*-1\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*-1\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*-1\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)) :: Nil,
+              Vector(
+                CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
+                CompleteFrame(BitVector("*-1\r\n".getBytes)),
+                CompleteFrame(BitVector("*-1\r\n".getBytes)),
+                CompleteFrame(BitVector("*-1\r\n".getBytes)),
+                CompleteFrame(BitVector("*-1\r\n".getBytes)),
+                CompleteFrame(BitVector("*-1\r\n".getBytes))
+              ),
               BitVector.empty
             )
           )
@@ -100,12 +106,14 @@ final class RESPFrameArrSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              CompleteFrame(BitVector("*-1\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*-1\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*-1\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*-1\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*-1\r\n".getBytes)) ::
-                CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)) :: Nil,
+              Vector(
+                CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
+                CompleteFrame(BitVector("*-1\r\n".getBytes)),
+                CompleteFrame(BitVector("*-1\r\n".getBytes)),
+                CompleteFrame(BitVector("*-1\r\n".getBytes)),
+                CompleteFrame(BitVector("*-1\r\n".getBytes)),
+                CompleteFrame(BitVector("*-1\r\n".getBytes))
+              ),
               BitVector("*".getBytes())
             )
           )

@@ -97,7 +97,7 @@ private[protocol] trait HighPriorityGenerators extends LowPriorityGenerators {
   private[this] def listProtocol(gen: Gen[ProtocolEncoded]): Gen[List[ProtocolEncoded]] =
     Gen.chooseNum(1, 20) flatMap (Gen.listOfN(_, gen))
 
-  protected final def noArrEncoded(
+  private[this] final def noArrEncoded(
       implicit
       bulk: Gen[BulkEncoded],
       num: Gen[NumEncoded],
@@ -119,10 +119,10 @@ private[protocol] trait HighPriorityGenerators extends LowPriorityGenerators {
       3  -> nullArr
     )
 
-  protected final val noArrArrEncoded: Gen[ArrEncoded] =
+  private[this] final val noArrArrEncoded: Gen[ArrEncoded] =
     listProtocol(noArrEncoded) map ArrEncoded.apply
 
-  private final def oneLevelArrEncoded(arrGen: Gen[ArrEncoded]): Gen[ArrEncoded] =
+  private[this] final def oneLevelArrEncoded(arrGen: Gen[ArrEncoded]): Gen[ArrEncoded] =
     listProtocol(
       Gen.frequency(
         20 -> noArrEncoded,
@@ -130,7 +130,7 @@ private[protocol] trait HighPriorityGenerators extends LowPriorityGenerators {
       )
     ) map ArrEncoded.apply
 
-  protected final def xLevelsNestedArrEncoded(x: Int): Gen[ArrEncoded] = {
+  private[this] final def xLevelsNestedArrEncoded(x: Int): Gen[ArrEncoded] = {
 
     @scala.annotation.tailrec
     def loop(left: Int, soFar: Gen[ArrEncoded]): Gen[ArrEncoded] =
@@ -140,7 +140,7 @@ private[protocol] trait HighPriorityGenerators extends LowPriorityGenerators {
     loop(x, oneLevelArrEncoded(noArrArrEncoded))
   }
 
-  protected final val protocolEncoded: Gen[ProtocolEncoded] =
+  private[this] final val protocolEncoded: Gen[ProtocolEncoded] =
     Gen.frequency(
       50 -> noArrEncoded,
       25 -> oneLevelArrEncoded(noArrArrEncoded),
@@ -148,7 +148,7 @@ private[protocol] trait HighPriorityGenerators extends LowPriorityGenerators {
       10 -> xLevelsNestedArrEncoded(5)
     )
 
-  protected implicit final val oneOrMoreProtocols: Arbitrary[OneOrMore[ProtocolEncoded]] =
+  private[protocol] implicit final val oneOrMoreProtocols: Arbitrary[OneOrMore[ProtocolEncoded]] =
     Arbitrary(oneOrMoreProtocol(protocolEncoded))
 }
 

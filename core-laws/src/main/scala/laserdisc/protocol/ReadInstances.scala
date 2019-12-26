@@ -1,7 +1,7 @@
 package laserdisc
 package protocol
 
-import cats.{Contravariant, Functor, Monad}
+import cats.{Contravariant, Functor, Invariant, Monad}
 
 import scala.util.{Left, Right}
 
@@ -14,6 +14,16 @@ private[protocol] object ReadInstances {
   implicit def readContravariant[X]: Contravariant[* ==> X] =
     new Contravariant[* ==> X] {
       override def contramap[A, B](fa: A ==> X)(f: B => A): B ==> X = fa.contramap(f)
+    }
+
+  implicit def readInvariantFirst[X]: Invariant[* ==> X] =
+    new Invariant[* ==> X] {
+      override def imap[A, B](fa: A ==> X)(f: A => B)(g: B => A): B ==> X = fa.contramap(g)
+    }
+
+  implicit def readInvariantSecond[X]: Invariant[X ==> *] =
+    new Invariant[X ==> *] {
+      override def imap[A, B](fa: X ==> A)(f: A => B)(g: B => A): X ==> B = fa.map(f)
     }
 
   implicit def readMonad[X]: Monad[X ==> *] =

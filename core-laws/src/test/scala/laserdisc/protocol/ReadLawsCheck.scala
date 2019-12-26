@@ -33,6 +33,8 @@ final class ReadLawsCheck
 private[protocol] sealed trait Implicits {
   implicit val genNum: Gen[Num] = chooseNum(0L, Long.MaxValue) map Num.apply
 
+  implicit val genListOfNum: Gen[List[Num]] = Gen.listOfN(500, genNum) map (_.distinct)
+
   implicit def arbNum(implicit ev: Gen[Num]): Arbitrary[Num] = Arbitrary(ev)
 
   implicit val cogenNum: Cogen[Num] = Cogen(_.value)
@@ -58,14 +60,16 @@ private[protocol] sealed trait Implicits {
         }
     }
 
-  implicit def eqRead[A, B](implicit ga: Gen[A], eb: Eq[B]): Eq[Read[A, B]] =
+  implicit def eqRead[A, B](implicit ga: Gen[List[A]], eb: Eq[B]): Eq[Read[A, B]] =
     new Eq[Read[A, B]] {
       override def eqv(x: A ==> B, y: A ==> B): Boolean = {
-        val anA = ga.sample.get
-        (x.read(anA), y.read(anA)) match {
-          case (Right(b1), Right(b2)) => eb.eqv(b1, b2)
-          case (Left(e1), Left(e2))   => e1.message == e2.message
-          case _                      => false
+        val as = ga.sample.get
+        as.forall { a =>
+          (x.read(a), y.read(a)) match {
+            case (Right(b1), Right(b2)) => eb.eqv(b1, b2)
+            case (Left(e1), Left(e2))   => e1.message == e2.message
+            case _                      => false
+          }
         }
       }
     }

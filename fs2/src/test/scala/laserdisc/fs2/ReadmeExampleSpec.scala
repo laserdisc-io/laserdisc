@@ -28,6 +28,7 @@ final class ReadmeExampleSpec extends WordSpecLike with Matchers {
   "The readme example should give the expected output" in {
     import cats.syntax.flatMap._
     import laserdisc._
+    import laserdisc.all._
     import laserdisc.auto._
     import log.effect.LogWriter
     import log.effect.fs2.SyncLogWriter
@@ -35,10 +36,10 @@ final class ReadmeExampleSpec extends WordSpecLike with Matchers {
     def redisTest(implicit log: LogWriter[IO]): IO[Unit] =
       RedisClient.toNode[IO]("localhost", 6379).use { client =>
         client.send(
-          strings.set("a", 23),
-          strings.set("b", 55),
-          strings.get[PosInt]("b"),
-          strings.get[PosInt]("a")
+          set("a", 23),
+          set("b", 55),
+          get[PosInt]("b"),
+          get[PosInt]("a")
         ) >>= {
           case (Right(OK), Right(OK), Right(Some(getOfb)), Right(Some(getOfa))) if getOfb.value == 55 && getOfa.value == 23 =>
             log info "yay!"

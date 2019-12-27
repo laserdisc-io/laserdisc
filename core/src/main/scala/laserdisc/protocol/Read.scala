@@ -24,9 +24,9 @@ Note 2: make sure to inspect the combinators as you may be able to leverage some
 
   final def map[C](f: B => C): Read[A, C] = Read.instance(read(_).map(f))
 
-  final def flatMap[C](f: B => Read[A, C]): Read[A, C] = Read.instance(a => read(a).flatMap(f(_).read(a)))
-
   final def contramap[C](f: C => A): Read[C, B] = Read.instance(read _ compose f)
+
+  final def flatMap[C](f: B => Read[A, C]): Read[A, C] = Read.instance(a => read(a).flatMap(f(_).read(a)))
 
   private[this] final val _extract: Any => Read.Extract[Any] = new Read.Extract[Any](_)
   final def unapply(a: A): Read.Extract[RESPDecErr | B] =
@@ -44,6 +44,8 @@ object Read extends ReadInstances0 {
   @inline final def instance[A, B](f: A => RESPDecErr | B): Read[A, B] = (a: A) => f(a)
 
   @inline final def infallible[A, B](f: A => B): Read[A, B] = (a: A) => Right(f(a))
+
+  @inline final def const[A, B](b: B): Read[A, B] = Read.infallible(_ => b)
 
   @inline final def instancePF[A, B](expectation: String)(pf: PartialFunction[A, B]): Read[A, B] =
     a => if (pf.isDefinedAt(a)) Right(pf(a)) else Left(RESPDecErr(s"Read Error: expected $expectation but was $a"))

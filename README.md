@@ -90,6 +90,7 @@ import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import laserdisc._
+import laserdisc.all._
 import laserdisc.auto._
 import laserdisc.fs2._
 import log.effect.LogWriter
@@ -100,13 +101,12 @@ object Main extends IOApp {
   def redisTest(implicit log: LogWriter[IO]): IO[Unit] =
     RedisClient.toNode[IO]("localhost", 6379).use { client =>
       client.send(
-        strings.set("a", 23),
-        strings.set("b", 55),
-        strings.get[PosInt]("b"),
-        strings.get[PosInt]("a")
+        set("a", 23),
+        set("b", 55),
+        get[PosInt]("b"),
+        get[PosInt]("a")
       ) >>= {
-        case (Right(OK), Right(OK), Right(Some(getOfb)), Right(Some(getOfa)))
-          if getOfb.value == 55 && getOfa.value == 23 =>
+        case (Right(OK), Right(OK), Right(Some(getOfb)), Right(Some(getOfa))) if getOfb.value == 55 && getOfa.value == 23 =>
           log info "yay!"
         case other =>
           log.error(s"something went terribly wrong $other") >>

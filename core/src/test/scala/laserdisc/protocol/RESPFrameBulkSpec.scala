@@ -12,6 +12,13 @@ final class RESPFrameBulkSpec extends BaseSpec {
       }
     }
 
+    "appending a bit vector that's complete and includes unsafe characters (\\r\\n)" should {
+      "produce Complete with all the bits" in {
+        val inputVector = BitVector("$16\r\nTest \n\r ! string\r\n".getBytes)
+        EmptyFrame.append(inputVector.toByteBuffer) should be(Right(CompleteFrame(inputVector)))
+      }
+    }
+
     "appending a bit vector that represent an empty bulk" should {
       "produce Complete with a empty content" in {
         val inputVector = BitVector("$0\r\n\r\n".getBytes)
@@ -32,7 +39,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(3)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
+              Vector.fill(3)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector.empty
             )
           )
@@ -46,7 +53,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(2)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
+              Vector.fill(2)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector("$16\r\nTest bulk".getBytes())
             )
           )
@@ -60,7 +67,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(6)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
+              Vector.fill(6)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector.empty
             )
           )
@@ -74,7 +81,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(4)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
+              Vector.fill(4)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector("$".getBytes())
             )
           )
@@ -90,10 +97,12 @@ final class RESPFrameBulkSpec extends BaseSpec {
         EmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              CompleteFrame(BitVector("$18\r\nTest bulk string 4\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$18\r\nTest bulk string 3\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$18\r\nTest bulk string 2\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$18\r\nTest bulk string 1\r\n".getBytes())) :: Nil,
+              Vector(
+                CompleteFrame(BitVector("$18\r\nTest bulk string 1\r\n".getBytes())),
+                CompleteFrame(BitVector("$18\r\nTest bulk string 2\r\n".getBytes())),
+                CompleteFrame(BitVector("$18\r\nTest bulk string 3\r\n".getBytes())),
+                CompleteFrame(BitVector("$18\r\nTest bulk string 4\r\n".getBytes()))
+              ),
               BitVector("$18\r\nTest bulk".getBytes())
             )
           )
@@ -104,20 +113,16 @@ final class RESPFrameBulkSpec extends BaseSpec {
         val inputVector = BitVector(
           "$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes
         )
-        EmptyFrame
-          .append(inputVector.toByteBuffer)
-          .fold(
-            err => fail(s"expected a result but failed with $err"), {
-              case r @ MoreThanOneFrame(_, _) =>
-                r.complete shouldBe Vector(
-                  CompleteFrame(BitVector("$18\r\nTest bulk string 1\r\n".getBytes())),
-                  CompleteFrame(BitVector("$18\r\nTest bulk string 2\r\n".getBytes())),
-                  CompleteFrame(BitVector("$18\r\nTest bulk string 3\r\n".getBytes())),
-                  CompleteFrame(BitVector("$18\r\nTest bulk string 4\r\n".getBytes()))
-                )
-              case _ => fail(s"expected a MoreThanOne type")
-            }
-          )
+        EmptyFrame.append(inputVector.toByteBuffer) onRight {
+          case r @ MoreThanOneFrame(_, _) =>
+            r.complete shouldBe Vector(
+              CompleteFrame(BitVector("$18\r\nTest bulk string 1\r\n".getBytes())),
+              CompleteFrame(BitVector("$18\r\nTest bulk string 2\r\n".getBytes())),
+              CompleteFrame(BitVector("$18\r\nTest bulk string 3\r\n".getBytes())),
+              CompleteFrame(BitVector("$18\r\nTest bulk string 4\r\n".getBytes()))
+            )
+          case _ => fail(s"expected a MoreThanOne type")
+        }
       }
     }
   }
@@ -148,7 +153,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(3)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
+              Vector.fill(3)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector.empty
             )
           )
@@ -163,7 +168,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(2)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
+              Vector.fill(2)(CompleteFrame(BitVector("$16\r\nTest bulk string\r\n".getBytes()))),
               BitVector("$16\r\nTest bulk".getBytes())
             )
           )
@@ -178,7 +183,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(6)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
+              Vector.fill(6)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector.empty
             )
           )
@@ -193,7 +198,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              List.fill(4)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
+              Vector.fill(4)(CompleteFrame(BitVector("$-1\r\n".getBytes()))),
               BitVector("$".getBytes())
             )
           )
@@ -210,10 +215,12 @@ final class RESPFrameBulkSpec extends BaseSpec {
         nonEmptyFrame.append(inputVector.toByteBuffer) should be(
           Right(
             MoreThanOneFrame(
-              CompleteFrame(BitVector("$19\r\nTest bulk string 40\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$20\r\nTest bulk string 3 1\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$17\r\nTest bulk string2\r\n".getBytes())) ::
-                CompleteFrame(BitVector("$21\r\nTest bulk string 1 11\r\n".getBytes())) :: Nil,
+              Vector(
+                CompleteFrame(BitVector("$21\r\nTest bulk string 1 11\r\n".getBytes())),
+                CompleteFrame(BitVector("$17\r\nTest bulk string2\r\n".getBytes())),
+                CompleteFrame(BitVector("$20\r\nTest bulk string 3 1\r\n".getBytes())),
+                CompleteFrame(BitVector("$19\r\nTest bulk string 40\r\n".getBytes()))
+              ),
               BitVector("$18\r\nTest bulk".getBytes())
             )
           )
@@ -225,20 +232,16 @@ final class RESPFrameBulkSpec extends BaseSpec {
         val inputVector = BitVector(
           "tring 1 11\r\n$17\r\nTest bulk string2\r\n$20\r\nTest bulk string 3 1\r\n$19\r\nTest bulk string 40\r\n$18\r\nTest bulk".getBytes
         )
-        nonEmptyFrame
-          .append(inputVector.toByteBuffer)
-          .fold(
-            err => fail(s"expected a result but failed with $err"), {
-              case r @ MoreThanOneFrame(_, _) =>
-                r.complete shouldBe Vector(
-                  CompleteFrame(BitVector("$21\r\nTest bulk string 1 11\r\n".getBytes())),
-                  CompleteFrame(BitVector("$17\r\nTest bulk string2\r\n".getBytes())),
-                  CompleteFrame(BitVector("$20\r\nTest bulk string 3 1\r\n".getBytes())),
-                  CompleteFrame(BitVector("$19\r\nTest bulk string 40\r\n".getBytes()))
-                )
-              case _ => fail(s"expected a MoreThanOne type")
-            }
-          )
+        nonEmptyFrame.append(inputVector.toByteBuffer) onRight {
+          case r @ MoreThanOneFrame(_, _) =>
+            r.complete shouldBe Vector(
+              CompleteFrame(BitVector("$21\r\nTest bulk string 1 11\r\n".getBytes())),
+              CompleteFrame(BitVector("$17\r\nTest bulk string2\r\n".getBytes())),
+              CompleteFrame(BitVector("$20\r\nTest bulk string 3 1\r\n".getBytes())),
+              CompleteFrame(BitVector("$19\r\nTest bulk string 40\r\n".getBytes()))
+            )
+          case _ => fail(s"expected a MoreThanOne type")
+        }
       }
     }
   }

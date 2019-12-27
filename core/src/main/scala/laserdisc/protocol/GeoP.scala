@@ -4,8 +4,9 @@ package protocol
 object GeoP {
   final case class Coordinates(latitude: Latitude, longitude: Longitude)
   final object Coordinates {
-    implicit final val coordinatesRead: Arr ==> Coordinates = Read.instancePF {
-      case Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) => Coordinates(lat, long)
+    implicit final val coordinatesRead: Arr ==> Coordinates = Read.instance {
+      case Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) => Right(Coordinates(lat, long))
+      case Arr(other)                                                                     => Left(RESPDecErr(s"Unexpected coordinates encoding. Expected [longitude, latitude] but was $other"))
     }
   }
 
@@ -97,39 +98,55 @@ object GeoP {
     }
   }
 
-  implicit final val radiusModeCoordinatesRead: Arr ==> RadiusMode.coordinates.Res = Read.instancePF {
+  implicit final val radiusModeCoordinatesRead: Arr ==> RadiusMode.coordinates.Res = Read.instance {
     case Arr(Bulk(Key(k)) +: Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) +: Seq()) =>
-      KeyAndCoordinates(k, Coordinates(lat, long))
+      Right(KeyAndCoordinates(k, Coordinates(lat, long)))
+    case Arr(other) => Left(RESPDecErr(s"Unexpected radius mode encoding. Expected [key, [longitude, latitude]] but was $other"))
   }
-  implicit final val radiusModeDistanceRead: Arr ==> RadiusMode.distance.Res = Read.instancePF {
-    case Arr(Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +: Seq()) => KeyAndDistance(k, d)
+  implicit final val radiusModeDistanceRead: Arr ==> RadiusMode.distance.Res = Read.instance {
+    case Arr(Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +: Seq()) => Right(KeyAndDistance(k, d))
+    case Arr(other)                                                    => Left(RESPDecErr(s"Unexpected radius mode encoding. Expected [key, distance] but was $other"))
   }
-  implicit final val radiusModeHashRead: Arr ==> RadiusMode.hash.Res = Read.instancePF {
-    case Arr(Bulk(Key(k)) +: Num(NonNegLong(l)) +: Seq()) => KeyAndHash(k, l)
+  implicit final val radiusModeHashRead: Arr ==> RadiusMode.hash.Res = Read.instance {
+    case Arr(Bulk(Key(k)) +: Num(NonNegLong(l)) +: Seq()) => Right(KeyAndHash(k, l))
+    case Arr(other)                                       => Left(RESPDecErr(s"Unexpected radius mode encoding. Expected [key, hash] but was $other"))
   }
-  implicit final val radiusModeCoordinatesAndDistanceRead: Arr ==> RadiusMode.coordinatesAndDistance.Res = Read.instancePF {
+  implicit final val radiusModeCoordinatesAndDistanceRead: Arr ==> RadiusMode.coordinatesAndDistance.Res = Read.instance {
     case Arr(
         Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +:
           Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) +: Seq()
         ) =>
-      KeyCoordinatesAndDistance(k, Coordinates(lat, long), d)
+      Right(KeyCoordinatesAndDistance(k, Coordinates(lat, long), d))
+    case Arr(other) =>
+      Left(
+        RESPDecErr(s"Unexpected encoding for key coordinates and distance. Expected [key, distance, [longitude, latitude]] but was $other")
+      )
   }
-  implicit final val radiusModeCoordinatesAndHashRead: Arr ==> RadiusMode.coordinatesAndHash.Res = Read.instancePF {
+  implicit final val radiusModeCoordinatesAndHashRead: Arr ==> RadiusMode.coordinatesAndHash.Res = Read.instance {
     case Arr(
         Bulk(Key(k)) +: Num(NonNegLong(l)) +:
           Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) +: Seq()
         ) =>
-      KeyCoordinatesAndHash(k, Coordinates(lat, long), l)
+      Right(KeyCoordinatesAndHash(k, Coordinates(lat, long), l))
+    case Arr(other) =>
+      Left(RESPDecErr(s"Unexpected encoding for key coordinates and hash. Expected [key, hash, [longitude, latitude]] but was $other"))
   }
-  implicit final val radiusModeDistanceAndHashRead: Arr ==> RadiusMode.distanceAndHash.Res = Read.instancePF {
-    case Arr(Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +: Num(NonNegLong(l)) +: Seq()) => KeyDistanceAndHash(k, d, l)
+  implicit final val radiusModeDistanceAndHashRead: Arr ==> RadiusMode.distanceAndHash.Res = Read.instance {
+    case Arr(Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +: Num(NonNegLong(l)) +: Seq()) => Right(KeyDistanceAndHash(k, d, l))
+    case Arr(other)                                                                          => Left(RESPDecErr(s"Unexpected encoding for key coordinates and hash. Expected [key, distance, hash] but was $other"))
   }
-  implicit final val radiusModeAllRead: Arr ==> RadiusMode.all.Res = Read.instancePF {
+  implicit final val radiusModeAllRead: Arr ==> RadiusMode.all.Res = Read.instance {
     case Arr(
         Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +: Num(NonNegLong(l)) +:
           Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) +: Seq()
         ) =>
-      KeyCoordinatesDistanceAndHash(k, Coordinates(lat, long), d, l)
+      Right(KeyCoordinatesDistanceAndHash(k, Coordinates(lat, long), d, l))
+    case Arr(other) =>
+      Left(
+        RESPDecErr(
+          s"Unexpected encoding for key coordinates and hash. Expected [key, distance, hash, [longitude, latitude]] but was $other"
+        )
+      )
   }
 }
 

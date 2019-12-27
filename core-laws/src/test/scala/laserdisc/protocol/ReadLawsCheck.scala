@@ -4,8 +4,8 @@ package protocol
 import cats.instances.int._
 import cats.instances.long._
 import cats.instances.string._
-import cats.laws.discipline.{ContravariantTests, InvariantTests, MonadTests, SerializableTests}
-import cats.{Contravariant, Eq, Invariant, Monad}
+import cats.laws.discipline.{ContravariantTests, MonadTests, SerializableTests}
+import cats.{Contravariant, Eq, Monad}
 import org.scalacheck.Gen.chooseNum
 import org.scalacheck.{Arbitrary, Cogen, Gen}
 import org.scalatest.funsuite.AnyFunSuiteLike
@@ -29,12 +29,6 @@ final class ReadLawsCheck
 
   checkAll("Read[*, Long]", ContravariantTests[Read[*, Long]].contravariant[Str, Num, Str])
   checkAll("Contravariant[Read[*, Long]]", SerializableTests.serializable(Contravariant[Read[*, Long]]))
-
-  checkAll("Read[*, Int]", InvariantTests[Read[*, Long]].invariant[Str, Num, Str])
-  checkAll("Invariant[Read[*, Long]]", SerializableTests.serializable(Invariant[Read[*, Long]]))
-
-  checkAll("Read[Num, *]", InvariantTests[Read[Num, *]].invariant[Long, String, Long])
-  checkAll("Invariant[Read[Num, *]]", SerializableTests.serializable(Invariant[Read[Num, *]]))
 }
 
 private[protocol] sealed trait Implicits {

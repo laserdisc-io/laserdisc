@@ -1,9 +1,6 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-val `scala 2.12` = "2.12.10"
-val `scala 2.13` = "2.13.1"
-
 val V = new {
   val cats                   = "2.1.0"
   val `cats-discipline`      = "1.0.2"
@@ -198,14 +195,10 @@ val versionDependantScalacOptions = Def.setting {
 }
 
 inThisBuild {
-  Seq(
-    organization := "io.laserdisc",
-    scalaVersion := `scala 2.13`
-  )
+  organization := "io.laserdisc"
 }
 
 lazy val commonSettings = Seq(
-  crossScalaVersions := Seq(`scala 2.12`, `scala 2.13`),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value

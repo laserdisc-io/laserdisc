@@ -18,7 +18,10 @@ import scala.collection.parallel.immutable.ParSeq
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
-final class RedisClientSpec extends RedisClientBaseSpec[IO] {
+final class RedisClientSpec extends ClientSpec(6379)
+final class KeyDbClientSpec extends ClientSpec(6380)
+
+private[fs2] abstract class ClientSpec(p: Port) extends ClientBaseSpec[IO](p) {
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
   override implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
@@ -29,20 +32,19 @@ final class RedisClientSpec extends RedisClientBaseSpec[IO] {
   override def run[A]: IO[A] => A = _.unsafeRunSync()
 }
 
-abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
+private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends WordSpecLike with Matchers {
   implicit def contextShift: ContextShift[F]
   implicit def timer: Timer[F]
   implicit def concurrent: Concurrent[F]
   implicit def logger: LogWriter[F]
 
   def run[A]: F[A] => A
+  def clientUnderTest: Resource[F, RedisClient[F]] =
+    RedisClient.toNode("127.0.0.1", p)
 
   private[this] final val key: Key = "test-key"
   private[this] final val text     = "test text"
   private[this] final val correct  = "correct"
-
-  def clientUnderTest: Resource[F, RedisClient[F]] =
-    RedisClient.toNode("127.0.0.1", 6379)
 
   "an fs2 redis client" should {
     import cats.instances.list.catsStdInstancesForList

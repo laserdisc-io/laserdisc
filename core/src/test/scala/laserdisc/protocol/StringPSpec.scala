@@ -8,9 +8,7 @@ final class StringPSpec extends BaseSpec {
     "decoding the wrong type" should {
       "give details about the decoding error" in {
         val correct = strings.set("a", 23)
-        correct.decode(Arr(Bulk("wrong type"))) onLeft { e =>
-          e.getMessage shouldBe "RESP type(s) did not match: Arr(Bulk(wrong type))"
-        }
+        correct.decode(Arr(Bulk("wrong type"))) onLeft { e => e.getMessage shouldBe "RESP type(s) did not match: Arr(Bulk(wrong type))" }
       }
     }
 

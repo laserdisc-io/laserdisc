@@ -73,9 +73,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends WordSpecLike w
         }).toList.sequence
 
       val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl =>
-          preset(cl) *> requests(cl)
-        }
+        (run[List[String]] compose clientUnderTest.use) { cl => preset(cl) *> requests(cl) }
 
       responses.size should be(300)
       responses map (_ should be(payload))
@@ -103,9 +101,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends WordSpecLike w
         )
 
       val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl =>
-          preset(cl) *> requests(cl)
-        }
+        (run[List[String]] compose clientUnderTest.use) { cl => preset(cl) *> requests(cl) }
 
       responses.size should be(50)
       responses map (_ should be(payload))
@@ -135,9 +131,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends WordSpecLike w
         }).toList.sequence
 
       val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl =>
-          preset(cl) *> requests(cl)
-        }
+        (run[List[String]] compose clientUnderTest.use) { cl => preset(cl) *> requests(cl) }
 
       responses.size should be(1000)
       responses map (_ should be(payload))
@@ -164,9 +158,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends WordSpecLike w
         }).toList.sequence
 
       val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl =>
-          requests(cl)
-        }
+        (run[List[String]] compose clientUnderTest.use) { cl => requests(cl) }
 
       responses.size should be(1000)
       responses map (_ should be(correct))
@@ -202,9 +194,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends WordSpecLike w
         }).toList.sequence map (_.flatten)
 
       val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl =>
-          cleanup(cl) *> preset(cl) *> requests(cl)
-        }
+        (run[List[String]] compose clientUnderTest.use) { cl => cleanup(cl) *> preset(cl) *> requests(cl) }
 
       responses.size should be(50 * 100)
       responses map (_ should be(bulk))

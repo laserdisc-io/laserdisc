@@ -76,9 +76,7 @@ object RedisClient {
     val establishedConnection: Resource[F, impl.Connection[F]] =
       impl.connection(redisConnection, impl.currentServer(addresses.toSeq))
 
-    establishedConnection >>= { conn =>
-      impl.mkClient(conn)
-    }
+    establishedConnection >>= { conn => impl.mkClient(conn) }
   }
 
   private[laserdisc] final object impl {
@@ -99,9 +97,7 @@ object RedisClient {
     }
 
     def mkClient[F[_]: Concurrent: Timer: LogWriter](establishedConn: Connection[F]): Resource[F, RedisClient[F]] =
-      Resource.make(mkPublisher(establishedConn) >>= { publ =>
-        publ.start map (_ => publ)
-      })(_.shutdown) map { publisher =>
+      Resource.make(mkPublisher(establishedConn) >>= { publ => publ.start map (_ => publ) })(_.shutdown) map { publisher =>
         new RedisClient[F] {
           override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
               implicit handler: RedisHandler.Aux[F, In, Out]
@@ -121,9 +117,7 @@ object RedisClient {
           Resource.liftF(Ref.of[F, Vector[Request[F]]](Vector.empty)) >>= { inFlight =>
             def push(req: Request[F]): F[RESP] =
               inFlight
-                .modify { in =>
-                  (in :+ req) -> req.protocol.encode
-                }
+                .modify { in => (in :+ req) -> req.protocol.encode }
 
             def pop: F[Option[Request[F]]] =
               inFlight

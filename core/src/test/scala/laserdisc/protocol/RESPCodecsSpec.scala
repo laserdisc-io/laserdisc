@@ -98,39 +98,21 @@ final class RESPCodecsSpec extends BaseSpec {
     }
 
     "handling simple strings" should {
-      "decode them correctly" in forAll { s: String =>
-        s"+$s$CRLF".RESP onRight (_ shouldBe Str(s))
-      }
-      "encode them correctly" in forAll { s: Str =>
-        s.wireFormat shouldBe s"+${s.value}$CRLF"
-      }
-      "roundtrip with no errors" in forAll { s: Str =>
-        s.roundTrip shouldBe s
-      }
+      "decode them correctly" in forAll { s: String => s"+$s$CRLF".RESP onRight (_ shouldBe Str(s)) }
+      "encode them correctly" in forAll { s: Str => s.wireFormat shouldBe s"+${s.value}$CRLF" }
+      "roundtrip with no errors" in forAll { s: Str => s.roundTrip shouldBe s }
     }
 
     "handling errors" should {
-      "decode them correctly" in forAll { s: String =>
-        s"-$s$CRLF".RESP onRight (_ shouldBe Err(s))
-      }
-      "encode them correctly" in forAll { e: Err =>
-        e.wireFormat shouldBe s"-${e.message}$CRLF"
-      }
-      "roundtrip with no errors" in forAll { e: Err =>
-        e.roundTrip shouldBe e
-      }
+      "decode them correctly" in forAll { s: String => s"-$s$CRLF".RESP onRight (_ shouldBe Err(s)) }
+      "encode them correctly" in forAll { e: Err => e.wireFormat shouldBe s"-${e.message}$CRLF" }
+      "roundtrip with no errors" in forAll { e: Err => e.roundTrip shouldBe e }
     }
 
     "handling integers" should {
-      "decode them correctly" in forAll { l: Long =>
-        s":$l$CRLF".RESP onRight (_ shouldBe Num(l))
-      }
-      "encode them correctly" in forAll { n: Num =>
-        n.wireFormat shouldBe s":${n.value}$CRLF"
-      }
-      "roundtrip with no errors" in forAll { n: Num =>
-        n.roundTrip shouldBe n
-      }
+      "decode them correctly" in forAll { l: Long => s":$l$CRLF".RESP onRight (_ shouldBe Num(l)) }
+      "encode them correctly" in forAll { n: Num => n.wireFormat shouldBe s":${n.value}$CRLF" }
+      "roundtrip with no errors" in forAll { n: Num => n.roundTrip shouldBe n }
     }
 
     "handling bulk strings" should {
@@ -149,9 +131,7 @@ final class RESPCodecsSpec extends BaseSpec {
           case Bulk(bs) => b.wireFormat shouldBe s"$$${bs.bytesLength}$CRLF$bs$CRLF"
         }
       }
-      "roundtrip with no errors" in forAll { b: GenBulk =>
-        b.roundTrip shouldBe b
-      }
+      "roundtrip with no errors" in forAll { b: GenBulk => b.roundTrip shouldBe b }
     }
 
     "handling arrays" should {
@@ -170,9 +150,7 @@ final class RESPCodecsSpec extends BaseSpec {
           case Arr(xs) => a.wireFormat shouldBe s"*${xs.length}$CRLF${xs.wireFormat}"
         }
       }
-      "roundtrip with no errors" in forAll { a: GenArr =>
-        a.roundTrip shouldBe a
-      }
+      "roundtrip with no errors" in forAll { a: GenArr => a.roundTrip shouldBe a }
     }
   }
 }

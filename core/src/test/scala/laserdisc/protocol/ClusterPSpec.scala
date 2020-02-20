@@ -141,8 +141,8 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             val protocol = clusterinfo
 
             protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("INFO"))
-            protocol.decode(Bulk(info)) onRight (
-                result => info.forall { case (k, v) => result.selectDynamic(k).fold(_ => false, _ == v) } shouldBe true
+            protocol.decode(Bulk(info)) onRight (result =>
+              info.forall { case (k, v) => result.selectDynamic(k).fold(_ => false, _ == v) } shouldBe true
             )
           }
         }

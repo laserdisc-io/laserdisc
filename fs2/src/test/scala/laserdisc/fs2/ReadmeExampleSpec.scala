@@ -4,12 +4,13 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 import java.util.concurrent.ForkJoinPool
 
 import cats.effect.{Concurrent, ContextShift, IO, Timer}
-import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
-final class ReadmeExampleSpec extends WordSpecLike with Matchers {
+final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers {
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
   private[this] implicit val timer: Timer[IO]               = IO.timer(ec)

@@ -5,13 +5,14 @@
 [![codecov.io](https://codecov.io/github/laserdisc-io/laserdisc/coverage.svg?branch=master)](https://codecov.io/github/laserdisc-io/laserdisc?branch=master)
 [![Join the chat at https://gitter.im/laserdisc-io/laserdisc](https://badges.gitter.im/laserdisc-io/laserdisc.svg)](https://gitter.im/laserdisc-io/laserdisc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-blue.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
 <br>
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc-core&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc-core%20docs&colorB=orange)](https://javadoc.io/doc/io.laserdisc/laserdisc-core_2.12)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.12.svg?label=laserdisc-fs2&colorB=blue)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.12.svg?label=laserdisc-fs2%20docs&colorB=blue)](https://javadoc.io/doc/io.laserdisc/laserdisc-fs2_2.12)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.12.svg?label=laserdisc-circe&colorB=darkgreen)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.12.svg?label=laserdisc-circe%20docs&colorB=darkgreen)](https://javadoc.io/doc/io.laserdisc/laserdisc-circe_2.12)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.13.svg?label=laserdisc-core&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.13.svg?label=laserdisc-core%20docs&colorB=orange)](https://javadoc.io/doc/io.laserdisc/laserdisc-core_2.13)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.13.svg?label=laserdisc-fs2&colorB=blue)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.13.svg?label=laserdisc-fs2%20docs&colorB=blue)](https://javadoc.io/doc/io.laserdisc/laserdisc-fs2_2.13)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.13.svg?label=laserdisc-circe&colorB=darkgreen)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.13.svg?label=laserdisc-circe%20docs&colorB=darkgreen)](https://javadoc.io/doc/io.laserdisc/laserdisc-circe_2.13)
 <br>
 [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.17.svg)](http://scala-js.org)
 
@@ -46,7 +47,7 @@ Two reasons:
 
 ### Getting Started
 
-LaserDisc is currently available for Scala 2.12 on the JVM.
+LaserDisc is currently available for Scala 2.12 and 2.13 on the JVM.
 
 Its core (protocol commands and RESP wire format) is also available for [Scala.JS](http://www.scala-js.org/).
 
@@ -90,6 +91,7 @@ import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import laserdisc._
+import laserdisc.all._
 import laserdisc.auto._
 import laserdisc.fs2._
 import log.effect.LogWriter
@@ -100,13 +102,12 @@ object Main extends IOApp {
   def redisTest(implicit log: LogWriter[IO]): IO[Unit] =
     RedisClient.toNode[IO]("localhost", 6379).use { client =>
       client.send(
-        strings.set("a", 23),
-        strings.set("b", 55),
-        strings.get[PosInt]("b"),
-        strings.get[PosInt]("a")
+        set("a", 23),
+        set("b", 55),
+        get[PosInt]("b"),
+        get[PosInt]("a")
       ) >>= {
-        case (Right(OK), Right(OK), Right(Some(getOfb)), Right(Some(getOfa)))
-          if getOfb.value == 55 && getOfa.value == 23 =>
+        case (Right(OK), Right(OK), Right(Some(getOfb)), Right(Some(getOfa))) if getOfb.value == 55 && getOfa.value == 23 =>
           log info "yay!"
         case other =>
           log.error(s"something went terribly wrong $other") >>
@@ -141,19 +142,19 @@ This should produce an output similar to the following one:
 
 |      | Shapeless |
 | ----:| ---------:|
-| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=laserdisc%20core&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) | 2.3.3 |
+| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.13.svg?label=laserdisc%20core&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) | 2.3.3 |
 
 <br>
 
 |      | Fs2 | Log Effect | Laserdisc Core |
 | ----:| ---:| ----------:| --------------:|
-| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.12.svg?label=laserdisc%20fs2&colorB=blue)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2) | 1.0.2 | 0.4.2 | [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=%20&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) |
+| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.13.svg?label=laserdisc%20fs2&colorB=blue)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2) | 2.2.1 | 0.12.1 | [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.13.svg?label=%20&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) |
 
 <br>
 
 |      | Circe | Laserdisc Core |
 | ----:| -----:| --------------:|
-| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.12.svg?label=laserdisc%20circe&colorB=darkgreen)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe) | 0.10.1 | [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.12.svg?label=%20&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) |
+| [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.13.svg?label=laserdisc%20circe&colorB=darkgreen)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe) | 0.12.3 | [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.13.svg?label=%20&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) |
 
 ## License
 

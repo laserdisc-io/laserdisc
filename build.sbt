@@ -1,23 +1,20 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-val `scala 2.12` = "2.12.10"
-val `scala 2.13` = "2.13.1"
-
 val V = new {
   val cats                   = "2.1.0"
-  val `cats-discipline`      = "1.0.0"
-  val `discipline-scalatest` = "1.0.0-RC1"
-  val circe                  = "0.12.3"
-  val fs2                    = "2.1.0"
+  val `cats-discipline`      = "1.0.2"
+  val `discipline-scalatest` = "1.0.1"
+  val circe                  = "0.13.0"
+  val fs2                    = "2.2.2"
   val `kind-projector`       = "0.11.0"
   val kittens                = "2.0.0"
-  val `log-effect-fs2`       = "0.12.0"
+  val `log-effect-fs2`       = "0.12.1"
   val `parallel-collections` = "0.2.0"
-  val refined                = "0.9.10"
+  val refined                = "0.9.12"
   val scalacheck             = "1.14.3"
   val scalatest              = "3.0.8"
-  val `scodec-bits`          = "1.1.12"
+  val `scodec-bits`          = "1.1.13"
   val `scodec-core`          = "1.11.4"
   val `scodec-stream`        = "2.0.0"
   val shapeless              = "2.3.3"
@@ -198,14 +195,10 @@ val versionDependantScalacOptions = Def.setting {
 }
 
 inThisBuild {
-  Seq(
-    organization := "io.laserdisc",
-    scalaVersion := `scala 2.13`
-  )
+  organization := "io.laserdisc"
 }
 
 lazy val commonSettings = Seq(
-  crossScalaVersions := Seq(`scala 2.12`, `scala 2.13`),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value

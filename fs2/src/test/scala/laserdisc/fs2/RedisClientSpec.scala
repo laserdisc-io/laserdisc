@@ -12,7 +12,8 @@ import cats.syntax.traverse._
 import laserdisc.auto._
 import log.effect.LogWriter
 import log.effect.fs2.SyncLogWriter.noOpLog
-import org.scalatest.{Matchers, WordSpecLike}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.collection.parallel.immutable.ParSeq
 import scala.concurrent.ExecutionContext
@@ -32,7 +33,7 @@ private[fs2] abstract class ClientSpec(p: Port) extends ClientBaseSpec[IO](p) {
   override def run[A]: IO[A] => A = _.unsafeRunSync()
 }
 
-private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends WordSpecLike with Matchers {
+private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLike with Matchers {
   implicit def contextShift: ContextShift[F]
   implicit def timer: Timer[F]
   implicit def concurrent: Concurrent[F]

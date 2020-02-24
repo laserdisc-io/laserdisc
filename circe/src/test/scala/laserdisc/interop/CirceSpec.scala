@@ -5,7 +5,8 @@ import io.circe.generic.semiauto._
 import io.circe.{Decoder, Encoder}
 import laserdisc.interop.circe._
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 sealed trait Foo                        extends Product with Serializable
@@ -25,7 +26,7 @@ object Baz {
   implicit val encoder: Encoder[Baz] = deriveEncoder
 }
 
-final class CirceSpec extends WordSpec with Matchers with ScalaCheckPropertyChecks with EitherTestSyntax {
+final class CirceSpec extends AnyWordSpec with Matchers with ScalaCheckPropertyChecks with EitherTestSyntax {
   private[this] val barGen: Gen[Bar] = Arbitrary.arbitrary[Int].map(Bar.apply)
   private[this] val bazGen: Gen[Baz] = for {
     s   <- Arbitrary.arbitrary[String]

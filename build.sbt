@@ -13,7 +13,8 @@ val V = new {
   val `parallel-collections` = "0.2.0"
   val refined                = "0.9.12"
   val scalacheck             = "1.14.3"
-  val scalatest              = "3.0.8"
+  val scalatest              = "3.1.1"
+  val `scalatest-plus`       = "3.1.1.1"
   val `scodec-bits`          = "1.1.13"
   val `scodec-core`          = "1.11.4"
   val `scodec-stream`        = "2.0.0"
@@ -34,12 +35,13 @@ val `scodec-core`    = Def.setting("org.scodec"    %%% "scodec-core"    % V.`sco
 val `scodec-stream`  = Def.setting("org.scodec"    %%% "scodec-stream"  % V.`scodec-stream`)
 val shapeless        = Def.setting("com.chuusai"   %%% "shapeless"      % V.shapeless)
 
-val `cats-discipline`      = Def.setting("org.typelevel"  %% "discipline-core"      % V.`cats-discipline`      % Test)
-val `discipline-scalatest` = Def.setting("org.typelevel"  %% "discipline-scalatest" % V.`discipline-scalatest` % Test)
-val `circe-generic`        = Def.setting("io.circe"       %%% "circe-generic"       % V.circe                  % Test)
-val `refined-scalacheck`   = Def.setting("eu.timepit"     %%% "refined-scalacheck"  % V.refined                % Test)
-val scalacheck             = Def.setting("org.scalacheck" %%% "scalacheck"          % V.scalacheck             % Test)
-val scalatest              = Def.setting("org.scalatest"  %%% "scalatest"           % V.scalatest              % Test)
+val `cats-discipline`      = Def.setting("org.typelevel"     %% "discipline-core"      % V.`cats-discipline`      % Test)
+val `discipline-scalatest` = Def.setting("org.typelevel"     %% "discipline-scalatest" % V.`discipline-scalatest` % Test)
+val `circe-generic`        = Def.setting("io.circe"          %%% "circe-generic"       % V.circe                  % Test)
+val `refined-scalacheck`   = Def.setting("eu.timepit"        %%% "refined-scalacheck"  % V.refined                % Test)
+val scalacheck             = Def.setting("org.scalacheck"    %%% "scalacheck"          % V.scalacheck             % Test)
+val scalatest              = Def.setting("org.scalatest"     %%% "scalatest"           % V.scalatest              % Test)
+val `scalatest-plus`       = Def.setting("org.scalatestplus" %%% "scalacheck-1-14"     % V.`scalatest-plus`       % Test)
 
 val `scala-parallel-collections` = Def.setting {
   CrossVersion.partialVersion(scalaVersion.value) match {
@@ -63,7 +65,8 @@ val coreDeps = Def.Initialize.join {
     shapeless,
     `refined-scalacheck`,
     scalacheck,
-    scalatest
+    scalatest,
+    `scalatest-plus`
   )
 }
 
@@ -100,7 +103,8 @@ val circeDeps = Def.Initialize.join {
     `circe-parser`,
     `circe-generic`,
     scalacheck,
-    scalatest
+    scalatest,
+    `scalatest-plus`
   )
 }
 

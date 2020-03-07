@@ -214,7 +214,7 @@ sealed trait RESPCodecs extends BitVectorSyntax {
       case -1 => Decoder.pure(NilArr)
       case 0  => Decoder.pure(Arr(List.empty))
       case size if size > 0 =>
-        Decoder(bv => respCodec.collect[List, RESP](bv, Some(size.toInt))).narrow[List[RESP]](checkSize(_, size), identity).map(Arr.apply)
+        Decoder(respCodec.collect[List, RESP](_, Some(size.toInt))).narrow[List[RESP]](checkSize(_, size), identity).map(Arr.apply)
       case negSize => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
     }
     private[this] final def failDec(negSize: Long) = General(s"failed to decode array of size $negSize", List("size"))

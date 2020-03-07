@@ -12,8 +12,8 @@ import scodec.{Codec, Err => SErr}
 
 object RESPCodecsSpec extends EitherValues {
   private[this] final object functions {
-    private[this] final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
-    private[this] final val requireEncode = (resp: RESP) => Codec[RESP].encode(resp).require
+    private[this] final val attemptDecode = (bits: BitVector) => Codec.summon[RESP].decodeValue(bits)
+    private[this] final val requireEncode = (resp: RESP) => Codec.summon[RESP].encode(resp).require
     private[this] final val stringToBytes = (s: String) => s.getBytes(UTF_8)
 
     final val stringToBytesLength = stringToBytes andThen (bytes => bytes.length)
@@ -23,7 +23,7 @@ object RESPCodecsSpec extends EitherValues {
       bitVectorFromString andThen attemptDecode
     }
 
-    final val respToString: RESP => String = {
+    val respToString: RESP => String = {
       val stringify = (bits: BitVector) => bits.bytes.decodeUtf8.fold(_.getMessage, identity)
       requireEncode andThen stringify
     }
@@ -81,14 +81,14 @@ final class RESPCodecsSpec extends BaseSpec {
     } :| "RESP"
   private[this] def respListGen: Gen[List[RESP]] = smallNumGen.flatMap(listOfN(_, respGen)) :| "list of RESPs"
 
-  private[this] implicit final val stringArb: Arbitrary[String]        = Arbitrary(stringGen)
-  private[this] implicit final val invalidProtocolArb: Arbitrary[Char] = Arbitrary(invalidProtocolGen)
-  private[this] implicit final val strArb: Arbitrary[Str]              = Arbitrary(strGen)
-  private[this] implicit final val errArb: Arbitrary[Err]              = Arbitrary(errGen)
-  private[this] implicit final val numArb: Arbitrary[Num]              = Arbitrary(numGen)
-  private[this] implicit final val genBulkArb: Arbitrary[GenBulk]      = Arbitrary(genBulkGen)
-  private[this] implicit final val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
-  private[this] implicit final val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
+  private[this] implicit val stringArb: Arbitrary[String]        = Arbitrary(stringGen)
+  private[this] implicit val invalidProtocolArb: Arbitrary[Char] = Arbitrary(invalidProtocolGen)
+  private[this] implicit val strArb: Arbitrary[Str]              = Arbitrary(strGen)
+  private[this] implicit val errArb: Arbitrary[Err]              = Arbitrary(errGen)
+  private[this] implicit val numArb: Arbitrary[Num]              = Arbitrary(numGen)
+  private[this] implicit val genBulkArb: Arbitrary[GenBulk]      = Arbitrary(genBulkGen)
+  private[this] implicit val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
+  private[this] implicit val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
 
   "A RESP codec" when {
     "handling unknown protocol type" should {

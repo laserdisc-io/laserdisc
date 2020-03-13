@@ -12,8 +12,8 @@ import scodec.{Codec, Err => SErr}
 
 object RESPCodecsSpec extends EitherValues {
   private[this] final object functions {
-    private[this] final val attemptDecode = (bits: BitVector) => Codec.summon[RESP].decodeValue(bits)
-    private[this] final val requireEncode = (resp: RESP) => Codec.summon[RESP].encode(resp).require
+    private[this] final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
+    private[this] final val requireEncode = (resp: RESP) => Codec[RESP].encode(resp).require
     private[this] final val stringToBytes = (s: String) => s.getBytes(UTF_8)
 
     final val stringToBytesLength = stringToBytes andThen (bytes => bytes.length)

@@ -73,8 +73,9 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
           )
         }).toList.sequence
 
-      val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl => preset(cl) *> requests(cl) }
+      val responses = run(
+        clientUnderTest use (cl => preset(cl) *> requests(cl))
+      )
 
       responses.size should be(300)
       responses map (_ should be(payload))
@@ -101,8 +102,9 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
           )
         )
 
-      val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl => preset(cl) *> requests(cl) }
+      val responses = run(
+        clientUnderTest use (cl => preset(cl) *> requests(cl))
+      )
 
       responses.size should be(50)
       responses map (_ should be(payload))
@@ -131,8 +133,9 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
           )
         }).toList.sequence
 
-      val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl => preset(cl) *> requests(cl) }
+      val responses = run(
+        clientUnderTest use (cl => preset(cl) *> requests(cl))
+      )
 
       responses.size should be(1000)
       responses map (_ should be(payload))
@@ -158,8 +161,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
           )
         }).toList.sequence
 
-      val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl => requests(cl) }
+      val responses = run(clientUnderTest use requests)
 
       responses.size should be(1000)
       responses map (_ should be(correct))
@@ -194,8 +196,9 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
           )
         }).toList.sequence map (_.flatten)
 
-      val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl => cleanup(cl) *> preset(cl) *> requests(cl) }
+      val responses = run(
+        clientUnderTest use (cl => cleanup(cl) *> preset(cl) *> requests(cl))
+      )
 
       responses.size should be(50 * 100)
       responses map (_ should be(bulk))

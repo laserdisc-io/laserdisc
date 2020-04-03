@@ -18,7 +18,7 @@ object RedisClient {
     * Creates a redis client that will handle the blocking network
     * connection's operations on a cached thread pool.
     */
-  @inline final def apply[F[_]: Concurrent: ContextShift: Timer: LogWriter](
+  @inline final def apply[F[_]: LogWriter: Concurrent: ContextShift: Timer](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
@@ -30,7 +30,7 @@ object RedisClient {
     * that will handle the blocking network connection's
     * operations on a cached thread pool.
     */
-  @inline final def toNode[F[_]: Concurrent: ContextShift: Timer: LogWriter](
+  @inline final def toNode[F[_]: LogWriter: Concurrent: ContextShift: Timer](
       host: Host,
       port: Port,
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
@@ -43,7 +43,7 @@ object RedisClient {
     * that will handle the blocking network connection's
     * operations on a cached thread pool.
     */
-  @inline final def toNodeBlockingOn[F[_]: Concurrent: ContextShift: Timer: LogWriter](
+  @inline final def toNodeBlockingOn[F[_]: LogWriter: Concurrent: ContextShift: Timer](
       blockingPool: Blocker
   )(
       host: Host,
@@ -58,7 +58,7 @@ object RedisClient {
     * thread pool will be used to handle the blocking network
     * connection's operations.
     */
-  @inline final def blockingOn[F[_]: Concurrent: ContextShift: Timer: LogWriter](
+  @inline final def blockingOn[F[_]: LogWriter: Concurrent: ContextShift: Timer](
       blockingPool: Blocker
   )(
       addresses: Set[RedisAddress],

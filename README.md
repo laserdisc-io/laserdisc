@@ -100,7 +100,7 @@ import log.effect.fs2.SyncLogWriter
 object Main extends IOApp {
 
   def redisTest(implicit log: LogWriter[IO]): IO[Unit] =
-    RedisClient.toNode[IO]("localhost", 6379).use { client =>
+    RedisClient.toNode("localhost", 6379).use { client =>
       client.send(
         set("a", 23),
         set("b", 55),

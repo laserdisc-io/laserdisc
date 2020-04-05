@@ -1,5 +1,3 @@
-package laserdisc.fs2
-
 import java.io.{ByteArrayOutputStream, PrintStream}
 import java.util.concurrent.ForkJoinPool
 
@@ -31,6 +29,7 @@ final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers {
     import laserdisc._
     import laserdisc.all._
     import laserdisc.auto._
+    import laserdisc.fs2._
     import log.effect.LogWriter
     import log.effect.fs2.SyncLogWriter
 

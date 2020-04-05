@@ -1,9 +1,7 @@
-package laserdisc.fs2
-
 import java.io.{ByteArrayOutputStream, PrintStream}
 import java.util.concurrent.ForkJoinPool
 
-import cats.effect.{Concurrent, ContextShift, IO, Timer}
+import cats.effect.{ContextShift, IO, Timer}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -11,11 +9,11 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
 final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers {
+
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
   private[this] implicit val timer: Timer[IO]               = IO.timer(ec)
   private[this] implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
-  private[this] implicit val concurrent: Concurrent[IO]     = IO.ioConcurrentEffect
 
   private[this] def capturedConsoleOutOf(aWrite: IO[Unit]): String = {
     val lowerStream = new ByteArrayOutputStream()
@@ -31,6 +29,7 @@ final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers {
     import laserdisc._
     import laserdisc.all._
     import laserdisc.auto._
+    import laserdisc.fs2._
     import log.effect.LogWriter
     import log.effect.fs2.SyncLogWriter
 

@@ -1,20 +1,19 @@
-package laserdisc.fs2
-
 import java.io.{ByteArrayOutputStream, PrintStream}
 import java.util.concurrent.ForkJoinPool
 
-import cats.effect.{Concurrent, ContextShift, IO, Timer}
-import org.scalatest.{Matchers, WordSpecLike}
+import cats.effect.{ContextShift, IO, Timer}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
-final class ReadmeExampleSpec extends WordSpecLike with Matchers {
+final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers {
+
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
   private[this] implicit val timer: Timer[IO]               = IO.timer(ec)
   private[this] implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
-  private[this] implicit val concurrent: Concurrent[IO]     = IO.ioConcurrentEffect
 
   private[this] def capturedConsoleOutOf(aWrite: IO[Unit]): String = {
     val lowerStream = new ByteArrayOutputStream()
@@ -26,21 +25,21 @@ final class ReadmeExampleSpec extends WordSpecLike with Matchers {
   }
 
   "The readme example should give the expected output" in {
-    import cats.effect.IO
     import cats.syntax.flatMap._
     import laserdisc._
+    import laserdisc.all._
     import laserdisc.auto._
     import laserdisc.fs2._
     import log.effect.LogWriter
     import log.effect.fs2.SyncLogWriter
 
     def redisTest(implicit log: LogWriter[IO]): IO[Unit] =
-      RedisClient.toNode[IO]("localhost", 6379).use { client =>
+      RedisClient.toNode("localhost", 6379).use { client =>
         client.send(
-          strings.set("a", 23),
-          strings.set("b", 55),
-          strings.get[PosInt]("b"),
-          strings.get[PosInt]("a")
+          set("a", 23),
+          set("b", 55),
+          get[PosInt]("b"),
+          get[PosInt]("a")
         ) >>= {
           case (Right(OK), Right(OK), Right(Some(getOfb)), Right(Some(getOfa))) if getOfb.value == 55 && getOfa.value == 23 =>
             log info "yay!"

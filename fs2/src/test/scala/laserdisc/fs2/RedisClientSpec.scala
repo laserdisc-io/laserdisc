@@ -12,13 +12,17 @@ import cats.syntax.traverse._
 import laserdisc.auto._
 import log.effect.LogWriter
 import log.effect.fs2.SyncLogWriter.noOpLog
-import org.scalatest.{Matchers, WordSpecLike}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.collection.parallel.immutable.ParSeq
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
-final class RedisClientSpec extends RedisClientBaseSpec[IO] {
+final class RedisClientSpec extends ClientSpec(6379)
+final class KeyDbClientSpec extends ClientSpec(6380)
+
+private[fs2] abstract class ClientSpec(p: Port) extends ClientBaseSpec[IO](p) {
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
   override implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
@@ -29,20 +33,19 @@ final class RedisClientSpec extends RedisClientBaseSpec[IO] {
   override def run[A]: IO[A] => A = _.unsafeRunSync()
 }
 
-abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
+private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLike with Matchers {
   implicit def contextShift: ContextShift[F]
   implicit def timer: Timer[F]
   implicit def concurrent: Concurrent[F]
   implicit def logger: LogWriter[F]
 
   def run[A]: F[A] => A
+  def clientUnderTest: Resource[F, RedisClient[F]] =
+    RedisClient.toNode("127.0.0.1", p)
 
   private[this] final val key: Key = "test-key"
   private[this] final val text     = "test text"
   private[this] final val correct  = "correct"
-
-  def clientUnderTest: Resource[F, RedisClient[F]] =
-    RedisClient.toNode("127.0.0.1", 6379)
 
   "an fs2 redis client" should {
     import cats.instances.list.catsStdInstancesForList
@@ -70,10 +73,9 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
           )
         }).toList.sequence
 
-      val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl =>
-          preset(cl) *> requests(cl)
-        }
+      val responses = run(
+        clientUnderTest use (cl => preset(cl) *> requests(cl))
+      )
 
       responses.size should be(300)
       responses map (_ should be(payload))
@@ -100,10 +102,9 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
           )
         )
 
-      val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl =>
-          preset(cl) *> requests(cl)
-        }
+      val responses = run(
+        clientUnderTest use (cl => preset(cl) *> requests(cl))
+      )
 
       responses.size should be(50)
       responses map (_ should be(payload))
@@ -132,10 +133,9 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
           )
         }).toList.sequence
 
-      val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl =>
-          preset(cl) *> requests(cl)
-        }
+      val responses = run(
+        clientUnderTest use (cl => preset(cl) *> requests(cl))
+      )
 
       responses.size should be(1000)
       responses map (_ should be(payload))
@@ -161,10 +161,7 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
           )
         }).toList.sequence
 
-      val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl =>
-          requests(cl)
-        }
+      val responses = run(clientUnderTest use requests)
 
       responses.size should be(1000)
       responses map (_ should be(correct))
@@ -199,10 +196,9 @@ abstract class RedisClientBaseSpec[F[_]] extends WordSpecLike with Matchers {
           )
         }).toList.sequence map (_.flatten)
 
-      val responses =
-        (run[List[String]] compose clientUnderTest.use) { cl =>
-          cleanup(cl) *> preset(cl) *> requests(cl)
-        }
+      val responses = run(
+        clientUnderTest use (cl => cleanup(cl) *> preset(cl) *> requests(cl))
+      )
 
       responses.size should be(50 * 100)
       responses map (_ should be(bulk))

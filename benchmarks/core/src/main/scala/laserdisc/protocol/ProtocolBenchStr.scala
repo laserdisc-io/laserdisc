@@ -5,7 +5,7 @@ import org.openjdk.jmh.annotations.{Benchmark, Scope, State}
 import shapeless._
 
 @State(Scope.Benchmark)
-class ProtocolBench {
+class ProtocolBenchStr {
   private final val protocol = Protocol("CUSTOM", _: Int :: String :: Long :: Double :: HNil).as[Str, OK]
 
   private final val request  = 0 :: "a" :: 1L :: 2.0d :: HNil

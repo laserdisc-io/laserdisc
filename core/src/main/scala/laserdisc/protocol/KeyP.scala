@@ -12,14 +12,15 @@ object KeyP {
     final case object hashtable  extends Encoding
     final case object skiplist   extends Encoding
 
-    implicit final val bulk2EncodingRead: Bulk ==> Encoding = Read.instancePF {
-      case Bulk("raw")        => raw
-      case Bulk("int")        => int
-      case Bulk("ziplist")    => ziplist
-      case Bulk("linkedlist") => linkedlist
-      case Bulk("intset")     => intset
-      case Bulk("hashtable")  => hashtable
-      case Bulk("skiplist")   => skiplist
+    implicit final val bulk2EncodingRead: Bulk ==> Encoding = Read.instance {
+      case Bulk("raw")        => Right(raw)
+      case Bulk("int")        => Right(int)
+      case Bulk("ziplist")    => Right(ziplist)
+      case Bulk("linkedlist") => Right(linkedlist)
+      case Bulk("intset")     => Right(intset)
+      case Bulk("hashtable")  => Right(hashtable)
+      case Bulk("skiplist")   => Right(skiplist)
+      case Bulk(other)        => Left(RESPDecErr(s"Unexpected key encoding. Was $other"))
     }
   }
 
@@ -62,10 +63,11 @@ object KeyP {
     final case object NoExpire                    extends TTLResponse
     final case class ExpireAfter(ttl: NonNegLong) extends TTLResponse
 
-    implicit final val num2TTLResponseRead: Num ==> TTLResponse = Read.instancePF {
-      case Num(-2)          => NoKey
-      case Num(-1)          => NoExpire
-      case Num(l) if l >= 0 => ExpireAfter(NonNegLong.unsafeFrom(l))
+    implicit final val num2TTLResponseRead: Num ==> TTLResponse = Read.instance {
+      case Num(-2)          => Right(NoKey)
+      case Num(-1)          => Right(NoExpire)
+      case Num(l) if l >= 0 => Right(ExpireAfter(NonNegLong.unsafeFrom(l)))
+      case Num(other)       => Left(RESPDecErr(s"Unexpected key TTL. Was $other"))
     }
   }
 }
@@ -94,20 +96,22 @@ trait KeyBaseP {
 
   import keytypes._
 
-  private[this] implicit final val str2NOKEYOrOK: Str ==> (NOKEY | OK) = Read.instancePF {
-    case Str("NOKEY") => Left(NOKEY)
-    case Str("OK")    => Right(OK)
+  private[this] implicit final val str2NOKEYOrOK: Str ==> (NOKEY | OK) = Read.instance {
+    case Str("NOKEY") => Right(Left(NOKEY))
+    case Str("OK")    => Right(Right(OK))
+    case Str(other)   => Left(RESPDecErr(s"Unexpected string for Str ==> (NOKEY | OK). Was $other"))
   }
 
   private[this] final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  private[this] implicit final val str2OptionType: Str ==> Option[KeyType] = Read.instancePF {
-    case Str("none")   => None
-    case Str("string") => Some(KeyType.string)
-    case Str("list")   => Some(KeyType.list)
-    case Str("set")    => Some(KeyType.set)
-    case Str("zset")   => Some(KeyType.zset)
-    case Str("hash")   => Some(KeyType.hash)
+  private[this] implicit final val str2OptionType: Str ==> Option[KeyType] = Read.instance {
+    case Str("string") => Right(Some(KeyType.string))
+    case Str("list")   => Right(Some(KeyType.list))
+    case Str("set")    => Right(Some(KeyType.set))
+    case Str("zset")   => Right(Some(KeyType.zset))
+    case Str("hash")   => Right(Some(KeyType.hash))
+    case Str("none")   => Right(None)
+    case Str(other)    => Left(RESPDecErr(s"Unexpected string for Str ==> Option[KeyType]. Was $other"))
   }
 
   final def del(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]

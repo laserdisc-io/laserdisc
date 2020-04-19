@@ -18,7 +18,7 @@ object RedisClient {
     * Creates a redis client that will handle the blocking network
     * connection's operations on a cached thread pool.
     */
-  @inline final def apply[F[_]: Concurrent: ContextShift: Timer: LogWriter](
+  @inline final def apply[F[_]: LogWriter: Concurrent: ContextShift: Timer](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
@@ -30,7 +30,7 @@ object RedisClient {
     * that will handle the blocking network connection's
     * operations on a cached thread pool.
     */
-  @inline final def toNode[F[_]: Concurrent: ContextShift: Timer: LogWriter](
+  @inline final def toNode[F[_]: LogWriter: Concurrent: ContextShift: Timer](
       host: Host,
       port: Port,
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
@@ -43,7 +43,7 @@ object RedisClient {
     * that will handle the blocking network connection's
     * operations on a cached thread pool.
     */
-  @inline final def toNodeBlockingOn[F[_]: Concurrent: ContextShift: Timer: LogWriter](
+  @inline final def toNodeBlockingOn[F[_]: LogWriter: Concurrent: ContextShift: Timer](
       blockingPool: Blocker
   )(
       host: Host,
@@ -58,7 +58,7 @@ object RedisClient {
     * thread pool will be used to handle the blocking network
     * connection's operations.
     */
-  @inline final def blockingOn[F[_]: Concurrent: ContextShift: Timer: LogWriter](
+  @inline final def blockingOn[F[_]: LogWriter: Concurrent: ContextShift: Timer](
       blockingPool: Blocker
   )(
       addresses: Set[RedisAddress],
@@ -76,9 +76,7 @@ object RedisClient {
     val establishedConnection: Resource[F, impl.Connection[F]] =
       impl.connection(redisConnection, impl.currentServer(addresses.toSeq))
 
-    establishedConnection >>= { conn =>
-      impl.mkClient(conn)
-    }
+    establishedConnection >>= { conn => impl.mkClient(conn) }
   }
 
   private[laserdisc] final object impl {
@@ -99,9 +97,7 @@ object RedisClient {
     }
 
     def mkClient[F[_]: Concurrent: Timer: LogWriter](establishedConn: Connection[F]): Resource[F, RedisClient[F]] =
-      Resource.make(mkPublisher(establishedConn) >>= { publ =>
-        publ.start map (_ => publ)
-      })(_.shutdown) map { publisher =>
+      Resource.make(mkPublisher(establishedConn) >>= { publ => publ.start map (_ => publ) })(_.shutdown) map { publisher =>
         new RedisClient[F] {
           override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
               implicit handler: RedisHandler.Aux[F, In, Out]
@@ -121,9 +117,7 @@ object RedisClient {
           Resource.liftF(Ref.of[F, Vector[Request[F]]](Vector.empty)) >>= { inFlight =>
             def push(req: Request[F]): F[RESP] =
               inFlight
-                .modify { in =>
-                  (in :+ req) -> req.protocol.encode
-                }
+                .modify { in => (in :+ req) -> req.protocol.encode }
 
             def pop: F[Option[Request[F]]] =
               inFlight

@@ -1,12 +1,16 @@
 package laserdisc
 
+import eu.timepit.refined.W
 import eu.timepit.refined.api._
+import eu.timepit.refined.generic.Equal
 import eu.timepit.refined.scalacheck.reftype.arbitraryRefType
 import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInstances, StringInstances}
-import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen._
-import org.scalatest.{Assertion, EitherValues, Matchers, OptionValues, WordSpec}
+import org.scalacheck.{Arbitrary, Gen}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{Assertion, EitherValues}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.Double.{NaN, MaxValue => DMax, MinValue => DMin}
@@ -14,14 +18,26 @@ import scala.Int.{MaxValue => IMax, MinValue => IMin}
 import scala.Long.{MaxValue => LMax, MinValue => LMin}
 
 abstract class BaseSpec
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with EitherValues
-    with OptionValues
     with ScalaCheckPropertyChecks
     with CollectionInstancesBinCompat1
     with NumericInstances
     with StringInstances {
+
+  implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
+    PropertyCheckConfiguration(
+      minSuccessful = 100,
+      maxDiscardedFactor = 10.0,
+      minSize = 0,
+      sizeRange = 100,
+      workers = 12
+    )
+
+  protected final type EmptyString = String Refined Equal[W.`""`.T]
+  protected final val EmptyString: EmptyString = RefType.applyRefM[EmptyString]("")
+
   private[this] final val dashChar: Char     = 0x002D.toChar
   private[this] final val dashString: String = dashChar.toString
   private[this] final val dotString: String  = 0x002E.toChar.toString
@@ -71,29 +87,6 @@ abstract class BaseSpec
   private[this] final def strOfNGen(n: Int, fs: (Int, Gen[Char])*): Gen[String]  = listOfN(n, frequency(fs: _*)).map(_.mkString)
   private[this] final def strOfNSameFreqGen(n: Int, gs: Gen[Char]*): Gen[String] = strOfNGen(n, gs.map(1 -> _): _*)
 
-  final val connectionNameGen: Gen[String]    = strGen(nonEmptyListOf(noSpaceUtf8BMPCharGen)) :| "connection name"
-  final val dbIndexGen: Gen[Int]              = chooseNum(0, DbIndexMaxValueWit.value) :| "db index"
-  final val directionGen: Gen[Direction]      = Gen.oneOf(Direction.asc, Direction.desc) :| "direction"
-  final val geoHashGen: Gen[String]           = strOfNGen(11, 1 -> numChar, 9 -> alphaLowerChar) :| "geo hash"
-  final val globPatternGen: Gen[String]       = nonEmptyListOf(globGen).map(_.mkString) :| "glob pattern"
-  final val hostGen: Gen[String]              = Gen.oneOf(allNICsGen, lbGen, rfc1123Gen, rfc1918Gen, rfc5737Gen, rfc3927Gen, rfc2544Gen) :| "host"
-  final val keyGen: Gen[String]               = strGen(nonEmptyListOf(utf8BMPCharGen)) :| "key"
-  final val latitudeGen: Gen[Double]          = chooseNum(LatitudeMinValueWit.value, LatitudeMaxValueWit.value) :| "latitude"
-  final val longitudeGen: Gen[Double]         = chooseNum(LongitudeMinValueWit.value, LongitudeMaxValueWit.value) :| "longitude"
-  final val nodeIdGen: Gen[String]            = strOfNSameFreqGen(40, hexGen) :| "node id"
-  final val nonNegDoubleGen: Gen[Double]      = chooseNum(0.0d, DMax) :| "double >= 0.0D"
-  final val nonNegIntGen: Gen[Int]            = chooseNum(0, IMax) :| "int >= 0"
-  final val nonNegLongGen: Gen[Long]          = chooseNum(0L, LMax) :| "long >= 0L"
-  final val nonZeroDoubleGen: Gen[Double]     = chooseNum(DMin, DMax).suchThat(d => d != 0.0d && d != NaN) :| "double != 0.0D and != NaN"
-  final val nonZeroIntGen: Gen[Int]           = chooseNum(IMin, IMax).suchThat(_ != 0) :| "int != 0"
-  final val nonZeroLongGen: Gen[Long]         = chooseNum(LMin, LMax).suchThat(_ != 0L) :| "long != 0L"
-  final val portGen: Gen[Int]                 = chooseNum(PortMinValueWit.value, PortMaxValueWit.value) :| "port"
-  final val rangeOffsetGen: Gen[Int]          = chooseNum(0, RangeOffsetMaxValueWit.value) :| "range offset"
-  final val slotGen: Gen[Int]                 = chooseNum(0, SlotMaxValueWit.value) :| "slot"
-  final val stringLengthGen: Gen[Long]        = chooseNum(0L, StringLengthMaxValueWit.value) :| "string length"
-  final val stringsWithSpacesGen: Gen[String] = strGen(listOf(frequency(1 -> spaceGen, 10 -> noSpaceUtf8BMPCharGen))) :| "string w/ spaces"
-  final val validDoubleGen: Gen[Double]       = chooseNum(DMin, DMax).suchThat(_ != NaN) :| "double != NaN"
-
   final val connectionNameIsValid: String => Boolean                          = Validate[String, ConnectionNameRef].isValid
   final val dbIndexIsValid: Int => Boolean                                    = Validate[Int, DbIndexRef].isValid
   final val geoHashIsValid: String => Boolean                                 = Validate[String, GeoHashRef].isValid
@@ -119,13 +112,46 @@ abstract class BaseSpec
   final val twoOrMoreWeightedKeysIsValid: List[(Key, ValidDouble)] => Boolean = Validate[List[(Key, ValidDouble)], TwoOrMoreRef].isValid
   final val validDoubleIsValid: Double => Boolean                             = Validate[Double, ValidDoubleRef].isValid
 
+  final val connectionNameGen: Gen[String] = strGen(nonEmptyListOf(noSpaceUtf8BMPCharGen)) :| "connection name"
+  final val dbIndexGen: Gen[Int]           = chooseNum(0, DbIndexMaxValueWit.value) :| "db index"
+  final val directionGen: Gen[Direction]   = Gen.oneOf(Direction.asc, Direction.desc) :| "direction"
+  final val geoHashGen: Gen[String]        = strOfNGen(11, 1 -> numChar, 9 -> alphaLowerChar) :| "geo hash"
+  final val globPatternGen: Gen[String]    = nonEmptyListOf(globGen).map(_.mkString) :| "glob pattern"
+  final val hostGen: Gen[Host] = {
+    val hosts = 7 -> Gen
+      .oneOf(allNICsGen, lbGen, rfc1123Gen, rfc1918Gen, rfc5737Gen, rfc3927Gen, rfc2544Gen)
+      .filter(hostIsValid)
+      .map(hs => Host.unsafeFrom(hs))
+    val loopbackHost = 1 -> Gen.const(LoopbackHost)
+
+    frequency(hosts, loopbackHost)
+  } :| "host"
+  final val hostOrEmptyGen: Gen[EmptyString | Host] =
+    frequency(10 -> hostGen.map(Right.apply), 1 -> const(EmptyString).map(Left.apply)) :| "host or empty string"
+  final val keyGen: Gen[Key]                  = strGen(nonEmptyListOf(utf8BMPCharGen)).filter(keyIsValid).map(Key.unsafeFrom) :| "key"
+  final val latitudeGen: Gen[Double]          = chooseNum(LatitudeMinValueWit.value, LatitudeMaxValueWit.value) :| "latitude"
+  final val longitudeGen: Gen[Double]         = chooseNum(LongitudeMinValueWit.value, LongitudeMaxValueWit.value) :| "longitude"
+  final val nodeIdGen: Gen[String]            = strOfNSameFreqGen(40, hexGen) :| "node id"
+  final val nonNegDoubleGen: Gen[Double]      = chooseNum(0.0d, DMax) :| "double >= 0.0D"
+  final val nonNegIntGen: Gen[Int]            = chooseNum(0, IMax) :| "int >= 0"
+  final val nonNegLongGen: Gen[Long]          = chooseNum(0L, LMax) :| "long >= 0L"
+  final val nonZeroDoubleGen: Gen[Double]     = chooseNum(DMin, DMax).suchThat(d => d != 0.0d && d != NaN) :| "double != 0.0D and != NaN"
+  final val nonZeroIntGen: Gen[Int]           = chooseNum(IMin, IMax).suchThat(_ != 0) :| "int != 0"
+  final val nonZeroLongGen: Gen[Long]         = chooseNum(LMin, LMax).suchThat(_ != 0L) :| "long != 0L"
+  final val portGen: Gen[Port]                = chooseNum(PortMinValueWit.value, PortMaxValueWit.value).map(Port.unsafeFrom) :| "port"
+  final val rangeOffsetGen: Gen[Int]          = chooseNum(0, RangeOffsetMaxValueWit.value) :| "range offset"
+  final val slotGen: Gen[Slot]                = chooseNum(0, SlotMaxValueWit.value).map(Slot.unsafeFrom) :| "slot"
+  final val stringLengthGen: Gen[Long]        = chooseNum(0L, StringLengthMaxValueWit.value) :| "string length"
+  final val stringsWithSpacesGen: Gen[String] = strGen(listOf(frequency(1 -> spaceGen, 10 -> noSpaceUtf8BMPCharGen))) :| "string w/ spaces"
+  final val validDoubleGen: Gen[Double]       = chooseNum(DMin, DMax).suchThat(_ != NaN) :| "double != NaN"
+
   implicit final val connectionNameArb: Arbitrary[ConnectionName] = arbitraryRefType(connectionNameGen)
   implicit final val directionArb: Arbitrary[Direction]           = Arbitrary(directionGen)
   implicit final val geoHashArb: Arbitrary[GeoHash]               = arbitraryRefType(geoHashGen)
   implicit final val globPatternArb: Arbitrary[GlobPattern]       = arbitraryRefType(globPatternGen)
-  implicit final val hostArb: Arbitrary[Host]                     = arbitraryRefType(hostGen)
+  implicit final val hostArb: Arbitrary[Host]                     = Arbitrary(hostGen)
   implicit final val indexArb: Arbitrary[Index]                   = arbitraryRefType(arbitrary[Long])
-  implicit final val keyArb: Arbitrary[Key]                       = arbitraryRefType(keyGen)
+  implicit final val keyArb: Arbitrary[Key]                       = Arbitrary(keyGen)
   implicit final def kvArb[A](implicit A: Arbitrary[A]): Arbitrary[KV[A]] =
     Arbitrary(keyArb.arbitrary.flatMap(k => A.arbitrary.map(KV(k, _))))
   implicit final val nodeIdArb: Arbitrary[NodeId]               = arbitraryRefType(nodeIdGen)
@@ -139,7 +165,7 @@ abstract class BaseSpec
     Arbitrary(nonNegLongArb.arbitrary.flatMap(l => option(listOf(keyArb.arbitrary)).map(Scan(l, _))))
   implicit final val scanKVArb: Arbitrary[ScanKV] =
     Arbitrary(nonNegLongArb.arbitrary.flatMap(l => option(listOf(kvArb[String].arbitrary)).map(ScanKV(l, _))))
-  implicit final val slotArb: Arbitrary[Slot]                                   = arbitraryRefType(slotGen)
+  implicit final val slotArb: Arbitrary[Slot]                                   = Arbitrary(slotGen)
   implicit final val twoOrMoreKeysArb: Arbitrary[TwoOrMoreKeys]                 = arbitraryRefType(twoOrMore(keyArb.arbitrary))
   implicit final val twoOrMoreWeightedKeysArb: Arbitrary[TwoOrMoreWeightedKeys] = arbitraryRefType(twoOrMore(zip(keyArb, validDoubleArb)))
   implicit final val validDoubleArb: Arbitrary[ValidDouble]                     = arbitraryRefType(validDoubleGen)
@@ -149,6 +175,9 @@ abstract class BaseSpec
   protected[this] implicit final class EitherSyntax[A, B](private val eab: Either[A, B]) {
     def onRight[C](f: B => Assertion): Assertion =
       eab.fold(err => fail(s"It Should be right but was left with $err"), f)
+
+    def onLeft[C](e: A => Assertion): Assertion =
+      eab.fold(e, res => fail(s"It Should be left but was right with $res"))
 
     def onRightAll[C](f: B => Unit): Unit =
       eab.fold(err => fail(s"It Should be right but was left with $err"), f)

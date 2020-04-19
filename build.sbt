@@ -1,25 +1,28 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-val `scala 2.12` = "2.12.10"
-val `scala 2.13` = "2.13.1"
-
 val V = new {
-  val circe                  = "0.12.3"
-  val fs2                    = "2.1.0"
+  val cats                   = "2.1.1"
+  val `cats-discipline`      = "1.0.2"
+  val `discipline-scalatest` = "1.0.1"
+  val circe                  = "0.13.0"
+  val fs2                    = "2.3.0"
   val `kind-projector`       = "0.11.0"
   val kittens                = "2.0.0"
-  val `log-effect-fs2`       = "0.12.0"
+  val `log-effect-fs2`       = "0.12.2"
   val `parallel-collections` = "0.2.0"
-  val refined                = "0.9.10"
-  val scalacheck             = "1.14.2"
-  val scalatest              = "3.0.8"
-  val `scodec-bits`          = "1.1.12"
-  val `scodec-core`          = "1.11.4"
+  val refined                = "0.9.13"
+  val scalacheck             = "1.14.3"
+  val scalatest              = "3.1.1"
+  val `scalatest-plus`       = "3.1.1.1"
+  val `scodec-bits`          = "1.1.14"
+  val `scodec-core`          = "1.11.7"
   val `scodec-stream`        = "2.0.0"
   val shapeless              = "2.3.3"
 }
 
+val `cats-core`      = Def.setting("org.typelevel" %% "cats-core"       % V.cats)
+val `cats-laws`      = Def.setting("org.typelevel" %% "cats-laws"       % V.cats)
 val `circe-core`     = Def.setting("io.circe"      %%% "circe-core"     % V.circe)
 val `circe-parser`   = Def.setting("io.circe"      %%% "circe-parser"   % V.circe)
 val `fs2-core`       = Def.setting("co.fs2"        %%% "fs2-core"       % V.fs2)
@@ -32,10 +35,14 @@ val `scodec-core`    = Def.setting("org.scodec"    %%% "scodec-core"    % V.`sco
 val `scodec-stream`  = Def.setting("org.scodec"    %%% "scodec-stream"  % V.`scodec-stream`)
 val shapeless        = Def.setting("com.chuusai"   %%% "shapeless"      % V.shapeless)
 
-val `circe-generic`      = Def.setting("io.circe"       %%% "circe-generic"      % V.circe      % Test)
-val `refined-scalacheck` = Def.setting("eu.timepit"     %%% "refined-scalacheck" % V.refined    % Test)
-val scalacheck           = Def.setting("org.scalacheck" %%% "scalacheck"         % V.scalacheck % Test)
-val scalatest            = Def.setting("org.scalatest"  %%% "scalatest"          % V.scalatest  % Test)
+val `cats-discipline`      = Def.setting("org.typelevel"     %% "discipline-core"      % V.`cats-discipline`      % Test)
+val `discipline-scalatest` = Def.setting("org.typelevel"     %% "discipline-scalatest" % V.`discipline-scalatest` % Test)
+val `circe-generic`        = Def.setting("io.circe"          %%% "circe-generic"       % V.circe                  % Test)
+val `refined-scalacheck`   = Def.setting("eu.timepit"        %%% "refined-scalacheck"  % V.refined                % Test)
+val scalacheck             = Def.setting("org.scalacheck"    %%% "scalacheck"          % V.scalacheck             % Test)
+val scalatest              = Def.setting("org.scalatest"     %%% "scalatest"           % V.scalatest              % Test)
+val `scalatest-plus`       = Def.setting("org.scalatestplus" %%% "scalacheck-1-14"     % V.`scalatest-plus`       % Test)
+
 val `scala-parallel-collections` = Def.setting {
   CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, major)) if major >= 13 =>
@@ -58,7 +65,17 @@ val coreDeps = Def.Initialize.join {
     shapeless,
     `refined-scalacheck`,
     scalacheck,
-    scalatest
+    scalatest,
+    `scalatest-plus`
+  )
+}
+
+val coreLawsDeps = Def.Initialize.join {
+  Seq(
+    `cats-core`,
+    `cats-laws`,
+    `cats-discipline`,
+    `discipline-scalatest`
   )
 }
 
@@ -86,7 +103,8 @@ val circeDeps = Def.Initialize.join {
     `circe-parser`,
     `circe-generic`,
     scalacheck,
-    scalatest
+    scalatest,
+    `scalatest-plus`
   )
 }
 
@@ -181,14 +199,10 @@ val versionDependantScalacOptions = Def.setting {
 }
 
 inThisBuild {
-  Seq(
-    organization := "io.laserdisc",
-    scalaVersion := `scala 2.13`
-  )
+  organization := "io.laserdisc"
 }
 
 lazy val commonSettings = Seq(
-  crossScalaVersions := Seq(`scala 2.12`, `scala 2.13`),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value
@@ -268,6 +282,16 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .jsConfigure(_.enablePlugins(BoilerplatePlugin))
   .jvmConfigure(_.enablePlugins(BoilerplatePlugin))
 
+lazy val `core-laws` = project
+  .in(file("core-laws"))
+  .dependsOn(core.jvm)
+  .settings(commonSettings ++ testSettings)
+  .settings(
+    name := "laserdisc-core-laws",
+    libraryDependencies ++= coreDeps.value ++ coreLawsDeps.value,
+    publishArtifact := false
+  )
+
 lazy val fs2 = project
   .in(file("fs2"))
   .dependsOn(core.jvm)
@@ -279,7 +303,7 @@ lazy val fs2 = project
 
 lazy val `core-bench` = project
   .in(file("benchmarks/core"))
-  .dependsOn(core.jvm)
+  .dependsOn(core.jvm % "compile->test;compile->compile")
   .enablePlugins(JmhPlugin)
   .settings(
     name := "laserdisc-core-benchmarks",
@@ -311,7 +335,7 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
 
 lazy val laserdisc = project
   .in(file("."))
-  .aggregate(core.jvm, core.js, fs2, cli, circe.jvm, circe.js)
+  .aggregate(core.jvm, core.js, `core-laws`, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
     publishArtifact := false,

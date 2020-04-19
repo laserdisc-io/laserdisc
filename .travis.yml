@@ -3,11 +3,12 @@ sudo: false
 
 language: scala
 scala:
-- 2.12.10
+- 2.12.11
 - 2.13.1
 
 jdk:
 - openjdk8
+- openjdk11
 
 services:
 - docker
@@ -31,6 +32,7 @@ before_install:
 
 before_script:
 - docker run -p 6379:6379 -d redis:alpine
+- docker run -p 6380:6379 -d eqalpha/keydb
 
 script:
 - sbt -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false ++$TRAVIS_SCALA_VERSION fullBuild

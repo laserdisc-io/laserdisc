@@ -23,7 +23,7 @@ object RESPCodecsSpec extends EitherValues {
       bitVectorFromString andThen attemptDecode
     }
 
-    final val respToString: RESP => String = {
+    val respToString: RESP => String = {
       val stringify = (bits: BitVector) => bits.bytes.decodeUtf8.fold(_.getMessage, identity)
       requireEncode andThen stringify
     }
@@ -81,14 +81,14 @@ final class RESPCodecsSpec extends BaseSpec {
     } :| "RESP"
   private[this] def respListGen: Gen[List[RESP]] = smallNumGen.flatMap(listOfN(_, respGen)) :| "list of RESPs"
 
-  private[this] implicit final val stringArb: Arbitrary[String]        = Arbitrary(stringGen)
-  private[this] implicit final val invalidProtocolArb: Arbitrary[Char] = Arbitrary(invalidProtocolGen)
-  private[this] implicit final val strArb: Arbitrary[Str]              = Arbitrary(strGen)
-  private[this] implicit final val errArb: Arbitrary[Err]              = Arbitrary(errGen)
-  private[this] implicit final val numArb: Arbitrary[Num]              = Arbitrary(numGen)
-  private[this] implicit final val genBulkArb: Arbitrary[GenBulk]      = Arbitrary(genBulkGen)
-  private[this] implicit final val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
-  private[this] implicit final val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
+  private[this] implicit val stringArb: Arbitrary[String]        = Arbitrary(stringGen)
+  private[this] implicit val invalidProtocolArb: Arbitrary[Char] = Arbitrary(invalidProtocolGen)
+  private[this] implicit val strArb: Arbitrary[Str]              = Arbitrary(strGen)
+  private[this] implicit val errArb: Arbitrary[Err]              = Arbitrary(errGen)
+  private[this] implicit val numArb: Arbitrary[Num]              = Arbitrary(numGen)
+  private[this] implicit val genBulkArb: Arbitrary[GenBulk]      = Arbitrary(genBulkGen)
+  private[this] implicit val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
+  private[this] implicit val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
 
   "A RESP codec" when {
     "handling unknown protocol type" should {
@@ -98,39 +98,21 @@ final class RESPCodecsSpec extends BaseSpec {
     }
 
     "handling simple strings" should {
-      "decode them correctly" in forAll { s: String =>
-        s"+$s$CRLF".RESP onRight (_ shouldBe Str(s))
-      }
-      "encode them correctly" in forAll { s: Str =>
-        s.wireFormat shouldBe s"+${s.value}$CRLF"
-      }
-      "roundtrip with no errors" in forAll { s: Str =>
-        s.roundTrip shouldBe s
-      }
+      "decode them correctly" in forAll { s: String => s"+$s$CRLF".RESP onRight (_ shouldBe Str(s)) }
+      "encode them correctly" in forAll { s: Str => s.wireFormat shouldBe s"+${s.value}$CRLF" }
+      "roundtrip with no errors" in forAll { s: Str => s.roundTrip shouldBe s }
     }
 
     "handling errors" should {
-      "decode them correctly" in forAll { s: String =>
-        s"-$s$CRLF".RESP onRight (_ shouldBe Err(s))
-      }
-      "encode them correctly" in forAll { e: Err =>
-        e.wireFormat shouldBe s"-${e.message}$CRLF"
-      }
-      "roundtrip with no errors" in forAll { e: Err =>
-        e.roundTrip shouldBe e
-      }
+      "decode them correctly" in forAll { s: String => s"-$s$CRLF".RESP onRight (_ shouldBe Err(s)) }
+      "encode them correctly" in forAll { e: Err => e.wireFormat shouldBe s"-${e.message}$CRLF" }
+      "roundtrip with no errors" in forAll { e: Err => e.roundTrip shouldBe e }
     }
 
     "handling integers" should {
-      "decode them correctly" in forAll { l: Long =>
-        s":$l$CRLF".RESP onRight (_ shouldBe Num(l))
-      }
-      "encode them correctly" in forAll { n: Num =>
-        n.wireFormat shouldBe s":${n.value}$CRLF"
-      }
-      "roundtrip with no errors" in forAll { n: Num =>
-        n.roundTrip shouldBe n
-      }
+      "decode them correctly" in forAll { l: Long => s":$l$CRLF".RESP onRight (_ shouldBe Num(l)) }
+      "encode them correctly" in forAll { n: Num => n.wireFormat shouldBe s":${n.value}$CRLF" }
+      "roundtrip with no errors" in forAll { n: Num => n.roundTrip shouldBe n }
     }
 
     "handling bulk strings" should {
@@ -149,9 +131,7 @@ final class RESPCodecsSpec extends BaseSpec {
           case Bulk(bs) => b.wireFormat shouldBe s"$$${bs.bytesLength}$CRLF$bs$CRLF"
         }
       }
-      "roundtrip with no errors" in forAll { b: GenBulk =>
-        b.roundTrip shouldBe b
-      }
+      "roundtrip with no errors" in forAll { b: GenBulk => b.roundTrip shouldBe b }
     }
 
     "handling arrays" should {
@@ -170,9 +150,7 @@ final class RESPCodecsSpec extends BaseSpec {
           case Arr(xs) => a.wireFormat shouldBe s"*${xs.length}$CRLF${xs.wireFormat}"
         }
       }
-      "roundtrip with no errors" in forAll { a: GenArr =>
-        a.roundTrip shouldBe a
-      }
+      "roundtrip with no errors" in forAll { a: GenArr => a.roundTrip shouldBe a }
     }
   }
 }

@@ -11,6 +11,7 @@ val V = new {
   val `kind-projector`       = "0.11.0"
   val kittens                = "2.1.0"
   val `log-effect-fs2`       = "0.12.2"
+  val munit                  = "0.7.7"
   val `parallel-collections` = "0.2.0"
   val refined                = "0.9.14"
   val scalacheck             = "1.14.3"
@@ -44,6 +45,8 @@ val `refined-scalacheck`   = Def.setting("eu.timepit" %%% "refined-scalacheck" %
 val scalacheck             = Def.setting("org.scalacheck" %%% "scalacheck" % V.scalacheck % Test)
 val scalatest              = Def.setting("org.scalatest" %%% "scalatest" % V.scalatest % Test)
 val `scalatest-plus`       = Def.setting("org.scalatestplus" %%% "scalacheck-1-14" % V.`scalatest-plus` % Test)
+val munit                  = Def.setting("org.scalameta" %%% "munit" % V.munit % Test)
+val `munit-scalacheck`     = Def.setting("org.scalameta" %%% "munit-scalacheck" % V.munit % Test)
 
 val `scala-parallel-collections` = Def.setting {
   CrossVersion.partialVersion(scalaVersion.value) match {
@@ -67,8 +70,8 @@ val coreDeps = Def.Initialize.join {
     shapeless,
     `refined-scalacheck`,
     scalacheck,
-    scalatest,
-    `scalatest-plus`
+    munit,
+    `munit-scalacheck`
   )
 }
 
@@ -239,6 +242,8 @@ lazy val publishSettings = Seq(
 )
 
 lazy val testSettings = Seq(
+  testFrameworks += new TestFramework("munit.Framework"),
+  scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oDF")
 )
 

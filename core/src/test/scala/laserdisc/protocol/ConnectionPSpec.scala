@@ -1,88 +1,74 @@
 package laserdisc
 package protocol
 
+import org.scalacheck.Prop.forAll
+
 final class ConnectionPSpec extends BaseSpec with ConnectionP {
-  "The Connection protocol" when {
-    "using auth" should {
-      "roundtrip successfully" when {
-        "given non empty password" in forAll("non empty password") { key: Key =>
-          val protocol = auth(key)
-
-          protocol.encode shouldBe Arr(Bulk("AUTH"), Bulk(key.value))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
+  property("The Connection protocol using auth roundtrips successfully given non empty password") {
+    forAll { key: Key =>
+      val protocol = auth(key)
+      assertEquals(protocol.encode, Arr(Bulk("AUTH"), Bulk(key.value)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
     }
+  }
 
-    "using echo" should {
-      "roundtrip successfully" when {
-        "given any String message" in forAll("string") { s: String =>
-          val protocol = echo(s)
-
-          protocol.encode shouldBe Arr(Bulk("ECHO"), Bulk(s))
-          protocol.decode(Bulk(s)) onRight (_ shouldBe s)
-        }
-        "given any Int message" in forAll("int") { i: Int =>
-          val protocol = echo(i)
-
-          protocol.encode shouldBe Arr(Bulk("ECHO"), Bulk(i))
-          protocol.decode(Bulk(i)) onRight (_ shouldBe i)
-        }
-      }
+  property("The Connection protocol using echo roundtrips successfully given any String message") {
+    forAll { s: String =>
+      val protocol = echo(s)
+      assertEquals(protocol.encode, Arr(Bulk("ECHO"), Bulk(s)))
+      assertEquals(protocol.decode(Bulk(s)), s)
     }
+  }
 
-    "using ping" should {
-      "roundript successfully" when {
-        "given any String message" in forAll("string") { s: String =>
-          val protocol = ping(s)
-
-          protocol.encode shouldBe Arr(Bulk("PING"), Bulk(s))
-          protocol.decode(Bulk(s)) onRight (_ shouldBe s)
-        }
-        "given any Int message" in forAll("int") { i: Int =>
-          val protocol = ping(i)
-
-          protocol.encode shouldBe Arr(Bulk("PING"), Bulk(i))
-          protocol.decode(Bulk(i)) onRight (_ shouldBe i)
-        }
-        "using val to get back PONG message" in {
-          val protocol = ping
-
-          protocol.encode shouldBe Arr(Bulk("PING"))
-          protocol.decode(Str(PONG.value)) onRight (_ shouldBe PONG)
-        }
-      }
+  property("The Connection protocol using echo roundtrips successfully given any Int message") {
+    forAll { i: Int =>
+      val protocol = echo(i)
+      assertEquals(protocol.encode, Arr(Bulk("ECHO"), Bulk(i)))
+      assertEquals(protocol.decode(Bulk(i)), i)
     }
+  }
 
-    "using quit" should {
-      "roundtrip successfully" in {
-        val protocol = quit
-
-        protocol.encode shouldBe Arr(Bulk("QUIT"))
-        protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-      }
+  property("The Connection protocol using ping roundtrips successfully given any String message") {
+    forAll { s: String =>
+      val protocol = ping(s)
+      assertEquals(protocol.encode, Arr(Bulk("PING"), Bulk(s)))
+      assertEquals(protocol.decode(Bulk(s)), s)
     }
+  }
 
-    "using select" should {
-      "roundtrip successfully" when {
-        "given valid DbIndexes" in forAll("db index") { dbi: DbIndex =>
-          val protocol = select(dbi)
-
-          protocol.encode shouldBe Arr(Bulk("SELECT"), Bulk(dbi))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
+  property("The Connection protocol using ping roundtrips successfully given any Int message") {
+    forAll { i: Int =>
+      val protocol = ping(i)
+      assertEquals(protocol.encode, Arr(Bulk("PING"), Bulk(i)))
+      assertEquals(protocol.decode(Bulk(i)), i)
     }
+  }
 
-    "using swapdb" should {
-      "roundtrip successfully" when {
-        "given valid DbIndexes" in forAll("db index 1", "db index 2") { (dbi1: DbIndex, dbi2: DbIndex) =>
-          val protocol = swapdb(dbi1, dbi2)
+  property("The Connection protocol using ping roundtrips successfully using val to get back PONG message") {
+    val protocol = ping
+    assertEquals(protocol.encode, Arr(Bulk("PING")))
+    assertEquals(protocol.decode(Str(PONG.value)), PONG)
+  }
 
-          protocol.encode shouldBe Arr(Bulk("SWAPDB"), Bulk(dbi1), Bulk(dbi2))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
+  property("The Connection protocol using quit roundtrips successfully") {
+    val protocol = quit
+    assertEquals(protocol.encode, Arr(Bulk("QUIT")))
+    assertEquals(protocol.decode(Str(OK.value)), OK)
+  }
+
+  property("The Connection protocol using select roundtrips successfully given valid DbIndexes") {
+    forAll { dbi: DbIndex =>
+      val protocol = select(dbi)
+      assertEquals(protocol.encode, Arr(Bulk("SELECT"), Bulk(dbi)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
+
+  property("The Connection protocol using swapdb roundtrips successfully given valid DbIndexes") {
+    forAll { (dbi1: DbIndex, dbi2: DbIndex) =>
+      val protocol = swapdb(dbi1, dbi2)
+      assertEquals(protocol.encode, Arr(Bulk("SWAPDB"), Bulk(dbi1), Bulk(dbi2)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
     }
   }
 }

@@ -1,105 +1,79 @@
 package laserdisc
 package protocol
 
-import org.scalatest.OptionValues
+import org.scalacheck.Prop.forAll
 
-abstract class BListExtPSpec extends BaseSpec with OptionValues with BListP {
-
-  "The Blocking List extended protocol" when {
-
-    "using blpop" should {
-
-      "fail to compile" when {
-        "given key but missing read instance" in {
-          """blpop[Bar](Key("a"))""" shouldNot compile
-        }
-        "given key and timeout but missing read instance" in {
-          """blpop[Bar](Key("a"), PosInt(1))""" shouldNot compile
-        }
-      }
-
-      "roundtrip successfully" when {
-        //BLPOP with no timeout specified
-        [1..5#"given [#key1#]" in forAll([#"key1"#], "returned value") { ([#k1: Key#], i: Int) =>
-          val protocol = blpop[Int]([#k1#])
-
-          protocol.encode shouldBe Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(##0))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, i))
-        }#
-        ]
-        //BLPOP with no timeout specified and specific read instance
-        [1..5#"given [#key1#] and specific read instance" in forAll([#"key1"#], "returned value") { ([#k1: Key#], i: Int) =>
-          val protocol = blpop[Foo]([#k1#])
-
-          protocol.encode shouldBe Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(##0))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, Foo(i)))
-        }#
-        ]
-        //BLPOP with timeout specified
-        [1..4#"given [#key1#] and positive timeout" in forAll([#"key1"#], "timeout", "returned value") { ([#k1: Key#], pi: PosInt, i: Int) =>
-          val protocol = blpop[Int]([#k1#], pi)
-
-          protocol.encode shouldBe Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(pi))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, i))
-        }#
-        ]
-        //BLPOP with timeout specified and specific read instance
-        [1..4#"given [#key1#], positive timeout and specific read instance" in forAll([#"key1"#], "timeout", "returned value") { ([#k1: Key#], pi: PosInt, i: Int) =>
-          val protocol = blpop[Foo]([#k1#], pi)
-
-          protocol.encode shouldBe Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(pi))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, Foo(i)))
-        }#
-        ]
-      }
-
+final class BListExtPSpec extends BListPSpec {
+  //BLPOP with no timeout specified
+  [1..5#property("The Blocking List extended protocol using blpop roundtrips successfully given [#key1#]") {
+    forAll { ([#k1: Key#], i: Int) =>
+      val protocol = blpop[Int]([#k1#])
+      assertEquals(protocol.encode, Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(##0)))
+      protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_ contains KV(k##1, i))
     }
-
-    "using brpop" should {
-
-      "fail to compile" when {
-        "given key but missing read instance" in {
-          """brpop[Bar](Key("a"))""" shouldNot compile
-        }
-        "given key and timeout but missing read instance" in {
-          """brpop[Bar](Key("a"), PosInt(1))""" shouldNot compile
-        }
-      }
-
-      "roundtrip successfully" when {
-        //BRPOP with no timeout specified
-        [1..5#"given [#key1#]" in forAll([#"key1"#], "returned value") { ([#k1: Key#], i: Int) =>
-          val protocol = brpop[Int]([#k1#])
-
-          protocol.encode shouldBe Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(##0))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, i))
-        }#
-        ]
-        //BRPOP with no timeout specified and specific read instance
-        [1..5#"given [#key1#] and specific read instance" in forAll([#"key1"#], "returned value") { ([#k1: Key#], i: Int) =>
-          val protocol = brpop[Foo]([#k1#])
-
-          protocol.encode shouldBe Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(##0))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, Foo(i)))
-        }#
-        ]
-        //BRPOP with timeout specified
-        [1..4#"given [#key1#] and positive timeout" in forAll([#"key1"#], "timeout", "returned value") { ([#k1: Key#], pi: PosInt, i: Int) =>
-          val protocol = brpop[Int]([#k1#], pi)
-
-          protocol.encode shouldBe Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(pi))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, i))
-        }#
-        ]
-        //BRPOP with timeout specified and specific read instance
-        [1..4#"given [#key1#], positive timeout and specific read instance" in forAll([#"key1"#], "timeout", "returned value") { ([#k1: Key#], pi: PosInt, i: Int) =>
-          val protocol = brpop[Foo]([#k1#], pi)
-
-          protocol.encode shouldBe Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(pi))
-          protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_.value shouldBe KV(k##1, Foo(i)))
-        }#
-        ]
-      }
+  }#
+  ]
+  //BLPOP with no timeout specified and specific read instance
+  [1..5#property("The Blocking List extended protocol using blpop roundtrips successfully given [#key1#] and specific read instance") {
+    forAll { ([#k1: Key#], i: Int) =>
+      val protocol = blpop[Foo]([#k1#])
+      assertEquals(protocol.encode, Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(##0)))
+      protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_ contains KV(k##1, Foo(i)))
     }
-  }
+  }#
+  ]
+  //BLPOP with timeout specified
+  [1..5#property("The Blocking List extended protocol using blpop roundtrips successfully given [#key1#] and positive timeout") {
+    forAll { ([#k1: Key#], pi: PosInt, i: Int) =>
+      val protocol = blpop[Int]([#k1#], pi)
+      assertEquals(protocol.encode, Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(pi)))
+      protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_ contains KV(k##1, i))
+    }
+  }#
+  ]
+  //BLPOP with timeout specified and specific read instance
+  [1..5#property("The Blocking List extended protocol using blpop roundtrips successfully given [#key1#], positive timeout and specific read instance") {
+    forAll { ([#k1: Key#], pi: PosInt, i: Int) =>
+      val protocol = blpop[Foo]([#k1#], pi)
+      assertEquals(protocol.encode, Arr(Bulk("BLPOP"), [#Bulk(k1)#], Bulk(pi)))
+      protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_ contains KV(k##1, Foo(i)))
+    }
+  }#
+  ]
+  //BRPOP with no timeout specified
+  [1..5#property("The Blocking List extended protocol using brpop roundtrips successfully given [#key1#]") {
+    forAll { ([#k1: Key#], i: Int) =>
+      val protocol = brpop[Int]([#k1#])
+      assertEquals(protocol.encode, Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(##0)))
+      protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_ contains KV(k##1, i))
+    }
+  }#
+  ]
+  //BRPOP with no timeout specified and specific read instance
+  [1..5#property("The Blocking List extended protocol using brpop roundtrips successfully given [#key1#] and specific read instance") {
+    forAll { ([#k1: Key#], i: Int) =>
+      val protocol = brpop[Foo]([#k1#])
+      assertEquals(protocol.encode, Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(##0)))
+      protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_ contains KV(k##1, Foo(i)))
+    }
+  }#
+  ]
+  //BRPOP with timeout specified
+  [1..5#property("The Blocking List extended protocol using brpop roundtrips successfully given [#key1#] and positive timeout") {
+    forAll { ([#k1: Key#], pi: PosInt, i: Int) =>
+      val protocol = brpop[Int]([#k1#], pi)
+      assertEquals(protocol.encode, Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(pi)))
+      protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_ contains KV(k##1, i))
+    }
+  }#
+  ]
+  //BRPOP with timeout specified and specific read instance
+  [1..5#property("The Blocking List extended protocol using brpop roundtrips successfully given [#key1#], positive timeout and specific read instance") {
+    forAll { ([#k1: Key#], pi: PosInt, i: Int) =>
+      val protocol = brpop[Foo]([#k1#], pi)
+      assertEquals(protocol.encode, Arr(Bulk("BRPOP"), [#Bulk(k1)#], Bulk(pi)))
+      protocol.decode(Arr(Bulk(k##1), Bulk(i))) onRight (_ contains KV(k##1, Foo(i)))
+    }
+  }#
+  ]
 }

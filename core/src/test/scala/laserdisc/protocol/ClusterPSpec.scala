@@ -1,36 +1,41 @@
 package laserdisc
 package protocol
 
+import org.scalacheck.Prop.forAll
+
 final class ClusterPSpec extends BaseSpec with ClusterP {
   import clustertypes._
   import org.scalacheck.{Arbitrary, Gen}
   import org.scalacheck.Gen._
 
-  private[this] implicit final val clusterFailoverModeArb: Arbitrary[ClusterFailoverMode] = Arbitrary {
+  private[this] implicit val clusterFailoverModeArb: Arbitrary[ClusterFailoverMode] = Arbitrary {
     Gen.oneOf(ClusterFailoverMode.force, ClusterFailoverMode.takeover)
   }
-  private[this] implicit final val clusterResetModeArb: Arbitrary[ClusterResetMode] = Arbitrary {
+  private[this] implicit val clusterResetModeArb: Arbitrary[ClusterResetMode] = Arbitrary {
     Gen.oneOf(ClusterResetMode.hard, ClusterResetMode.soft)
   }
-  private[this] implicit final val clusterSetSlotModeArb: Arbitrary[ClusterSetSlotMode] = Arbitrary {
+  private[this] implicit val clusterSetSlotModeArb: Arbitrary[ClusterSetSlotMode] = Arbitrary {
     Gen.oneOf(ClusterSetSlotMode.importing, ClusterSetSlotMode.migrating, ClusterSetSlotMode.node)
   }
 
-  private[this] final val kvPairPattern                                = KVPairRegex.pattern
-  private[this] final val infoIsValid: Map[String, String] => Boolean  = _.forall { case (k, v) => kvPairPattern.matcher(s"$k:$v").matches }
-  private[this] final val infoGen: Gen[Map[String, String]]            = nonEmptyMap(identifier.flatMap(k => alphaStr.map(k -> _))) :| "info map"
-  private[this] implicit final val infoShow: Show[Map[String, String]] = Show.instance(_.map { case (k, v) => s"$k:$v" }.mkString(CRLF))
+  private[this] final val kvPairPattern                         = KVPairRegex.pattern
+  private[this] val infoIsValid: Map[String, String] => Boolean = _.forall { case (k, v) => kvPairPattern.matcher(s"$k:$v").matches }
+  private[this] val infoGen: Gen[Map[String, String]] =
+    nonEmptyMap(identifier.flatMap(k => alphaStr.map(k -> _))).filter(infoIsValid) :| "info map"
+  private[this] implicit val infoShow: Show[Map[String, String]] = Show.instance {
+    _.map { case (k, v) => s"$k:$v" }.mkString(CRLF)
+  }
 
-  private[this] final type RawNode =
+  private[this] type RawNode =
     (String, EmptyString | Host, Port, Option[Port], Seq[String], String, Int, Int, Int, String, Seq[String])
-  private[this] final type RawNodes = List[RawNode]
-  private[this] final val rawNodeToString: RawNode => String = {
+  private[this] type RawNodes = List[RawNode]
+  private[this] val rawNodeToString: RawNode => String = {
     case (nid, h, p, None, fs, mnid, ps, pr, ce, l, ss) =>
       s"$nid ${h.fold(_.value, _.value)}:$p ${fs.mkString(COMMA)} $mnid $ps $pr $ce $l${ss.mkString(SPACE, SPACE, "")}"
     case (nid, h, p, Some(cp), fs, mnid, ps, pr, ce, l, ss) =>
       s"$nid ${h.fold(_.value, _.value)}:$p@$cp ${fs.mkString(COMMA)} $mnid $ps $pr $ce $l${ss.mkString(SPACE, SPACE, "")}"
   }
-  private[this] final val nodesIsValid: RawNodes => Boolean = {
+  private[this] val nodesIsValid: RawNodes => Boolean = {
     val nid    = NodeIdRegexWit.value
     val ip     = IPv4RegexWit.value
     val domain = Rfc1123HostnameRegexWit.value
@@ -41,7 +46,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
     _.map(rawNodeToString).forall { case R(_*) => true; case _ => false }
   }
-  private[this] final val nodesGen: Gen[RawNodes] = {
+  private[this] val nodesGen: Gen[RawNodes] = {
     val flag = Gen.oneOf("myself", "master", "slave", "fail?", "fail", "handshake", "noaddr")
     val slotType = Gen.oneOf(
       slotGen.map(_.toString),
@@ -65,35 +70,41 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
     choose(1, 10).flatMap(listOfN(_, rawNode)) :| "raw nodes info"
   }
-  private[this] implicit final val nodesShow: Show[RawNodes] = Show.instance {
+  private[this] implicit val nodesShow: Show[RawNodes] = Show.instance {
     _.map(rawNodeToString).mkString(LF)
   }
-  private[this] final val validateNodes: RawNodes => ClusterNodes => Unit =
+  private[this] val validateNodes: RawNodes => ClusterNodes => Unit =
     rns =>
       ns =>
         ns.nodes.zip(rns).foreach {
           case (ClusterNode(n0, ClusterAddress(h0, p0, cp0), fs0, m0, ps0, pr0, ce0, l0, ss0), (n, h, p, cp, fs, m, ps, pr, ce, l, ss)) =>
-            n0.value shouldBe n
-            h0 shouldBe h.fold(_ => LoopbackHost, identity)
-            p0 shouldBe p
-            cp0 shouldBe cp.getOrElse(p)
-            (if (fs0.isEmpty) Seq("noflags") else fs0.map(Show[ClusterFlag].show)) shouldBe fs
-            m0.fold("-")(_.value) shouldBe m
-            ps0.value shouldBe ps
-            pr0.value shouldBe pr
-            ce0.value shouldBe ce
-            Show[ClusterLinkState].show(l0) shouldBe l
-            ss0.map {
-              case ClusterSingleSlotType(s)        => s.toString
-              case ClusterRangeSlotType(f, t)      => s"$f-$t"
-              case ClusterImportingSlotType(s, in) => s"[$s-<-$in]"
-              case ClusterMigratingSlotType(s, mn) => s"[$s->-$mn]"
-            } shouldBe ss
+            assertEquals(n0.value, n)
+            assertEquals(h0, h.fold(_ => LoopbackHost, identity))
+            assertEquals(p0, p)
+            assertEquals(cp0, cp.getOrElse(p))
+            assertEquals(
+              if (fs0.isEmpty) Seq("noflags") else fs0.map(Show[ClusterFlag].show),
+              fs
+            )
+            assertEquals(m0.fold("-")(_.value), m)
+            assertEquals(ps0.value, ps)
+            assertEquals(pr0.value, pr)
+            assertEquals(ce0.value, ce)
+            assertEquals(Show[ClusterLinkState].show(l0), l)
+            assertEquals(
+              ss0.map {
+                case ClusterSingleSlotType(s)        => s.toString
+                case ClusterRangeSlotType(f, t)      => s"$f-$t"
+                case ClusterImportingSlotType(s, in) => s"[$s-<-$in]"
+                case ClusterMigratingSlotType(s, mn) => s"[$s->-$mn]"
+              },
+              ss
+            )
         }
 
-  private[this] final type RawSlot  = (Slot, Slot, Seq[(EmptyString | Host, Port, Option[NodeId])])
-  private[this] final type RawSlots = List[RawSlot]
-  private[this] final val slotsGen: Gen[RawSlots] = (for {
+  private[this] type RawSlot  = (Slot, Slot, Seq[(EmptyString | Host, Port, Option[NodeId])])
+  private[this] type RawSlots = List[RawSlot]
+  private[this] val slotsGen: Gen[RawSlots] = (for {
     isOld <- Gen.oneOf(true, false)
     rss <- nonEmptyListOf(
       for {
@@ -109,7 +120,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
         else (snd, fst, mrs)
     )
   } yield rss) :| "raw slots info"
-  private[this] final val slotsToArr: RawSlots => Arr = ss =>
+  private[this] val slotsToArr: RawSlots => Arr = ss =>
     Arr(
       ss.map {
         case (f, t, rs) =>
@@ -124,286 +135,216 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       }
     )
 
-  "The Cluster protocol" when {
-    "using addslots" should {
-      "roundtrip successfully" when {
-        "given one or more slots" in forAll("slots") { ss: OneOrMore[Slot] =>
-          val protocol = addslots(ss)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER") :: Bulk("ADDSLOTS") :: ss.value.map(Bulk(_)))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
+  property("The Cluster protocol using addslots roundtrips successfully given one or more slots") {
+    forAll { ss: OneOrMore[Slot] =>
+      val protocol = addslots(ss)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER") :: Bulk("ADDSLOTS") :: ss.value.map(Bulk(_))))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
     }
+  }
 
-    "using clusterinfo" should {
-      "roundtrip successfully" when {
-        "using val" in forAll(infoGen) { info =>
-          whenever(infoIsValid(info)) {
-            val protocol = clusterinfo
+  property("The Cluster protocol using clusterinfo roundtrips successfully using val") {
+    forAll(infoGen) { info =>
+      val protocol = clusterinfo
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("INFO")))
+      protocol.decode(Bulk(info)) onRight (result => info.forall { case (k, v) => result.selectDynamic(k).fold(_ => false, _ == v) })
+    }
+  }
 
-            protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("INFO"))
-            protocol.decode(Bulk(info)) onRight (result =>
-              info.forall { case (k, v) => result.selectDynamic(k).fold(_ => false, _ == v) } shouldBe true
-            )
+  property("The Cluster protocol using countfailurereports roundtrips successfully given a nodeId") {
+    forAll { (n: NodeId, nni: NonNegInt) =>
+      val protocol = countfailurereports(n)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("COUNT-FAILURE-REPORTS"), Bulk(n)))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+    }
+  }
+
+  property("The Cluster protocol using countfailurereports roundtrips successfully given a nodeId") {
+    forAll { (n: NodeId, nni: NonNegInt) =>
+      val protocol = countfailurereports(n)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("COUNT-FAILURE-REPORTS"), Bulk(n)))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+    }
+  }
+
+  property("The Cluster protocol using countkeysinslot roundtrips successfully given a slot") {
+    forAll { (s: Slot, nni: NonNegInt) =>
+      val protocol = countkeysinslot(s)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("COUNTKEYSINSLOT"), Bulk(s)))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+    }
+  }
+
+  property("The Cluster protocol using delslots roundtrips successfully given one or more slots") {
+    forAll { ss: OneOrMore[Slot] =>
+      val protocol = delslots(ss)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER") :: Bulk("DELSLOTS") :: ss.value.map(Bulk(_))))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
+
+  test("The Cluster protocol using failover roundtrips successfully using val") {
+    val protocol = failover
+    assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("FAILOVER")))
+    assertEquals(protocol.decode(Str(OK.value)), OK)
+  }
+
+  property("The Cluster protocol using failover roundtrips successfully given mode") {
+    forAll { m: ClusterFailoverMode =>
+      val protocol = failover(m)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("FAILOVER"), Bulk(m)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
+
+  property("The Cluster protocol using forget roundtrips successfully given a nodeId") {
+    forAll { n: NodeId =>
+      val protocol = forget(n)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("FORGET"), Bulk(n)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
+
+  property("The Cluster protocol using getkeysinslot roundtrips successfully given a slot and a count") {
+    forAll { (s: Slot, pi: PosInt, ks: List[Key]) =>
+      val protocol = getkeysinslot(s, pi)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("GETKEYSINSLOT"), Bulk(s), Bulk(pi)))
+      assertEquals(protocol.decode(Arr(ks.map(Bulk(_)))), ks)
+    }
+  }
+
+  property("The Cluster protocol using keyslot roundtrips successfully given a key") {
+    forAll { (k: Key, s: Slot) =>
+      val protocol = keyslot(k)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("KEYSLOT"), Bulk(k)))
+      assertEquals(protocol.decode(Num(s.value.toLong)), s)
+    }
+  }
+
+  property("The Cluster protocol using meet roundtrips successfully given a host and a port") {
+    forAll { (h: Host, p: Port) =>
+      val protocol = meet(h, p)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("MEET"), Bulk(h), Bulk(p)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
+
+  property("The Cluster protocol using nodes roundtrips successfully using val") {
+    forAll(nodesGen filter nodesIsValid) { ns =>
+      val protocol = nodes
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("NODES")))
+      protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
+    }
+  }
+
+  property("The Cluster protocol using readonly roundtrips successfully using val") {
+    val protocol = readonly
+    assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("READONLY")))
+    assertEquals(protocol.decode(Str(OK.value)), OK)
+  }
+
+  property("The Cluster protocol using readwrite roundtrips successfully using val") {
+    val protocol = readwrite
+    assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("READWRITE")))
+    assertEquals(protocol.decode(Str(OK.value)), OK)
+  }
+
+  property("The Cluster protocol using replicas roundtrips successfully given a nodeId") {
+    forAll(nodeIdArb.arbitrary, nodesGen filter nodesIsValid) { (n, ns) =>
+      val protocol = replicas(n)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("REPLICAS"), Bulk(n)))
+      protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
+    }
+  }
+
+  property("The Cluster protocol using replicate roundtrips successfully given a nodeId") {
+    forAll { n: NodeId =>
+      val protocol = replicate(n)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("REPLICATE"), Bulk(n)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
+
+  property("The Cluster protocol using reset roundtrips successfully using val") {
+    val protocol = reset
+    assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk("SOFT")))
+    assertEquals(protocol.decode(Str(OK.value)), OK)
+  }
+
+  property("The Cluster protocol using reset roundtrips successfully given reset mode") {
+    forAll { m: ClusterResetMode =>
+      val protocol = reset(m)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk(m)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
+
+  property("The Cluster protocol using saveconfig roundtrips successfully using val") {
+    val protocol = saveconfig
+    assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SAVECONFIG")))
+    assertEquals(protocol.decode(Str(OK.value)), OK)
+  }
+
+  property("The Cluster protocol using setconfigepoch roundtrips successfully given a config epoch") {
+    forAll { nni: NonNegInt =>
+      val protocol = setconfigepoch(nni)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SET-CONFIG-EPOCH"), Bulk(nni)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
+
+  property("The Cluster protocol using setslot roundtrips successfully given a slot") {
+    forAll { s: Slot =>
+      val protocol = setslot(s)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk("STABLE")))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
+
+  property("The Cluster protocol using setslot roundtrips successfully given a slot, mode and a node id") {
+    forAll { (s: Slot, m: ClusterSetSlotMode, nid: NodeId) =>
+      val protocol = setslot(s, m, nid)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk(m), Bulk(nid)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
+
+  property("The Cluster protocol using slaves roundtrips successfully given a nodeId") {
+    forAll(nodeIdArb.arbitrary, nodesGen filter nodesIsValid) { (n, ns) =>
+      val protocol = slaves(n)
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SLAVES"), Bulk(n)))
+      protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
+    }
+  }
+
+  property("The Cluster protocol using slots roundtrips successfully using val") {
+    forAll(slotsGen) { ss =>
+      val protocol = slots
+      val ssWithLoopback = ss.map {
+        case (f, t, assigned) =>
+          (
+            f,
+            t,
+            assigned.foldRight[List[(String, Port, Option[NodeId])]](Nil) {
+              case ((Left(_), p, n), css)  => (LoopbackHost.value, p, n) :: css
+              case ((Right(h), p, n), css) => (h.value, p, n) :: css
+            }
+          )
+      }.toSet
+
+      assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SLOTS")))
+      protocol.decode(slotsToArr(ss)) onRightAll (_.slots.foreach {
+        case (ClusterRangeSlotType(f, t), ClusterNewSlotInfo(ClusterHostPortNodeId(mh, mp, mid), rs)) =>
+          val mrs = (mh.value, mp, Some(mid)) :: rs.foldLeft(List.empty[(String, Port, Option[NodeId])]) {
+            case (acc, ClusterHostPortNodeId(h, p, nid)) => acc :+ ((h.value, p, Some(nid)))
           }
-        }
-      }
-    }
-
-    "using countfailurereports" should {
-      "roundtrip successfully" when {
-        "given a nodeId" in forAll("node id", "failure reports") { (n: NodeId, nni: NonNegInt) =>
-          val protocol = countfailurereports(n)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("COUNT-FAILURE-REPORTS"), Bulk(n))
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }
-      }
-    }
-
-    "using countkeysinslot" should {
-      "roundtrip successfully" when {
-        "given a slot" in forAll("slot", "keys in slot") { (s: Slot, nni: NonNegInt) =>
-          val protocol = countkeysinslot(s)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("COUNTKEYSINSLOT"), Bulk(s))
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }
-      }
-    }
-
-    "using delslots" should {
-      "roundtrip successfully" when {
-        "given one or more slots" in forAll("slots") { ss: OneOrMore[Slot] =>
-          val protocol = delslots(ss)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER") :: Bulk("DELSLOTS") :: ss.value.map(Bulk(_)))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using failover" should {
-      "roundtrip successfully" when {
-        "using val" in {
-          val protocol = failover
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FAILOVER"))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-        "given mode" in forAll("failover mode") { m: ClusterFailoverMode =>
-          val protocol = failover(m)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FAILOVER"), Bulk(m))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using forget" should {
-      "roundtrip successfully" when {
-        "given a nodeId" in forAll("node id") { n: NodeId =>
-          val protocol = forget(n)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("FORGET"), Bulk(n))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using getkeysinslot" should {
-      "roundtrip successfully" when {
-        "given a slot and a count" in forAll("slot", "count", "keys in slot") { (s: Slot, pi: PosInt, ks: List[Key]) =>
-          val protocol = getkeysinslot(s, pi)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("GETKEYSINSLOT"), Bulk(s), Bulk(pi))
-          protocol.decode(Arr(ks.map(Bulk(_)))) onRight (_ shouldBe ks)
-        }
-      }
-    }
-
-    "using keyslot" should {
-      "roundtrip successfully" when {
-        "given a key" in forAll("key", "slot") { (k: Key, s: Slot) =>
-          val protocol = keyslot(k)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("KEYSLOT"), Bulk(k))
-          protocol.decode(Num(s.value.toLong)) onRight (_ shouldBe s)
-        }
-      }
-    }
-
-    "using meet" should {
-      "roundtrip successfully" when {
-        "given a host and a port" in forAll("host", "port") { (h: Host, p: Port) =>
-          val protocol = meet(h, p)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("MEET"), Bulk(h), Bulk(p))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using nodes" should {
-      "roundtrip successfully" when {
-        "using val" in forAll(nodesGen) { ns =>
-          whenever(nodesIsValid(ns)) {
-            val protocol = nodes
-
-            protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("NODES"))
-            protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
+          assert(ssWithLoopback.contains((f, t, mrs)))
+        case (ClusterRangeSlotType(f, t), ClusterOldSlotInfo(ClusterHostPort(mh, mp), rs)) =>
+          val mrs = (mh.value, mp, None) :: rs.foldLeft(List.empty[(String, Port, Option[NodeId])]) {
+            case (acc, ClusterHostPort(h, p)) => acc :+ ((h.value, p, None))
           }
-        }
-      }
-    }
-
-    "using readonly" should {
-      "roundtrip successfully" when {
-        "using val" in {
-          val protocol = readonly
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("READONLY"))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using readwrite" should {
-      "roundtrip successfully" when {
-        "using val" in {
-          val protocol = readwrite
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("READWRITE"))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using replicas" should {
-      "roundtrip successfully" when {
-        "given a nodeId" in forAll(nodeIdArb.arbitrary, nodesGen) { (n, ns) =>
-          whenever(nodesIsValid(ns)) {
-            val protocol = replicas(n)
-
-            protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("REPLICAS"), Bulk(n))
-            protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
-          }
-        }
-      }
-    }
-
-    "using replicate" should {
-      "roundtrip successfully" when {
-        "given a nodeId" in forAll("node id") { n: NodeId =>
-          val protocol = replicate(n)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("REPLICATE"), Bulk(n))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using reset" should {
-      "roundtrip successfully" when {
-        "using val" in {
-          val protocol = reset
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk("SOFT"))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-        "given reset mode" in forAll("reset mode") { m: ClusterResetMode =>
-          val protocol = reset(m)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("RESET"), Bulk(m))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using saveconfig" should {
-      "roundtrip successfully" when {
-        "using val" in {
-          val protocol = saveconfig
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SAVECONFIG"))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using setconfigepoch" should {
-      "roundtrip successfully" when {
-        "given a config epoch" in forAll("config epoch") { nni: NonNegInt =>
-          val protocol = setconfigepoch(nni)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SET-CONFIG-EPOCH"), Bulk(nni))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using setslot" should {
-      "roundtrip successfully" when {
-        "given a slot" in forAll("slot") { s: Slot =>
-          val protocol = setslot(s)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk("STABLE"))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-        "given a slot, mode and a node id" in forAll("slot", "mode", "node id") { (s: Slot, m: ClusterSetSlotMode, nid: NodeId) =>
-          val protocol = setslot(s, m, nid)
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SETSLOT"), Bulk(s), Bulk(m), Bulk(nid))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
-    }
-
-    "using slaves" should {
-      "roundtrip successfully" when {
-        "given a nodeId" in forAll(nodeIdArb.arbitrary, nodesGen) { (n, ns) =>
-          whenever(nodesIsValid(ns)) {
-            val protocol = slaves(n)
-
-            protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLAVES"), Bulk(n))
-            protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
-          }
-        }
-      }
-    }
-
-    "using slots" should {
-      "roundtrip successfully" when {
-        "using val" in forAll(slotsGen) { ss =>
-          val protocol = slots
-          val ssWithLoopback = ss.map {
-            case (f, t, assigned) =>
-              (
-                f,
-                t,
-                assigned.foldRight[List[(String, Port, Option[NodeId])]](Nil) {
-                  case ((Left(_), p, n), css)  => (LoopbackHost.value, p, n) :: css
-                  case ((Right(h), p, n), css) => (h.value, p, n) :: css
-                }
-              )
-          }.toSet
-
-          protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLOTS"))
-          protocol.decode(slotsToArr(ss)) onRightAll (_.slots.foreach {
-            case (ClusterRangeSlotType(f, t), ClusterNewSlotInfo(ClusterHostPortNodeId(mh, mp, mid), rs)) =>
-              val mrs = (mh.value, mp, Some(mid)) :: rs.foldLeft(List.empty[(String, Port, Option[NodeId])]) {
-                case (acc, ClusterHostPortNodeId(h, p, nid)) => acc :+ ((h.value, p, Some(nid)))
-              }
-              ssWithLoopback should contain((f, t, mrs))
-            case (ClusterRangeSlotType(f, t), ClusterOldSlotInfo(ClusterHostPort(mh, mp), rs)) =>
-              val mrs = (mh.value, mp, None) :: rs.foldLeft(List.empty[(String, Port, Option[NodeId])]) {
-                case (acc, ClusterHostPort(h, p)) => acc :+ ((h.value, p, None))
-              }
-              ssWithLoopback should contain((f, t, mrs))
-          })
-        }
-      }
+          assert(ssWithLoopback.contains((f, t, mrs)))
+      })
     }
   }
 }

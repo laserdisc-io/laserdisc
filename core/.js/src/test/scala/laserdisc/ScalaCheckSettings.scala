@@ -1,12 +1,10 @@
 package laserdisc
 
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import munit.ScalaCheckSuite
 
-private[laserdisc] trait ScalaCheckSettings extends ScalaCheckPropertyChecks {
-  override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
-    PropertyCheckConfiguration(
-      minSuccessful = 10,
-      maxDiscardedFactor = 10.0,
-      workers = 16
-    )
+private[laserdisc] trait ScalaCheckSettings extends ScalaCheckSuite {
+  override val scalaCheckTestParameters =
+    super.scalaCheckTestParameters
+      .withMinSuccessfulTests(10)
+      .withWorkers(8)
 }

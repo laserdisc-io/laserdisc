@@ -1,7 +1,9 @@
 package laserdisc
 package protocol
 
-final class KeyPSpec extends KeyExtPSpec {
+import org.scalacheck.Prop.forAll
+
+abstract class KeyPSpec extends BaseSpec with KeyP {
   import keytypes._
   import org.scalacheck.{Arbitrary, Gen}
   import org.scalacheck.Gen.const
@@ -47,382 +49,326 @@ final class KeyPSpec extends KeyExtPSpec {
       scanKey.values.fold(NilArr: GenArr)(ks => Arr(ks.map(k => Bulk(k.value)).toList))
     )
 
-  "The Key protocol" when {
-    "using del" should {
-      "roundtrip successfully" when {
-        "given keys" in forAll("keys", "deleted") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
-          val protocol = del(ks)
+  protected final val noKeyOrOkToStr: (NOKEY | OK) => Str = {
+    case Left(_)  => Str(NOKEY.value)
+    case Right(_) => Str(OK.value)
+  }
 
-          protocol.encode shouldBe Arr(Bulk("DEL") :: ks.value.map(Bulk(_)))
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }
-      }
+  protected implicit final val keyMigrateModeArb: Arbitrary[KeyMigrateMode] = Arbitrary {
+    Gen.oneOf(KeyMigrateMode.both, KeyMigrateMode.copy, KeyMigrateMode.replace)
+  }
+  protected implicit final val nokeyOrOkArb: Arbitrary[NOKEY | OK] = Arbitrary(
+    Gen.oneOf(NOKEY, OK).map {
+      case NOKEY => Left(NOKEY)
+      case OK    => Right(OK)
     }
+  )
 
-    "using dump" should {
-      "roundtrip successfully" when {
-        "given a key" in forAll("key", "dump") { (k: Key, os: Option[String]) =>
-          val protocol = dump(k)
-
-          protocol.encode shouldBe Arr(Bulk("DUMP"), Bulk(k))
-          protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))) onRight (_ shouldBe os.map(Bulk(_)))
-        }
-      }
+  property("The Key protocol using del roundtrips successfully given keys") {
+    forAll { (ks: OneOrMoreKeys, nni: NonNegInt) =>
+      val protocol = del(ks)
+      assertEquals(protocol.encode, Arr(Bulk("DEL") :: ks.value.map(Bulk(_))))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
+  }
 
-    "using exists" should {
-      "roundtrip successfully" when {
-        "given keys" in forAll("keys", "exists") { (ks: OneOrMoreKeys, opi: Option[PosInt]) =>
-          val protocol = exists(ks)
-
-          protocol.encode shouldBe Arr(Bulk("EXISTS") :: ks.value.map(Bulk(_)))
-          protocol.decode(Num(opi.fold(0L)(_.value.toLong))) onRight (_ shouldBe opi)
-        }
-      }
+  property("The Key protocol using dump roundtrips successfully given a key") {
+    forAll { (k: Key, os: Option[String]) =>
+      val protocol = dump(k)
+      assertEquals(protocol.encode, Arr(Bulk("DUMP"), Bulk(k)))
+      assertEquals(protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))), os.map(Bulk(_)))
     }
+  }
 
-    "using expire" should {
-      "roundtrip successfully" when {
-        "given key and expiration" in forAll("key", "expiration", "expired") { (k: Key, nni: NonNegInt, b: Boolean) =>
-          val protocol = expire(k, nni)
-
-          protocol.encode shouldBe Arr(Bulk("EXPIRE"), Bulk(k), Bulk(nni))
-          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
-        }
-      }
+  property("The Key protocol using exists roundtrips successfully given keys") {
+    forAll { (ks: OneOrMoreKeys, opi: Option[PosInt]) =>
+      val protocol = exists(ks)
+      assertEquals(protocol.encode, Arr(Bulk("EXISTS") :: ks.value.map(Bulk(_))))
+      assertEquals(protocol.decode(Num(opi.fold(0L)(_.value.toLong))), opi)
     }
+  }
 
-    "using expireat" should {
-      "roundtrip successfully" when {
-        "given key and expire timestamp" in forAll("key", "timestamp", "expired") { (k: Key, nni: NonNegInt, b: Boolean) =>
-          val protocol = expireat(k, nni)
-
-          protocol.encode shouldBe Arr(Bulk("EXPIREAT"), Bulk(k), Bulk(nni))
-          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
-        }
-      }
+  property("The Key protocol using expire roundtrips successfully given key and expiration") {
+    forAll { (k: Key, nni: NonNegInt, b: Boolean) =>
+      val protocol = expire(k, nni)
+      assertEquals(protocol.encode, Arr(Bulk("EXPIRE"), Bulk(k), Bulk(nni)))
+      assertEquals(protocol.decode(boolToNum(b)), b)
     }
+  }
 
-    "using keys" should {
-      "roundtrip successfully" when {
-        "given glob pattern" in forAll("glob pattern", "keys") { (g: GlobPattern, ks: List[Key]) =>
-          val protocol = keys(g)
-
-          protocol.encode shouldBe Arr(Bulk("KEYS"), Bulk(g))
-          protocol.decode(Arr(ks.map(Bulk(_)))) onRight (_ shouldBe ks)
-        }
-      }
+  property("The Key protocol using expireat roundtrips successfully given key and expire timestamp") {
+    forAll { (k: Key, nni: NonNegInt, b: Boolean) =>
+      val protocol = expireat(k, nni)
+      assertEquals(protocol.encode, Arr(Bulk("EXPIREAT"), Bulk(k), Bulk(nni)))
+      assertEquals(protocol.decode(boolToNum(b)), b)
     }
+  }
 
-    "using migrate" should {
-      "roundtrip successfully" when {
-        "given key, host, port, db index and timeout" in forAll("key", "host", "port", "db index", "timeout", "response") {
-          (k: Key, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: NOKEY | OK) =>
-            val protocol = migrate(k, h, p, dbi, nni)
-
-            protocol.encode shouldBe Arr(Bulk("MIGRATE"), Bulk(h), Bulk(p), Bulk(k), Bulk(dbi), Bulk(nni))
-            protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
-        }
-        "given keys, host, port, db index and timeout" in forAll("keys", "host", "port", "db index", "timeout", "response") {
-          (ks: TwoOrMoreKeys, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: NOKEY | OK) =>
-            val protocol = migrate(ks, h, p, dbi, nni)
-
-            protocol.encode shouldBe Arr(
-              Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: Bulk("KEYS") :: ks.value.map(Bulk(_))
-            )
-            protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
-        }
-        "given key, host, port, db index, timeout and migrate mode" in {
-          forAll("key, host, port, db index, timeout, response", "migrate mode") {
-            (input: (Key, Host, Port, DbIndex, NonNegInt, NOKEY | OK), mm: KeyMigrateMode) =>
-              val (k, h, p, dbi, nni, nkOrOk) = input
-              val protocol                    = migrate(k, h, p, dbi, nni, mm)
-
-              protocol.encode shouldBe Arr(
-                Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk(k) :: Bulk(dbi) :: Bulk(nni) :: mm.params.map(Bulk(_))
-              )
-              protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
-          }
-        }
-        "given keys, host, port, db index, timeout and migrate mode" in {
-          forAll("keys, host, port, db index, timeout, response", "migrate mode") {
-            (input: (TwoOrMoreKeys, Host, Port, DbIndex, NonNegInt, NOKEY | OK), mm: KeyMigrateMode) =>
-              val (ks, h, p, dbi, nni, nkOrOk) = input
-              val protocol                     = migrate(ks, h, p, dbi, nni, mm)
-
-              protocol.encode shouldBe Arr(
-                Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) ::
-                  mm.params.map(Bulk(_)) ::: (Bulk("KEYS") :: ks.value.map(Bulk(_)))
-              )
-              protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
-          }
-        }
-      }
+  property("The Key protocol using keys roundtrips successfully given glob pattern") {
+    forAll { (g: GlobPattern, ks: List[Key]) =>
+      val protocol = keys(g)
+      assertEquals(protocol.encode, Arr(Bulk("KEYS"), Bulk(g)))
+      assertEquals(protocol.decode(Arr(ks.map(Bulk(_)))), ks)
     }
+  }
 
-    "using move" should {
-      "roundtrip successfully" when {
-        "given key and db" in forAll("key", "db", "moved") { (k: Key, db: DbIndex, b: Boolean) =>
-          val protocol = move(k, db)
-
-          protocol.encode shouldBe Arr(Bulk("MOVE"), Bulk(k), Bulk(db))
-          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
-        }
-      }
+  property("The Key protocol using migrate roundtrips successfully given key, host, port, db index and timeout") {
+    forAll { (k: Key, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: NOKEY | OK) =>
+      val protocol = migrate(k, h, p, dbi, nni)
+      assertEquals(protocol.encode, Arr(Bulk("MIGRATE"), Bulk(h), Bulk(p), Bulk(k), Bulk(dbi), Bulk(nni)))
+      assertEquals(protocol.decode(noKeyOrOkToStr(nkOrOk)), nkOrOk)
     }
+  }
 
-    "using obj.encoding" should {
-      "roundtrip successfully" when {
-        "given key" in forAll("key", "encoding") { (k: Key, oe: Option[KeyEncoding]) =>
-          val protocol = obj.encoding(k)
-
-          protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("ENCODING"), Bulk(k))
-          protocol.decode(oe.fold(NullBulk: GenBulk)(Bulk(_))) onRight (_ shouldBe oe)
-        }
-      }
+  property("The Key protocol using migrate roundtrips successfully given keys, host, port, db index and timeout") {
+    forAll { (ks: TwoOrMoreKeys, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: NOKEY | OK) =>
+      val protocol = migrate(ks, h, p, dbi, nni)
+      assertEquals(
+        protocol.encode,
+        Arr(
+          Bulk("MIGRATE") ::
+            Bulk(h) ::
+            Bulk(p) ::
+            Bulk("") ::
+            Bulk(dbi) ::
+            Bulk(nni) ::
+            Bulk("KEYS") ::
+            ks.value.map(Bulk(_))
+        )
+      )
+      assertEquals(protocol.decode(noKeyOrOkToStr(nkOrOk)), nkOrOk)
     }
+  }
 
-    "using obj.freq" should {
-      "roundtrip successfully" when {
-        "given key" in forAll("key", "frequency") { (k: Key, nni: NonNegInt) =>
-          val protocol = obj.freq(k)
-
-          protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("FREQ"), Bulk(k))
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }
-      }
+  property("The Key protocol using migrate roundtrips successfully given key, host, port, db index, timeout and migrate mode") {
+    forAll { (input: (Key, Host, Port, DbIndex, NonNegInt, NOKEY | OK), mm: KeyMigrateMode) =>
+      val (k, h, p, dbi, nni, nkOrOk) = input
+      val protocol                    = migrate(k, h, p, dbi, nni, mm)
+      assertEquals(
+        protocol.encode,
+        Arr(Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk(k) :: Bulk(dbi) :: Bulk(nni) :: mm.params.map(Bulk(_)))
+      )
+      assertEquals(protocol.decode(noKeyOrOkToStr(nkOrOk)), nkOrOk)
     }
+  }
 
-    "using obj.idletime" should {
-      "roundtrip successfully" when {
-        "given key" in forAll("key", "idle time") { (k: Key, nni: NonNegInt) =>
-          val protocol = obj.idletime(k)
-
-          protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("IDLETIME"), Bulk(k))
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }
-      }
+  property("The Key protocol using migrate roundtrips successfully given keys, host, port, db index, timeout and migrate mode") {
+    forAll { (input: (TwoOrMoreKeys, Host, Port, DbIndex, NonNegInt, NOKEY | OK), mm: KeyMigrateMode) =>
+      val (ks, h, p, dbi, nni, nkOrOk) = input
+      val protocol                     = migrate(ks, h, p, dbi, nni, mm)
+      assertEquals(
+        protocol.encode,
+        Arr(
+          Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: mm.params
+            .map(Bulk(_)) ::: (Bulk("KEYS") :: ks.value.map(Bulk(_)))
+        )
+      )
+      assertEquals(protocol.decode(noKeyOrOkToStr(nkOrOk)), nkOrOk)
     }
+  }
 
-    "using obj.refcount" should {
-      "roundtrip successfully" when {
-        "given key" in forAll("key", "ref count") { (k: Key, nni: NonNegInt) =>
-          val protocol = obj.refcount(k)
-
-          protocol.encode shouldBe Arr(Bulk("OBJECT"), Bulk("REFCOUNT"), Bulk(k))
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }
-      }
+  property("The Key protocol using move roundtrips successfully given key and db") {
+    forAll { (k: Key, db: DbIndex, b: Boolean) =>
+      val protocol = move(k, db)
+      assertEquals(protocol.encode, Arr(Bulk("MOVE"), Bulk(k), Bulk(db)))
+      assertEquals(protocol.decode(boolToNum(b)), b)
     }
+  }
 
-    "using persist" should {
-      "roundtrip successfully" when {
-        "given key" in forAll("key", "persisted") { (k: Key, b: Boolean) =>
-          val protocol = persist(k)
-
-          protocol.encode shouldBe Arr(Bulk("PERSIST"), Bulk(k))
-          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
-        }
-      }
+  property("The Key protocol using obj.encoding roundtrips successfully given key") {
+    forAll { (k: Key, oe: Option[KeyEncoding]) =>
+      val protocol = obj.encoding(k)
+      assertEquals(protocol.encode, Arr(Bulk("OBJECT"), Bulk("ENCODING"), Bulk(k)))
+      assertEquals(protocol.decode(oe.fold(NullBulk: GenBulk)(Bulk(_))), oe)
     }
+  }
 
-    "using pexpire" should {
-      "roundtrip successfully" when {
-        "given key" in forAll("key", "timeout", "persisted") { (k: Key, nnl: NonNegLong, b: Boolean) =>
-          val protocol = pexpire(k, nnl)
-
-          protocol.encode shouldBe Arr(Bulk("PEXPIRE"), Bulk(k), Bulk(nnl))
-          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
-        }
-      }
+  property("The Key protocol using obj.freq roundtrips successfully given key") {
+    forAll { (k: Key, nni: NonNegInt) =>
+      val protocol = obj.freq(k)
+      assertEquals(protocol.encode, Arr(Bulk("OBJECT"), Bulk("FREQ"), Bulk(k)))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
+  }
 
-    "using pexpireat" should {
-      "roundtrip successfully" when {
-        "given key" in forAll("key", "timestamp", "persisted") { (k: Key, nnl: NonNegLong, b: Boolean) =>
-          val protocol = pexpireat(k, nnl)
-
-          protocol.encode shouldBe Arr(Bulk("PEXPIREAT"), Bulk(k), Bulk(nnl))
-          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
-        }
-      }
+  property("The Key protocol using obj.idletime roundtrips successfully given key") {
+    forAll { (k: Key, nni: NonNegInt) =>
+      val protocol = obj.idletime(k)
+      assertEquals(protocol.encode, Arr(Bulk("OBJECT"), Bulk("IDLETIME"), Bulk(k)))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
+  }
 
-    "using pttl" should {
-      "roundtrip successfully" when {
-        "given key" in forAll("key", "ttl") { (k: Key, ttl: KeyTTLResponse) =>
-          val protocol = pttl(k)
-
-          protocol.encode shouldBe Arr(Bulk("PTTL"), Bulk(k))
-          protocol.decode(ttlResponseToNum(ttl)) onRight (_ shouldBe ttl)
-        }
-      }
+  property("The Key protocol using obj.refcount roundtrips successfully given key") {
+    forAll { (k: Key, nni: NonNegInt) =>
+      val protocol = obj.refcount(k)
+      assertEquals(protocol.encode, Arr(Bulk("OBJECT"), Bulk("REFCOUNT"), Bulk(k)))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
+  }
 
-    "using randomkey" should {
-      "roundtrip successfully" when {
-        "using val" in { (ok: Option[Key]) =>
-          val protocol = randomkey
-
-          protocol.encode shouldBe Arr(Bulk("RANDOMKEY"))
-          protocol.decode(ok.fold(NullBulk: GenBulk)(Bulk(_))) onRight (_ shouldBe ok)
-        }
-      }
+  property("The Key protocol using persist roundtrips successfully given key") {
+    forAll { (k: Key, b: Boolean) =>
+      val protocol = persist(k)
+      assertEquals(protocol.encode, Arr(Bulk("PERSIST"), Bulk(k)))
+      assertEquals(protocol.decode(boolToNum(b)), b)
     }
+  }
 
-    "using rename" should {
-      "roundtrip successfully" when {
-        "given old key and new key" in forAll("old key", "new key") { (ok: Key, nk: Key) =>
-          val protocol = rename(ok, nk)
-
-          protocol.encode shouldBe Arr(Bulk("RENAME"), Bulk(ok), Bulk(nk))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
+  property("The Key protocol using pexpire roundtrips successfully given key") {
+    forAll { (k: Key, nnl: NonNegLong, b: Boolean) =>
+      val protocol = pexpire(k, nnl)
+      assertEquals(protocol.encode, Arr(Bulk("PEXPIRE"), Bulk(k), Bulk(nnl)))
+      assertEquals(protocol.decode(boolToNum(b)), b)
     }
+  }
 
-    "using renamenx" should {
-      "roundtrip successfully" when {
-        "given old key and new key" in forAll("old key", "new key", "renamed") { (ok: Key, nk: Key, b: Boolean) =>
-          val protocol = renamenx(ok, nk)
-
-          protocol.encode shouldBe Arr(Bulk("RENAMENX"), Bulk(ok), Bulk(nk))
-          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
-        }
-      }
+  property("The Key protocol using pexpireat roundtrips successfully given key") {
+    forAll { (k: Key, nnl: NonNegLong, b: Boolean) =>
+      val protocol = pexpireat(k, nnl)
+      assertEquals(protocol.encode, Arr(Bulk("PEXPIREAT"), Bulk(k), Bulk(nnl)))
+      assertEquals(protocol.decode(boolToNum(b)), b)
     }
+  }
 
-    "using restore" should {
-      "roundtrip successfully" when {
-        "given key, ttl and serialized value" in forAll("key", "ttl", "serialized value") { (k: Key, nnl: NonNegLong, s: String) =>
-          val protocol = restore(k, nnl, Bulk(s))
-
-          protocol.encode shouldBe Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk(s))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-        "given key, ttl, serialized value and mode" in {
-          forAll("key", "ttl", "serialized value", "mode") { (k: Key, nnl: NonNegLong, s: String, m: KeyRestoreMode) =>
-            val protocol = restore(k, nnl, Bulk(s), m)
-
-            protocol.encode shouldBe Arr(Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)))
-            protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-          }
-        }
-        "given key, ttl, serialized value and eviction" in {
-          forAll("key", "ttl", "serialized value", "eviction") { (k: Key, nnl: NonNegLong, s: String, e: KeyRestoreEviction) =>
-            val protocol = restore(k, nnl, Bulk(s), e)
-
-            protocol.encode shouldBe Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk(s), Bulk(e.param), Bulk(e.seconds))
-            protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-          }
-        }
-        "given key, ttl, serialized value, mode and eviction" in forAll("key", "ttl", "serialized value", "mode", "eviction") {
-          (k: Key, nnl: NonNegLong, s: String, m: KeyRestoreMode, e: KeyRestoreEviction) =>
-            val protocol = restore(k, nnl, Bulk(s), m, e)
-
-            protocol.encode shouldBe Arr(
-              Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)) ::: (Bulk(e.param) :: Bulk(e.seconds) :: Nil)
-            )
-            protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
+  property("The Key protocol using pttl roundtrips successfully given key") {
+    forAll { (k: Key, ttl: KeyTTLResponse) =>
+      val protocol = pttl(k)
+      assertEquals(protocol.encode, Arr(Bulk("PTTL"), Bulk(k)))
+      assertEquals(protocol.decode(ttlResponseToNum(ttl)), ttl)
     }
+  }
 
-    "using scan" should {
-      "roundtrip successfully" when {
-        "given cursor" in forAll("cursor", "scan result") { (nnl: NonNegLong, sk: Scan[Key]) =>
-          val protocol = scan(nnl)
-
-          protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl))
-          protocol.decode(scanKeyToArr(sk)) onRight (_ shouldBe sk)
-        }
-        "given cursor and glob pattern" in {
-          forAll("cursor", "glob pattern", "scan result") { (nnl: NonNegLong, g: GlobPattern, sk: Scan[Key]) =>
-            val protocol = scan(nnl, g)
-
-            protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g))
-            protocol.decode(scanKeyToArr(sk)) onRight (_ shouldBe sk)
-          }
-        }
-        "given cursor and count" in {
-          forAll("cursor", "count", "scan result") { (nnl: NonNegLong, pi: PosInt, sk: Scan[Key]) =>
-            val protocol = scan(nnl, pi)
-
-            protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl), Bulk("COUNT"), Bulk(pi))
-            protocol.decode(scanKeyToArr(sk)) onRight (_ shouldBe sk)
-          }
-        }
-        "given cursor, glob pattern and count" in forAll("cursor", "glob pattern", "count", "scan result") {
-          (nnl: NonNegLong, g: GlobPattern, pi: PosInt, sk: Scan[Key]) =>
-            val protocol = scan(nnl, g, pi)
-
-            protocol.encode shouldBe Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g), Bulk("COUNT"), Bulk(pi))
-            protocol.decode(scanKeyToArr(sk)) onRight (_ shouldBe sk)
-        }
-      }
+  property("The Key protocol using randomkey roundtrips successfully using val") {
+    forAll { (ok: Option[Key]) =>
+      val protocol = randomkey
+      assertEquals(protocol.encode, Arr(Bulk("RANDOMKEY")))
+      assertEquals(protocol.decode(ok.fold(NullBulk: GenBulk)(Bulk(_))), ok)
     }
+  }
 
-    //FIXME add SORT
-
-    "using touch" should {
-      "roundtrip successfully" when {
-        "given keys" in forAll("keys", "touched") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
-          val protocol = touch(ks)
-
-          protocol.encode shouldBe Arr(Bulk("TOUCH") :: ks.value.map(Bulk(_)))
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }
-      }
+  property("The Key protocol using rename roundtrips successfully given old key and new key") {
+    forAll { (ok: Key, nk: Key) =>
+      val protocol = rename(ok, nk)
+      assertEquals(protocol.encode, Arr(Bulk("RENAME"), Bulk(ok), Bulk(nk)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
     }
+  }
 
-    "using ttl" should {
-      "roundtrip successfully" when {
-        "given key" in forAll("key", "ttl") { (k: Key, ttl0: KeyTTLResponse) =>
-          val protocol = ttl(k)
-
-          protocol.encode shouldBe Arr(Bulk("TTL"), Bulk(k))
-          protocol.decode(ttlResponseToNum(ttl0)) onRight (_ shouldBe ttl0)
-        }
-      }
+  property("The Key protocol using renamenx roundtrips successfully given old key and new key") {
+    forAll { (ok: Key, nk: Key, b: Boolean) =>
+      val protocol = renamenx(ok, nk)
+      assertEquals(protocol.encode, Arr(Bulk("RENAMENX"), Bulk(ok), Bulk(nk)))
+      assertEquals(protocol.decode(boolToNum(b)), b)
     }
+  }
 
-    "using typeof" should {
-      "roundtrip successfully" when {
-        "given key" in forAll("key", "type") { (k: Key, ot: Option[KeyType]) =>
-          val protocol = typeof(k)
-
-          protocol.encode shouldBe Arr(Bulk("TYPE"), Bulk(k))
-          protocol.decode(ot.fold(Str("none"))(Str(_))) onRight (_ shouldBe ot)
-        }
-      }
+  property("The Key protocol using restore roundtrips successfully given key, ttl and serialized value") {
+    forAll { (k: Key, nnl: NonNegLong, s: String) =>
+      val protocol = restore(k, nnl, Bulk(s))
+      assertEquals(protocol.encode, Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk(s)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
     }
+  }
 
-    "using unlink" should {
-      "roundtrip successfully" when {
-        "given keys" in forAll("keys", "unlinked") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
-          val protocol = unlink(ks)
-
-          protocol.encode shouldBe Arr(Bulk("UNLINK") :: ks.value.map(Bulk(_)))
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }
-      }
+  property("The Key protocol using restore roundtrips successfully given key, ttl, serialized value and mode") {
+    forAll { (k: Key, nnl: NonNegLong, s: String, m: KeyRestoreMode) =>
+      val protocol = restore(k, nnl, Bulk(s), m)
+      assertEquals(protocol.encode, Arr(Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_))))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
     }
+  }
 
-    "using wait" should {
-      "roundtrip successfully" when {
-        "given replicas" in forAll("replicas", "acknowledgements") { (pi1: PosInt, pi2: PosInt) =>
-          val protocol = wait(pi1)
+  property("The Key protocol using restore roundtrips successfully given key, ttl, serialized value and eviction") {
+    forAll { (k: Key, nnl: NonNegLong, s: String, e: KeyRestoreEviction) =>
+      val protocol = restore(k, nnl, Bulk(s), e)
+      assertEquals(protocol.encode, Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk(s), Bulk(e.param), Bulk(e.seconds)))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
 
-          protocol.encode shouldBe Arr(Bulk("WAIT"), Bulk(pi1), Bulk(0))
-          protocol.decode(Num(pi2.value.toLong)) onRight (_ shouldBe pi2)
-        }
-        "given replicas and timeout" in forAll("replicas", "timeout", "acknowledgements") { (pi1: PosInt, pl: PosLong, pi2: PosInt) =>
-          val protocol = wait(pi1, pl)
+  property("The Key protocol using restore roundtrips successfully given key, ttl, serialized value, mode and eviction") {
+    forAll { (k: Key, nnl: NonNegLong, s: String, m: KeyRestoreMode, e: KeyRestoreEviction) =>
+      val protocol = restore(k, nnl, Bulk(s), m, e)
+      assertEquals(
+        protocol.encode,
+        Arr(
+          Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)) ::: (Bulk(e.param) :: Bulk(e.seconds) :: Nil)
+        )
+      )
+      assertEquals(protocol.decode(Str(OK.value)), OK)
+    }
+  }
 
-          protocol.encode shouldBe Arr(Bulk("WAIT"), Bulk(pi1), Bulk(pl))
-          protocol.decode(Num(pi2.value.toLong)) onRight (_ shouldBe pi2)
-        }
-      }
+  property("The Key protocol using scan roundtrips successfully given cursor") {
+    forAll { (nnl: NonNegLong, sk: Scan[Key]) =>
+      val protocol = scan(nnl)
+      assertEquals(protocol.encode, Arr(Bulk("SCAN"), Bulk(nnl)))
+      assertEquals(protocol.decode(scanKeyToArr(sk)), sk)
+    }
+  }
+
+  property("The Key protocol using scan roundtrips successfully given cursor and glob pattern") {
+    forAll { (nnl: NonNegLong, g: GlobPattern, sk: Scan[Key]) =>
+      val protocol = scan(nnl, g)
+      assertEquals(protocol.encode, Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g)))
+      assertEquals(protocol.decode(scanKeyToArr(sk)), sk)
+    }
+  }
+
+  property("The Key protocol using scan roundtrips successfully given cursor and count") {
+    forAll { (nnl: NonNegLong, pi: PosInt, sk: Scan[Key]) =>
+      val protocol = scan(nnl, pi)
+      assertEquals(protocol.encode, Arr(Bulk("SCAN"), Bulk(nnl), Bulk("COUNT"), Bulk(pi)))
+      assertEquals(protocol.decode(scanKeyToArr(sk)), sk)
+    }
+  }
+
+  property("The Key protocol using scan roundtrips successfully given cursor, glob pattern and count") {
+    forAll { (nnl: NonNegLong, g: GlobPattern, pi: PosInt, sk: Scan[Key]) =>
+      val protocol = scan(nnl, g, pi)
+      assertEquals(protocol.encode, Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g), Bulk("COUNT"), Bulk(pi)))
+      assertEquals(protocol.decode(scanKeyToArr(sk)), sk)
+    }
+  }
+
+  property("The Key protocol using touch roundtrips successfully given keys") {
+    forAll { (ks: OneOrMoreKeys, nni: NonNegInt) =>
+      val protocol = touch(ks)
+      assertEquals(protocol.encode, Arr(Bulk("TOUCH") :: ks.value.map(Bulk(_))))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+    }
+  }
+
+  property("The Key protocol using ttl roundtrips successfully given key") {
+    forAll { (k: Key, ttl0: KeyTTLResponse) =>
+      val protocol = ttl(k)
+      assertEquals(protocol.encode, Arr(Bulk("TTL"), Bulk(k)))
+      assertEquals(protocol.decode(ttlResponseToNum(ttl0)), ttl0)
+    }
+  }
+
+  property("The Key protocol using typeof roundtrips successfully given key") {
+    forAll { (k: Key, ot: Option[KeyType]) =>
+      val protocol = typeof(k)
+      assertEquals(protocol.encode, Arr(Bulk("TYPE"), Bulk(k)))
+      assertEquals(protocol.decode(ot.fold(Str("none"))(Str(_))), ot)
+    }
+  }
+
+  property("The Key protocol using unlink roundtrips successfully given keys") {
+    forAll { (ks: OneOrMoreKeys, nni: NonNegInt) =>
+      val protocol = unlink(ks)
+      assertEquals(protocol.encode, Arr(Bulk("UNLINK") :: ks.value.map(Bulk(_))))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+    }
+  }
+
+  property("The Key protocol using wait roundtrips successfully given replicas and timeout") {
+    forAll { (pi1: PosInt, pl: PosLong, pi2: PosInt) =>
+      val protocol = wait(pi1, pl)
+      assertEquals(protocol.encode, Arr(Bulk("WAIT"), Bulk(pi1), Bulk(pl)))
+      assertEquals(protocol.decode(Num(pi2.value.toLong)), pi2)
     }
   }
 }

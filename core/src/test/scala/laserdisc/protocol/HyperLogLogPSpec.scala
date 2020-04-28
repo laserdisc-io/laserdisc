@@ -1,39 +1,31 @@
 package laserdisc
 package protocol
 
-final class HyperLogLogPSpec extends HyperLogLogExtPSpec {
-  "The HyperLogLog protocol" when {
-    "using pfadd" should {
-      "roundtrip successfully" when {
-        "given key and elements" in forAll("key", "elements", "added") { (k: Key, es: OneOrMoreKeys, b: Boolean) =>
-          val protocol = pfadd(k, es)
+import org.scalacheck.Prop.forAll
 
-          protocol.encode shouldBe Arr(Bulk("PFADD") :: Bulk(k) :: es.value.map(Bulk(_)))
-          protocol.decode(boolToNum(b)) onRight (_ shouldBe b)
-        }
-      }
+abstract class HyperLogLogPSpec extends BaseSpec with HyperLogLogP {
+
+  property("The HyperLogLog protocol using pfadd roundtrips successfully given key and elements") {
+    forAll { (k: Key, es: OneOrMoreKeys, b: Boolean) =>
+      val protocol = pfadd(k, es)
+      assertEquals(protocol.encode, Arr(Bulk("PFADD") :: Bulk(k) :: es.value.map(Bulk(_))))
+      assertEquals(protocol.decode(boolToNum(b)), b)
     }
+  }
 
-    "using pfcount" should {
-      "roundtrip successfully" when {
-        "given keys" in forAll("keys", "count") { (ks: OneOrMoreKeys, nni: NonNegInt) =>
-          val protocol = pfcount(ks)
-
-          protocol.encode shouldBe Arr(Bulk("PFCOUNT") :: ks.value.map(Bulk(_)))
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }
-      }
+  property("The HyperLogLog protocol using pfcount roundtrips successfully given keys") {
+    forAll { (ks: OneOrMoreKeys, nni: NonNegInt) =>
+      val protocol = pfcount(ks)
+      assertEquals(protocol.encode, Arr(Bulk("PFCOUNT") :: ks.value.map(Bulk(_))))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
+  }
 
-    "using pfmerge" should {
-      "roundtrip successfully" when {
-        "given two or more source keys and a destination key" in forAll("source keys", "destination key") { (sks: TwoOrMoreKeys, dk: Key) =>
-          val protocol = pfmerge(sks, dk)
-
-          protocol.encode shouldBe Arr(Bulk("PFMERGE") :: Bulk(dk) :: sks.value.map(Bulk(_)))
-          protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-        }
-      }
+  property("The HyperLogLog protocol using pfmerge roundtrips successfully given two or more source keys and a destination key") {
+    forAll { (sks: TwoOrMoreKeys, dk: Key) =>
+      val protocol = pfmerge(sks, dk)
+      assertEquals(protocol.encode, Arr(Bulk("PFMERGE") :: Bulk(dk) :: sks.value.map(Bulk(_))))
+      assertEquals(protocol.decode(Str(OK.value)), OK)
     }
   }
 }

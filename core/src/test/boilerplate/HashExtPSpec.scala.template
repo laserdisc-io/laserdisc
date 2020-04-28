@@ -1,51 +1,35 @@
 package laserdisc
 package protocol
 
-abstract class HashExtPSpec extends BaseSpec with HashP {
+import org.scalacheck.Prop.forAll
 
-  "The Hash extended protocol" when {
-
-    "using hdel" should {
-
-      "roundtrip successfully" when {
-        [1..4#"given key and [#field1#]" in forAll("key", [#"field1"#], "deleted") { (k: Key, [#f1: Key#], nni: NonNegInt) =>
-          val protocol = hdel(k, [#f1#])
-
-          protocol.encode shouldBe Arr(Bulk("HDEL"), Bulk(k), [#Bulk(f1)#])
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }#
-        ]
+final class HashExtPSpec extends HashPSpec {
+  [1..5#property("The Hash extended protocol using hdel roundtrips successfully given key and [#field1#]") {
+    forAll { (k: Key, [#f1: Key#], nni: NonNegInt) =>
+      val protocol = hdel(k, [#f1#])
+      assertEquals(protocol.encode, Arr(Bulk("HDEL"), Bulk(k), [#Bulk(f1)#]))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+    }
+  }#
+  ]
+  [1..5#property("The Hash extended protocol using hmget roundtrips successfully given key and [#field1#]") {
+    forAll { (k: Key, [#f1: Key#]) =>
+      forAll { ([#v1: Int#]) =>
+        val protocol = hmget[[#Int#]](k, [#f1#])
+        assertEquals(protocol.encode, Arr(Bulk("HMGET"), Bulk(k), [#Bulk(f1)#]))
+        assertEquals(protocol.decode(Arr([#Bulk(v1)#])), (([#v1#])))
       }
     }
-
-    "using hmget" should {
-
-      "roundtrip successfully" when {
-        [1..5#"given key and [#field1#]" in forAll("key", [#"field1"#]) { (k: Key, [#f1: Key#]) =>
-          forAll([#"returned value1"#]) { ([#v1: Int#]) =>
-            val protocol = hmget[[#Int#]](k, [#f1#])
-
-            protocol.encode shouldBe Arr(Bulk("HMGET"), Bulk(k), [#Bulk(f1)#])
-            protocol.decode(Arr([#Bulk(v1)#])) onRight (_ shouldBe (([#v1#])))
-          }
-        }#
-        ]
+  }#
+  ]
+  [1..5#property("The Hash extended protocol using hmset roundtrips successfully given key and [#field1#]") {
+    forAll { (k: Key, [#f1: Key#]) =>
+      forAll { ([#v1: Int#]) =>
+        val protocol = hmset(k, [#f1, v1#])
+        assertEquals(protocol.encode, Arr(Bulk("HMSET"), Bulk(k), [#Bulk(f1), Bulk(v1)#]))
+        assertEquals(protocol.decode(Str(OK.value)), OK)
       }
     }
-
-    "using hmset" should {
-
-      "roundtrip successfully" when {
-        [1..5#"given key and [#field1#]" in forAll("key", [#"field1"#]) { (k: Key, [#f1: Key#]) =>
-          forAll([#"value1"#]) { ([#v1: Int#]) =>
-            val protocol = hmset(k, [#f1, v1#])
-
-            protocol.encode shouldBe Arr(Bulk("HMSET"), Bulk(k), [#Bulk(f1), Bulk(v1)#])
-            protocol.decode(Str(OK.value)) onRight (_ shouldBe OK)
-          }
-        }#
-        ]
-      }
-    }
-  }
+  }#
+  ]
 }

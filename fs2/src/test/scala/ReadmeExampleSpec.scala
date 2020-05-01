@@ -12,8 +12,8 @@ final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers {
 
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
-  private[this] implicit val timer: Timer[IO]               = IO.timer(ec)
-  private[this] implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
+  implicit private[this] val timer: Timer[IO]               = IO.timer(ec)
+  implicit private[this] val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
   private[this] def capturedConsoleOutOf(aWrite: IO[Unit]): String = {
     val lowerStream = new ByteArrayOutputStream()

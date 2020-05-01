@@ -28,13 +28,13 @@ Note 2: make sure to inspect the combinators as you may be able to leverage some
 
   final def flatMap[C](f: B => Read[A, C]): Read[A, C] = Read.instance(a => read(a).flatMap(f(_).read(a)))
 
-  private[this] final val _extract: Any => Read.Extract[Any] = new Read.Extract[Any](_)
+  final private[this] val _extract: Any => Read.Extract[Any] = new Read.Extract[Any](_)
   final def unapply(a: A): Read.Extract[RESPDecErr | B] =
     _extract(read(a)).asInstanceOf[Read.Extract[RESPDecErr | B]]
 }
 
 object Read extends ReadInstances0 {
-  private[Read] final class Extract[T](private val t: T) extends AnyVal {
+  final private[Read] class Extract[T](private val t: T) extends AnyVal {
     def isEmpty: Boolean = false
     def get: T           = t
   }

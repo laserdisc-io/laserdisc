@@ -9,9 +9,9 @@ import scodec.bits.BitVector
 
 import scala.annotation.tailrec
 
-private[laserdisc] sealed trait RESPFrame extends Product with Serializable with EitherSyntax with BitVectorSyntax {
+sealed private[laserdisc] trait RESPFrame extends Product with Serializable with EitherSyntax with BitVectorSyntax {
   def append(bytes: ByteBuffer): Exception | NonEmptyRESPFrame = nextFrame(BitVector.view(bytes))
-  protected final def nextFrame(bits: BitVector): Exception | NonEmptyRESPFrame =
+  final protected def nextFrame(bits: BitVector): Exception | NonEmptyRESPFrame =
     stateOf(bits)
       .flatMap {
         case MissingBits(n)              => Right(IncompleteFrame(bits, n))
@@ -21,7 +21,7 @@ private[laserdisc] sealed trait RESPFrame extends Product with Serializable with
       }
       .leftMap(e => UnknownBufferState(s"Err building the frame from buffer: $e. Content: ${bits.tailToUtf8}"))
 
-  @tailrec private[this] final def consumeRemainder(current: String | MoreThanOneFrame): String | MoreThanOneFrame = current match {
+  @tailrec final private[this] def consumeRemainder(current: String | MoreThanOneFrame): String | MoreThanOneFrame = current match {
     case Right(s) =>
       stateOf(s.remainder) match {
         case Left(ee)                           => Left(ee)
@@ -34,12 +34,12 @@ private[laserdisc] sealed trait RESPFrame extends Product with Serializable with
 }
 
 private[laserdisc] case object EmptyFrame        extends RESPFrame
-private[protocol] sealed trait NonEmptyRESPFrame extends RESPFrame
+sealed private[protocol] trait NonEmptyRESPFrame extends RESPFrame
 
-private[laserdisc] final case class CompleteFrame(bits: BitVector) extends NonEmptyRESPFrame
-private[laserdisc] final case class MoreThanOneFrame(private[laserdisc] val complete: Vector[CompleteFrame], remainder: BitVector)
+final private[laserdisc] case class CompleteFrame(bits: BitVector) extends NonEmptyRESPFrame
+final private[laserdisc] case class MoreThanOneFrame(private[laserdisc] val complete: Vector[CompleteFrame], remainder: BitVector)
     extends NonEmptyRESPFrame
-private[laserdisc] final case class IncompleteFrame(partial: BitVector, bitsToComplete: Long) extends NonEmptyRESPFrame {
+final private[laserdisc] case class IncompleteFrame(partial: BitVector, bitsToComplete: Long) extends NonEmptyRESPFrame {
   override def append(bytes: ByteBuffer): Exception | NonEmptyRESPFrame = {
     val newBits = BitVector.view(bytes)
     //  Saves some size checks
@@ -48,4 +48,4 @@ private[laserdisc] final case class IncompleteFrame(partial: BitVector, bitsToCo
   }
 }
 
-private[laserdisc] final case class UnknownBufferState(message: String) extends laserdisc.Platform.LaserDiscRespFrameError(message)
+final private[laserdisc] case class UnknownBufferState(message: String) extends laserdisc.Platform.LaserDiscRespFrameError(message)

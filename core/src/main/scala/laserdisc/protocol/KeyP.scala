@@ -26,26 +26,26 @@ object KeyP {
 
   sealed trait MigrateMode { def params: List[String] }
   final object MigrateMode {
-    final object copy    extends MigrateMode { override final val params: List[String] = List("COPY")            }
-    final object replace extends MigrateMode { override final val params: List[String] = List("REPLACE")         }
-    final object both    extends MigrateMode { override final val params: List[String] = List("COPY", "REPLACE") }
+    final object copy    extends MigrateMode { final override val params: List[String] = List("COPY")            }
+    final object replace extends MigrateMode { final override val params: List[String] = List("REPLACE")         }
+    final object both    extends MigrateMode { final override val params: List[String] = List("COPY", "REPLACE") }
   }
 
   sealed trait RestoreEviction { def param: String; def seconds: NonNegInt }
   final object RestoreEviction {
-    final case class IdleTime(override final val seconds: NonNegInt) extends RestoreEviction {
-      override final val param: String = "IDLETIME"
+    final case class IdleTime(final override val seconds: NonNegInt) extends RestoreEviction {
+      final override val param: String = "IDLETIME"
     }
-    final case class Frequency(override final val seconds: NonNegInt) extends RestoreEviction {
-      override final val param: String = "FREQUENCY"
+    final case class Frequency(final override val seconds: NonNegInt) extends RestoreEviction {
+      final override val param: String = "FREQUENCY"
     }
   }
 
   sealed trait RestoreMode { def params: List[String] }
   final object RestoreMode {
-    final case object replace     extends RestoreMode { override final val params: List[String] = List("REPLACE")           }
-    final case object absolutettl extends RestoreMode { override final val params: List[String] = List("ABSTTL")            }
-    final case object both        extends RestoreMode { override final val params: List[String] = List("REPLACE", "ABSTTL") }
+    final case object replace     extends RestoreMode { final override val params: List[String] = List("REPLACE")           }
+    final case object absolutettl extends RestoreMode { final override val params: List[String] = List("ABSTTL")            }
+    final case object both        extends RestoreMode { final override val params: List[String] = List("REPLACE", "ABSTTL") }
   }
 
   sealed trait Type
@@ -96,15 +96,15 @@ trait KeyBaseP {
 
   import keytypes._
 
-  private[this] implicit final val str2NOKEYOrOK: Str ==> (NOKEY | OK) = Read.instance {
+  implicit final private[this] val str2NOKEYOrOK: Str ==> (NOKEY | OK) = Read.instance {
     case Str("NOKEY") => Right(Left(NOKEY))
     case Str("OK")    => Right(Right(OK))
     case Str(other)   => Left(RESPDecErr(s"Unexpected string for Str ==> (NOKEY | OK). Was $other"))
   }
 
-  private[this] final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
+  final private[this] val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  private[this] implicit final val str2OptionType: Str ==> Option[KeyType] = Read.instance {
+  implicit final private[this] val str2OptionType: Str ==> Option[KeyType] = Read.instance {
     case Str("string") => Right(Some(KeyType.string))
     case Str("list")   => Right(Some(KeyType.list))
     case Str("set")    => Right(Some(KeyType.set))

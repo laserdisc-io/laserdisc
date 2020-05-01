@@ -4,7 +4,7 @@ import eu.timepit.refined.W
 import eu.timepit.refined.api._
 import eu.timepit.refined.boolean.{And, Not, Or, True}
 import eu.timepit.refined.char.Whitespace
-import eu.timepit.refined.collection.{Forall, MinSize, MaxSize, NonEmpty}
+import eu.timepit.refined.collection.{Forall, MaxSize, MinSize, NonEmpty}
 import eu.timepit.refined.generic.Equal
 import eu.timepit.refined.numeric.{Interval, NonNaN, NonNegative, Positive}
 import eu.timepit.refined.string.{IPv4, MatchesRegex}
@@ -42,8 +42,8 @@ package object laserdisc {
   final val Show       = protocol.Show
   final val RESPDecErr = protocol.RESPDecErr
 
-  private[this] final type NoControlChar = Not[ControlChar]
-  private[this] final type NoWhitespace  = Not[Whitespace]
+  final private[this] type NoControlChar = Not[ControlChar]
+  final private[this] type NoWhitespace  = Not[Whitespace]
 
   // Witnesses
   final val AllNICsEqWit                = W("0.0.0.0")
@@ -175,15 +175,15 @@ package object laserdisc {
   final val OK: OK             = RefType.applyRefM[OK]("OK")
   final val PONG: PONG         = RefType.applyRefM[PONG]("PONG")
 
-  private[laserdisc] final val COMMA_CH = ','
-  private[laserdisc] final val LF_CH    = '\n'
-  private[laserdisc] final val SPACE_CH = ' '
-  private[laserdisc] final val COMMA    = s"$COMMA_CH"
-  private[laserdisc] final val CRLF     = s"\r$LF_CH"
-  private[laserdisc] final val LF       = s"$LF_CH"
-  private[laserdisc] final val SPACE    = s"$SPACE_CH"
+  final private[laserdisc] val COMMA_CH = ','
+  final private[laserdisc] val LF_CH    = '\n'
+  final private[laserdisc] val SPACE_CH = ' '
+  final private[laserdisc] val COMMA    = s"$COMMA_CH"
+  final private[laserdisc] val CRLF     = s"\r$LF_CH"
+  final private[laserdisc] val LF       = s"$LF_CH"
+  final private[laserdisc] val SPACE    = s"$SPACE_CH"
 
-  private[laserdisc] final object ToInt {
+  final private[laserdisc] object ToInt {
     def unapply(l: Long): Option[Int] =
       try {
         Some(j.Math.toIntExact(l))
@@ -193,31 +193,31 @@ package object laserdisc {
         Some(j.Integer.parseInt(s))
       } catch { case _: NumberFormatException => None }
   }
-  private[laserdisc] final object ToLong {
+  final private[laserdisc] object ToLong {
     def unapply(s: String): Option[Long] =
       try {
         Some(j.Long.parseLong(s))
       } catch { case _: NumberFormatException => None }
   }
-  private[laserdisc] final object ToDouble {
+  final private[laserdisc] object ToDouble {
     def unapply(s: String): Option[Double] =
       try {
         Some(j.Double.parseDouble(s))
       } catch { case _: NumberFormatException => None }
   }
 
-  private[laserdisc] implicit final class WidenOps1[F[_], A](private val fa: F[A]) extends AnyVal {
+  implicit final private[laserdisc] class WidenOps1[F[_], A](private val fa: F[A]) extends AnyVal {
     def widen[AA: <:<[A, *]: =:!=[A, *]]: F[AA] = fa.asInstanceOf[F[AA]]
   }
 
-  private[laserdisc] implicit final class WidenOps2[F[_, _], A, B](private val fab: F[A, B]) extends AnyVal {
+  implicit final private[laserdisc] class WidenOps2[F[_, _], A, B](private val fab: F[A, B]) extends AnyVal {
     def widenLeft[AA: <:<[A, *]: =:!=[A, *]]: F[AA, B]                            = fab.asInstanceOf[F[AA, B]]
     def widenRight[BB: <:<[B, *]: =:!=[B, *]]: F[A, BB]                           = fab.asInstanceOf[F[A, BB]]
     def coerceLeft[AA, FF[_, _]](implicit ev: F[AA, B] <:< FF[AA, B]): FF[AA, B]  = fab.asInstanceOf[FF[AA, B]]
     def coerceRight[FF[_, _], BB](implicit ev: F[A, BB] <:< FF[A, BB]): FF[A, BB] = fab.asInstanceOf[FF[A, BB]]
   }
 
-  private[laserdisc] implicit final class WidenOps3[F[_[_], _], G[_], A](private val fga: F[G, A]) extends AnyVal {
+  implicit final private[laserdisc] class WidenOps3[F[_[_], _], G[_], A](private val fga: F[G, A]) extends AnyVal {
     def widenRight[AA: <:<[A, *]: =:!=[A, *]]: F[G, AA] = fga.asInstanceOf[F[G, AA]]
   }
 }

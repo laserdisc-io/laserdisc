@@ -37,11 +37,11 @@ package object fs2 {
       zipApply: ZipApply.Aux[FL, AL, Out0],
       sequencer: Sequencer.Aux[Out0, F, LOut0]
   ): RedisHandler.Aux[F, In, LOut0] = new RedisHandler[F, In] {
-    override final type LOut = LOut0
-    override final def apply(envF: Env[F], in: In): F[LOut] = sequencer(in.map(PromiseMapper).zipApply(in.mapConst(envF)))
+    final override type LOut = LOut0
+    final override def apply(envF: Env[F], in: In): F[LOut] = sequencer(in.map(PromiseMapper).zipApply(in.mapConst(envF)))
   }
 
   implicit final def functorForCats[F[_]](implicit F: cats.Functor[F]): Functor[F] = new Functor[F] {
-    override final def map[A, B](fa: F[A])(f: A => B): F[B] = F.map(fa)(f)
+    final override def map[A, B](fa: F[A])(f: A => B): F[B] = F.map(fa)(f)
   }
 }

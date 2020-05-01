@@ -11,10 +11,10 @@ import scodec.bits.BitVector
 import scodec.{Codec, Err => SErr}
 
 object RESPCodecsSpec extends EitherValues {
-  private[this] final object functions {
-    private[this] final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
-    private[this] final val requireEncode = (resp: RESP) => Codec[RESP].encode(resp).require
-    private[this] final val stringToBytes = (s: String) => s.getBytes(UTF_8)
+  final private[this] object functions {
+    final private[this] val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
+    final private[this] val requireEncode = (resp: RESP) => Codec[RESP].encode(resp).require
+    final private[this] val stringToBytes = (s: String) => s.getBytes(UTF_8)
 
     final val stringToBytesLength = stringToBytes andThen (bytes => bytes.length)
 
@@ -33,21 +33,21 @@ object RESPCodecsSpec extends EitherValues {
     final val roundTripAttempt = requireEncode andThen attemptDecode
   }
 
-  private implicit final class RichChar(private val underlying: Char) extends AnyVal {
+  implicit final private class RichChar(private val underlying: Char) extends AnyVal {
     def toHex: String = BitVector.fromByte(underlying.toByte).toHex
   }
 
-  private implicit final class RichString(private val underlying: String) extends AnyVal {
+  implicit final private class RichString(private val underlying: String) extends AnyVal {
     def RESP: SErr | RESP = functions.stringToRESPAttempt(underlying).toEither
     def bytesLength: Int  = functions.stringToBytesLength(underlying)
   }
 
-  private implicit final class RichRESP(private val underlying: RESP) extends AnyVal {
+  implicit final private class RichRESP(private val underlying: RESP) extends AnyVal {
     def wireFormat: String = functions.respToString(underlying)
     def roundTrip: RESP    = functions.roundTripAttempt(underlying).require
   }
 
-  private implicit final class RichSeqRESP(private val underlying: Seq[RESP]) extends AnyVal {
+  implicit final private class RichSeqRESP(private val underlying: Seq[RESP]) extends AnyVal {
     def wireFormat: String = functions.respSeqToString(underlying)
   }
 }
@@ -81,14 +81,14 @@ final class RESPCodecsSpec extends BaseSpec {
     } :| "RESP"
   private[this] def respListGen: Gen[List[RESP]] = smallNumGen.flatMap(listOfN(_, respGen)) :| "list of RESPs"
 
-  private[this] implicit val stringArb: Arbitrary[String]        = Arbitrary(stringGen)
-  private[this] implicit val invalidProtocolArb: Arbitrary[Char] = Arbitrary(invalidProtocolGen)
-  private[this] implicit val strArb: Arbitrary[Str]              = Arbitrary(strGen)
-  private[this] implicit val errArb: Arbitrary[Err]              = Arbitrary(errGen)
-  private[this] implicit val numArb: Arbitrary[Num]              = Arbitrary(numGen)
-  private[this] implicit val genBulkArb: Arbitrary[GenBulk]      = Arbitrary(genBulkGen)
-  private[this] implicit val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
-  private[this] implicit val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
+  implicit private[this] val stringArb: Arbitrary[String]        = Arbitrary(stringGen)
+  implicit private[this] val invalidProtocolArb: Arbitrary[Char] = Arbitrary(invalidProtocolGen)
+  implicit private[this] val strArb: Arbitrary[Str]              = Arbitrary(strGen)
+  implicit private[this] val errArb: Arbitrary[Err]              = Arbitrary(errGen)
+  implicit private[this] val numArb: Arbitrary[Num]              = Arbitrary(numGen)
+  implicit private[this] val genBulkArb: Arbitrary[GenBulk]      = Arbitrary(genBulkGen)
+  implicit private[this] val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
+  implicit private[this] val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
 
   "A RESP codec" when {
     "handling unknown protocol type" should {

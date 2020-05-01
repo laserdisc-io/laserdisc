@@ -41,12 +41,12 @@ object StringP {
     }
 
     def millis(v: PosLong): Expiry = new Expiry {
-      override final val value: PosLong = v
-      override final val unit: Unit     = Unit.milliseconds
+      final override val value: PosLong = v
+      final override val unit: Unit     = Unit.milliseconds
     }
     def seconds(v: PosLong): Expiry = new Expiry {
-      override final val value: PosLong = v
-      override final val unit: Unit     = Unit.seconds
+      final override val value: PosLong = v
+      final override val unit: Unit     = Unit.seconds
     }
   }
 
@@ -76,7 +76,7 @@ trait StringBaseP {
   import shapeless.ops.hlist.Length
   import shapeless.ops.nat.GTEq.>=
 
-  private[this] final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
+  final private[this] val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
 
   final object strings {
     final val bit     = Bit

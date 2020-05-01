@@ -23,63 +23,63 @@ object GeoP {
   sealed trait RadiusMode { type Res; def params: List[String]; def r: Arr ==> Res }
   object RadiusMode {
     final object coordinates extends RadiusMode {
-      override final type Res = KeyAndCoordinates
-      override final val params: List[String] = List("WITHCOORD")
-      override final val r: Arr ==> Res       = radiusModeCoordinatesRead
+      final override type Res = KeyAndCoordinates
+      final override val params: List[String] = List("WITHCOORD")
+      final override val r: Arr ==> Res       = radiusModeCoordinatesRead
 
       def &(d: distance.type): coordinatesAndDistance.type = { val _ = d; coordinatesAndDistance }
       def &(h: hash.type): coordinatesAndHash.type         = { val _ = h; coordinatesAndHash }
     }
     final object distance extends RadiusMode {
-      override final type Res = KeyAndDistance
-      override final val params: List[String] = List("WITHDIST")
-      override final val r: Arr ==> Res       = radiusModeDistanceRead
+      final override type Res = KeyAndDistance
+      final override val params: List[String] = List("WITHDIST")
+      final override val r: Arr ==> Res       = radiusModeDistanceRead
 
       def &(c: coordinates.type): coordinatesAndDistance.type = { val _ = c; coordinatesAndDistance }
       def &(h: hash.type): distanceAndHash.type               = { val _ = h; distanceAndHash }
     }
     final object hash extends RadiusMode {
-      override final type Res = KeyAndHash
-      override final val params: List[String] = List("WITHHASH")
-      override final val r: Arr ==> Res       = radiusModeHashRead
+      final override type Res = KeyAndHash
+      final override val params: List[String] = List("WITHHASH")
+      final override val r: Arr ==> Res       = radiusModeHashRead
 
       def &(c: coordinates.type): coordinatesAndHash.type = { val _ = c; coordinatesAndHash }
       def &(c: distance.type): distanceAndHash.type       = { val _ = c; distanceAndHash }
     }
     final object coordinatesAndDistance extends RadiusMode {
-      override final type Res = KeyCoordinatesAndDistance
-      override final val params: List[String] = List("WITHCOORD", "WITHDIST")
-      override final val r: Arr ==> Res       = radiusModeCoordinatesAndDistanceRead
+      final override type Res = KeyCoordinatesAndDistance
+      final override val params: List[String] = List("WITHCOORD", "WITHDIST")
+      final override val r: Arr ==> Res       = radiusModeCoordinatesAndDistanceRead
 
       def &(h: hash.type): all.type = { val _ = h; all }
     }
     final object coordinatesAndHash extends RadiusMode {
-      override final type Res = KeyCoordinatesAndHash
-      override final val params: List[String] = List("WITHCOORD", "WITHHASH")
-      override final val r: Arr ==> Res       = radiusModeCoordinatesAndHashRead
+      final override type Res = KeyCoordinatesAndHash
+      final override val params: List[String] = List("WITHCOORD", "WITHHASH")
+      final override val r: Arr ==> Res       = radiusModeCoordinatesAndHashRead
 
       def &(d: distance.type): all.type = { val _ = d; all }
     }
     final object distanceAndHash extends RadiusMode {
-      override final type Res = KeyDistanceAndHash
-      override final val params: List[String] = List("WITHDIST", "WITHHASH")
-      override final val r: Arr ==> Res       = radiusModeDistanceAndHashRead
+      final override type Res = KeyDistanceAndHash
+      final override val params: List[String] = List("WITHDIST", "WITHHASH")
+      final override val r: Arr ==> Res       = radiusModeDistanceAndHashRead
 
       def &(c: coordinates.type): all.type = { val _ = c; all }
     }
     final object all extends RadiusMode {
-      override final type Res = KeyCoordinatesDistanceAndHash
-      override final val params: List[String] = List("WITHCOORD", "WITHDIST", "WITHHASH")
-      override final val r: Arr ==> Res       = radiusModeAllRead
+      final override type Res = KeyCoordinatesDistanceAndHash
+      final override val params: List[String] = List("WITHCOORD", "WITHDIST", "WITHHASH")
+      final override val r: Arr ==> Res       = radiusModeAllRead
     }
   }
 
   sealed trait StoreMode { def params: List[String] }
   object StoreMode {
-    final case class Hash(key: Key)     extends StoreMode { override final val params: List[String] = List("STORE", key.value)     }
-    final case class Distance(key: Key) extends StoreMode { override final val params: List[String] = List("STOREDIST", key.value) }
+    final case class Hash(key: Key)     extends StoreMode { final override val params: List[String] = List("STORE", key.value)     }
+    final case class Distance(key: Key) extends StoreMode { final override val params: List[String] = List("STOREDIST", key.value) }
     final case class Both(hashKey: Key, distanceKey: Key) extends StoreMode {
-      override final val params: List[String] = List("STORE", hashKey.value, "STOREDIST", distanceKey.value)
+      final override val params: List[String] = List("STORE", hashKey.value, "STOREDIST", distanceKey.value)
     }
   }
 

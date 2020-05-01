@@ -16,8 +16,8 @@ import scodec.stream.{StreamDecoder, StreamEncoder}
 import scala.concurrent.duration.FiniteDuration
 
 object RedisChannel {
-  private[this] final val streamDecoder = StreamDecoder.many(Codec[RESP])
-  private[this] final val streamEncoder = StreamEncoder.many(Codec[RESP])
+  final private[this] val streamDecoder = StreamDecoder.many(Codec[RESP])
+  final private[this] val streamEncoder = StreamEncoder.many(Codec[RESP])
 
   final def apply[F[_]: Concurrent: ContextShift: LogWriter](
       address: InetSocketAddress,
@@ -41,7 +41,7 @@ object RedisChannel {
       }
   }
 
-  private[this] final object impl {
+  final private[this] object impl {
     def send[F[_]: MonadError[*[_], Throwable]](socketChannel: Pipe[F, Byte, Unit])(
         implicit log: LogWriter[F]
     ): Pipe[F, RESP, Unit] =

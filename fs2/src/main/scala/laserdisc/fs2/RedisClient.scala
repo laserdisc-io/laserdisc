@@ -79,7 +79,7 @@ object RedisClient {
     establishedConnection >>= { conn => impl.mkClient(conn) }
   }
 
-  private[laserdisc] final object impl {
+  final private[laserdisc] object impl {
     sealed trait Connection[F[_]] {
       def run: F[Fiber[F, Unit]]
       def shutdown: F[Unit]
@@ -99,7 +99,7 @@ object RedisClient {
     def mkClient[F[_]: Concurrent: Timer: LogWriter](establishedConn: Connection[F]): Resource[F, RedisClient[F]] =
       Resource.make(mkPublisher(establishedConn) >>= { publ => publ.start map (_ => publ) })(_.shutdown) map { publisher =>
         new RedisClient[F] {
-          override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
+          final override def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
               implicit handler: RedisHandler.Aux[F, In, Out]
           ): F[Out] = publisher.publish(in, timeout)
         }
@@ -117,7 +117,7 @@ object RedisClient {
           Resource.liftF(Ref.of[F, Vector[Request[F]]](Vector.empty)) >>= { inFlight =>
             def push(req: Request[F]): F[RESP] =
               inFlight
-                .modify { in => (in :+ req) -> req.protocol.encode }
+                .modify(in => (in :+ req) -> req.protocol.encode)
 
             def pop: F[Option[Request[F]]] =
               inFlight
@@ -184,7 +184,7 @@ object RedisClient {
               }
 
             val newConnection = new Connection[F] {
-              override final def run: F[Fiber[F, Unit]] =
+              final override def run: F[Fiber[F, Unit]] =
                 LogWriter.info("Starting connection") >>
                   runner(serverStream)
                     .interruptWhen(termSignal)
@@ -198,12 +198,12 @@ object RedisClient {
                     }
                     .start
 
-              override final def shutdown: F[Unit] =
+              final override def shutdown: F[Unit] =
                 LogWriter.info("Shutting down connection") >>
                   termSignal.complete(().asRight) >>
                   LogWriter.info("Shutdown complete")
 
-              override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
+              final override def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
                   implicit handler: RedisHandler.Aux[F, In, Out]
               ): F[Out] = handler(queue -> timeout, in)
             }
@@ -232,7 +232,7 @@ object RedisClient {
             case ConnectedState(_) | ShutDownState => s
           }
 
-        private[this] implicit val connectionEq: Eq[Connection[F]] =
+        implicit private[this] val connectionEq: Eq[Connection[F]] =
           Eq.fromUniversalEquals
 
         implicit val stateEq: Eq[State] = Eq.instance {

@@ -28,8 +28,8 @@ object RESPParamWrite extends RESPParamWriteInstances {
   }
 }
 
-private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteInstances1 {
-  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A] = RESPParamWrite.instance { a => Seq(Bulk(a)) }
+sealed private[protocol] trait RESPParamWriteInstances extends RESPParamWriteInstances1 {
+  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A] = RESPParamWrite.instance(a => Seq(Bulk(a)))
   implicit final def pairRESPParamWrite[A, B](
       implicit A: RESPParamWrite[A],
       B: RESPParamWrite[B]
@@ -44,7 +44,7 @@ private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteIns
   ): RESPParamWrite[FieldType[K, V]] = RESPParamWrite.instance(Bulk(K.value.name) +: V.write(_))
 }
 
-private[protocol] sealed trait RESPParamWriteInstances1 {
+sealed private[protocol] trait RESPParamWriteInstances1 {
   implicit final val nilRESPParamWrite: RESPParamWrite[Nil.type] = RESPParamWrite.const(Seq.empty)
   implicit final val hNilRESPParamWrite: RESPParamWrite[HNil]    = RESPParamWrite.const(Seq.empty)
 

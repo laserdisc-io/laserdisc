@@ -4,7 +4,7 @@ package protocol
 final class HashPSpec extends HashExtPSpec {
   import shapeless._
 
-  private[this] final val scanKVToArr: ScanKV => Arr = scanKV =>
+  final private[this] val scanKVToArr: ScanKV => Arr = scanKV =>
     Arr(
       Bulk(scanKV.cursor.value),
       scanKV.maybeValues.fold(NilArr: GenArr)(kvs => Arr(kvs.flatMap { case KV(k, v) => List(Bulk(k.value), Bulk(v)) }.toList))

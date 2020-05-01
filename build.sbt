@@ -1,5 +1,5 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
-import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 val V = new {
   val cats                   = "2.1.1"
@@ -113,7 +113,7 @@ val externalApiMappings = Def.task {
 
   sealed trait DocumentationSite {
     def maybeDocsFor(module: ModuleID): Option[(File, URL)]
-    protected final def maybeModuleFile(module: ModuleID): Option[File] =
+    final protected def maybeModuleFile(module: ModuleID): Option[File] =
       fullClassPath
         .find {
           _.get(moduleID.key).exists { m =>
@@ -124,7 +124,7 @@ val externalApiMappings = Def.task {
   }
 
   object JavaDocIo extends DocumentationSite {
-    override final def maybeDocsFor(m: ModuleID): Option[(File, URL)] = {
+    final override def maybeDocsFor(m: ModuleID): Option[(File, URL)] = {
       val (organization, version) = m.organization -> m.revision
       val crossVersionedName = CrossVersion(m.crossVersion, scalaVersion.value, scalaBinaryVersion.value)
         .fold(m.name)(_.apply(m.name))

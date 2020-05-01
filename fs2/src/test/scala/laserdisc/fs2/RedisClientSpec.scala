@@ -22,18 +22,18 @@ import scala.concurrent.ExecutionContext.fromExecutor
 final class RedisClientSpec extends ClientSpec(6379)
 final class KeyDbClientSpec extends ClientSpec(6380)
 
-private[fs2] abstract class ClientSpec(p: Port) extends ClientBaseSpec[IO](p) {
+abstract private[fs2] class ClientSpec(p: Port) extends ClientBaseSpec[IO](p) {
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
-  override implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
-  override implicit val timer: Timer[IO]               = IO.timer(ec)
-  override implicit val concurrent: Concurrent[IO]     = IO.ioConcurrentEffect
-  override implicit val logger: LogWriter[IO]          = noOpLog[IO]
+  implicit override val contextShift: ContextShift[IO] = IO.contextShift(ec)
+  implicit override val timer: Timer[IO]               = IO.timer(ec)
+  implicit override val concurrent: Concurrent[IO]     = IO.ioConcurrentEffect
+  implicit override val logger: LogWriter[IO]          = noOpLog[IO]
 
   override def run[A]: IO[A] => A = _.unsafeRunSync()
 }
 
-private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLike with Matchers {
+abstract private[fs2] class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLike with Matchers {
   implicit def contextShift: ContextShift[F]
   implicit def timer: Timer[F]
   implicit def concurrent: Concurrent[F]
@@ -43,9 +43,9 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
   def clientUnderTest: Resource[F, RedisClient[F]] =
     RedisClient.toNode("127.0.0.1", p)
 
-  private[this] final val key: Key = "test-key"
-  private[this] final val text     = "test text"
-  private[this] final val correct  = "correct"
+  final private[this] val key: Key = "test-key"
+  final private[this] val text     = "test text"
+  final private[this] val correct  = "correct"
 
   "an fs2 redis client" should {
     import cats.instances.list.catsStdInstancesForList
@@ -58,7 +58,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (collection.parallel.immutable.ParSeq.range(0, 300) map { _ =>
-          concurrent.start { cl.send(strings.get[String](key)): F[Maybe[Option[String]]] }
+          concurrent.start(cl.send(strings.get[String](key)): F[Maybe[Option[String]]])
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -118,7 +118,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 1000) map { _ =>
-          concurrent.start { cl.send(strings.get[String](key)) }
+          concurrent.start(cl.send(strings.get[String](key)))
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -146,7 +146,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 1000) map { _ =>
-          concurrent.start { cl.send(strings.get[String](key)) }
+          concurrent.start(cl.send(strings.get[String](key)))
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -181,7 +181,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 50) map { _ =>
-          concurrent.start { cl.send(lists.lrange[String](key, 0L, 1000L)) }
+          concurrent.start(cl.send(lists.lrange[String](key, 0L, 1000L)))
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {

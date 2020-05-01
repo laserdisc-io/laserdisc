@@ -6,10 +6,10 @@ final class KeyPSpec extends KeyExtPSpec {
   import org.scalacheck.{Arbitrary, Gen}
   import org.scalacheck.Gen.const
 
-  private[this] implicit final val encodingShow: Show[KeyEncoding] = Show.unsafeFromToString
-  private[this] implicit final val typeShow: Show[KeyType]         = Show.unsafeFromToString
+  implicit final private[this] val encodingShow: Show[KeyEncoding] = Show.unsafeFromToString
+  implicit final private[this] val typeShow: Show[KeyType]         = Show.unsafeFromToString
 
-  private[this] implicit final val encodingArb: Arbitrary[KeyEncoding] = Arbitrary {
+  implicit final private[this] val encodingArb: Arbitrary[KeyEncoding] = Arbitrary {
     Gen.oneOf(
       KeyEncoding.raw,
       KeyEncoding.int,
@@ -19,29 +19,29 @@ final class KeyPSpec extends KeyExtPSpec {
       KeyEncoding.skiplist
     )
   }
-  private[this] implicit final val restoreEvictionArb: Arbitrary[KeyRestoreEviction] = Arbitrary {
+  implicit final private[this] val restoreEvictionArb: Arbitrary[KeyRestoreEviction] = Arbitrary {
     nonNegIntArb.arbitrary.flatMap(nni => Gen.oneOf(KeyIdleTimeEviction(nni), KeyFrequencyEviction(nni)))
   }
-  private[this] implicit final val restoreModeArb: Arbitrary[KeyRestoreMode] = Arbitrary {
+  implicit final private[this] val restoreModeArb: Arbitrary[KeyRestoreMode] = Arbitrary {
     Gen.oneOf(KeyRestoreMode.replace, KeyRestoreMode.absolutettl, KeyRestoreMode.both)
   }
-  private[this] implicit final val ttlResponseArb: Arbitrary[KeyTTLResponse] = Arbitrary {
+  implicit final private[this] val ttlResponseArb: Arbitrary[KeyTTLResponse] = Arbitrary {
     Gen.oneOf(
       const(KeyNoKeyTTLResponse),
       const(KeyNoExpireTTLResponse),
       nonNegLongArb.arbitrary.map(KeyExpireAfterTTLResponse(_))
     )
   }
-  private[this] implicit final val typeArb: Arbitrary[KeyType] = Arbitrary {
+  implicit final private[this] val typeArb: Arbitrary[KeyType] = Arbitrary {
     Gen.oneOf(KeyType.string, KeyType.list, KeyType.set, KeyType.zset, KeyType.hash)
   }
 
-  private[this] final val ttlResponseToNum: KeyTTLResponse => Num = {
+  final private[this] val ttlResponseToNum: KeyTTLResponse => Num = {
     case KeyNoKeyTTLResponse            => Num(-2L)
     case KeyNoExpireTTLResponse         => Num(-1L)
     case KeyExpireAfterTTLResponse(ttl) => Num(ttl.value)
   }
-  private[this] final val scanKeyToArr: Scan[Key] => Arr = scanKey =>
+  final private[this] val scanKeyToArr: Scan[Key] => Arr = scanKey =>
     Arr(
       Bulk(scanKey.cursor.value),
       scanKey.values.fold(NilArr: GenArr)(ks => Arr(ks.map(k => Bulk(k.value)).toList))

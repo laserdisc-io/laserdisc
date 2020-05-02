@@ -25,8 +25,8 @@ private[laserdisc] sealed trait RESPFrame extends Product with Serializable with
     case Right(s) =>
       stateOf(s.remainder) match {
         case Left(ee)                           => Left(ee)
-        case Right(CompleteWithRemainder(c, r)) => consumeRemainder(Right(MoreThanOneFrame(s.complete.:+(CompleteFrame(c)), r)))
-        case Right(Complete)                    => Right(MoreThanOneFrame(s.complete.:+(CompleteFrame(s.remainder)), BitVector.empty))
+        case Right(CompleteWithRemainder(c, r)) => consumeRemainder(Right(MoreThanOneFrame(s.complete :+ CompleteFrame(c), r)))
+        case Right(Complete)                    => Right(MoreThanOneFrame(s.complete :+ CompleteFrame(s.remainder), BitVector.empty))
         case _                                  => Right(s)
       }
     case left => left

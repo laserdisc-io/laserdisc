@@ -5,7 +5,7 @@ final class ListPSpec extends ListExtPSpec {
   import listtypes._
   import org.scalacheck.{Arbitrary, Gen}
 
-  implicit final private[this] val positionArb: Arbitrary[ListPosition] = Arbitrary {
+  private[this] implicit final val positionArb: Arbitrary[ListPosition] = Arbitrary {
     Gen.oneOf(ListPosition.after, ListPosition.before)
   }
 

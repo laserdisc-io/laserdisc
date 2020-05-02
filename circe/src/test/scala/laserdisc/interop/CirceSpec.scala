@@ -34,8 +34,8 @@ final class CirceSpec extends AnyWordSpec with Matchers with ScalaCheckPropertyC
   } yield Baz(s, foo)
   private[this] def fooGen: Gen[Foo] = Gen.oneOf(barGen, bazGen)
 
-  implicit private[this] val barArbitrary: Arbitrary[Bar] = Arbitrary(barGen)
-  implicit private[this] val bazArbitrary: Arbitrary[Baz] = Arbitrary(bazGen)
+  private[this] implicit val barArbitrary: Arbitrary[Bar] = Arbitrary(barGen)
+  private[this] implicit val bazArbitrary: Arbitrary[Baz] = Arbitrary(bazGen)
 
   "Circe interop" when {
     "handling a simple type" should {

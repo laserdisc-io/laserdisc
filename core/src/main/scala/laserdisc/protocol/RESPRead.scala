@@ -25,7 +25,7 @@ object RESPRead {
   final type Aux[Sub0, A] = RESPRead[A] { type Sub = Sub0 }
   final def apply[Sub, A](implicit instance: RESPRead.Aux[Sub, A]): RESPRead.Aux[Sub, A] = instance
 
-  implicit private[this] val respInject: Inject[RESPCoproduct, RESP] =
+  private[this] implicit val respInject: Inject[RESPCoproduct, RESP] =
     (resp: RESP) =>
       resp match {
         case arr: Arr   => Inl(arr)
@@ -41,7 +41,7 @@ object RESPRead {
       implicit ev0: Basis.Aux[RESPCoproduct, A, Rest],
       ev1: Selector[Rest, Err]
   ) extends RESPRead[B] {
-    final override type Sub = A
+    override final type Sub = A
     override def read(resp: RESP): Maybe[B] = Coproduct[RESPCoproduct](resp).deembed match {
       case Right(R(Right(b))) => Right(b)
       case Right(R(Left(RESPDecErr(m)))) =>

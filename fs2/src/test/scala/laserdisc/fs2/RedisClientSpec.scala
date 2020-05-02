@@ -22,18 +22,18 @@ import scala.concurrent.ExecutionContext.fromExecutor
 final class RedisClientSpec extends ClientSpec(6379)
 final class KeyDbClientSpec extends ClientSpec(6380)
 
-abstract private[fs2] class ClientSpec(p: Port) extends ClientBaseSpec[IO](p) {
+private[fs2] abstract class ClientSpec(p: Port) extends ClientBaseSpec[IO](p) {
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
-  implicit override val contextShift: ContextShift[IO] = IO.contextShift(ec)
-  implicit override val timer: Timer[IO]               = IO.timer(ec)
-  implicit override val concurrent: Concurrent[IO]     = IO.ioConcurrentEffect
-  implicit override val logger: LogWriter[IO]          = noOpLog[IO]
+  override implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
+  override implicit val timer: Timer[IO]               = IO.timer(ec)
+  override implicit val concurrent: Concurrent[IO]     = IO.ioConcurrentEffect
+  override implicit val logger: LogWriter[IO]          = noOpLog[IO]
 
   override def run[A]: IO[A] => A = _.unsafeRunSync()
 }
 
-abstract private[fs2] class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLike with Matchers {
+private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLike with Matchers {
   implicit def contextShift: ContextShift[F]
   implicit def timer: Timer[F]
   implicit def concurrent: Concurrent[F]
@@ -43,9 +43,9 @@ abstract private[fs2] class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
   def clientUnderTest: Resource[F, RedisClient[F]] =
     RedisClient.toNode("127.0.0.1", p)
 
-  final private[this] val key: Key = "test-key"
-  final private[this] val text     = "test text"
-  final private[this] val correct  = "correct"
+  private[this] final val key: Key = "test-key"
+  private[this] final val text     = "test text"
+  private[this] final val correct  = "correct"
 
   "an fs2 redis client" should {
     import cats.instances.list.catsStdInstancesForList

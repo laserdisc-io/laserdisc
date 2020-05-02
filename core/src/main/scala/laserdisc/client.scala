@@ -43,7 +43,7 @@ trait ClientBase[F[_], Env] {
 trait Client[F[_], Env] extends ClientBase[F, Env] with ClientExt[F, Env]
 
 trait Handler[F[_], Env, In <: HList] extends DepFn2[Env, In] {
-  final override type Out = F[LOut]
+  override final type Out = F[LOut]
   type LOut <: HList
 }
 

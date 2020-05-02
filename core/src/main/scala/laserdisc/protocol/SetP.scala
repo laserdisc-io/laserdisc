@@ -4,7 +4,7 @@ package protocol
 trait SetBaseP {
   import shapeless._
 
-  final private[this] val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
+  private[this] final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
   final def sadd[A: Show](key: Key, members: OneOrMore[A]): Protocol.Aux[NonNegInt] =
     Protocol("SADD", key :: members.value :: HNil).as[Num, NonNegInt]

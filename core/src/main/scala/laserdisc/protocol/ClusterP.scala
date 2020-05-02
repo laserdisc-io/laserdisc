@@ -30,7 +30,7 @@ object ClusterP {
   )
   final case class Nodes(nodes: Seq[Node]) extends AnyVal
   final object Nodes {
-    final private val A: String ==> Address = {
+    private final val A: String ==> Address = {
       val HPCP = raw"([A-Za-z0-9\-\.]*):(\d+)@(\d+)".r
       val HP   = raw"([A-Za-z0-9\-\.]*):(\d+)".r
       Read.instance {
@@ -41,7 +41,7 @@ object ClusterP {
         case other                                          => Left(RESPDecErr(s"Unexpected encoding for Address. Was $other"))
       }
     }
-    final private val Fs: String ==> Seq[Flag] = Read.instance {
+    private final val Fs: String ==> Seq[Flag] = Read.instance {
       case "noflags" => Right(Seq.empty)
       case s =>
         s.split(COMMA_CH).foldRight[RESPDecErr | List[Flag]](Right(Nil)) {
@@ -56,17 +56,17 @@ object ClusterP {
           case (_, left)                 => left
         }
     }
-    final private val MM: String ==> Option[NodeId] = Read.instance {
+    private final val MM: String ==> Option[NodeId] = Read.instance {
       case "-"        => Right(None)
       case NodeId(id) => Right(Some(id))
       case other      => Left(RESPDecErr(s"Wrong encoding for Node Id. Was $other"))
     }
-    final private val L: String ==> LinkState = Read.instance {
+    private final val L: String ==> LinkState = Read.instance {
       case "connected"    => Right(LinkState.connected)
       case "disconnected" => Right(LinkState.disconnected)
       case other          => Left(RESPDecErr(s"Wrong encoding for link state. Was $other"))
     }
-    final private val Ss: Seq[String] ==> Seq[SlotType] = {
+    private final val Ss: Seq[String] ==> Seq[SlotType] = {
       val R  = raw"(\d+)-(\d+)".r
       val IS = raw"\[(\d+)-<-(${NodeIdRegexWit.value})\]".r
       val MS = raw"\[(\d+)->-(${NodeIdRegexWit.value})\]".r
@@ -82,7 +82,7 @@ object ClusterP {
           }
       }
     }
-    final private val ND: String ==> Node = {
+    private final val ND: String ==> Node = {
       val errorS = "String ==> Node, Error decoding a cluster Node. Error was: "
       _.split(SPACE_CH).toList match {
         case NodeId(id) :: A(Right(a)) :: Fs(Right(fs)) :: MM(Right(mm)) :: ToInt(NonNegInt(ps)) :: ToInt(NonNegInt(pr)) ::

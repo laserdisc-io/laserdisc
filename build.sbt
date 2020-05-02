@@ -113,7 +113,7 @@ val externalApiMappings = Def.task {
 
   sealed trait DocumentationSite {
     def maybeDocsFor(module: ModuleID): Option[(File, URL)]
-    final protected def maybeModuleFile(module: ModuleID): Option[File] =
+    protected final def maybeModuleFile(module: ModuleID): Option[File] =
       fullClassPath
         .find {
           _.get(moduleID.key).exists { m =>
@@ -124,7 +124,7 @@ val externalApiMappings = Def.task {
   }
 
   object JavaDocIo extends DocumentationSite {
-    final override def maybeDocsFor(m: ModuleID): Option[(File, URL)] = {
+    override final def maybeDocsFor(m: ModuleID): Option[(File, URL)] = {
       val (organization, version) = m.organization -> m.revision
       val crossVersionedName = CrossVersion(m.crossVersion, scalaVersion.value, scalaBinaryVersion.value)
         .fold(m.name)(_.apply(m.name))

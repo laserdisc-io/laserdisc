@@ -6,31 +6,31 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   import org.scalacheck.{Arbitrary, Gen}
   import org.scalacheck.Gen._
 
-  implicit final private[this] val clusterFailoverModeArb: Arbitrary[ClusterFailoverMode] = Arbitrary {
+  private[this] implicit final val clusterFailoverModeArb: Arbitrary[ClusterFailoverMode] = Arbitrary {
     Gen.oneOf(ClusterFailoverMode.force, ClusterFailoverMode.takeover)
   }
-  implicit final private[this] val clusterResetModeArb: Arbitrary[ClusterResetMode] = Arbitrary {
+  private[this] implicit final val clusterResetModeArb: Arbitrary[ClusterResetMode] = Arbitrary {
     Gen.oneOf(ClusterResetMode.hard, ClusterResetMode.soft)
   }
-  implicit final private[this] val clusterSetSlotModeArb: Arbitrary[ClusterSetSlotMode] = Arbitrary {
+  private[this] implicit final val clusterSetSlotModeArb: Arbitrary[ClusterSetSlotMode] = Arbitrary {
     Gen.oneOf(ClusterSetSlotMode.importing, ClusterSetSlotMode.migrating, ClusterSetSlotMode.node)
   }
 
-  final private[this] val kvPairPattern                                = KVPairRegex.pattern
-  final private[this] val infoIsValid: Map[String, String] => Boolean  = _.forall { case (k, v) => kvPairPattern.matcher(s"$k:$v").matches }
-  final private[this] val infoGen: Gen[Map[String, String]]            = nonEmptyMap(identifier.flatMap(k => alphaStr.map(k -> _))) :| "info map"
-  implicit final private[this] val infoShow: Show[Map[String, String]] = Show.instance(_.map { case (k, v) => s"$k:$v" }.mkString(CRLF))
+  private[this] final val kvPairPattern                                = KVPairRegex.pattern
+  private[this] final val infoIsValid: Map[String, String] => Boolean  = _.forall { case (k, v) => kvPairPattern.matcher(s"$k:$v").matches }
+  private[this] final val infoGen: Gen[Map[String, String]]            = nonEmptyMap(identifier.flatMap(k => alphaStr.map(k -> _))) :| "info map"
+  private[this] implicit final val infoShow: Show[Map[String, String]] = Show.instance(_.map { case (k, v) => s"$k:$v" }.mkString(CRLF))
 
-  final private[this] type RawNode =
+  private[this] final type RawNode =
     (String, EmptyString | Host, Port, Option[Port], Seq[String], String, Int, Int, Int, String, Seq[String])
-  final private[this] type RawNodes = List[RawNode]
-  final private[this] val rawNodeToString: RawNode => String = {
+  private[this] final type RawNodes = List[RawNode]
+  private[this] final val rawNodeToString: RawNode => String = {
     case (nid, h, p, None, fs, mnid, ps, pr, ce, l, ss) =>
       s"$nid ${h.fold(_.value, _.value)}:$p ${fs.mkString(COMMA)} $mnid $ps $pr $ce $l${ss.mkString(SPACE, SPACE, "")}"
     case (nid, h, p, Some(cp), fs, mnid, ps, pr, ce, l, ss) =>
       s"$nid ${h.fold(_.value, _.value)}:$p@$cp ${fs.mkString(COMMA)} $mnid $ps $pr $ce $l${ss.mkString(SPACE, SPACE, "")}"
   }
-  final private[this] val nodesIsValid: RawNodes => Boolean = {
+  private[this] final val nodesIsValid: RawNodes => Boolean = {
     val nid    = NodeIdRegexWit.value
     val ip     = IPv4RegexWit.value
     val domain = Rfc1123HostnameRegexWit.value
@@ -41,7 +41,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
     _.map(rawNodeToString).forall { case R(_*) => true; case _ => false }
   }
-  final private[this] val nodesGen: Gen[RawNodes] = {
+  private[this] final val nodesGen: Gen[RawNodes] = {
     val flag = Gen.oneOf("myself", "master", "slave", "fail?", "fail", "handshake", "noaddr")
     val slotType = Gen.oneOf(
       slotGen.map(_.toString),
@@ -65,10 +65,10 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
     choose(1, 10).flatMap(listOfN(_, rawNode)) :| "raw nodes info"
   }
-  implicit final private[this] val nodesShow: Show[RawNodes] = Show.instance {
+  private[this] implicit final val nodesShow: Show[RawNodes] = Show.instance {
     _.map(rawNodeToString).mkString(LF)
   }
-  final private[this] val validateNodes: RawNodes => ClusterNodes => Unit =
+  private[this] final val validateNodes: RawNodes => ClusterNodes => Unit =
     rns =>
       ns =>
         ns.nodes.zip(rns).foreach {
@@ -91,9 +91,9 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             } shouldBe ss
         }
 
-  final private[this] type RawSlot  = (Slot, Slot, Seq[(EmptyString | Host, Port, Option[NodeId])])
-  final private[this] type RawSlots = List[RawSlot]
-  final private[this] val slotsGen: Gen[RawSlots] = (for {
+  private[this] final type RawSlot  = (Slot, Slot, Seq[(EmptyString | Host, Port, Option[NodeId])])
+  private[this] final type RawSlots = List[RawSlot]
+  private[this] final val slotsGen: Gen[RawSlots] = (for {
     isOld <- Gen.oneOf(true, false)
     rss <- nonEmptyListOf(
       for {
@@ -107,7 +107,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       } yield if (fst.value < snd.value) (fst, snd, mrs) else (snd, fst, mrs)
     )
   } yield rss) :| "raw slots info"
-  final private[this] val slotsToArr: RawSlots => Arr = ss =>
+  private[this] final val slotsToArr: RawSlots => Arr = ss =>
     Arr(
       ss.map {
         case (f, t, rs) =>

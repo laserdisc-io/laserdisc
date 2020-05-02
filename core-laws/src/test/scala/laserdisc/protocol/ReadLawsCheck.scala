@@ -31,7 +31,7 @@ final class ReadLawsCheck
   checkAll("Contravariant[Read[*, Long]]", SerializableTests.serializable(Contravariant[Read[*, Long]]))
 }
 
-sealed private[protocol] trait Implicits {
+private[protocol] sealed trait Implicits {
   implicit val genNum: Gen[Num] = chooseNum(0L, Long.MaxValue) map Num.apply
   implicit val genStr: Gen[Str] = Gen.alphaNumStr map Str.apply
 

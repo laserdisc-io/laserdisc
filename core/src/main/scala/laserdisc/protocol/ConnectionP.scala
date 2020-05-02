@@ -2,7 +2,7 @@ package laserdisc
 package protocol
 
 trait ConnectionP {
-  implicit final private[this] val pongRead: Str ==> PONG = Read.instance {
+  private[this] implicit final val pongRead: Str ==> PONG = Read.instance {
     case Str(PONG.`value`) => Right(PONG)
     case Str(other)        => Left(RESPDecErr(s"Wrong PONG encoding: was $other"))
   }

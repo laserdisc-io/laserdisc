@@ -31,7 +31,7 @@ sealed trait Protocol extends Request with Response { self =>
     override def parameters: Seq[GenBulk] = self.parameters
   }
 
-  final override def toString: String = s"Protocol($command)"
+  override final def toString: String = s"Protocol($command)"
 }
 
 object Protocol {
@@ -47,8 +47,8 @@ object Protocol {
   }
 
   sealed abstract class PartiallyAppliedProtocol[L: RESPParamWrite](
-      final private[this] val command: String,
-      final private[this] val l: L
+      private[this] final val command: String,
+      private[this] final val l: L
   ) { self =>
 
     /**
@@ -66,10 +66,10 @@ object Protocol {
       *         pair
       */
     final def asC[A, B](implicit R: RESPRead.Aux[A, B]): Protocol.Aux[B] = new Protocol {
-      final override type A = B
-      final override val codec: ProtocolCodec[B]  = new RESPProtocolCodec(R)
-      final override val command: String          = self.command
-      final override val parameters: Seq[GenBulk] = RESPParamWrite[L].write(l)
+      override final type A = B
+      override final val codec: ProtocolCodec[B]  = new RESPProtocolCodec(R)
+      override final val command: String          = self.command
+      override final val parameters: Seq[GenBulk] = RESPParamWrite[L].write(l)
     }
 
     final def as[A, B](implicit ev: A <:!< Coproduct, R: RESPRead.Aux[A :+: CNil, B]): Protocol.Aux[B] = asC(R)

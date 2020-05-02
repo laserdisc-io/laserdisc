@@ -1,7 +1,7 @@
 package laserdisc
 
 package object protocol {
-  final private[protocol] val KVPairRegex = "(.*):(.*)".r
+  private[protocol] final val KVPairRegex = "(.*):(.*)".r
 
   private[protocol] val KVP: String ==> (String, String) = {
     case KVPairRegex(k, v) => Right(k -> v)

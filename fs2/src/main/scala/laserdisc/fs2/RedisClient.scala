@@ -79,7 +79,7 @@ object RedisClient {
     establishedConnection >>= { conn => impl.mkClient(conn) }
   }
 
-  final private[laserdisc] object impl {
+  private[laserdisc] final object impl {
     sealed trait Connection[F[_]] {
       def run: F[Fiber[F, Unit]]
       def shutdown: F[Unit]
@@ -99,7 +99,7 @@ object RedisClient {
     def mkClient[F[_]: Concurrent: Timer: LogWriter](establishedConn: Connection[F]): Resource[F, RedisClient[F]] =
       Resource.make(mkPublisher(establishedConn) >>= { publ => publ.start map (_ => publ) })(_.shutdown) map { publisher =>
         new RedisClient[F] {
-          final override def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
+          override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
               implicit handler: RedisHandler.Aux[F, In, Out]
           ): F[Out] = publisher.publish(in, timeout)
         }
@@ -184,7 +184,7 @@ object RedisClient {
               }
 
             val newConnection = new Connection[F] {
-              final override def run: F[Fiber[F, Unit]] =
+              override final def run: F[Fiber[F, Unit]] =
                 LogWriter.info("Starting connection") >>
                   runner(serverStream)
                     .interruptWhen(termSignal)
@@ -198,12 +198,12 @@ object RedisClient {
                     }
                     .start
 
-              final override def shutdown: F[Unit] =
+              override final def shutdown: F[Unit] =
                 LogWriter.info("Shutting down connection") >>
                   termSignal.complete(().asRight) >>
                   LogWriter.info("Shutdown complete")
 
-              final override def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
+              override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
                   implicit handler: RedisHandler.Aux[F, In, Out]
               ): F[Out] = handler(queue -> timeout, in)
             }
@@ -232,7 +232,7 @@ object RedisClient {
             case ConnectedState(_) | ShutDownState => s
           }
 
-        implicit private[this] val connectionEq: Eq[Connection[F]] =
+        private[this] implicit val connectionEq: Eq[Connection[F]] =
           Eq.fromUniversalEquals
 
         implicit val stateEq: Eq[State] = Eq.instance {

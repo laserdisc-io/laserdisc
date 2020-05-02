@@ -25,8 +25,8 @@ trait ListBaseP {
 
   import listtypes._
 
-  final private[this] val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[PosInt])
-  final private[this] val zeroIsNone     = RESPRead.instance(Read.numZeroIsNone[PosInt])
+  private[this] final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[PosInt])
+  private[this] final val zeroIsNone     = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
   final def lindex[A: Bulk ==> *](key: Key, index: Index): Protocol.Aux[Option[A]] =
     Protocol("LINDEX", key :: index :: HNil).opt[GenBulk].as[A]

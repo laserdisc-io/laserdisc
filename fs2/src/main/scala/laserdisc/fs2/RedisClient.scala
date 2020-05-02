@@ -117,7 +117,7 @@ object RedisClient {
           Resource.liftF(Ref.of[F, Vector[Request[F]]](Vector.empty)) >>= { inFlight =>
             def push(req: Request[F]): F[RESP] =
               inFlight
-                .modify { in => (in :+ req) -> req.protocol.encode }
+                .modify(in => (in :+ req) -> req.protocol.encode)
 
             def pop: F[Option[Request[F]]] =
               inFlight

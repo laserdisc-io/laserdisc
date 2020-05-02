@@ -58,7 +58,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (collection.parallel.immutable.ParSeq.range(0, 300) map { _ =>
-          concurrent.start { cl.send(strings.get[String](key)): F[Maybe[Option[String]]] }
+          concurrent.start(cl.send(strings.get[String](key)): F[Maybe[Option[String]]])
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -118,7 +118,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 1000) map { _ =>
-          concurrent.start { cl.send(strings.get[String](key)) }
+          concurrent.start(cl.send(strings.get[String](key)))
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -146,7 +146,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 1000) map { _ =>
-          concurrent.start { cl.send(strings.get[String](key)) }
+          concurrent.start(cl.send(strings.get[String](key)))
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -181,7 +181,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 50) map { _ =>
-          concurrent.start { cl.send(lists.lrange[String](key, 0L, 1000L)) }
+          concurrent.start(cl.send(lists.lrange[String](key, 0L, 1000L)))
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {

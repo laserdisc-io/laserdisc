@@ -26,7 +26,7 @@ abstract class BaseSpec
     with NumericInstances
     with StringInstances {
 
-  implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
+  override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(
       minSuccessful = 100,
       maxDiscardedFactor = 10.0,

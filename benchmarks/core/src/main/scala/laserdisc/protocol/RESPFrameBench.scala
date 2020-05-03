@@ -4,8 +4,9 @@ package protocol
 import org.openjdk.jmh.annotations.{Benchmark, Scope, State}
 import scodec.bits.BitVector
 import eu.timepit.refined.types.string.NonEmptyString
-
 import java.nio.ByteBuffer
+
+import org.openjdk.jmh.infra.Blackhole
 
 @State(Scope.Benchmark)
 class RESPFrameBench {
@@ -122,14 +123,23 @@ class RESPFrameBench {
   val arrOneLevelFull = BitVector(arrOneLevel).toByteBuffer
   val arrFiveLevelsFull = BitVector(arrFiveLevels).toByteBuffer
 
-  @Benchmark def frameOfMixedNoArrFull() = EmptyFrame.append(mixedNoArrFull)
-  @Benchmark def frameOfMixedArrOneLevelFull() = EmptyFrame.append(arrOneLevelFull)
-  @Benchmark def frameOfMixedArrFiveLevelsFull() = EmptyFrame.append(arrFiveLevelsFull)
+  @Benchmark def frameOfMixedNoArrFull(bh: Blackhole) = {
+    val frame = EmptyFrame.append(mixedNoArrFull)
+    bh.consume(frame)
+  }
+  @Benchmark def frameOfMixedArrOneLevelFull(bh: Blackhole) = {
+    val frame = EmptyFrame.append(arrOneLevelFull)
+    bh.consume(frame)
+  }
+  @Benchmark def frameOfMixedArrFiveLevelsFull(bh: Blackhole) = {
+    val frame = EmptyFrame.append(arrFiveLevelsFull)
+    bh.consume(frame)
+  }
 
-  def groupInChunks(bytes :Array[Byte], chunkSize: Int) =
+  def groupInChunks(bytes :Array[Byte], chunkSize: Int): Iterator[ByteBuffer] =
     bytes.grouped(chunkSize).map(c => BitVector.apply(c).toByteBuffer)
 
-  def appendChunks(buff: Iterator[ByteBuffer]) =
+  def appendChunks(buff: Iterator[ByteBuffer]): RESPFrame =
     buff.foldLeft[RESPFrame](EmptyFrame) { (acc, n) =>
       acc.append(n) match {
         case Right(MoreThanOneFrame(_, reminder)) => IncompleteFrame(reminder, 0)
@@ -142,15 +152,37 @@ class RESPFrameBench {
   val arrOneLevelSmallChunkBuffers   = groupInChunks(arrOneLevel, 100)
   val arrFiveLevelsSmallChunkBuffers = groupInChunks(arrFiveLevels, 100)
 
-  @Benchmark def frameOfShortChunkedMixedNoArr()    = appendChunks(mixedNoArrSmallChunkBuffers)
-  @Benchmark def frameOfShortChunkedArrOneLevel()   = appendChunks(arrOneLevelSmallChunkBuffers)
-  @Benchmark def frameOfShortChunkedArrFiveLevels() = appendChunks(arrFiveLevelsSmallChunkBuffers)
+  @Benchmark def frameOfChunkedBaseline(bh: Blackhole)= {
+    val frame = appendChunks(Iterator.empty[ByteBuffer])
+    bh.consume(frame)
+  }
+  @Benchmark def frameOfChunkedShortMixedNoArr(bh: Blackhole)= {
+    val frame = appendChunks(mixedNoArrSmallChunkBuffers)
+    bh.consume(frame)
+  }
+  @Benchmark def frameOfChunkedShortArrOneLevel(bh: Blackhole)   = {
+    val frame = appendChunks(arrOneLevelSmallChunkBuffers)
+    bh.consume(frame)
+  }
+  @Benchmark def frameOfChunkedShortArrFiveLevels(bh: Blackhole) = {
+    val frame = appendChunks(arrFiveLevelsSmallChunkBuffers)
+    bh.consume(frame)
+  }
 
   val mixedNoArrBigChunkBuffers    = groupInChunks(mixedNoArr, 1024)
   val arrOneLevelBigChunkBuffers   = groupInChunks(arrOneLevel, 1024)
   val arrFiveLevelsBigChunkBuffers = groupInChunks(arrFiveLevels, 1024)
 
-  @Benchmark def frameOfLongChunkedMixedNoArr()    = appendChunks(mixedNoArrBigChunkBuffers)
-  @Benchmark def frameOfLongChunkedArrOneLevel()   = appendChunks(arrOneLevelBigChunkBuffers)
-  @Benchmark def frameOfLongChunkedArrFiveLevels() = appendChunks(arrFiveLevelsBigChunkBuffers)
+  @Benchmark def frameOfChunkedLongMixedNoArr(bh: Blackhole)    = {
+    val frame = appendChunks(mixedNoArrBigChunkBuffers)
+    bh.consume(frame)
+  }
+  @Benchmark def frameOfChunkedLongArrOneLevel(bh: Blackhole)   = {
+    val frame = appendChunks(arrOneLevelBigChunkBuffers)
+    bh.consume(frame)
+  }
+  @Benchmark def frameOfChunkedLongArrFiveLevels(bh: Blackhole) = {
+    val frame = appendChunks(arrFiveLevelsBigChunkBuffers)
+    bh.consume(frame)
+  }
 }

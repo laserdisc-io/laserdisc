@@ -187,8 +187,8 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
 
         val chunkSize: Gen[Int] =
           Gen.frequency(
-            3 -> Gen.choose(1, 1024),
-            7 -> Gen.choose(1025, 4096)
+            8 -> Gen.choose(128, 1024),
+            2 -> Gen.choose(1025, 4096)
           )
 
         forAll(chunkSize) { chunkSize: Int =>

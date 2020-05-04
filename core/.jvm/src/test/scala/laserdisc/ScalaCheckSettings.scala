@@ -5,7 +5,7 @@ import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 private[laserdisc] trait ScalaCheckSettings extends ScalaCheckPropertyChecks {
   override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(
-      minSuccessful = 100,
+      minSuccessful = 200,
       maxDiscardedFactor = 10.0,
       minSize = 0,
       sizeRange = 100,

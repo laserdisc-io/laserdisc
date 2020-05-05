@@ -104,7 +104,9 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           p    <- portGen
           mrid <- if (isOld) const(None) else nodeIdGen.map(s => Some(NodeId.unsafeFrom(s)))
         } yield (h, p, mrid))
-      } yield if (fst.value < snd.value) (fst, snd, mrs) else (snd, fst, mrs)
+      } yield
+        if (fst.value < snd.value) (fst, snd, mrs)
+        else (snd, fst, mrs)
     )
   } yield rss) :| "raw slots info"
   private[this] final val slotsToArr: RawSlots => Arr = ss =>
@@ -377,10 +379,14 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = slots
           val ssWithLoopback = ss.map {
             case (f, t, assigned) =>
-              (f, t, assigned.foldRight[List[(String, Port, Option[NodeId])]](Nil) {
-                case ((Left(_), p, n), css)  => (LoopbackHost.value, p, n) :: css
-                case ((Right(h), p, n), css) => (h.value, p, n) :: css
-              })
+              (
+                f,
+                t,
+                assigned.foldRight[List[(String, Port, Option[NodeId])]](Nil) {
+                  case ((Left(_), p, n), css)  => (LoopbackHost.value, p, n) :: css
+                  case ((Right(h), p, n), css) => (h.value, p, n) :: css
+                }
+              )
           }.toSet
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLOTS"))

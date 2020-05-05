@@ -137,7 +137,8 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
         nonEmptyFrame
           .append(inputVector.toByteBuffer)
           .fold(
-            err => fail(s"expected a result but failed with $err"), {
+            err => fail(s"expected a result but failed with $err"),
+            {
               case r @ MoreThanOneFrame(_, _) =>
                 r.complete shouldBe Vector(
                   CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
@@ -163,7 +164,8 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
         nonEmptyFrame
           .append(inputVector.toByteBuffer)
           .fold(
-            err => fail(s"expected a result but failed with $err"), {
+            err => fail(s"expected a result but failed with $err"),
+            {
               case r @ MoreThanOneFrame(_, _) =>
                 r.complete shouldBe Vector(
                   CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),

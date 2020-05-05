@@ -61,19 +61,20 @@ object CLI extends IOApp { self =>
       |                                             ````....````
       |""".stripMargin
 
-  override final def run(args: List[String]): IO[ExitCode] = args match {
-    case arg1 :: arg2 :: Nil =>
-      val maybeHost = Host.from(arg1).toOption
-      val maybePort = Either.catchNonFatal(arg2.toInt).flatMap(Port.from).toOption
+  override final def run(args: List[String]): IO[ExitCode] =
+    args match {
+      case arg1 :: arg2 :: Nil =>
+        val maybeHost = Host.from(arg1).toOption
+        val maybePort = Either.catchNonFatal(arg2.toInt).flatMap(Port.from).toOption
 
-      (maybeHost, maybePort) match {
-        case (Some(ip), Some(port)) =>
-          IO(println(logo)) >> impl.mkStream(ip, port)(SyncLogWriter.noOpLog[IO]).compile.drain.as(ExitCode.Success)
-        case _ => IO(println("please supply valid host and port (space separated)")).as(ExitCode.Error)
-      }
+        (maybeHost, maybePort) match {
+          case (Some(ip), Some(port)) =>
+            IO(println(logo)) >> impl.mkStream(ip, port)(SyncLogWriter.noOpLog[IO]).compile.drain.as(ExitCode.Success)
+          case _ => IO(println("please supply valid host and port (space separated)")).as(ExitCode.Error)
+        }
 
-    case _ => IO(println("please supply host and port (space separated)")).as(ExitCode.Error)
-  }
+      case _ => IO(println("please supply host and port (space separated)")).as(ExitCode.Error)
+    }
 
   private[cli] final object impl {
     private[this] val tb = universe.runtimeMirror(self.getClass.getClassLoader).mkToolBox()

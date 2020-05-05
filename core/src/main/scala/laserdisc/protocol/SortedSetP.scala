@@ -68,14 +68,14 @@ object SortedSetP {
       override final val max: String = close(maximum)
     }
 
-    def open(min: Key, max: Key): LexRange       = new Open(min.value, max.value)       {}
+    def open(min: Key, max: Key): LexRange       = new Open(min.value, max.value) {}
     def openClosed(min: Key, max: Key): LexRange = new OpenClosed(min.value, max.value) {}
     def closedOpen(min: Key, max: Key): LexRange = new ClosedOpen(min.value, max.value) {}
-    def closed(min: Key, max: Key): LexRange     = new Closed(min.value, max.value)     {}
-    def openInf(min: Key): LexRange              = new OpenInf(min.value)               {}
-    def closedInf(min: Key): LexRange            = new ClosedInf(min.value)             {}
-    def infOpen(max: Key): LexRange              = new InfOpen(max.value)               {}
-    def infClosed(max: Key): LexRange            = new InfClosed(max.value)             {}
+    def closed(min: Key, max: Key): LexRange     = new Closed(min.value, max.value) {}
+    def openInf(min: Key): LexRange              = new OpenInf(min.value) {}
+    def closedInf(min: Key): LexRange            = new ClosedInf(min.value) {}
+    def infOpen(max: Key): LexRange              = new InfOpen(max.value) {}
+    def infClosed(max: Key): LexRange            = new InfClosed(max.value) {}
   }
 
   sealed trait ScoreRange { def min: String; def max: String }
@@ -106,10 +106,10 @@ object SortedSetP {
       override final val max: String = close(maximum)
     }
 
-    def open(min: ValidDouble, max: ValidDouble): ScoreRange       = new Open(min, max)       {}
+    def open(min: ValidDouble, max: ValidDouble): ScoreRange       = new Open(min, max) {}
     def openClosed(min: ValidDouble, max: ValidDouble): ScoreRange = new OpenClosed(min, max) {}
     def closedOpen(min: ValidDouble, max: ValidDouble): ScoreRange = new ClosedOpen(min, max) {}
-    def closed(min: ValidDouble, max: ValidDouble): ScoreRange     = new Closed(min, max)     {}
+    def closed(min: ValidDouble, max: ValidDouble): ScoreRange     = new Closed(min, max) {}
   }
 }
 

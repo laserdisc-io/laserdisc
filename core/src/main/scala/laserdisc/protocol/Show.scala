@@ -23,15 +23,18 @@ implicit final val myShow: Show[${A}] = new Show[${A}] {
 object Show extends ShowInstances {
   @inline final def apply[A](implicit instance: Show[A]): Show[A] = instance
 
-  final def const[A](s: => String): Show[A] = new Show[A] {
-    override def show(a: A): String = s
-  }
-  final def unsafeFromToString[A]: Show[A] = new Show[A] {
-    override def show(a: A): String = a.toString
-  }
-  final def instance[A](f: A => String): Show[A] = new Show[A] {
-    override def show(a: A): String = f(a)
-  }
+  final def const[A](s: =>String): Show[A] =
+    new Show[A] {
+      override def show(a: A): String = s
+    }
+  final def unsafeFromToString[A]: Show[A] =
+    new Show[A] {
+      override def show(a: A): String = a.toString
+    }
+  final def instance[A](f: A => String): Show[A] =
+    new Show[A] {
+      override def show(a: A): String = f(a)
+    }
 }
 
 private[protocol] sealed trait ShowInstances {

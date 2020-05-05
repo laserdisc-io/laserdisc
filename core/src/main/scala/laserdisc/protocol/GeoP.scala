@@ -113,7 +113,7 @@ object GeoP {
   }
   implicit final val radiusModeCoordinatesAndDistanceRead: Arr ==> RadiusMode.coordinatesAndDistance.Res = Read.instance {
     case Arr(
-        Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +:
+          Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +:
           Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) +: Seq()
         ) =>
       Right(KeyCoordinatesAndDistance(k, Coordinates(lat, long), d))
@@ -124,7 +124,7 @@ object GeoP {
   }
   implicit final val radiusModeCoordinatesAndHashRead: Arr ==> RadiusMode.coordinatesAndHash.Res = Read.instance {
     case Arr(
-        Bulk(Key(k)) +: Num(NonNegLong(l)) +:
+          Bulk(Key(k)) +: Num(NonNegLong(l)) +:
           Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) +: Seq()
         ) =>
       Right(KeyCoordinatesAndHash(k, Coordinates(lat, long), l))
@@ -137,7 +137,7 @@ object GeoP {
   }
   implicit final val radiusModeAllRead: Arr ==> RadiusMode.all.Res = Read.instance {
     case Arr(
-        Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +: Num(NonNegLong(l)) +:
+          Bulk(Key(k)) +: Bulk(ToDouble(NonNegDouble(d))) +: Num(NonNegLong(l)) +:
           Arr(Bulk(ToDouble(Longitude(long))) +: Bulk(ToDouble(Latitude(lat))) +: Seq()) +: Seq()
         ) =>
       Right(KeyCoordinatesDistanceAndHash(k, Coordinates(lat, long), d, l))

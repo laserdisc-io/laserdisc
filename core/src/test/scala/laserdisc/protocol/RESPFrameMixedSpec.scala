@@ -98,8 +98,7 @@ private[protocol] trait HighPriorityGenerators extends LowPriorityGenerators {
     Gen.chooseNum(1, 20) flatMap (Gen.listOfN(_, gen))
 
   private[this] final def noArrEncoded(
-      implicit
-      bulk: Gen[BulkEncoded],
+      implicit bulk: Gen[BulkEncoded],
       num: Gen[NumEncoded],
       str: Gen[StrEncoded],
       err: Gen[ErrEncoded],

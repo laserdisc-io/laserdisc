@@ -21,15 +21,17 @@ sealed trait Protocol extends Request with Response { self =>
   final def encode: RESP                 = codec.encode(this)
   final def decode(resp: RESP): Maybe[A] = codec.decode(resp)
 
-  final def map[B](f: A => B): Protocol.Aux[B] = new Protocol {
-    override type A = B
-    override def codec: ProtocolCodec[B] = new ProtocolCodec[B] {
-      override def encode(protocol: Protocol): RESP = self.codec.encode(protocol)
-      override def decode(resp: RESP): Maybe[B]     = self.codec.decode(resp).map(f(_))
+  final def map[B](f: A => B): Protocol.Aux[B] =
+    new Protocol {
+      override type A = B
+      override def codec: ProtocolCodec[B] =
+        new ProtocolCodec[B] {
+          override def encode(protocol: Protocol): RESP = self.codec.encode(protocol)
+          override def decode(resp: RESP): Maybe[B]     = self.codec.decode(resp).map(f(_))
+        }
+      override def command: String          = self.command
+      override def parameters: Seq[GenBulk] = self.parameters
     }
-    override def command: String          = self.command
-    override def parameters: Seq[GenBulk] = self.parameters
-  }
 
   override final def toString: String = s"Protocol($command)"
 }
@@ -65,12 +67,13 @@ object Protocol {
       * @return A fully-fledged [[Protocol]] for the provided [[Request]]/[[Response]]
       *         pair
       */
-    final def asC[A, B](implicit R: RESPRead.Aux[A, B]): Protocol.Aux[B] = new Protocol {
-      override final type A = B
-      override final val codec: ProtocolCodec[B]  = new RESPProtocolCodec(R)
-      override final val command: String          = self.command
-      override final val parameters: Seq[GenBulk] = RESPParamWrite[L].write(l)
-    }
+    final def asC[A, B](implicit R: RESPRead.Aux[A, B]): Protocol.Aux[B] =
+      new Protocol {
+        override final type A = B
+        override final val codec: ProtocolCodec[B]  = new RESPProtocolCodec(R)
+        override final val command: String          = self.command
+        override final val parameters: Seq[GenBulk] = RESPParamWrite[L].write(l)
+      }
 
     final def as[A, B](implicit ev: A <:!< Coproduct, R: RESPRead.Aux[A :+: CNil, B]): Protocol.Aux[B] = asC(R)
 

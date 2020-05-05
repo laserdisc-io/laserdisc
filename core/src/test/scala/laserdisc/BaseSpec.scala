@@ -7,11 +7,10 @@ import eu.timepit.refined.scalacheck.reftype.arbitraryRefType
 import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInstances, StringInstances}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen._
-import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.{Arbitrary, Gen, Shrink}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, EitherValues}
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.Double.{NaN, MaxValue => DMax, MinValue => DMin}
 import scala.Int.{MaxValue => IMax, MinValue => IMin}
@@ -21,19 +20,12 @@ abstract class BaseSpec
     extends AnyWordSpec
     with Matchers
     with EitherValues
-    with ScalaCheckPropertyChecks
     with CollectionInstancesBinCompat1
     with NumericInstances
-    with StringInstances {
+    with StringInstances
+    with ScalaCheckSettings {
 
-  override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
-    PropertyCheckConfiguration(
-      minSuccessful = 100,
-      maxDiscardedFactor = 10.0,
-      minSize = 0,
-      sizeRange = 100,
-      workers = 12
-    )
+  implicit def noShrink[T]: Shrink[T] = Shrink.shrinkAny
 
   protected final type EmptyString = String Refined Equal[W.`""`.T]
   protected final val EmptyString: EmptyString = RefType.applyRefM[EmptyString]("")

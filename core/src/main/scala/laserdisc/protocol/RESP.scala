@@ -332,6 +332,8 @@ sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
         if (remainder.isEmpty) Right(Complete)
         else Right(CompleteWithRemainder(bits, remainder))
 
+      case _ if remainder.isEmpty => Right(Incomplete)
+
       case _ =>
         stateOf(remainder) match {
           case Right(CompleteWithRemainder(c, r)) => stateOfArr(missing - 1, r, bits ++ c)

@@ -40,14 +40,16 @@ object StringP {
       }
     }
 
-    def millis(v: PosLong): Expiry = new Expiry {
-      override final val value: PosLong = v
-      override final val unit: Unit     = Unit.milliseconds
-    }
-    def seconds(v: PosLong): Expiry = new Expiry {
-      override final val value: PosLong = v
-      override final val unit: Unit     = Unit.seconds
-    }
+    def millis(v: PosLong): Expiry =
+      new Expiry {
+        override final val value: PosLong = v
+        override final val unit: Unit     = Unit.milliseconds
+      }
+    def seconds(v: PosLong): Expiry =
+      new Expiry {
+        override final val value: PosLong = v
+        override final val unit: Unit     = Unit.seconds
+      }
   }
 
   sealed trait Flag

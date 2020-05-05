@@ -42,15 +42,16 @@ object RESPRead {
       ev1: Selector[Rest, Err]
   ) extends RESPRead[B] {
     override final type Sub = A
-    override def read(resp: RESP): Maybe[B] = Coproduct[RESPCoproduct](resp).deembed match {
-      case Right(R(Right(b))) => Right(b)
-      case Right(R(Left(RESPDecErr(m)))) =>
-        Left(RESPDecErr(s"RESP type(s) of $resp matched but failed to deserialize correctly with error $m")).widenLeft[Throwable]
-      case Left(rest) =>
-        rest
-          .select[Err]
-          .fold(Left(RESPDecErr(s"RESP type(s) did not match: $resp")).widenLeft[Throwable])(Left(_).widenLeft[Throwable])
-    }
+    override def read(resp: RESP): Maybe[B] =
+      Coproduct[RESPCoproduct](resp).deembed match {
+        case Right(R(Right(b))) => Right(b)
+        case Right(R(Left(RESPDecErr(m)))) =>
+          Left(RESPDecErr(s"RESP type(s) of $resp matched but failed to deserialize correctly with error $m")).widenLeft[Throwable]
+        case Left(rest) =>
+          rest
+            .select[Err]
+            .fold(Left(RESPDecErr(s"RESP type(s) did not match: $resp")).widenLeft[Throwable])(Left(_).widenLeft[Throwable])
+      }
   }
 
   final def instance[A <: Coproduct, B, Rest <: Coproduct](R: A ==> B)(

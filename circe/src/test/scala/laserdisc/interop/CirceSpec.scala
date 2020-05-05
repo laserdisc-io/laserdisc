@@ -52,7 +52,9 @@ final class CirceSpec extends AnyWordSpec with Matchers with ScalaCheckPropertyC
 
     "handling a json that does not respect the contract" should {
       "fail to decode" in {
-        Read[Bulk, Bar].read(Bulk("""{"i": null}""")) onLeft (_.message shouldBe "DecodingFailure at .x: Attempt to decode value on failed cursor")
+        Read[Bulk, Bar].read(
+          Bulk("""{"i": null}""")
+        ) onLeft (_.message shouldBe "DecodingFailure at .x: Attempt to decode value on failed cursor")
       }
     }
   }

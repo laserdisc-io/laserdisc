@@ -21,16 +21,17 @@ private[laserdisc] sealed trait RESPFrame extends Product with Serializable with
       }
       .leftMap(e => UnknownBufferState(s"Err building the frame from buffer: $e. Content: ${bits.tailToUtf8}"))
 
-  @tailrec private[this] final def consumeRemainder(current: String | MoreThanOneFrame): String | MoreThanOneFrame = current match {
-    case Right(s) =>
-      stateOf(s.remainder) match {
-        case Left(ee)                           => Left(ee)
-        case Right(CompleteWithRemainder(c, r)) => consumeRemainder(Right(MoreThanOneFrame(s.complete :+ CompleteFrame(c), r)))
-        case Right(Complete)                    => Right(MoreThanOneFrame(s.complete :+ CompleteFrame(s.remainder), BitVector.empty))
-        case _                                  => Right(s)
-      }
-    case left => left
-  }
+  @tailrec private[this] final def consumeRemainder(current: String | MoreThanOneFrame): String | MoreThanOneFrame =
+    current match {
+      case Right(s) =>
+        stateOf(s.remainder) match {
+          case Left(ee)                           => Left(ee)
+          case Right(CompleteWithRemainder(c, r)) => consumeRemainder(Right(MoreThanOneFrame(s.complete :+ CompleteFrame(c), r)))
+          case Right(Complete)                    => Right(MoreThanOneFrame(s.complete :+ CompleteFrame(s.remainder), BitVector.empty))
+          case _                                  => Right(s)
+        }
+      case left => left
+    }
 }
 
 private[laserdisc] case object EmptyFrame        extends RESPFrame

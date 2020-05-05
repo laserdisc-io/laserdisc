@@ -185,25 +185,21 @@ package object laserdisc {
 
   private[laserdisc] final object ToInt {
     def unapply(l: Long): Option[Int] =
-      try {
-        Some(j.Math.toIntExact(l))
-      } catch { case _: ArithmeticException => None }
+      try Some(j.Math.toIntExact(l))
+      catch { case _: ArithmeticException => None }
     def unapply(s: String): Option[Int] =
-      try {
-        Some(j.Integer.parseInt(s))
-      } catch { case _: NumberFormatException => None }
+      try Some(j.Integer.parseInt(s))
+      catch { case _: NumberFormatException => None }
   }
   private[laserdisc] final object ToLong {
     def unapply(s: String): Option[Long] =
-      try {
-        Some(j.Long.parseLong(s))
-      } catch { case _: NumberFormatException => None }
+      try Some(j.Long.parseLong(s))
+      catch { case _: NumberFormatException => None }
   }
   private[laserdisc] final object ToDouble {
     def unapply(s: String): Option[Double] =
-      try {
-        Some(j.Double.parseDouble(s))
-      } catch { case _: NumberFormatException => None }
+      try Some(j.Double.parseDouble(s))
+      catch { case _: NumberFormatException => None }
   }
 
   private[laserdisc] implicit final class WidenOps1[F[_], A](private val fa: F[A]) extends AnyVal {

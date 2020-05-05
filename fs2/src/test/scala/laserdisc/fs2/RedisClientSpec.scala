@@ -9,6 +9,7 @@ import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.traverse._
+import laserdisc.all._
 import laserdisc.auto._
 import log.effect.LogWriter
 import log.effect.fs2.SyncLogWriter.noOpLog
@@ -51,14 +52,14 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
     import cats.instances.list.catsStdInstancesForList
 
     "handle correctly hundreds of read requests in parallel for a large bulk text payload" in {
-      val payload = (1 to 1000).toList map (_ => text) mkString " - "
+      val payload = List.fill(1000)(text).mkString(" - ")
 
       def preset(cl: RedisClient[F]): F[Unit] =
-        cl.send(strings.set(key, payload)) >>= (_ => concurrent.unit)
+        cl.send(set(key, payload)) >>= (_ => concurrent.unit)
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (collection.parallel.immutable.ParSeq.range(0, 300) map { _ =>
-          concurrent.start(cl.send(strings.get[String](key)): F[Maybe[Option[String]]])
+          concurrent.start(cl.send(get[String](key)): F[Maybe[Option[String]]])
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -82,14 +83,14 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
     }
 
     "handle correctly some read requests in a row for a bulk text payload" in {
-      val payload = (1 to 1000).toList map (_ => text) mkString " - "
+      val payload = List.fill(1000)(text).mkString(" - ")
 
       def preset(cl: RedisClient[F]): F[Unit] =
-        cl.send(strings.set(key, payload)) >>= (_ => concurrent.unit)
+        cl.send(set(key, payload)) >>= (_ => concurrent.unit)
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         ((1 to 50) map { _ =>
-          cl.send(strings.get[String](key)) map (
+          cl.send(get[String](key)) map (
             _.fold(
               _ => "",
               _.getOrElse("")
@@ -114,11 +115,11 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
       val payload = "test text"
 
       def preset(cl: RedisClient[F]): F[Unit] =
-        cl.send(strings.set(key, payload)) >>= (_ => concurrent.unit)
+        cl.send(set(key, payload)) >>= (_ => concurrent.unit)
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 1000) map { _ =>
-          concurrent.start(cl.send(strings.get[String](key)))
+          concurrent.start(cl.send(get[String](key)))
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -146,7 +147,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
 
       def requests(cl: RedisClient[F]): F[List[String]] =
         (ParSeq.range(0, 1000) map { _ =>
-          concurrent.start(cl.send(strings.get[String](key)))
+          concurrent.start(cl.send(get[String](key)))
         } map { ioFib =>
           ioFib >>= (_.join.attempt)
         } map {
@@ -171,7 +172,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
       implicit val listStringShow: Show[List[String]] = _ mkString COMMA
 
       val key: Key = "test-key-list"
-      val bulk     = (1 to 1000).toList map (_ => text) mkString " - "
+      val bulk     = List.fill(1000)(text).mkString(" - ")
 
       def cleanup(cl: RedisClient[F]): F[Unit] =
         cl.send(lists.lrem(key, 0L, bulk)) >>= (_ => concurrent.unit)

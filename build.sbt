@@ -310,6 +310,16 @@ lazy val `core-bench` = project
     publishArtifact := false
   )
 
+lazy val `fs2-bench` = project
+  .in(file("benchmarks/fs2"))
+  .dependsOn(fs2)
+  .enablePlugins(JmhPlugin)
+  .settings(
+    name := "laserdisc-fs2-benchmarks",
+    publishArtifact := false,
+    libraryDependencies += "redis.clients" % "jedis" % "3.2.0"
+  )
+
 lazy val cli = project
   .in(file("cli"))
   .dependsOn(fs2)

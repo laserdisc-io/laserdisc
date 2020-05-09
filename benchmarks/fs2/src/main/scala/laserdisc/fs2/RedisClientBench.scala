@@ -3,14 +3,13 @@ package laserdisc.fs2
 import java.util.concurrent.{ExecutorService, Executors}
 
 import cats.effect.{ContextShift, IO, Resource, Timer}
+import cats.syntax.traverse._
 import laserdisc._
 import laserdisc.all._
 import laserdisc.auto._
-import log.effect.LogWriter
-import log.effect.fs2.SyncLogWriter
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig
-import redis.clients.jedis.{Jedis, JedisPool}
 import org.openjdk.jmh.annotations._
+import redis.clients.jedis.{Jedis, JedisPool}
 
 import scala.concurrent.ExecutionContext
 
@@ -114,12 +113,12 @@ class RedisClientBench {
       .unsafeRunSync()
 
   @Benchmark
-  @OperationsPerInvocation(20)
-  def jedis_write_accum_100(jedisState: JedisState): Int = writeAndReadJedis(jedisState.jedisPool, numberOfItems)
+  @OperationsPerInvocation(100)
+  def jedisWriteAccum100(jedisState: JedisState): Int = writeAndReadJedis(jedisState.jedisPool, numberOfItems)
 
   @Benchmark
-  @OperationsPerInvocation(20)
-  def laserdisc_write_accum_100(laserdiscState: LaserdiscState): Int = {
+  @OperationsPerInvocation(100)
+  def laserdiscWriteAccum100(laserdiscState: LaserdiscState): Int = {
     val base = laserdiscState.base
     import base._
     writeAndReadLaserdisc(laserdiscState.client, numberOfItems)
@@ -127,5 +126,5 @@ class RedisClientBench {
 }
 
 object RedisClientBench {
-  val numberOfItems = 50
+  val numberOfItems = 100
 }

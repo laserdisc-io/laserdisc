@@ -21,13 +21,9 @@ object RESPParamWrite extends RESPParamWriteInstances {
   @inline final def apply[A](implicit instance: RESPParamWrite[A]): RESPParamWrite[A] = instance
 
   final def const[A](thunk: =>Seq[GenBulk]): RESPParamWrite[A] =
-    new RESPParamWrite[A] {
-      override def write(a: A): Seq[GenBulk] = thunk
-    }
+    (_: A) => thunk
   final def instance[A](f: A => Seq[GenBulk]): RESPParamWrite[A] =
-    new RESPParamWrite[A] {
-      override def write(a: A): Seq[GenBulk] = f(a)
-    }
+    (a: A) => f(a)
 }
 
 private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteInstances1 {

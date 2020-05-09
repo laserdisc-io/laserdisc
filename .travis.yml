@@ -22,6 +22,8 @@ stages:
   if: tag IS NOT present
 - name: Test
   if: tag IS NOT present
+- name: Compile Benchmarks
+  if: tag IS NOT present
 - name: Publish Snapshot 2.12
   if: branch = master AND type = push AND tag IS NOT present AND NOT fork
 - name: Publish Snapshot 2.13
@@ -32,8 +34,8 @@ stages:
   if: type != pull_request AND tag IS present AND NOT fork
 
 scala:
-- 2.13.2
 - 2.12.11
+- 2.13.2
 jdk:
 - openjdk8
 - openjdk13
@@ -45,6 +47,12 @@ jobs:
   - stage: Format
     name: Check with Scalafmt
     script: sbt ++$TRAVIS_SCALA_VERSION fmtCheck
+    jdk: openjdk8
+    scala: 2.13.2
+
+  - stage: Compile Benchmarks
+    name: Compile benchmarks
+    script: sbt ++$TRAVIS_SCALA_VERSION benchBuild
     jdk: openjdk8
     scala: 2.13.2
 

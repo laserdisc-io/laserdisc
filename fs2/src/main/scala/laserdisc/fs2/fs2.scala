@@ -46,4 +46,9 @@ package object fs2 {
     new Functor[F] {
       override final def map[A, B](fa: F[A])(f: A => B): F[B] = F.map(fa)(f)
     }
+
+  implicit final def showForCats[A](implicit S: cats.Show[A]): Show[A] =
+    new Show[A] {
+      def show(a: A): String = S.show(a)
+    }
 }

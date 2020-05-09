@@ -1,7 +1,6 @@
 package laserdisc
 package fs2
 
-import cats.Eq
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.syntax.concurrent._
 import cats.effect.{Blocker, Concurrent, ContextShift, Fiber, Resource, Sync, Timer}
@@ -24,7 +23,7 @@ object RedisClient {
       host: Host,
       port: Port,
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
-      readMaxBytes: Int = 256 * 1024
+      readMaxBytes: Int = 8 * 1024 * 1024
   ): Resource[F, RedisClient[F]] =
     Blocker[F] >>= (blockingPool => blockingOn(blockingPool)(Set(RedisAddress(host, port)), writeTimeout, readMaxBytes))
 
@@ -35,7 +34,7 @@ object RedisClient {
   @inline final def toNodes[F[_]: ContextShift: Timer: LogSelector: Concurrent](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
-      readMaxBytes: Int = 256 * 1024
+      readMaxBytes: Int = 8 * 1024 * 1024
   ): Resource[F, RedisClient[F]] =
     Blocker[F] >>= (blockingPool => blockingOn(blockingPool)(addresses, writeTimeout, readMaxBytes))
 
@@ -50,7 +49,7 @@ object RedisClient {
       host: Host,
       port: Port,
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
-      readMaxBytes: Int = 256 * 1024
+      readMaxBytes: Int = 8 * 1024 * 1024
   ): Resource[F, RedisClient[F]] =
     blockingOn(blockingPool)(Set(RedisAddress(host, port)), writeTimeout, readMaxBytes)
 
@@ -64,10 +63,10 @@ object RedisClient {
   )(
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
-      readMaxBytes: Int = 256 * 1024
+      readMaxBytes: Int = 8 * 1024 * 1024
   ): Resource[F, RedisClient[F]] = {
     implicit val lw: LogWriter[F] = LogSelector[F].log
-    def redisConnection(address: RedisAddress): Pipe[F, RESP, RESP] =
+    def redisChannel(address: RedisAddress): Pipe[F, RESP, RESP] =
       stream =>
         Stream.eval(address.toInetSocketAddress) >>= { address =>
           stream.through(
@@ -76,7 +75,7 @@ object RedisClient {
         }
 
     val establishedConnection: Resource[F, impl.Connection[F]] =
-      impl.connection(redisConnection, impl.currentServer(addresses.toSeq))
+      impl.connection(redisChannel, impl.currentServer(addresses.toSeq))
 
     establishedConnection >>= { conn => impl.mkClient(conn) }
   }
@@ -111,11 +110,11 @@ object RedisClient {
       Stream.emits(addresses).covary[F].compile.last //FIXME yeah, well...
 
     def connection[F[_]: Timer: Concurrent: LogWriter](
-        redisConnection: RedisAddress => Pipe[F, RESP, RESP],
+        redisNetChannel: RedisAddress => Pipe[F, RESP, RESP],
         leader: F[Option[RedisAddress]]
     ): Resource[F, Connection[F]] =
       Resource.liftF(Deferred[F, Throwable | Unit]) >>= { termSignal =>
-        Resource.liftF(Queue.unbounded[F, Request[F]]) >>= { queue =>
+        Resource.liftF(Queue.bounded[F, Request[F]](512)) >>= { queue =>
           Resource.liftF(Ref.of[F, Vector[Request[F]]](Vector.empty)) >>= { inFlight =>
             def push(req: Request[F]): F[RESP] =
               inFlight
@@ -129,10 +128,11 @@ object RedisClient {
                 }
 
             def serverAvailable(address: RedisAddress): Stream[F, Unit] =
-              LogWriter.infoS(s"Server available for publishing: $address") >>
-                queue.dequeue
+              LogWriter.infoS(s"Connected to server $address") >>
+                queue
+                  .dequeueChunk(maxSize = 8 * 1024)
                   .evalMap(push)
-                  .through(redisConnection(address))
+                  .through(redisNetChannel(address))
                   .evalMap { resp =>
                     pop >>= {
                       case Some(Request(protocol, cb)) => cb(protocol.decode(resp))
@@ -187,7 +187,7 @@ object RedisClient {
 
             val newConnection = new Connection[F] {
               override final def run: F[Fiber[F, Unit]] =
-                LogWriter.info("Starting connection") >>
+                LogWriter.debug("Starting connection") >>
                   runner(serverStream)
                     .interruptWhen(termSignal)
                     .compile
@@ -201,9 +201,9 @@ object RedisClient {
                     .start
 
               override final def shutdown: F[Unit] =
-                LogWriter.info("Shutting down connection") >>
+                LogWriter.debug("Shutting down connection") >>
                   termSignal.complete(().asRight) >>
-                  LogWriter.info("Shutdown complete")
+                  LogWriter.debug("Shutdown complete")
 
               override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
                   implicit handler: RedisHandler.Aux[F, In, Out]
@@ -233,15 +233,6 @@ object RedisClient {
             case InitialState                      => ConnectedState(established)
             case ConnectedState(_) | ShutDownState => s
           }
-
-        private[this] implicit val connectionEq: Eq[Connection[F]] =
-          Eq.fromUniversalEquals
-
-        implicit val stateEq: Eq[State] = Eq.instance {
-          case (ConnectedState(c1), ConnectedState(c2))                      => c1 === c2
-          case (ShutDownState, ShutDownState) | (InitialState, InitialState) => true
-          case _                                                             => false
-        }
       }
 
       Ref.of(State.empty).map { state =>

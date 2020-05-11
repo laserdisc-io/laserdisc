@@ -16,7 +16,7 @@ object shared {
   implicit def contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
   implicit val timer: Timer[IO]               = IO.timer(ExecutionContext.global)
 
-  implicit val logWriter: LogWriter[IO] = SyncLogWriter.consoleLog[IO]
+  implicit val logWriter: LogWriter[IO] = SyncLogWriter.noOpLog
 
   @State(Scope.Benchmark)
   val redisClientResource: Resource[IO, RedisClient[IO]] = RedisClient.toNode[IO]("localhost", 6379)

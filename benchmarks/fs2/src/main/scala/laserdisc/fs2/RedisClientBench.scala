@@ -19,7 +19,7 @@ object shared {
   implicit val logWriter: LogWriter[IO] = SyncLogWriter.noOpLog
 
   @State(Scope.Benchmark)
-  val redisClientResource: Resource[IO, RedisClient[IO]] = RedisClient.toNode[IO]("localhost", 6379)
+  val redisClientResource: Resource[IO, RedisClient[IO]] = RedisClient.toNode("localhost", 6379)
 
   @State(Scope.Benchmark)
   val jedisClient: Jedis = new Jedis("localhost", 6379)

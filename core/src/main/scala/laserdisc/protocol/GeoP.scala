@@ -28,7 +28,7 @@ object GeoP {
       override final val r: Arr ==> Res       = radiusModeCoordinatesRead
 
       def &(d: distance.type): coordinatesAndDistance.type = { val _ = d; coordinatesAndDistance }
-      def &(h: hash.type): coordinatesAndHash.type         = { val _ = h; coordinatesAndHash }
+      def &(h: hash.type): coordinatesAndHash.type = { val _ = h; coordinatesAndHash }
     }
     final object distance extends RadiusMode {
       override final type Res = KeyAndDistance
@@ -36,7 +36,7 @@ object GeoP {
       override final val r: Arr ==> Res       = radiusModeDistanceRead
 
       def &(c: coordinates.type): coordinatesAndDistance.type = { val _ = c; coordinatesAndDistance }
-      def &(h: hash.type): distanceAndHash.type               = { val _ = h; distanceAndHash }
+      def &(h: hash.type): distanceAndHash.type = { val _ = h; distanceAndHash }
     }
     final object hash extends RadiusMode {
       override final type Res = KeyAndHash
@@ -44,7 +44,7 @@ object GeoP {
       override final val r: Arr ==> Res       = radiusModeHashRead
 
       def &(c: coordinates.type): coordinatesAndHash.type = { val _ = c; coordinatesAndHash }
-      def &(c: distance.type): distanceAndHash.type       = { val _ = c; distanceAndHash }
+      def &(c: distance.type): distanceAndHash.type = { val _ = c; distanceAndHash }
     }
     final object coordinatesAndDistance extends RadiusMode {
       override final type Res = KeyCoordinatesAndDistance

@@ -7,6 +7,7 @@ val V = new {
   val `discipline-scalatest` = "1.0.1"
   val circe                  = "0.13.0"
   val fs2                    = "2.3.0"
+  val jedis                  = "3.2.0"
   val `kind-projector`       = "0.11.0"
   val kittens                = "2.1.0"
   val `log-effect-fs2`       = "0.12.2"
@@ -27,6 +28,7 @@ val `circe-core`     = Def.setting("io.circe"      %%% "circe-core"     % V.circ
 val `circe-parser`   = Def.setting("io.circe"      %%% "circe-parser"   % V.circe)
 val `fs2-core`       = Def.setting("co.fs2"        %%% "fs2-core"       % V.fs2)
 val `fs2-io`         = Def.setting("co.fs2"        %% "fs2-io"          % V.fs2)
+val jedis            = Def.setting("redis.clients" % "jedis"            % V.jedis)
 val kittens          = Def.setting("org.typelevel" %%% "kittens"        % V.kittens)
 val `log-effect-fs2` = Def.setting("io.laserdisc"  %%% "log-effect-fs2" % V.`log-effect-fs2`)
 val refined          = Def.setting("eu.timepit"    %%% "refined"        % V.refined)
@@ -96,6 +98,12 @@ val fs2Deps = Def.Initialize
     case (ms, None)    => ms
     case (ms, Some(m)) => ms :+ m
   }
+
+val fs2BenchDeps = Def.Initialize.join {
+  Seq(
+    jedis
+  )
+}
 
 val circeDeps = Def.Initialize.join {
   Seq(
@@ -317,7 +325,7 @@ lazy val `fs2-bench` = project
   .settings(
     name := "laserdisc-fs2-benchmarks",
     publishArtifact := false,
-    libraryDependencies += "redis.clients" % "jedis" % "3.2.0"
+    libraryDependencies ++= fs2BenchDeps.value
   )
 
 lazy val cli = project

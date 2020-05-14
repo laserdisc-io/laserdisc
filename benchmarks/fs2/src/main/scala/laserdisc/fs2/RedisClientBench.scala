@@ -134,5 +134,5 @@ class RedisClientBench {
 }
 
 object RedisClientBench {
-  val numberOfItems = 100
+  val numberOfItems = 50
 }

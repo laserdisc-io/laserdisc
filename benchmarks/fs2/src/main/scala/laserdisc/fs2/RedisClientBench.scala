@@ -1,6 +1,6 @@
 package laserdisc.fs2
 
-import java.util.concurrent.{Executors, ExecutorService}
+import java.util.concurrent.{ExecutorService, Executors}
 
 import cats.effect.{ContextShift, IO, Resource, Timer}
 import cats.implicits._
@@ -59,9 +59,8 @@ class LaserdiscState {
   }
 
   @TearDown
-  def tearDown(): Unit = {
+  def tearDown(): Unit =
     clientShutdownProcess.unsafeRunSync()
-  }
 }
 
 @State(Scope.Benchmark)
@@ -78,9 +77,8 @@ class JedisState extends Pooling {
   }
 
   @TearDown
-  def tearDown(): Unit = {
+  def tearDown(): Unit =
     jedisPool.close()
-  }
 }
 
 class RedisClientBench {
@@ -105,7 +103,7 @@ class RedisClientBench {
     ).unsafeRunSync()
   }
 
-  def writeAndReadJedis(jedisPool: JedisPool, n: Int): Int = {
+  def writeAndReadJedis(jedisPool: JedisPool, n: Int): Int =
     Resource
       .fromAutoCloseable[IO, Jedis](IO(jedisPool.getResource))
       .use { jedisClient =>
@@ -117,7 +115,6 @@ class RedisClientBench {
         )
       }
       .unsafeRunSync()
-  }
 
   @Benchmark
   @OperationsPerInvocation(20)
@@ -130,7 +127,6 @@ class RedisClientBench {
     import base._
     writeAndReadLaserdisc(laserdiscState.client, numberOfItems)
   }
-
 }
 
 object RedisClientBench {

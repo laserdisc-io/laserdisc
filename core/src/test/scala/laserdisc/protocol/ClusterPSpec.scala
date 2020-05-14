@@ -19,7 +19,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   private[this] final val kvPairPattern                                = KVPairRegex.pattern
   private[this] final val infoIsValid: Map[String, String] => Boolean  = _.forall { case (k, v) => kvPairPattern.matcher(s"$k:$v").matches }
   private[this] final val infoGen: Gen[Map[String, String]]            = nonEmptyMap(identifier.flatMap(k => alphaStr.map(k -> _))) :| "info map"
-  private[this] implicit final val infoShow: Show[Map[String, String]] = Show.instance { _.map { case (k, v) => s"$k:$v" }.mkString(CRLF) }
+  private[this] implicit final val infoShow: Show[Map[String, String]] = Show.instance(_.map { case (k, v) => s"$k:$v" }.mkString(CRLF))
 
   private[this] final type RawNode =
     (String, EmptyString | Host, Port, Option[Port], Seq[String], String, Int, Int, Int, String, Seq[String])
@@ -37,7 +37,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     val flags  = raw"noflags|(myself|master|slave|fail\?|fail|handshake|noaddr)(,(myself|master|slave|fail\?|fail|handshake|noaddr))*"
     val link   = raw"(connected|disconnected)"
     val slots  = raw"(\d+|(\d+-\d+)|\[\d+-[><]-$nid\])?(\s(\d+|(\d+-\d+)|\[\d+-[><]-$nid\]))*"
-    val R      = raw"^$nid\s($ip|$domain)?:(\d+)(@\d+)?\s($flags)\s(-|$nid)\s\d+\s\d+\s\d+\s$link\s${slots}$$".r
+    val R      = raw"^$nid\s($ip|$domain)?:(\d+)(@\d+)?\s($flags)\s(-|$nid)\s\d+\s\d+\s\d+\s$link\s$slots$$".r
 
     _.map(rawNodeToString).forall { case R(_*) => true; case _ => false }
   }
@@ -104,7 +104,9 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           p    <- portGen
           mrid <- if (isOld) const(None) else nodeIdGen.map(s => Some(NodeId.unsafeFrom(s)))
         } yield (h, p, mrid))
-      } yield if (fst.value < snd.value) (fst, snd, mrs) else (snd, fst, mrs)
+      } yield
+        if (fst.value < snd.value) (fst, snd, mrs)
+        else (snd, fst, mrs)
     )
   } yield rss) :| "raw slots info"
   private[this] final val slotsToArr: RawSlots => Arr = ss =>
@@ -377,10 +379,14 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           val protocol = slots
           val ssWithLoopback = ss.map {
             case (f, t, assigned) =>
-              (f, t, assigned.foldRight[List[(String, Port, Option[NodeId])]](Nil) {
-                case ((Left(_), p, n), css)  => (LoopbackHost.value, p, n) :: css
-                case ((Right(h), p, n), css) => (h.value, p, n) :: css
-              })
+              (
+                f,
+                t,
+                assigned.foldRight[List[(String, Port, Option[NodeId])]](Nil) {
+                  case ((Left(_), p, n), css)  => (LoopbackHost.value, p, n) :: css
+                  case ((Right(h), p, n), css) => (h.value, p, n) :: css
+                }
+              )
           }.toSet
 
           protocol.encode shouldBe Arr(Bulk("CLUSTER"), Bulk("SLOTS"))

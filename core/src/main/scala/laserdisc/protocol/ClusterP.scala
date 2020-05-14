@@ -86,7 +86,7 @@ object ClusterP {
       val errorS = "String ==> Node, Error decoding a cluster Node. Error was: "
       _.split(SPACE_CH).toList match {
         case NodeId(id) :: A(Right(a)) :: Fs(Right(fs)) :: MM(Right(mm)) :: ToInt(NonNegInt(ps)) :: ToInt(NonNegInt(pr)) ::
-              ToInt(NonNegInt(ce)) :: L(Right(l)) :: Ss(Right(ss)) =>
+            ToInt(NonNegInt(ce)) :: L(Right(l)) :: Ss(Right(ss)) =>
           Right(Node(id, a, fs, mm, ps, pr, ce, l, ss))
         case _ :: A(Left(e)) :: _ :: _ :: _ :: _ :: _ :: _ :: _  => Left(RESPDecErr(s"$errorS $e"))
         case _ :: _ :: Fs(Left(e)) :: _ :: _ :: _ :: _ :: _ :: _ => Left(RESPDecErr(s"$errorS $e"))

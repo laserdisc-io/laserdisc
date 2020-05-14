@@ -1,14 +1,22 @@
 package laserdisc
 package protocol
 
+import org.scalacheck.Gen
 import scodec.bits.BitVector
 
-final class RESPFrameArrSpec extends BaseSpec {
+final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
   "An empty GenArr Frame" when {
     "appending a bit vector that represent an empty array" should {
       "produce a complete frame with the bits of an empty bulk" in {
         val inputVector = BitVector("*0\r\n".getBytes)
         EmptyFrame.append(inputVector.toByteBuffer) should be(Right(CompleteFrame(inputVector)))
+      }
+    }
+
+    "appending a bit vector that contains only the size of a non empty array" should {
+      "produce an incomplete frame with the bits of the received size" in {
+        val inputVector = BitVector("*32\r\n".getBytes)
+        EmptyFrame.append(inputVector.toByteBuffer) should be(Right(IncompleteFrame(inputVector, 0)))
       }
     }
   }
@@ -129,7 +137,8 @@ final class RESPFrameArrSpec extends BaseSpec {
         nonEmptyFrame
           .append(inputVector.toByteBuffer)
           .fold(
-            err => fail(s"expected a result but failed with $err"), {
+            err => fail(s"expected a result but failed with $err"),
+            {
               case r @ MoreThanOneFrame(_, _) =>
                 r.complete shouldBe Vector(
                   CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
@@ -155,7 +164,8 @@ final class RESPFrameArrSpec extends BaseSpec {
         nonEmptyFrame
           .append(inputVector.toByteBuffer)
           .fold(
-            err => fail(s"expected a result but failed with $err"), {
+            err => fail(s"expected a result but failed with $err"),
+            {
               case r @ MoreThanOneFrame(_, _) =>
                 r.complete shouldBe Vector(
                   CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
@@ -171,6 +181,36 @@ final class RESPFrameArrSpec extends BaseSpec {
               case _ => fail(s"expected a MoreThanOne type")
             }
           )
+      }
+    }
+
+    "appending multi level arrays in chunks of different size" should {
+      "give the exact encoding" in {
+
+        val chunkSize: Gen[Int] =
+          Gen.frequency(
+            8 -> Gen.choose(128, 1024),
+            2 -> Gen.choose(1025, 4096)
+          )
+
+        forAll(chunkSize) { chunkSize: Int =>
+          val inputChunks = groupInChunks(bytesOf(arrFiveLevelsList), chunkSize)
+
+          val frames = appendChunks(inputChunks).map(f => new String(f.bits.toByteArray))
+
+          frames.take(1).head == NullArrEncoded().encoded
+          frames.take(1).head == StrEncoded("OK").encoded
+          frames.take(1).head == ArrEncoded(arrThreeLevelsList).encoded
+          frames.take(1).head == NumEncoded(21).encoded
+          frames.take(1).head == ArrEncoded(mixedNoArrList).encoded
+          frames.take(1).head == StrEncoded("").encoded
+          frames.take(1).head == ArrEncoded(arrOneLevelList).encoded
+          frames.take(1).head == NumEncoded(Long.MaxValue).encoded
+          frames.take(1).head == ArrEncoded(arrFourLevelsList).encoded
+          frames.take(1).head == StrEncoded(shortStr).encoded
+          frames.take(1).head == ArrEncoded(arrTwoLevelsList).encoded
+          frames.take(1).head == StrEncoded("PONG").encoded
+        }
       }
     }
   }

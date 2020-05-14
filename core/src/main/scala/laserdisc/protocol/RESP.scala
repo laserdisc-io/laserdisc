@@ -162,18 +162,20 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   protected final val crlfBytes         = crlf.bytes
   private[this] final val crlfBytesSize = crlfBytes.size
 
-  private[this] final def crlfTerminatedCodec[A](baseCodec: Codec[A], from: Long = 0L): Codec[A] = filtered(
-    baseCodec,
-    new Codec[BitVector] {
-      override final def sizeBound: SizeBound                        = SizeBound.unknown
-      override final def encode(bits: BitVector): Attempt[BitVector] = Attempt.successful(bits ++ crlf)
-      override final def decode(bits: BitVector): Attempt[DecodeResult[BitVector]] = bits.bytes.indexOfSlice(crlfBytes, from) match {
-        case -1 =>
-          Attempt.failure(new MatchingDiscriminatorNotFound(s"Does not contain 'CRLF' termination bytes. Content: ${bits.tailToUtf8}"))
-        case i => Attempt.successful(DecodeResult(bits.take(i * BitsInByte), bits.drop(i * BitsInByte + crlfSize)))
+  private[this] final def crlfTerminatedCodec[A](baseCodec: Codec[A], from: Long = 0L): Codec[A] =
+    filtered(
+      baseCodec,
+      new Codec[BitVector] {
+        override final def sizeBound: SizeBound                        = SizeBound.unknown
+        override final def encode(bits: BitVector): Attempt[BitVector] = Attempt.successful(bits ++ crlf)
+        override final def decode(bits: BitVector): Attempt[DecodeResult[BitVector]] =
+          bits.bytes.indexOfSlice(crlfBytes, from) match {
+            case -1 =>
+              Attempt.failure(new MatchingDiscriminatorNotFound(s"Does not contain 'CRLF' termination bytes. Content: ${bits.tailToUtf8}"))
+            case i => Attempt.successful(DecodeResult(bits.take(i * BitsInByte), bits.drop(i * BitsInByte + crlfSize)))
+          }
       }
-    }
-  )
+    )
 
   private[this] final val crlfTerminatedStringCodec: Codec[String] = crlfTerminatedCodec(utf8Codec)
   private[this] final val crlfTerminatedLongCodec: Codec[Long] = crlfTerminatedStringCodec.narrow(
@@ -197,13 +199,14 @@ sealed trait RESPCodecs extends BitVectorSyntax {
       General(s"failed to encode size of [$bulk]: ${err.messageWithContext}", List("size"))
 
     override final def sizeBound: SizeBound = SizeBound.unknown
-    override final def encode(bulk: GenBulk): Attempt[BitVector] = bulk match {
-      case NullBulk => Attempt.successful(nullBulkBits)
-      case Bulk(s) =>
-        crlfTerminatedStringCodec.encode(s).flatMap { bits =>
-          crlfTerminatedLongCodec.encode(bits.size / BitsInByte - crlfBytesSize).mapErr(failEnc(bulk, _)).map(_ ++ bits)
-        }
-    }
+    override final def encode(bulk: GenBulk): Attempt[BitVector] =
+      bulk match {
+        case NullBulk => Attempt.successful(nullBulkBits)
+        case Bulk(s) =>
+          crlfTerminatedStringCodec.encode(s).flatMap { bits =>
+            crlfTerminatedLongCodec.encode(bits.size / BitsInByte - crlfBytesSize).mapErr(failEnc(bulk, _)).map(_ ++ bits)
+          }
+      }
     override final def decode(buffer: BitVector): Attempt[DecodeResult[GenBulk]] = decoder.decode(buffer)
   }
   private[this] final val arrCodec: Codec[GenArr] = new Codec[GenArr] {
@@ -224,27 +227,30 @@ sealed trait RESPCodecs extends BitVectorSyntax {
       General(s"failed to encode size of [$arr]: ${err.messageWithContext}", List("size"))
 
     override final def sizeBound: SizeBound = SizeBound.unknown
-    override final def encode(arr: GenArr): Attempt[BitVector] = arr match {
-      case NilArr              => Attempt.successful(nilArrBits)
-      case Arr(v) if v.isEmpty => Attempt.successful(emptyArrBits)
-      case Arr(v) =>
-        crlfTerminatedLongCodec.encode(v.size.toLong).mapErr(failEnc(arr, _)).flatMap(size => encodeSeq(respCodec)(v).map(size ++ _))
-    }
+    override final def encode(arr: GenArr): Attempt[BitVector] =
+      arr match {
+        case NilArr              => Attempt.successful(nilArrBits)
+        case Arr(v) if v.isEmpty => Attempt.successful(emptyArrBits)
+        case Arr(v) =>
+          crlfTerminatedLongCodec.encode(v.size.toLong).mapErr(failEnc(arr, _)).flatMap(size => encodeSeq(respCodec)(v).map(size ++ _))
+      }
     override final def decode(bits: BitVector): Attempt[DecodeResult[GenArr]] = decoder.decode(bits)
   }
 
   implicit final val respCodec: Codec[RESP] = new Codec[RESP] {
     override final def sizeBound: SizeBound = SizeBound.unknown
-    override final def encode(value: RESP): Attempt[BitVector] = value match {
-      case str: Str      => strCodec.encode(str).map(plus ++ _)
-      case err: Err      => errCodec.encode(err).map(minus ++ _)
-      case num: Num      => numCodec.encode(num).map(colon ++ _)
-      case bulk: GenBulk => bulkCodec.encode(bulk).map(dollar ++ _)
-      case arr: GenArr   => arrCodec.encode(arr).map(star ++ _)
-    }
+    override final def encode(value: RESP): Attempt[BitVector] =
+      value match {
+        case str: Str      => strCodec.encode(str).map(plus ++ _)
+        case err: Err      => errCodec.encode(err).map(minus ++ _)
+        case num: Num      => numCodec.encode(num).map(colon ++ _)
+        case bulk: GenBulk => bulkCodec.encode(bulk).map(dollar ++ _)
+        case arr: GenArr   => arrCodec.encode(arr).map(star ++ _)
+      }
     override final def decode(bits: BitVector): Attempt[DecodeResult[RESP]] =
       bits.consumeThen(BitsInByte)(
-        s => Attempt.failure(SErr(s)), {
+        s => Attempt.failure(SErr(s)),
+        {
           case (`plus`, remainder)   => strCodec.decode(remainder)
           case (`minus`, remainder)  => errCodec.decode(remainder)
           case (`colon`, remainder)  => numCodec.decode(remainder)
@@ -320,20 +326,23 @@ sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
     }
 
   @tailrec
-  private[this] final def stateOfArr(missing: Long, remainder: BitVector, bits: BitVector): String | State = missing match {
-    case 0L =>
-      if (remainder.isEmpty) Right(Complete)
-      else Right(CompleteWithRemainder(bits, remainder))
+  private[this] final def stateOfArr(missing: Long, remainder: BitVector, bits: BitVector): String | State =
+    missing match {
+      case 0L =>
+        if (remainder.isEmpty) Right(Complete)
+        else Right(CompleteWithRemainder(bits, remainder))
 
-    case _ =>
-      stateOf(remainder) match {
-        case Right(CompleteWithRemainder(c, r)) => stateOfArr(missing - 1, r, bits ++ c)
-        case Right(Complete) if missing == 1    => Right(Complete)
-        case Right(Complete)                    => Right(Incomplete)
-        case Right(incomplete)                  => Right(incomplete)
-        case left                               => left
-      }
-  }
+      case _ if remainder.isEmpty => Right(Incomplete)
+
+      case _ =>
+        stateOf(remainder) match {
+          case Right(CompleteWithRemainder(c, r)) => stateOfArr(missing - 1, r, bits ++ c)
+          case Right(Complete) if missing == 1    => Right(Complete)
+          case Right(Complete)                    => Right(Incomplete)
+          case Right(incomplete)                  => Right(incomplete)
+          case left                               => left
+        }
+    }
 
   private[this] final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: (Incomplete | DecodeResult[Repr[Long]]) => A): String | A =
     attemptEvalWithSizeDecodedFrom(bits)(x => Right(f(x)))

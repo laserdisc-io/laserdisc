@@ -7,11 +7,10 @@ import eu.timepit.refined.scalacheck.reftype.arbitraryRefType
 import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInstances, StringInstances}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen._
-import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.{Arbitrary, Gen, Shrink}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, EitherValues}
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.Double.{NaN, MaxValue => DMax, MinValue => DMin}
 import scala.Int.{MaxValue => IMax, MinValue => IMin}
@@ -21,26 +20,19 @@ abstract class BaseSpec
     extends AnyWordSpec
     with Matchers
     with EitherValues
-    with ScalaCheckPropertyChecks
     with CollectionInstancesBinCompat1
     with NumericInstances
-    with StringInstances {
+    with StringInstances
+    with ScalaCheckSettings {
 
-  implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
-    PropertyCheckConfiguration(
-      minSuccessful = 100,
-      maxDiscardedFactor = 10.0,
-      minSize = 0,
-      sizeRange = 100,
-      workers = 12
-    )
+  implicit def noShrink[T]: Shrink[T] = Shrink.shrinkAny
 
   protected final type EmptyString = String Refined Equal[W.`""`.T]
   protected final val EmptyString: EmptyString = RefType.applyRefM[EmptyString]("")
 
-  private[this] final val dashChar: Char     = 0x002D.toChar
+  private[this] final val dashChar: Char     = 0x002d.toChar
   private[this] final val dashString: String = dashChar.toString
-  private[this] final val dotString: String  = 0x002E.toChar.toString
+  private[this] final val dotString: String  = 0x002e.toChar.toString
   private[this] final val spaceChar: Char    = 0x0020.toChar
 
   private[this] final val byteRange: Gen[Int] = chooseNum(0, 255)
@@ -48,15 +40,15 @@ abstract class BaseSpec
   private[this] final val hexGen: Gen[Char]   = frequency(10 -> numChar, 6 -> choose(0x0061.toChar, 0x0066.toChar))
   private[this] final val spaceGen: Gen[Char] = const(spaceChar)
   protected final val utf8BMPCharGen: Gen[Char] = {
-    val b01 = 24 -> choose(spaceChar, 0x007E.toChar) // 75% it's a 7-bit ASCII char
-    val b02 = 1  -> choose(0x00A0.toChar, 0x085F.toChar) // 3.125% for all other cases
-    val b03 = 1  -> choose(0x08A0.toChar, 0x1AAF.toChar)
-    val b04 = 1  -> choose(0x1B00.toChar, 0x1C7F.toChar)
-    val b05 = 1  -> choose(0x1CC0.toChar, 0x2FDF.toChar)
-    val b06 = 1  -> choose(0x2FF0.toChar, 0xA9DF.toChar)
-    val b07 = 1  -> choose(0xAA00.toChar, 0xAB2F.toChar)
-    val b08 = 1  -> choose(0xABC0.toChar, 0xD7FF.toChar)
-    val b09 = 1  -> choose(0xE000.toChar, 0xFFEF.toChar)
+    val b01 = 24 -> choose(spaceChar, 0x007e.toChar)     // 75% it's a 7-bit ASCII char
+    val b02 = 1  -> choose(0x00a0.toChar, 0x085f.toChar) // 3.125% for all other cases
+    val b03 = 1  -> choose(0x08a0.toChar, 0x1aaf.toChar)
+    val b04 = 1  -> choose(0x1b00.toChar, 0x1c7f.toChar)
+    val b05 = 1  -> choose(0x1cc0.toChar, 0x2fdf.toChar)
+    val b06 = 1  -> choose(0x2ff0.toChar, 0xa9df.toChar)
+    val b07 = 1  -> choose(0xaa00.toChar, 0xab2f.toChar)
+    val b08 = 1  -> choose(0xabc0.toChar, 0xd7ff.toChar)
+    val b09 = 1  -> choose(0xe000.toChar, 0xffef.toChar)
 
     frequency(b01, b02, b03, b04, b05, b06, b07, b08, b09)
   }
@@ -78,9 +70,9 @@ abstract class BaseSpec
   private[this] final val rfc3927Gen: Gen[String] = ipv4Gen(169, 254)
   private[this] final val rfc2544Gen: Gen[String] = chooseNum(18, 19).flatMap(ipv4Gen(198, _))
 
-  private[this] final def ipv4Gen(hs: Int*): Gen[String]            = listOfN(4 - hs.size, byteRange).map(ts => (hs ++: ts).mkString(dotString))
-  private[this] final def twoOrMore[A](ga: => Gen[A]): Gen[List[A]] = nonEmptyListOf(ga).suchThat(_.size > 1)
-  private[this] final def zip[A, B](arbA: => Arbitrary[A], arbB: => Arbitrary[B]): Gen[(A, B)] =
+  private[this] final def ipv4Gen(hs: Int*): Gen[String]           = listOfN(4 - hs.size, byteRange).map(ts => (hs ++: ts).mkString(dotString))
+  private[this] final def twoOrMore[A](ga: =>Gen[A]): Gen[List[A]] = nonEmptyListOf(ga).suchThat(_.size > 1)
+  private[this] final def zip[A, B](arbA: =>Arbitrary[A], arbB: =>Arbitrary[B]): Gen[(A, B)] =
     arbA.arbitrary.flatMap(a => arbB.arbitrary.map(a -> _))
 
   private[this] final def strGen(lc: Gen[List[Char]]): Gen[String]               = lc.map(_.mkString)

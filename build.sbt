@@ -1,5 +1,5 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
-import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 val V = new {
   val cats                   = "2.1.1"
@@ -14,7 +14,7 @@ val V = new {
   val `parallel-collections` = "0.2.0"
   val refined                = "0.9.14"
   val scalacheck             = "1.14.3"
-  val scalatest              = "3.1.1"
+  val scalatest              = "3.1.2"
   val `scalatest-plus`       = "3.1.1.1"
   val `scodec-bits`          = "1.1.14"
   val `scodec-core`          = "1.11.7"
@@ -22,28 +22,28 @@ val V = new {
   val shapeless              = "2.3.3"
 }
 
-val `cats-core`      = Def.setting("org.typelevel" %% "cats-core"       % V.cats)
-val `cats-laws`      = Def.setting("org.typelevel" %% "cats-laws"       % V.cats)
-val `circe-core`     = Def.setting("io.circe"      %%% "circe-core"     % V.circe)
-val `circe-parser`   = Def.setting("io.circe"      %%% "circe-parser"   % V.circe)
-val `fs2-core`       = Def.setting("co.fs2"        %%% "fs2-core"       % V.fs2)
-val `fs2-io`         = Def.setting("co.fs2"        %% "fs2-io"          % V.fs2)
-val jedis            = Def.setting("redis.clients" % "jedis"            % V.jedis)
-val kittens          = Def.setting("org.typelevel" %%% "kittens"        % V.kittens)
-val `log-effect-fs2` = Def.setting("io.laserdisc"  %%% "log-effect-fs2" % V.`log-effect-fs2`)
-val refined          = Def.setting("eu.timepit"    %%% "refined"        % V.refined)
-val `scodec-bits`    = Def.setting("org.scodec"    %%% "scodec-bits"    % V.`scodec-bits`)
-val `scodec-core`    = Def.setting("org.scodec"    %%% "scodec-core"    % V.`scodec-core`)
-val `scodec-stream`  = Def.setting("org.scodec"    %%% "scodec-stream"  % V.`scodec-stream`)
-val shapeless        = Def.setting("com.chuusai"   %%% "shapeless"      % V.shapeless)
+val `cats-core`      = Def.setting("org.typelevel" %% "cats-core" % V.cats)
+val `cats-laws`      = Def.setting("org.typelevel" %% "cats-laws" % V.cats)
+val `circe-core`     = Def.setting("io.circe" %%% "circe-core" % V.circe)
+val `circe-parser`   = Def.setting("io.circe" %%% "circe-parser" % V.circe)
+val `fs2-core`       = Def.setting("co.fs2" %%% "fs2-core" % V.fs2)
+val `fs2-io`         = Def.setting("co.fs2" %% "fs2-io" % V.fs2)
+val jedis            = Def.setting("redis.clients" % "jedis" % V.jedis)
+val kittens          = Def.setting("org.typelevel" %%% "kittens" % V.kittens)
+val `log-effect-fs2` = Def.setting("io.laserdisc" %%% "log-effect-fs2" % V.`log-effect-fs2`)
+val refined          = Def.setting("eu.timepit" %%% "refined" % V.refined)
+val `scodec-bits`    = Def.setting("org.scodec" %%% "scodec-bits" % V.`scodec-bits`)
+val `scodec-core`    = Def.setting("org.scodec" %%% "scodec-core" % V.`scodec-core`)
+val `scodec-stream`  = Def.setting("org.scodec" %%% "scodec-stream" % V.`scodec-stream`)
+val shapeless        = Def.setting("com.chuusai" %%% "shapeless" % V.shapeless)
 
-val `cats-discipline`      = Def.setting("org.typelevel"     %% "discipline-core"      % V.`cats-discipline`      % Test)
-val `discipline-scalatest` = Def.setting("org.typelevel"     %% "discipline-scalatest" % V.`discipline-scalatest` % Test)
-val `circe-generic`        = Def.setting("io.circe"          %%% "circe-generic"       % V.circe                  % Test)
-val `refined-scalacheck`   = Def.setting("eu.timepit"        %%% "refined-scalacheck"  % V.refined                % Test)
-val scalacheck             = Def.setting("org.scalacheck"    %%% "scalacheck"          % V.scalacheck             % Test)
-val scalatest              = Def.setting("org.scalatest"     %%% "scalatest"           % V.scalatest              % Test)
-val `scalatest-plus`       = Def.setting("org.scalatestplus" %%% "scalacheck-1-14"     % V.`scalatest-plus`       % Test)
+val `cats-discipline`      = Def.setting("org.typelevel" %% "discipline-core" % V.`cats-discipline` % Test)
+val `discipline-scalatest` = Def.setting("org.typelevel" %% "discipline-scalatest" % V.`discipline-scalatest` % Test)
+val `circe-generic`        = Def.setting("io.circe" %%% "circe-generic" % V.circe % Test)
+val `refined-scalacheck`   = Def.setting("eu.timepit" %%% "refined-scalacheck" % V.refined % Test)
+val scalacheck             = Def.setting("org.scalacheck" %%% "scalacheck" % V.scalacheck % Test)
+val scalatest              = Def.setting("org.scalatest" %%% "scalatest" % V.scalatest % Test)
+val `scalatest-plus`       = Def.setting("org.scalatestplus" %%% "scalacheck-1-14" % V.`scalatest-plus` % Test)
 
 val `scala-parallel-collections` = Def.setting {
   CrossVersion.partialVersion(scalaVersion.value) match {

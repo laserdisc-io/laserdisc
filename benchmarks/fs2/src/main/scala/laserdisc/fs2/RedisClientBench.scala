@@ -60,7 +60,7 @@ class LaserdiscState {
 
   @TearDown
   def tearDown(): Unit = {
-    clientShutdownProcess.flatTap(_ => IO(println("SHUTTING DOWN LASERDISC"))).unsafeRunSync()
+    clientShutdownProcess.unsafeRunSync()
   }
 }
 
@@ -84,6 +84,8 @@ class JedisState extends Pooling {
 }
 
 class RedisClientBench {
+  import RedisClientBench._
+
   def writeAndReadForKey[K](key: K, n: Int, write: (K, Int) => IO[Any], read: K => IO[Any]): IO[Int] = {
     val values = List.fill(n)((key, n))
     values
@@ -118,15 +120,19 @@ class RedisClientBench {
   }
 
   @Benchmark
-  @OperationsPerInvocation(2)
-  def jedis_write_accum_100(jedisState: JedisState): Int = writeAndReadJedis(jedisState.jedisPool, 2)
+  @OperationsPerInvocation(20)
+  def jedis_write_accum_100(jedisState: JedisState): Int = writeAndReadJedis(jedisState.jedisPool, numberOfItems)
 
   @Benchmark
-  @OperationsPerInvocation(2)
+  @OperationsPerInvocation(20)
   def laserdisc_write_accum_100(laserdiscState: LaserdiscState): Int = {
     val base = laserdiscState.base
     import base._
-    writeAndReadLaserdisc(laserdiscState.client, 1)
+    writeAndReadLaserdisc(laserdiscState.client, numberOfItems)
   }
 
+}
+
+object RedisClientBench {
+  val numberOfItems = 100
 }

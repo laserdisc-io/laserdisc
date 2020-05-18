@@ -156,6 +156,12 @@ This should produce an output similar to the following one:
 | ----:| -----:| --------------:|
 | [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.13.svg?label=laserdisc%20circe&colorB=darkgreen)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe) | 0.13.0 | [![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.13.svg?label=%20&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core) |
 
+## Support
+
+![YourKit Image](https://www.yourkit.com/images/yklogo.png "YourKit")
+
+This project is supported by YourKit with monitoring and profiling Tools. YourKit supports open source with innovative and intelligent tools for monitoring and profiling Java and .NET applications. YourKit is the creator of [YourKit Java Profiler](https://www.yourkit.com/java/profiler/), [YourKit .NET Profiler](https://www.yourkit.com/.net/profiler/), and [YourKit YouMonitor](https://www.yourkit.com/youmonitor/).
+
 ## License
 
 LaserDisc is licensed under the **[MIT License](LICENSE)** (the "License"); you may not use this software except in

@@ -8,6 +8,7 @@ import cats.syntax.all._
 import log.effect.LogWriter
 import shapeless._
 import cats.effect.syntax.concurrent._
+import log.effect.fs2.SyncLogWriter
 import log.effect.fs2.syntax._
 
 import scala.concurrent.duration._
@@ -15,22 +16,11 @@ import scala.concurrent.duration._
 object RedisClient {
 
   /**
-    * Creates a redis client that will handle the blocking network
+    * Creates a redis client that connects to a single
+    * redis node and handles the blocking network
     * connection's operations on a cached thread pool.
     */
-  @inline final def apply[F[_]: LogWriter: Concurrent: ContextShift: Timer](
-      addresses: Set[RedisAddress],
-      writeTimeout: Option[FiniteDuration] = Some(10.seconds),
-      readMaxBytes: Int = 256 * 1024
-  ): Resource[F, RedisClient[F]] =
-    Blocker[F] >>= (blockingPool => blockingOn(blockingPool)(addresses, writeTimeout, readMaxBytes))
-
-  /**
-    * Creates a redis client for a single redis node
-    * that will handle the blocking network connection's
-    * operations on a cached thread pool.
-    */
-  @inline final def toNode[F[_]: LogWriter: Concurrent: ContextShift: Timer](
+  @inline final def to[F[_]: LogWriter: ContextShift: Timer: Concurrent](
       host: Host,
       port: Port,
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
@@ -39,11 +29,22 @@ object RedisClient {
     Blocker[F] >>= (blockingPool => blockingOn(blockingPool)(Set(RedisAddress(host, port)), writeTimeout, readMaxBytes))
 
   /**
-    * Creates a redis client for a single redis node
-    * that will handle the blocking network connection's
-    * operations on a cached thread pool.
+    * Creates a redis client that will handle the blocking network
+    * connection's operations on a cached thread pool.
     */
-  @inline final def toNodeBlockingOn[F[_]: LogWriter: Concurrent: ContextShift: Timer](
+  @inline final def toNodes[F[_]: LogWriter: ContextShift: Timer: Concurrent](
+      addresses: Set[RedisAddress],
+      writeTimeout: Option[FiniteDuration] = Some(10.seconds),
+      readMaxBytes: Int = 256 * 1024
+  ): Resource[F, RedisClient[F]] =
+    Blocker[F] >>= (blockingPool => blockingOn(blockingPool)(addresses, writeTimeout, readMaxBytes))
+
+  /**
+    * Creates a redis client that connects to a single
+    * redis node and handles the blocking network
+    * connection's operations on a cached thread pool.
+    */
+  @inline final def toNodeBlockingOn[F[_]: LogWriter: ContextShift: Timer: Concurrent](
       blockingPool: Blocker
   )(
       host: Host,
@@ -54,11 +55,29 @@ object RedisClient {
     blockingOn(blockingPool)(Set(RedisAddress(host, port)), writeTimeout, readMaxBytes)
 
   /**
-    * Creates a redis client allowing to specify what blocking
-    * thread pool will be used to handle the blocking network
+    * Creates a redis client that connects to a single
+    * redis node and handles the blocking network
+    * connection's operations on a cached thread pool.
+    * The client will generate no logs (uses a noOpLog)
+    */
+  @inline final def toNodeNoLogs[F[_]](
+      host: Host,
+      port: Port,
+      writeTimeout: Option[FiniteDuration] = Some(10.seconds),
+      readMaxBytes: Int = 256 * 1024
+  )(
+      implicit cs: ContextShift[F],
+      ti: Timer[F],
+      co: Concurrent[F]
+  ): Resource[F, RedisClient[F]] =
+    to(host, port, writeTimeout, readMaxBytes)(SyncLogWriter.noOpLog[F], cs, ti, co)
+
+  /**
+    * Creates a redis client allowing to specify which
+    * thread pool is used to handle the blocking network
     * connection's operations.
     */
-  @inline final def blockingOn[F[_]: LogWriter: Concurrent: ContextShift: Timer](
+  @inline final def blockingOn[F[_]: LogWriter: ContextShift: Timer: Concurrent](
       blockingPool: Blocker
   )(
       addresses: Set[RedisAddress],

@@ -34,7 +34,7 @@ final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers {
     import log.effect.fs2.SyncLogWriter
 
     def redisTest(implicit log: LogWriter[IO]): IO[Unit] =
-      RedisClient.toNode("localhost", 6379).use { client =>
+      RedisClient.to("localhost", 6379).use { client =>
         client.send(
           set("a", 23),
           set("b", 55),

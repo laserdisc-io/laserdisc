@@ -11,8 +11,6 @@ import cats.syntax.functor._
 import cats.syntax.traverse._
 import laserdisc.all._
 import laserdisc.auto._
-import log.effect.LogWriter
-import log.effect.fs2.SyncLogWriter.noOpLog
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -29,7 +27,6 @@ private[fs2] abstract class ClientSpec(p: Port) extends ClientBaseSpec[IO](p) {
   override implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
   override implicit val timer: Timer[IO]               = IO.timer(ec)
   override implicit val concurrent: Concurrent[IO]     = IO.ioConcurrentEffect
-  override implicit val logger: LogWriter[IO]          = noOpLog[IO]
 
   override def run[A]: IO[A] => A = _.unsafeRunSync()
 }
@@ -38,11 +35,10 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
   implicit def contextShift: ContextShift[F]
   implicit def timer: Timer[F]
   implicit def concurrent: Concurrent[F]
-  implicit def logger: LogWriter[F]
 
   def run[A]: F[A] => A
   def clientUnderTest: Resource[F, RedisClient[F]] =
-    RedisClient.toNode("127.0.0.1", p)
+    RedisClient.toNodeNoLogs("127.0.0.1", p)
 
   private[this] final val key: Key = "test-key"
   private[this] final val text     = "test text"

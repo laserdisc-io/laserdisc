@@ -51,7 +51,7 @@ class LaserdiscState {
     import base._
     this.base = base
 
-    val clientResource = RedisClient.toNodeNoLogs("localhost", 6379).allocated.unsafeRunSync()
+    val clientResource = RedisClient.to("localhost", 6379).allocated.unsafeRunSync()
     client = clientResource._1
     clientShutdownProcess = clientResource._2
   }

@@ -38,7 +38,7 @@ private[fs2] abstract class ClientBaseSpec[F[_]](p: Port) extends AnyWordSpecLik
 
   def run[A]: F[A] => A
   def clientUnderTest: Resource[F, RedisClient[F]] =
-    RedisClient.toNodeNoLogs("127.0.0.1", p)
+    RedisClient.to("127.0.0.1", p)
 
   private[this] final val key: Key = "test-key"
   private[this] final val text     = "test text"

@@ -1,4 +1,3 @@
-import java.io.{ByteArrayOutputStream, PrintStream}
 import java.util.concurrent.ForkJoinPool
 
 import cats.effect.{ContextShift, IO, Timer}
@@ -8,23 +7,14 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
-final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers {
+final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers with ConsoleUtil {
 
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
   private[this] implicit val timer: Timer[IO]               = IO.timer(ec)
   private[this] implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
-  private[this] def capturedConsoleOutOf(aWrite: IO[Unit]): String = {
-    val lowerStream = new ByteArrayOutputStream()
-    val outStream   = new PrintStream(lowerStream)
-
-    Console.withOut(outStream)(aWrite.unsafeRunSync)
-
-    lowerStream.toString
-  }
-
-  "The readme example should give the expected output" in {
+  "The readme example should give the expected output and log when a LogWriter is in scope" in {
     import cats.syntax.flatMap._
     import laserdisc._
     import laserdisc.all._

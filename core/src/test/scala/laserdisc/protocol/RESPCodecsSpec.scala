@@ -3,14 +3,14 @@ package protocol
 
 import java.nio.charset.StandardCharsets.UTF_8
 
-import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen._
-import org.scalatest.EitherValues
+import org.scalacheck.Prop.forAll
+import org.scalacheck.{Arbitrary, Gen}
 import scodec.bits.BitVector
 import scodec.{Codec, Err => SErr}
 
-object RESPCodecsSpec extends EitherValues {
+object RESPCodecsSpec {
   private[this] final object functions {
     private[this] final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
     private[this] final val requireEncode = (resp: RESP) => Codec[RESP].encode(resp).require
@@ -90,67 +90,106 @@ final class RESPCodecsSpec extends BaseSpec {
   private[this] implicit val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
   private[this] implicit val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
 
-  "A RESP codec" when {
-    "handling unknown protocol type" should {
-      "fail with correct error message" in forAll { c: Char =>
-        s"$c".RESP.left.value.messageWithContext shouldBe s"unidentified RESP type (Hex: ${c.toHex})"
-      }
+  property("A RESP codec handling unknown protocol type fails with correct error message") {
+    forAll { c: Char =>
+      assertLeftEquals(
+        s"$c".RESP leftMap (_.messageWithContext),
+        s"unidentified RESP type (Hex: ${c.toHex})"
+      )
     }
+  }
 
-    "handling simple strings" should {
-      "decode them correctly" in forAll { s: String => s"+$s$CRLF".RESP onRight (_ shouldBe Str(s)) }
-      "encode them correctly" in forAll { s: Str => s.wireFormat shouldBe s"+${s.value}$CRLF" }
-      "roundtrip with no errors" in forAll { s: Str => s.roundTrip shouldBe s }
-    }
+  property("A RESP codec handling simple strings decodes them correctly") {
+    forAll { s: String => assertEquals(s"+$s$CRLF".RESP, Str(s)) }
+  }
 
-    "handling errors" should {
-      "decode them correctly" in forAll { s: String => s"-$s$CRLF".RESP onRight (_ shouldBe Err(s)) }
-      "encode them correctly" in forAll { e: Err => e.wireFormat shouldBe s"-${e.message}$CRLF" }
-      "roundtrip with no errors" in forAll { e: Err => e.roundTrip shouldBe e }
-    }
+  property("A RESP codec handling simple strings decodes them correctly") {
+    forAll { s: Str => assertEquals(s.wireFormat, s"+${s.value}$CRLF") }
+  }
 
-    "handling integers" should {
-      "decode them correctly" in forAll { l: Long => s":$l$CRLF".RESP onRight (_ shouldBe Num(l)) }
-      "encode them correctly" in forAll { n: Num => n.wireFormat shouldBe s":${n.value}$CRLF" }
-      "roundtrip with no errors" in forAll { n: Num => n.roundTrip shouldBe n }
-    }
+  property("A RESP codec handling simple strings roundtrips with no errors") {
+    forAll { s: Str => assertEquals(s.roundTrip, s) }
+  }
 
-    "handling bulk strings" should {
-      "fail with correct error message when decoding size < -1" in {
-        s"$$-2${CRLF}bla$CRLF".RESP.left.value.messageWithContext shouldBe "size: failed to decode bulk-string of size -2"
-      }
-      "decode them correctly" in forAll { os: Option[String] =>
-        os match {
-          case None    => s"$$-1$CRLF".RESP onRight (_ shouldBe NullBulk)
-          case Some(s) => s"$$${s.bytesLength}$CRLF$s$CRLF".RESP onRight (_ shouldBe Bulk(s))
-        }
-      }
-      "encode them correctly" in forAll { b: GenBulk =>
-        b match {
-          case NullBulk => b.wireFormat shouldBe s"$$-1$CRLF"
-          case Bulk(bs) => b.wireFormat shouldBe s"$$${bs.bytesLength}$CRLF$bs$CRLF"
-        }
-      }
-      "roundtrip with no errors" in forAll { b: GenBulk => b.roundTrip shouldBe b }
-    }
+  property("A RESP codec handling errors decodes them correctly") {
+    forAll { s: String => assertEquals(s"-$s$CRLF".RESP, Err(s)) }
+  }
 
-    "handling arrays" should {
-      "fail with correct error message when decoding size < -1" in {
-        s"*-2${CRLF}bla$CRLF".RESP.left.value.messageWithContext shouldBe "size: failed to decode array of size -2"
+  property("A RESP codec handling errors encodes them correctly") {
+    forAll { e: Err => assertEquals(e.wireFormat, s"-${e.message}$CRLF") }
+  }
+
+  property("A RESP codec handling errors roundtrips with no errors") {
+    forAll { e: Err => assertEquals(e.roundTrip, e) }
+  }
+
+  property("A RESP codec handling integers decodes them correctly") {
+    forAll { l: Long => assertEquals(s":$l$CRLF".RESP, Num(l)) }
+  }
+
+  property("A RESP codec handling integers encodes them correctly") {
+    forAll { n: Num => assertEquals(n.wireFormat, s":${n.value}$CRLF") }
+  }
+
+  property("A RESP codec handling integers roundtrips with no errors") {
+    forAll { n: Num => assertEquals(n.roundTrip, n) }
+  }
+
+  property("A RESP codec handling bulk strings fails with correct error message when decoding size < -1") {
+    assertLeftEquals(
+      s"$$-2${CRLF}bla$CRLF".RESP leftMap (_.messageWithContext),
+      "size: failed to decode bulk-string of size -2"
+    )
+  }
+
+  property("A RESP codec handling bulk strings decodes them correctly") {
+    forAll { os: Option[String] =>
+      os match {
+        case None    => assertEquals(s"$$-1$CRLF".RESP, NullBulk)
+        case Some(s) => assertEquals(s"$$${s.bytesLength}$CRLF$s$CRLF".RESP, Bulk(s))
       }
-      "decode them correctly" in forAll { ors: Option[List[RESP]] =>
-        ors match {
-          case None     => s"*-1$CRLF".RESP onRight (_ shouldBe NilArr)
-          case Some(xs) => s"*${xs.length}$CRLF${xs.wireFormat}".RESP onRight (_ shouldBe Arr(xs))
-        }
-      }
-      "encode them correctly" in forAll { a: GenArr =>
-        a match {
-          case NilArr  => a.wireFormat shouldBe s"*-1$CRLF"
-          case Arr(xs) => a.wireFormat shouldBe s"*${xs.length}$CRLF${xs.wireFormat}"
-        }
-      }
-      "roundtrip with no errors" in forAll { a: GenArr => a.roundTrip shouldBe a }
     }
+  }
+
+  property("A RESP codec handling bulk strings encodes them correctly") {
+    forAll { b: GenBulk =>
+      b match {
+        case NullBulk => assertEquals(b.wireFormat, s"$$-1$CRLF")
+        case Bulk(bs) => assertEquals(b.wireFormat, s"$$${bs.bytesLength}$CRLF$bs$CRLF")
+      }
+    }
+  }
+
+  property("A RESP codec handling bulk strings roundtrips with no errors") {
+    forAll { b: GenBulk => assertEquals(b.roundTrip, b) }
+  }
+
+  property("A RESP codec handling arrays fails with correct error message when decoding size < -1") {
+    assertLeftEquals(
+      s"*-2${CRLF}bla$CRLF".RESP leftMap (_.messageWithContext),
+      "size: failed to decode array of size -2"
+    )
+  }
+
+  property("A RESP codec handling bulk strings decodes them correctly") {
+    forAll { ors: Option[List[RESP]] =>
+      ors match {
+        case None     => assertEquals(s"*-1$CRLF".RESP, NilArr)
+        case Some(xs) => assertEquals(s"*${xs.length}$CRLF${xs.wireFormat}".RESP, Arr(xs))
+      }
+    }
+  }
+
+  property("A RESP codec handling bulk strings encodes them correctly") {
+    forAll { a: GenArr =>
+      a match {
+        case NilArr  => assertEquals(a.wireFormat, s"*-1$CRLF")
+        case Arr(xs) => assertEquals(a.wireFormat, s"*${xs.length}$CRLF${xs.wireFormat}")
+      }
+    }
+  }
+
+  property("A RESP codec handling bulk strings roundtrips with no errors") {
+    forAll { a: GenArr => assertEquals(a.roundTrip, a) }
   }
 }

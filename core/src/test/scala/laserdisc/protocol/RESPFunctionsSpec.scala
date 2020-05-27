@@ -19,7 +19,7 @@ final class RESPFunctionsSpec extends BaseSpec {
   }
 
   test(
-    "A RESP codec checking the state of a bit vector whit the size prefix complete and an incomplete payload gives MissingBits with the correct number of bits missing"
+    "A RESP codec checking the state of a bit vector with the size prefix complete and an incomplete payload gives MissingBits with the correct number of bits missing"
   ) {
     assertEquals(RESP.stateOf(BitVector("$40\r\nIncomplete test bulk string".getBytes)), MissingBits(120))
   }

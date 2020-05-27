@@ -1,105 +1,65 @@
 package laserdisc
 package protocol
 
-abstract class KeyExtPSpec extends BaseSpec with KeyP {
+import org.scalacheck.Prop.forAll
+
+final class KeyExtPSpec extends KeyPSpec {
   import keytypes._
-  import org.scalacheck.{Arbitrary, Gen}
 
-  protected implicit final val keyMigrateModeArb: Arbitrary[KeyMigrateMode] = Arbitrary {
-    Gen.oneOf(KeyMigrateMode.both, KeyMigrateMode.copy, KeyMigrateMode.replace)
-  }
-  protected implicit final val nokeyOrOkArb: Arbitrary[NOKEY | OK] = Arbitrary(
-    Gen.oneOf(NOKEY, OK).map {
-      case NOKEY => Left(NOKEY)
-      case OK    => Right(OK)
+  [1..5#property("The Key extended protocol using del roundtrips successfully given [#key1#]") {
+    forAll { ([#k1: Key#], nni: NonNegInt) =>
+      val protocol = del([#k1#])
+      assertEquals(protocol.encode, Arr(Bulk("DEL"), [#Bulk(k1)#]))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
-  )
-
-  protected final val noKeyOrOkToStr: (NOKEY | OK) => Str = {
-    case Left(_)  => Str(NOKEY.value)
-    case Right(_) => Str(OK.value)
-  }
-
-  "The Key extended protocol" when {
-
-    "using del" should {
-
-      "roundtrip successfully" when {
-        [1..5#"given [#key1#]" in forAll([#"key1"#], "deleted") { ([#k1: Key#], nni: NonNegInt) =>
-          val protocol = del([#k1#])
-
-          protocol.encode shouldBe Arr(Bulk("DEL"), [#Bulk(k1)#])
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }#
-        ]
-      }
+  }#
+  ]
+  [1..5#property("The Key extended protocol using exists roundtrips successfully given [#key1#]") {
+    forAll { ([#k1: Key#], opi: Option[PosInt]) =>
+      val protocol = exists([#k1#])
+      assertEquals(protocol.encode, Arr(Bulk("EXISTS"), [#Bulk(k1)#]))
+      assertEquals(protocol.decode(Num(opi.fold(##0L)(_.value.toLong))), opi)
     }
-
-    "using exists" should {
-
-      "roundtrip successfully" when {
-        [1..5#"given [#key1#]" in forAll([#"key1"#], "exists") { ([#k1: Key#], opi: Option[PosInt]) =>
-          val protocol = exists([#k1#])
-
-          protocol.encode shouldBe Arr(Bulk("EXISTS"), [#Bulk(k1)#])
-          protocol.decode(Num(opi.fold(##0L)(_.value.toLong))) onRight (_ shouldBe opi)
-        }#
-        ]
-      }
+  }#
+  ]
+  [2..6#property("The Key extended protocol using migrate roundtrips successfully given [#key1#], host, port, db index and timeout") {
+    forAll { (keys: ([#Key#]), input: (Host, Port, DbIndex, NonNegInt, NOKEY | OK)) =>
+      val ([#k1#]) = keys
+      val (h, p, dbi, nni, nkOrOk) = input
+      val protocol = migrate([#k1#], h, p, dbi, nni)
+      assertEquals(protocol.encode, Arr(
+        Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: Bulk("KEYS") :: [#Bulk(k1)# ::] :: Nil
+      ))
+      assertEquals(protocol.decode(noKeyOrOkToStr(nkOrOk)), nkOrOk)
     }
-
-    "using migrate" should {
-
-      "roundtrip successfully" when {
-        [2..6#"given [#key1#], host, port, db index and timeout" in forAll("[#key1#]", "host, port, db index, timeout, response") { (keys: ([#Key#]), input: (Host, Port, DbIndex, NonNegInt, NOKEY | OK)) =>
-          val ([#k1#]) = keys
-          val (h, p, dbi, nni, nkOrOk) = input
-          val protocol = migrate([#k1#], h, p, dbi, nni)
-
-          protocol.encode shouldBe Arr(
-            Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: Bulk("KEYS") :: [#Bulk(k1)# ::] :: Nil
-          )
-          protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
-        }#
-        ]
-        [2..6#"given [#key1#], host, port, db index, timeout and migrate mode" in forAll("[#key1#]", "host, port, db index, timeout, migrate mode, response") { (keys: ([#Key#]), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, NOKEY | OK)) =>
-          val ([#k1#]) = keys
-          val (h, p, dbi, nni, mm, nkOrOk) = input
-          val protocol = migrate([#k1#], h, p, dbi, nni, mm)
-
-          protocol.encode shouldBe Arr(
-            Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: mm.params.map(Bulk(_)) ::: (Bulk("KEYS") :: [#Bulk(k1)# ::] :: Nil)
-          )
-          protocol.decode(noKeyOrOkToStr(nkOrOk)) onRight (_ shouldBe nkOrOk)
-        }#
-        ]
-      }
+  }#
+  ]
+  [2..6#property("The Key extended protocol using migrate roundtrips successfully given [#key1#], host, port, db index, timeout and migrate mode") {
+    forAll { (keys: ([#Key#]), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, NOKEY | OK)) =>
+      val ([#k1#]) = keys
+      val (h, p, dbi, nni, mm, nkOrOk) = input
+      val protocol = migrate([#k1#], h, p, dbi, nni, mm)
+      assertEquals(protocol.encode, Arr(
+        Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: mm.params.map(Bulk(_)) ::: (Bulk("KEYS") :: [#Bulk(k1)# ::] :: Nil)
+      ))
+      assertEquals(protocol.decode(noKeyOrOkToStr(nkOrOk)), nkOrOk)
     }
-
-    "using touch" should {
-
-      "roundtrip successfully" when {
-        [1..5#"given [#key1#]" in forAll([#"key1"#], "touched") { ([#k1: Key#], nni: NonNegInt) =>
-          val protocol = touch([#k1#])
-
-          protocol.encode shouldBe Arr(Bulk("TOUCH"), [#Bulk(k1)#])
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }#
-        ]
-      }
+  }#
+  ]
+  [1..5#property("The Key extended protocol using touch roundtrips successfully given [#key1#]") {
+    forAll { ([#k1: Key#], nni: NonNegInt) =>
+      val protocol = touch([#k1#])
+      assertEquals(protocol.encode, Arr(Bulk("TOUCH"), [#Bulk(k1)#]))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
-
-    "using unlink" should {
-
-      "roundtrip successfully" when {
-        [1..5#"given [#key1#]" in forAll([#"key1"#], "unlinked") { ([#k1: Key#], nni: NonNegInt) =>
-          val protocol = unlink([#k1#])
-
-          protocol.encode shouldBe Arr(Bulk("UNLINK"), [#Bulk(k1)#])
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }#
-        ]
-      }
+  }#
+  ]
+  [1..5#property("The Key extended protocol using unlink roundtrips successfully given [#key1#]") {
+    forAll { ([#k1: Key#], nni: NonNegInt) =>
+      val protocol = unlink([#k1#])
+      assertEquals(protocol.encode, Arr(Bulk("UNLINK"), [#Bulk(k1)#]))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
-  }
+  }#
+  ]
 }

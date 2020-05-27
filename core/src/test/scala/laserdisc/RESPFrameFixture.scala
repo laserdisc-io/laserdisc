@@ -2,9 +2,13 @@ package laserdisc
 
 import eu.timepit.refined.types.string.NonEmptyString
 import laserdisc.protocol._
+import org.scalacheck.Gen.chooseNum
+import org.scalacheck.{Arbitrary, Gen}
 import scodec.bits.BitVector
 
-private[laserdisc] trait RESPFrameFixture {
+import scala.Long.{MaxValue, MinValue}
+
+private[laserdisc] trait RESPFrameFixture extends HighPriorityGenerators {
   final val shortStr = " Short string repeated string repeated string repeated"
   final val mediumStr =
     "Medium size string repeated medium size string repeated medium size string repeated medium size string repeated medium size string repeated medium size string repeated medium size string repeated medium size string repeated medium size string"
@@ -137,4 +141,98 @@ private[laserdisc] trait RESPFrameFixture {
     }
     aggregate._2
   }
+}
+
+private[laserdisc] trait HighPriorityGenerators extends LowPriorityGenerators {
+
+  private[this] def oneOrMoreProtocol(gen: Gen[ProtocolEncoded]): Gen[OneOrMore[ProtocolEncoded]] =
+    Gen.chooseNum(1, Math.min(scalaCheckTestParameters.maxSize, 300)) flatMap (Gen.listOfN(_, gen)) map OneOrMore.unsafeFrom
+
+  private[this] def listProtocol(gen: Gen[ProtocolEncoded]): Gen[List[ProtocolEncoded]] =
+    Gen.chooseNum(1, 20) flatMap (Gen.listOfN(_, gen))
+
+  private[this] final def noArrEncoded(
+      implicit bulk: Gen[BulkEncoded],
+      num: Gen[NumEncoded],
+      str: Gen[StrEncoded],
+      err: Gen[ErrEncoded],
+      emptyBulk: Gen[EmptyBulkEncoded],
+      nullBulk: Gen[NullBulkEncoded],
+      emptyArr: Gen[EmptyArrEncoded],
+      nullArr: Gen[NullArrEncoded]
+  ): Gen[ProtocolEncoded] =
+    Gen.frequency(
+      10 -> bulk,
+      10 -> num,
+      10 -> str,
+      10 -> err,
+      3  -> emptyBulk,
+      3  -> nullBulk,
+      3  -> emptyArr,
+      3  -> nullArr
+    )
+
+  private[this] final val noArrArrEncoded: Gen[ArrEncoded] =
+    listProtocol(noArrEncoded) map ArrEncoded.apply
+
+  private[this] final def oneLevelArrEncoded(arrGen: Gen[ArrEncoded]): Gen[ArrEncoded] =
+    listProtocol(
+      Gen.frequency(
+        20 -> noArrEncoded,
+        3  -> arrGen
+      )
+    ) map ArrEncoded.apply
+
+  private[this] final def xLevelsNestedArrEncoded(x: Int): Gen[ArrEncoded] = {
+    @scala.annotation.tailrec
+    def loop(left: Int, soFar: Gen[ArrEncoded]): Gen[ArrEncoded] =
+      if (left > 0) loop(left - 1, oneLevelArrEncoded(soFar))
+      else soFar
+
+    loop(x, oneLevelArrEncoded(noArrArrEncoded))
+  }
+
+  private[this] final val protocolEncoded: Gen[ProtocolEncoded] =
+    Gen.frequency(
+      50 -> noArrEncoded,
+      25 -> oneLevelArrEncoded(noArrArrEncoded),
+      25 -> noArrArrEncoded,
+      10 -> xLevelsNestedArrEncoded(5)
+    )
+
+  private[laserdisc] implicit final val oneOrMoreProtocols: Arbitrary[OneOrMore[ProtocolEncoded]] =
+    Arbitrary(oneOrMoreProtocol(protocolEncoded))
+}
+
+private[laserdisc] trait LowPriorityGenerators extends BaseSpec {
+  protected implicit final def string: Gen[String] = Gen.listOf(utf8BMPCharGen) map (_.mkString)
+
+  protected implicit final def nonEmptyString(implicit strGen: Gen[String]): Gen[NonEmptyString] =
+    strGen.filter(_.nonEmpty) map NonEmptyString.unsafeFrom
+
+  protected implicit final def bulkEncoded(implicit nesGen: Gen[NonEmptyString]): Gen[BulkEncoded] =
+    nesGen map BulkEncoded.apply
+
+  protected implicit final val long: Gen[Long] = chooseNum(MinValue, MaxValue)
+
+  protected implicit final def numEncoded(implicit lnGen: Gen[Long]): Gen[NumEncoded] =
+    lnGen map NumEncoded.apply
+
+  protected implicit final def strEncoded(implicit sGen: Gen[String]): Gen[StrEncoded] =
+    sGen.map(s => s.replace(CRLF, "")).filter(_.nonEmpty) map StrEncoded.apply
+
+  protected implicit final def errEncoded(implicit nesGen: Gen[NonEmptyString]): Gen[ErrEncoded] =
+    nesGen map ErrEncoded.apply
+
+  protected implicit final val emptyBulkEncoded: Gen[EmptyBulkEncoded] =
+    Gen.const(EmptyBulkEncoded())
+
+  protected implicit final val nullBulkEncoded: Gen[NullBulkEncoded] =
+    Gen.const(NullBulkEncoded())
+
+  protected implicit final val emptyArrEncoded: Gen[EmptyArrEncoded] =
+    Gen.const(EmptyArrEncoded())
+
+  protected implicit final val nullArrEncoded: Gen[NullArrEncoded] =
+    Gen.const(NullArrEncoded())
 }

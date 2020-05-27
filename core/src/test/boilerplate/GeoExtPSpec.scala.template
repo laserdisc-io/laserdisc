@@ -1,85 +1,33 @@
 package laserdisc
 package protocol
 
-abstract class GeoExtPSpec extends BaseSpec with GeoP {
+import org.scalacheck.Prop.forAll
+
+final class GeoExtPSpec extends GeoPSpec {
   import geotypes._
-  import org.scalacheck.{Arbitrary, Gen}
-  import org.scalacheck.Arbitrary.arbitrary
 
-  protected implicit final val geoHashShow: Show[GeoHash] = Show.unsafeFromToString
-
-  protected implicit final val geoCoordinatesArb: Arbitrary[GeoCoordinates] = Arbitrary {
-    for {
-      lat  <- arbitrary[Latitude]
-      long <- arbitrary[Longitude]
-    } yield GeoCoordinates(lat, long)
-  }
-  protected implicit final val geoPositionArb: Arbitrary[GeoPosition] = Arbitrary {
-    for {
-      m    <- arbitrary[Key]
-      lat  <- arbitrary[Latitude]
-      long <- arbitrary[Longitude]
-    } yield GeoPosition(m, lat, long)
-  }
-  protected implicit final val geoUnitArb: Arbitrary[GeoUnit] = Arbitrary {
-    Gen.oneOf(GeoUnit.meters, GeoUnit.kilometers, GeoUnit.miles, GeoUnit.feet)
-  }
-
-  protected final val geoPositionToBulkList: GeoPosition => List[Bulk] = {
-    case GeoPosition(m, lat, long) => Bulk(long) :: Bulk(lat) :: Bulk(m) :: Nil
-  }
-  protected final val nonNegDoubleOptionToBulk: Option[NonNegDouble] => GenBulk = _.fold(NullBulk: GenBulk)(Bulk(_))
-  protected final val oneOrMoreGeoCoordinatesOptionToArr: OneOrMore[Option[GeoCoordinates]] => GenArr = _.value.foldLeft(NilArr: GenArr) {
-    case (NilArr, Some(GeoCoordinates(lat, long))) => Arr(Arr(Bulk(long), Bulk(lat)))
-    case (NilArr, None)                            => Arr(NilArr)
-    case (Arr(e), Some(GeoCoordinates(lat, long))) => Arr(e :+ Arr(Bulk(long), Bulk(lat)))
-    case (Arr(e), None)                            => Arr(e :+ NilArr)
-  }
-  protected final val oneOrMoreGeoHashOptionToArr: OneOrMore[Option[GeoHash]] => GenArr = _.value.foldLeft(NilArr: GenArr) {
-    case (NilArr, Some(gh)) => Arr(Bulk(gh))
-    case (NilArr, None)     => Arr(NullBulk)
-    case (Arr(e), Some(gh)) => Arr(e :+ Bulk(gh))
-    case (Arr(e), None)     => Arr(e :+ NullBulk)
-  }
-
-  "The Geo extended protocol" when {
-
-    "using geoadd" should {
-      "roundtrip successfully" when {
-        [1..4#"given key and [#position1#]" in forAll("key", [#"position1"#], "added") { (k: Key, [#p1: GeoPosition#], nni: NonNegInt) =>
-          val protocol = geoadd(k, [#p1#])
-
-          protocol.encode shouldBe Arr(Bulk("GEOADD") :: Bulk(k) :: List([#p1#]).flatMap(geoPositionToBulkList))
-          protocol.decode(Num(nni.value.toLong)) onRight (_ shouldBe nni)
-        }#
-        ]
-      }
+  [1..5#property("The Geo extended protocol using geoadd roundtrips successfully given key and [#position1#]") {
+    forAll { (k: Key, [#p1: GeoPosition#], nni: NonNegInt) =>
+      val protocol = geoadd(k, [#p1#])
+      assertEquals(protocol.encode, Arr(Bulk("GEOADD") :: Bulk(k) :: List([#p1#]).flatMap(geoPositionToBulkList)))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
-
-    "using geohash" should {
-
-      "roundtrip successfully" when {
-        [1..4#"given key and [#member1#]" in forAll("key", [#"member1"#], "geo hashes") { (k: Key, [#m1: Key#], oghs: OneOrMore[Option[GeoHash]]) =>
-          val protocol = geohash(k, [#m1#])
-
-          protocol.encode shouldBe Arr(Bulk("GEOHASH") :: Bulk(k) :: List([#Bulk(m1)#]))
-          protocol.decode(oneOrMoreGeoHashOptionToArr(oghs)) onRight (_ shouldBe oghs.value)
-        }#
-        ]
-      }
+  }#
+  ]
+  [1..5#property("The Geo extended protocol using geohash roundtrips successfully given key and [#member1#]") {
+    forAll { (k: Key, [#m1: Key#], oghs: OneOrMore[Option[GeoHash]]) =>
+      val protocol = geohash(k, [#m1#])
+      assertEquals(protocol.encode, Arr(Bulk("GEOHASH") :: Bulk(k) :: List([#Bulk(m1)#])))
+      assertEquals(protocol.decode(oneOrMoreGeoHashOptionToArr(oghs)), oghs.value)
     }
-
-    "using geopos" should {
-
-      "roundtrip successfully" when {
-        [1..4#"given key and [#member1#]" in forAll("key", [#"member1"#], "coordinates") { (k: Key, [#m1: Key#], ocs: OneOrMore[Option[GeoCoordinates]]) =>
-          val protocol = geopos(k, [#m1#])
-
-          protocol.encode shouldBe Arr(Bulk("GEOPOS") :: Bulk(k) :: List([#Bulk(m1)#]))
-          protocol.decode(oneOrMoreGeoCoordinatesOptionToArr(ocs)) onRight (_ shouldBe ocs.value)
-        }#
-        ]
-      }
+  }#
+  ]
+  [1..5#property("The Geo extended protocol using geopos roundtrips successfully given key and [#member1#]") {
+    forAll { (k: Key, [#m1: Key#], ocs: OneOrMore[Option[GeoCoordinates]]) =>
+      val protocol = geopos(k, [#m1#])
+      assertEquals(protocol.encode, Arr(Bulk("GEOPOS") :: Bulk(k) :: List([#Bulk(m1)#])))
+      assertEquals(protocol.decode(oneOrMoreGeoCoordinatesOptionToArr(ocs)), ocs.value)
     }
-  }
+  }#
+  ]
 }

@@ -7,6 +7,7 @@ import cats.effect.syntax.concurrent._
 import cats.effect.{Blocker, Concurrent, ContextShift, Fiber, Resource, Sync, Timer}
 import cats.syntax.all._
 import log.effect.LogWriter
+import log.effect.fs2.LogSelector
 import shapeless._
 import log.effect.fs2.syntax._
 
@@ -19,7 +20,7 @@ object RedisClient {
     * redis node and handles the blocking network
     * connection's operations on a cached thread pool.
     */
-  @inline final def to[F[_]: ContextShift: Timer: LoggingSystem: Concurrent](
+  @inline final def to[F[_]: ContextShift: Timer: LogSelector: Concurrent](
       host: Host,
       port: Port,
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
@@ -31,7 +32,7 @@ object RedisClient {
     * Creates a redis client that will handle the blocking network
     * connection's operations on a cached thread pool.
     */
-  @inline final def toNodes[F[_]: ContextShift: Timer: LoggingSystem: Concurrent](
+  @inline final def toNodes[F[_]: ContextShift: Timer: LogSelector: Concurrent](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
@@ -43,7 +44,7 @@ object RedisClient {
     * redis node and handles the blocking network
     * connection's operations on a cached thread pool.
     */
-  @inline final def toNodeBlockingOn[F[_]: ContextShift: Timer: LoggingSystem: Concurrent](
+  @inline final def toNodeBlockingOn[F[_]: ContextShift: Timer: LogSelector: Concurrent](
       blockingPool: Blocker
   )(
       host: Host,
@@ -58,14 +59,14 @@ object RedisClient {
     * thread pool is used to handle the blocking network
     * connection's operations.
     */
-  @inline final def blockingOn[F[_]: ContextShift: Timer: LoggingSystem: Concurrent](
+  @inline final def blockingOn[F[_]: ContextShift: Timer: LogSelector: Concurrent](
       blockingPool: Blocker
   )(
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 256 * 1024
   ): Resource[F, RedisClient[F]] = {
-    implicit val lw: LogWriter[F] = LoggingSystem[F].ls
+    implicit val lw: LogWriter[F] = LogSelector[F].log
     def redisConnection(address: RedisAddress): Pipe[F, RESP, RESP] =
       stream =>
         Stream.eval(address.toInetSocketAddress) >>= { address =>

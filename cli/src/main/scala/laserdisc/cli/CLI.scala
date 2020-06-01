@@ -7,8 +7,6 @@ import _root_.fs2.{io, text}
 import cats.effect._
 import cats.syntax.all._
 import laserdisc.fs2._
-import log.effect.LogWriter
-import log.effect.fs2.SyncLogWriter
 
 import scala.concurrent.ExecutionContext.fromExecutorService
 import scala.reflect.runtime.universe
@@ -69,7 +67,7 @@ object CLI extends IOApp { self =>
 
         (maybeHost, maybePort) match {
           case (Some(ip), Some(port)) =>
-            IO(println(logo)) >> impl.mkStream(ip, port)(SyncLogWriter.noOpLog[IO]).compile.drain.as(ExitCode.Success)
+            IO(println(logo)) >> impl.mkStream(ip, port).compile.drain.as(ExitCode.Success)
           case _ => IO(println("please supply valid host and port (space separated)")).as(ExitCode.Error)
         }
 
@@ -79,9 +77,9 @@ object CLI extends IOApp { self =>
   private[cli] final object impl {
     private[this] val tb = universe.runtimeMirror(self.getClass.getClassLoader).mkToolBox()
 
-    def mkStream(host: Host, port: Port)(implicit `_`: LogWriter[IO]): Stream[IO, ExitCode] =
+    def mkStream(host: Host, port: Port): Stream[IO, ExitCode] =
       Stream.resource(Blocker.fromExecutorService[IO](IO(fromExecutorService(newSingleThreadExecutor)))) >>= { replBlockingPool =>
-        Stream.resource(RedisClient.toNode[IO](host, port)) evalMap { redisClient =>
+        Stream.resource(RedisClient.to(host, port)) evalMap { redisClient =>
           val promptStream: Stream[IO, String] = Stream.emit(s"$host:$port> ").repeat
 
           val emptyPrompt: IO[Unit] =

@@ -19,7 +19,7 @@ object RedisChannel {
   private[this] final val streamDecoder = StreamDecoder.many(Codec[RESP])
   private[this] final val streamEncoder = StreamEncoder.many(Codec[RESP])
 
-  final def apply[F[_]: Concurrent: ContextShift: LogWriter](
+  private[fs2] final def apply[F[_]: ContextShift: LogWriter: Concurrent](
       address: InetSocketAddress,
       writeTimeout: Option[FiniteDuration] = None,
       readMaxBytes: Int = 256 * 1024

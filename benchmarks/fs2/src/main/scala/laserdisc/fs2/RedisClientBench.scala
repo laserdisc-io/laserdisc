@@ -51,9 +51,7 @@ class LaserdiscState {
     import base._
     this.base = base
 
-    implicit val logWriter: LogWriter[IO] = SyncLogWriter.noOpLog
-
-    val clientResource = RedisClient.toNode("localhost", 6379).allocated.unsafeRunSync()
+    val clientResource = RedisClient.to("localhost", 6379).allocated.unsafeRunSync()
     client = clientResource._1
     clientShutdownProcess = clientResource._2
   }

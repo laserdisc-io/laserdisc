@@ -94,7 +94,8 @@ val fs2Deps = Def.Initialize
       `log-effect-fs2`,
       `scodec-stream`,
       scalacheck,
-      scalatest
+      munit,
+      `munit-scalacheck`
     )
   }
   .zipWith(`scala-parallel-collections`) {
@@ -241,10 +242,15 @@ lazy val publishSettings = Seq(
   releaseEarlyWith := SonatypePublisher
 )
 
-lazy val testSettings = Seq(
+lazy val scalaTestTestSettings = Seq(
   testFrameworks += new TestFramework("munit.Framework"),
   scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oDF")
+)
+
+lazy val testSettings = Seq(
+  testFrameworks += new TestFramework("munit.Framework"),
+  scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
 )
 
 lazy val scaladocSettings = Seq(
@@ -267,6 +273,9 @@ lazy val scoverageSettings = Seq(
 )
 
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
+
+// TODO: Remove when all tests migrated to Munit
+lazy val allSettingsScalaTest = commonSettings ++ scalaTestTestSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -298,7 +307,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
 lazy val `core-laws` = project
   .in(file("core-laws"))
   .dependsOn(core.jvm)
-  .settings(commonSettings ++ testSettings)
+  .settings(commonSettings ++ scalaTestTestSettings)
   .settings(
     name := "laserdisc-core-laws",
     libraryDependencies ++= coreDeps.value ++ coreLawsDeps.value,
@@ -336,7 +345,7 @@ lazy val `fs2-bench` = project
 lazy val cli = project
   .in(file("cli"))
   .dependsOn(fs2)
-  .settings(allSettings)
+  .settings(allSettingsScalaTest)
   .settings(
     name := "laserdisc-cli",
     libraryDependencies ++= fs2Deps.value
@@ -347,7 +356,7 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("circe"))
   .dependsOn(core)
-  .settings(allSettings)
+  .settings(allSettingsScalaTest)
   .settings(
     name := "laserdisc-circe",
     libraryDependencies ++= circeDeps.value

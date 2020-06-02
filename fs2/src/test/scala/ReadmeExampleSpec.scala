@@ -1,20 +1,19 @@
 import java.util.concurrent.ForkJoinPool
 
 import cats.effect.{ContextShift, IO, Timer}
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpecLike
+import munit.FunSuite
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
-final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers with ConsoleUtil {
+final class ReadmeExampleSpec extends FunSuite with TestLogCapture {
 
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
   private[this] implicit val timer: Timer[IO]               = IO.timer(ec)
   private[this] implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
-  "The readme example should give the expected output and log when a LogWriter is in scope" in {
+  test("The readme example gives the expected output and logs when a LogWriter is in scope") {
     import cats.syntax.flatMap._
     import laserdisc._
     import laserdisc.all._
@@ -43,19 +42,19 @@ final class ReadmeExampleSpec extends AnyWordSpecLike with Matchers with Console
       redisTest(SyncLogWriter.consoleLog[IO])
     }
 
-    logged should include("Starting connection")
-    logged should include("Server available for publishing: localhost:6379")
-    logged should include("sending Arr(Bulk(SET),Bulk(a),Bulk(23))")
-    logged should include("receiving Str(OK)")
-    logged should include("sending Arr(Bulk(SET),Bulk(b),Bulk(55))")
-    logged should include("receiving Str(OK)")
-    logged should include("sending Arr(Bulk(GET),Bulk(b))")
-    logged should include("receiving Bulk(55)")
-    logged should include("sending Arr(Bulk(GET),Bulk(a))")
-    logged should include("receiving Bulk(23)")
-    logged should include("yay!")
-    logged should include("Shutting down connection")
-    logged should include("Shutdown complete")
-    logged should include("Connection terminated: No issues")
+    assert(logged contains "Starting connection")
+    assert(logged contains "Server available for publishing: localhost:6379")
+    assert(logged contains "sending Arr(Bulk(SET),Bulk(a),Bulk(23))")
+    assert(logged contains "receiving Str(OK)")
+    assert(logged contains "sending Arr(Bulk(SET),Bulk(b),Bulk(55))")
+    assert(logged contains "receiving Str(OK)")
+    assert(logged contains "sending Arr(Bulk(GET),Bulk(b))")
+    assert(logged contains "receiving Bulk(55)")
+    assert(logged contains "sending Arr(Bulk(GET),Bulk(a))")
+    assert(logged contains "receiving Bulk(23)")
+    assert(logged contains "yay!")
+    assert(logged contains "Shutting down connection")
+    assert(logged contains "Shutdown complete")
+    assert(logged contains "Connection terminated: No issues")
   }
 }

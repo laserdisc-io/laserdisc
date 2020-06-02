@@ -2,7 +2,7 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 
 import cats.effect.IO
 
-trait ConsoleUtil {
+trait TestLogCapture {
 
   final def capturedConsoleOutOf(aWrite: IO[Unit]): String = {
     val lowerStream = new ByteArrayOutputStream()

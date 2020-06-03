@@ -1,20 +1,21 @@
 import java.util.concurrent.ForkJoinPool
 
 import cats.effect.{ContextShift, IO, Timer}
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpecLike
+import munit.FunSuite
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
-final class DefaultLoggerSpec extends AnyWordSpecLike with Matchers with ConsoleUtil {
+final class DefaultLoggerSpec extends FunSuite with TestLogCapture {
+
+  private def assertNot(c: =>Boolean): Unit = assert(!c)
 
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
   private[this] implicit val timer: Timer[IO]               = IO.timer(ec)
   private[this] implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
-  "The readme example should not log when a LogWriter is not given" in {
+  test("The readme example doesn't log when no LogWriter is given") {
     import cats.syntax.flatMap._
     import laserdisc._
     import laserdisc.all._
@@ -40,18 +41,18 @@ final class DefaultLoggerSpec extends AnyWordSpecLike with Matchers with Console
 
     val logged = capturedConsoleOutOf(redisTest)
 
-    logged shouldNot include("Starting connection")
-    logged shouldNot include("Server available for publishing: localhost:6379")
-    logged shouldNot include("sending Arr(Bulk(SET),Bulk(a),Bulk(23))")
-    logged shouldNot include("receiving Str(OK)")
-    logged shouldNot include("sending Arr(Bulk(SET),Bulk(b),Bulk(55))")
-    logged shouldNot include("receiving Str(OK)")
-    logged shouldNot include("sending Arr(Bulk(GET),Bulk(b))")
-    logged shouldNot include("receiving Bulk(55)")
-    logged shouldNot include("sending Arr(Bulk(GET),Bulk(a))")
-    logged shouldNot include("receiving Bulk(23)")
-    logged shouldNot include("Shutting down connection")
-    logged shouldNot include("Shutdown complete")
-    logged shouldNot include("Connection terminated: No issues")
+    assertNot(logged contains "Starting connection")
+    assertNot(logged contains "Server available for publishing: localhost:6379")
+    assertNot(logged contains "sending Arr(Bulk(SET),Bulk(a),Bulk(23))")
+    assertNot(logged contains "receiving Str(OK)")
+    assertNot(logged contains "sending Arr(Bulk(SET),Bulk(b),Bulk(55))")
+    assertNot(logged contains "receiving Str(OK)")
+    assertNot(logged contains "sending Arr(Bulk(GET),Bulk(b))")
+    assertNot(logged contains "receiving Bulk(55)")
+    assertNot(logged contains "sending Arr(Bulk(GET),Bulk(a))")
+    assertNot(logged contains "receiving Bulk(23)")
+    assertNot(logged contains "Shutting down connection")
+    assertNot(logged contains "Shutdown complete")
+    assertNot(logged contains "Connection terminated: No issues")
   }
 }

@@ -4,10 +4,8 @@ package interop
 import io.circe.generic.semiauto._
 import io.circe.{Decoder, Encoder}
 import laserdisc.interop.circe._
+import org.scalacheck.Prop.forAll
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 sealed trait Foo                        extends Product with Serializable
 final case class Bar(x: Int)            extends Foo
@@ -26,7 +24,7 @@ object Baz {
   implicit val encoder: Encoder[Baz] = deriveEncoder
 }
 
-final class CirceSpec extends AnyWordSpec with Matchers with ScalaCheckPropertyChecks with EitherTestSyntax {
+final class CirceSpec extends CirceCheckSettings with EitherTestSyntax {
   private[this] val barGen: Gen[Bar] = Arbitrary.arbitrary[Int].map(Bar.apply)
   private[this] val bazGen: Gen[Baz] = for {
     s   <- Arbitrary.arbitrary[String]
@@ -37,25 +35,21 @@ final class CirceSpec extends AnyWordSpec with Matchers with ScalaCheckPropertyC
   private[this] implicit val barArbitrary: Arbitrary[Bar] = Arbitrary(barGen)
   private[this] implicit val bazArbitrary: Arbitrary[Baz] = Arbitrary(bazGen)
 
-  "Circe interop" when {
-    "handling a simple type" should {
-      "roundtrip with no errors" in forAll { bar: Bar =>
-        Read[Bulk, Bar].read(Bulk(bar)) onRight (_ shouldBe bar)
-      }
+  property("Circe interop roundtrips with no errors when handling a simple type") {
+    forAll { bar: Bar =>
+      assertEquals(Read[Bulk, Bar].read(Bulk(bar)), bar)
     }
+  }
 
-    "handling a recursive type" should {
-      "roundtrip with no errors" in forAll { baz: Baz =>
-        Read[Bulk, Baz].read(Bulk(baz)) onRight (_ shouldBe baz)
-      }
+  property("Circe interop roundtrips with no errors when handling a recursive type") {
+    forAll { baz: Baz =>
+      assertEquals(Read[Bulk, Baz].read(Bulk(baz)), baz)
     }
+  }
 
-    "handling a json that does not respect the contract" should {
-      "fail to decode" in {
-        Read[Bulk, Bar].read(
-          Bulk("""{"i": null}""")
-        ) onLeft (_.message shouldBe "DecodingFailure at .x: Attempt to decode value on failed cursor")
-      }
-    }
+  test("Circe interop fails to decode when handling a json that does not respect the contract") {
+    Read[Bulk, Bar].read(
+      Bulk("""{"i": null}""")
+    ) onLeft (e => assertEquals(e.message, "DecodingFailure at .x: Attempt to decode value on failed cursor"))
   }
 }

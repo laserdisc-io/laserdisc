@@ -2,13 +2,10 @@ package laserdisc
 package interop
 
 import laserdisc.interop.circe._
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
+import munit.FunSuite
 
-final class CirceSpecJvm extends AnyWordSpec with Matchers with EitherTestSyntax {
-  "handling an invalid json" should {
-    "fail to decode" in {
-      Read[Bulk, Bar].read(Bulk("{")) onLeft (_.message shouldBe "ParsingFailure: exhausted input")
-    }
+final class CirceSpecJvm extends FunSuite with EitherTestSyntax {
+  test("handling an invalid json fails to decode") {
+    Read[Bulk, Bar].read(Bulk("{")) onLeft (e => assertEquals(e.message, "ParsingFailure: exhausted input"))
   }
 }

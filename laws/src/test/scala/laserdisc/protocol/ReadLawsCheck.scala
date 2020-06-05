@@ -6,21 +6,11 @@ import cats.instances.long._
 import cats.instances.string._
 import cats.laws.discipline.{ContravariantTests, MonadTests, SerializableTests}
 import cats.{Contravariant, Eq, Monad}
+import munit.DisciplineSuite
 import org.scalacheck.Gen.chooseNum
 import org.scalacheck.{Arbitrary, Cogen, Gen}
-import org.scalatest.funsuite.AnyFunSuiteLike
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.prop.Configuration
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
-import org.typelevel.discipline.scalatest.FunSuiteDiscipline
 
-final class ReadLawsCheck
-    extends AnyFunSuiteLike
-    with Matchers
-    with ScalaCheckDrivenPropertyChecks
-    with FunSuiteDiscipline
-    with Configuration
-    with Implicits {
+final class ReadLawsCheck extends DisciplineSuite with LawsCheckSettings with Implicits {
 
   import ReadInstances._
 
@@ -57,29 +47,25 @@ private[protocol] sealed trait Implicits {
     Arbitrary(ev.arbitrary map (s => Read.const(_ => s.length.toLong)))
 
   implicit def eqReadTup[A, B, C, D](implicit ga: Gen[List[A]], eb: Eq[B], ec: Eq[C], ed: Eq[D]): Eq[Read[A, (B, C, D)]] =
-    new Eq[Read[A, (B, C, D)]] {
-      override def eqv(x: ==>[A, (B, C, D)], y: ==>[A, (B, C, D)]): Boolean = {
-        val as = ga.sample.get
-        as.forall { a =>
-          (x.read(a), y.read(a)) match {
-            case (Right((b1, c1, d1)), Right((b2, c2, d2))) => eb.eqv(b1, b2) && ec.eqv(c1, c2) && ed.eqv(d1, d2)
-            case (Left(e1), Left(e2))                       => e1.message == e2.message
-            case _                                          => false
-          }
+    (x: ==>[A, (B, C, D)], y: ==>[A, (B, C, D)]) => {
+      val as = ga.sample.get
+      as.forall { a =>
+        (x.read(a), y.read(a)) match {
+          case (Right((b1, c1, d1)), Right((b2, c2, d2))) => eb.eqv(b1, b2) && ec.eqv(c1, c2) && ed.eqv(d1, d2)
+          case (Left(e1), Left(e2))                       => e1.message == e2.message
+          case _                                          => false
         }
       }
     }
 
   implicit def eqRead[A, B](implicit ga: Gen[List[A]], eb: Eq[B]): Eq[Read[A, B]] =
-    new Eq[Read[A, B]] {
-      override def eqv(x: A ==> B, y: A ==> B): Boolean = {
-        val as = ga.sample.get
-        as.forall { a =>
-          (x.read(a), y.read(a)) match {
-            case (Right(b1), Right(b2)) => eb.eqv(b1, b2)
-            case (Left(e1), Left(e2))   => e1.message == e2.message
-            case _                      => false
-          }
+    (x: A ==> B, y: A ==> B) => {
+      val as = ga.sample.get
+      as.forall { a =>
+        (x.read(a), y.read(a)) match {
+          case (Right(b1), Right(b2)) => eb.eqv(b1, b2)
+          case (Left(e1), Left(e2))   => e1.message == e2.message
+          case _                      => false
         }
       }
     }

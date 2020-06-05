@@ -4,7 +4,7 @@ import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 val V = new {
   val cats                   = "2.1.1"
   val `cats-discipline`      = "1.0.2"
-  val `discipline-scalatest` = "1.0.1"
+  val `discipline-munit`     = "0.2.2"
   val circe                  = "0.13.0"
   val fs2                    = "2.3.0"
   val jedis                  = "3.2.0"
@@ -15,8 +15,6 @@ val V = new {
   val `parallel-collections` = "0.2.0"
   val refined                = "0.9.14"
   val scalacheck             = "1.14.3"
-  val scalatest              = "3.1.2"
-  val `scalatest-plus`       = "3.1.1.1"
   val `scodec-bits`          = "1.1.14"
   val `scodec-core`          = "1.11.7"
   val `scodec-stream`        = "2.0.0"
@@ -38,15 +36,13 @@ val `scodec-core`    = Def.setting("org.scodec" %%% "scodec-core" % V.`scodec-co
 val `scodec-stream`  = Def.setting("org.scodec" %%% "scodec-stream" % V.`scodec-stream`)
 val shapeless        = Def.setting("com.chuusai" %%% "shapeless" % V.shapeless)
 
-val `cats-discipline`      = Def.setting("org.typelevel" %% "discipline-core" % V.`cats-discipline` % Test)
-val `discipline-scalatest` = Def.setting("org.typelevel" %% "discipline-scalatest" % V.`discipline-scalatest` % Test)
-val `circe-generic`        = Def.setting("io.circe" %%% "circe-generic" % V.circe % Test)
-val `refined-scalacheck`   = Def.setting("eu.timepit" %%% "refined-scalacheck" % V.refined % Test)
-val scalacheck             = Def.setting("org.scalacheck" %%% "scalacheck" % V.scalacheck % Test)
-val scalatest              = Def.setting("org.scalatest" %%% "scalatest" % V.scalatest % Test)
-val `scalatest-plus`       = Def.setting("org.scalatestplus" %%% "scalacheck-1-14" % V.`scalatest-plus` % Test)
-val munit                  = Def.setting("org.scalameta" %%% "munit" % V.munit % Test)
-val `munit-scalacheck`     = Def.setting("org.scalameta" %%% "munit-scalacheck" % V.munit % Test)
+val `cats-discipline`    = Def.setting("org.typelevel" %% "discipline-core" % V.`cats-discipline` % Test)
+val `discipline-munit`   = Def.setting("org.typelevel" %% "discipline-munit" % V.`discipline-munit` % Test)
+val `circe-generic`      = Def.setting("io.circe" %%% "circe-generic" % V.circe % Test)
+val `refined-scalacheck` = Def.setting("eu.timepit" %%% "refined-scalacheck" % V.refined % Test)
+val scalacheck           = Def.setting("org.scalacheck" %%% "scalacheck" % V.scalacheck % Test)
+val munit                = Def.setting("org.scalameta" %%% "munit" % V.munit % Test)
+val `munit-scalacheck`   = Def.setting("org.scalameta" %%% "munit-scalacheck" % V.munit % Test)
 
 val `scala-parallel-collections` = Def.setting {
   CrossVersion.partialVersion(scalaVersion.value) match {
@@ -80,7 +76,7 @@ val coreLawsDeps = Def.Initialize.join {
     `cats-core`,
     `cats-laws`,
     `cats-discipline`,
-    `discipline-scalatest`
+    `discipline-munit`
   )
 }
 
@@ -242,12 +238,6 @@ lazy val publishSettings = Seq(
   releaseEarlyWith := SonatypePublisher
 )
 
-lazy val scalaTestTestSettings = Seq(
-  testFrameworks += new TestFramework("munit.Framework"),
-  scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
-  Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oDF")
-)
-
 lazy val testSettings = Seq(
   testFrameworks += new TestFramework("munit.Framework"),
   scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
@@ -273,9 +263,6 @@ lazy val scoverageSettings = Seq(
 )
 
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
-
-// TODO: Remove when all tests migrated to Munit
-lazy val allSettingsScalaTest = commonSettings ++ scalaTestTestSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -304,12 +291,12 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .jsConfigure(_.enablePlugins(BoilerplatePlugin))
   .jvmConfigure(_.enablePlugins(BoilerplatePlugin))
 
-lazy val `core-laws` = project
-  .in(file("core-laws"))
+lazy val laws = project
+  .in(file("laws"))
   .dependsOn(core.jvm)
-  .settings(commonSettings ++ scalaTestTestSettings)
+  .settings(commonSettings ++ testSettings)
   .settings(
-    name := "laserdisc-core-laws",
+    name := "laws",
     libraryDependencies ++= coreDeps.value ++ coreLawsDeps.value,
     publishArtifact := false
   )
@@ -345,7 +332,7 @@ lazy val `fs2-bench` = project
 lazy val cli = project
   .in(file("cli"))
   .dependsOn(fs2)
-  .settings(allSettingsScalaTest)
+  .settings(allSettings)
   .settings(
     name := "laserdisc-cli",
     libraryDependencies ++= fs2Deps.value
@@ -367,7 +354,7 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
 
 lazy val laserdisc = project
   .in(file("."))
-  .aggregate(core.jvm, core.js, `core-laws`, fs2, cli, circe.jvm, circe.js)
+  .aggregate(core.jvm, core.js, laws, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
     publishArtifact := false,

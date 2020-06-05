@@ -115,8 +115,8 @@ val circeDeps = Def.Initialize.join {
     `circe-parser`,
     `circe-generic`,
     scalacheck,
-    scalatest,
-    `scalatest-plus`
+    munit,
+    `munit-scalacheck`
   )
 }
 
@@ -356,7 +356,7 @@ lazy val circe = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("circe"))
   .dependsOn(core)
-  .settings(allSettingsScalaTest)
+  .settings(allSettings)
   .settings(
     name := "laserdisc-circe",
     libraryDependencies ++= circeDeps.value

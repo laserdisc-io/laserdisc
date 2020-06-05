@@ -238,12 +238,6 @@ lazy val publishSettings = Seq(
   releaseEarlyWith := SonatypePublisher
 )
 
-lazy val scalaTestTestSettings = Seq(
-  testFrameworks += new TestFramework("munit.Framework"),
-  scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
-  Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oDF")
-)
-
 lazy val testSettings = Seq(
   testFrameworks += new TestFramework("munit.Framework"),
   scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
@@ -269,9 +263,6 @@ lazy val scoverageSettings = Seq(
 )
 
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
-
-// TODO: Remove when all tests migrated to Munit
-lazy val allSettingsScalaTest = commonSettings ++ scalaTestTestSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -341,7 +332,7 @@ lazy val `fs2-bench` = project
 lazy val cli = project
   .in(file("cli"))
   .dependsOn(fs2)
-  .settings(allSettingsScalaTest)
+  .settings(allSettings)
   .settings(
     name := "laserdisc-cli",
     libraryDependencies ++= fs2Deps.value

@@ -3,7 +3,6 @@ package laserdisc.fs2
 import java.util.concurrent.{ExecutorService, Executors}
 
 import cats.effect.{ContextShift, IO, Resource, Timer}
-import cats.implicits._
 import laserdisc._
 import laserdisc.all._
 import laserdisc.auto._

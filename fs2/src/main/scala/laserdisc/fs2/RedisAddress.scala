@@ -4,8 +4,6 @@ package fs2
 import java.net.InetSocketAddress
 
 import cats.{ApplicativeError, Eq}
-import cats.instances.int.catsKernelStdOrderForInt
-import cats.instances.string.catsKernelStdOrderForString
 import cats.syntax.eq._
 
 final case class RedisAddress(host: Host, port: Port) {

@@ -5,7 +5,6 @@ import java.util.concurrent.ForkJoinPool
 
 import cats.effect._
 import cats.effect.syntax.effect._
-import cats.instances.list.catsStdInstancesForList
 import cats.syntax.applicativeError._
 import cats.syntax.apply._
 import cats.syntax.flatMap._

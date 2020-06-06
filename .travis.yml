@@ -11,6 +11,13 @@ before_cache:
 - find $HOME/.coursier/cache -name "*.lock" -type f -delete
 - find $HOME/.sbt -name "*.lock" | xargs rm
 
+before_script:
+- docker run -p 6379:6379 -d redis:alpine
+- docker run -p 6380:6379 -d eqalpha/keydb
+
+after_script:
+- docker stop $(docker ps -a -q)
+
 sbt_args: -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false
 
 language: scala
@@ -21,9 +28,7 @@ stages:
 - name: format-check
   if: tag IS NOT present
 - name: setup
-- name: test-core
-  if: tag IS NOT present
-- name: test-others
+- name: test
   if: tag IS NOT present
 - name: codecov-upload
   if: tag IS NOT present
@@ -39,39 +44,22 @@ scala:
 jvm:
 - openjdk8
 - openjdk13
+task:
+- RUN=coreJsTest
+- RUN=coreJvmTest
+- RUN=lawsTest
+- RUN=fs2Test
+- RUN=circeJsTest
+- RUN=circeJvmTest
+- RUN=cliTest
+script: sbt ++$TRAVIS_SCALA_VERSION $RUN
+
 jobs:
   include:
   - stage: format-check
     script: sbt ++$TRAVIS_SCALA_VERSION fmtCheck
     jdk: openjdk8
     scala: *scala-2_13
-
-  - stage: test-core
-    name: test-core-Js
-    script: sbt ++$TRAVIS_SCALA_VERSION coreJsTest
-  - stage: test-core
-    name: test-core-Jvm
-    script: sbt ++$TRAVIS_SCALA_VERSION coreJvmTest
-
-  - stage: test-others
-    name: test-laws
-    script: sbt ++$TRAVIS_SCALA_VERSION lawsTest
-  - stage: test-others
-    name: test-fs2
-    script:
-    - docker run -p 6379:6379 -d redis:alpine
-    - docker run -p 6380:6379 -d eqalpha/keydb
-    - sbt ++$TRAVIS_SCALA_VERSION fs2Test
-    - docker stop $(docker ps -a -q)
-  - stage: test-others
-    name: test-circe-js
-    script: sbt ++$TRAVIS_SCALA_VERSION circeJsTest
-  - stage: test-others
-    name: test-circe-jvm
-    script: sbt ++$TRAVIS_SCALA_VERSION circeJvmTest
-  - stage: test-others
-    name: test-cli
-    script: sbt ++$TRAVIS_SCALA_VERSION cliTest
 
   - stage: codecov-upload
     script: bash <(curl -s https://codecov.io/bash)

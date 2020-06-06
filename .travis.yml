@@ -11,23 +11,15 @@ before_cache:
 - find $HOME/.coursier/cache -name "*.lock" -type f -delete
 - find $HOME/.sbt -name "*.lock" | xargs rm
 
-before_script:
-- docker run -p 6379:6379 -d redis:alpine
-- docker run -p 6380:6379 -d eqalpha/keydb
-
-after_script:
-- docker stop $(docker ps -a -q)
-
 sbt_args: -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false
 
 language: scala
-scala-2_12: &scala-2_12 2.12.12
-scala-2_13: &scala-2_13 2.13.2
 
 stages:
 - name: format-check
   if: tag IS NOT present
 - name: setup
+  if: tag IS NOT present
 - name: test
   if: tag IS NOT present
 - name: codecov-upload
@@ -37,10 +29,11 @@ stages:
 - name: release-213
   if: branch = master AND tag IS present AND NOT fork
 - name: cleanup
+  if: tag IS NOT present
 
 scala:
-- *scala-2_12
-- *scala-2_13
+- 2.12.12
+- 2.13.2
 jvm:
 - openjdk8
 - openjdk13
@@ -52,31 +45,48 @@ task:
 - RUN=circeJsTest
 - RUN=circeJvmTest
 - RUN=cliTest
+
 script: sbt ++$TRAVIS_SCALA_VERSION $RUN
 
 jobs:
   include:
+  - stage: setup
+    name: Docker setup
+    script:
+    - docker run -p 6379:6379 -d redis:alpine
+    - docker run -p 6380:6379 -d eqalpha/keydb
+    jdk: openjdk8
+    scala: 2.13.2
+
   - stage: format-check
+    name: Check with Scalafmt
     script: sbt ++$TRAVIS_SCALA_VERSION fmtCheck
     jdk: openjdk8
-    scala: *scala-2_13
+    scala: 2.13.2
 
   - stage: codecov-upload
+    name: Upload Codecov results
     script: bash <(curl -s https://codecov.io/bash)
     jdk: openjdk8
-    scala: *scala-2_13
+    scala: 2.13.2
 
   - stage: release-212
-    name: release-scala-2_12
+    name: Release for Scala 2.12
     script: sbt ++$TRAVIS_SCALA_VERSION releaseIt
     jdk: openjdk8
-    scala: *scala-2_13
+    scala: 2.13.2
 
   - stage: release-213
-    name: release-scala-2_13
+    name: Release for Scala 2.13
     script: sbt ++$TRAVIS_SCALA_VERSION releaseIt
     jdk: openjdk8
-    scala: *scala-2_13
+    scala: 2.13.2
+
+  - stage: setup
+    name: Docker shutdown
+    script: docker stop $(docker ps -a -q)
+    jdk: openjdk8
+    scala: 2.13.2
 
 services:
 - docker

@@ -6,10 +6,9 @@ before_install:
 - git fetch --tags
 
 before_cache:
-- find $HOME/.ivy2/cache -name "ivydata-*.properties" | xargs rm
-- find $HOME/.ivy2/cache -name "*SNAPSHOT*" | xargs rm -rf
-- find $HOME/.ivy2/cache -name "*.lock" | xargs rm -rf
-- find $HOME/.sbt -name "*.lock" | xargs rm
+- rm -fv $HOME/.ivy2/.sbt.ivy.lock
+- find $HOME/.ivy2/cache -name "ivydata-*.properties" -print -delete
+- find $HOME/.sbt        -name "*.lock"               -print -delete
 
 sbt_args: -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false
 
@@ -35,16 +34,8 @@ scala:
 jdk:
 - openjdk8
 - openjdk13
-env:
-- RUN=coreJsTest
-- RUN=coreJvmTest
-- RUN=lawsTest
-- RUN=fs2Test
-- RUN=circeJsTest
-- RUN=circeJvmTest
-- RUN=cliTest
 
-script: sbt ++$TRAVIS_SCALA_VERSION $RUN
+script: sbt ++$TRAVIS_SCALA_VERSION fullTest
 
 jobs:
   include:

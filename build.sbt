@@ -1,8 +1,12 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
+val `scala 2.12` = "2.12.11"
+val `scala 2.13` = "2.13.2"
+
 val V = new {
   val cats                   = "2.1.1"
+  val `cats-effect`          = "2.1.3"
   val `cats-discipline`      = "1.0.2"
   val `discipline-munit`     = "0.2.2"
   val circe                  = "0.13.0"
@@ -22,6 +26,7 @@ val V = new {
 }
 
 val `cats-core`      = Def.setting("org.typelevel" %% "cats-core" % V.cats)
+val `cats-effect`    = Def.setting("org.typelevel" %% "cats-effect" % V.`cats-effect`)
 val `cats-laws`      = Def.setting("org.typelevel" %% "cats-laws" % V.cats)
 val `circe-core`     = Def.setting("io.circe" %%% "circe-core" % V.circe)
 val `circe-parser`   = Def.setting("io.circe" %%% "circe-parser" % V.circe)
@@ -84,6 +89,7 @@ val fs2Deps = Def.Initialize
   .join {
     Seq(
       `kind-projector-compiler-plugin`,
+      `cats-effect`,
       `fs2-core`,
       `fs2-io`,
       kittens,
@@ -206,20 +212,19 @@ val versionDependantScalacOptions = Def.setting {
   versionDependent(scalaVersion.value, flags)
 }
 
-inThisBuild {
-  organization := "io.laserdisc"
-}
-
 lazy val commonSettings = Seq(
+  crossScalaVersions := Seq(`scala 2.12`, `scala 2.13`),
+  scalaVersion := `scala 2.13`,
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value
 )
 
 lazy val publishSettings = Seq(
-  publishMavenStyle := true,
   Test / publishArtifact := false,
   pomIncludeRepository := (_ => false),
+  organization := "io.laserdisc",
+  homepage := Some(url("http://laserdisc.io")),
   developers := List(
     Developer("sirocchi", "Julien Sirocchi", "julien.sirocchi@gmail.com", url("https://github.com/sirocchj")),
     Developer("barambani", "Filippo Mariotti", "", url("https://github.com/barambani"))
@@ -231,11 +236,9 @@ lazy val publishSettings = Seq(
       "scm:git:git@github.com:laserdisc-io/laserdisc.git"
     )
   ),
-  homepage := Some(url("http://laserdisc.io")),
   licenses := Seq("MIT" -> url("https://raw.githubusercontent.com/laserdisc-io/laserdisc/master/LICENSE")),
   pgpPublicRing := file(".travis/local.pubring.asc"),
-  pgpSecretRing := file(".travis/local.secring.asc"),
-  releaseEarlyWith := SonatypePublisher
+  pgpSecretRing := file(".travis/local.secring.asc")
 )
 
 lazy val testSettings = Seq(
@@ -357,8 +360,24 @@ lazy val laserdisc = project
   .aggregate(core.jvm, core.js, laws, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
+    crossScalaVersions := Seq(`scala 2.12`, `scala 2.13`),
     publishArtifact := false,
     addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt"),
     addCommandAlias("fmtCheck", ";scalafmtCheck;test:scalafmtCheck;scalafmtSbtCheck"),
-    addCommandAlias("fullBuild", ";fmtCheck;clean;coverage;test;coverageReport")
+    addCommandAlias("fullTest", ";clean;coverage;test;coverageReport"),
+    addCommandAlias("prePr", ";fmtCheck;fullTest"),
+    // travis test aliases
+    addCommandAlias("coreJsTest", ";coreJS/clean;coverage;coreJS/test;coreJS/coverageReport;"),
+    addCommandAlias("coreJvmTest", ";core/clean;coverage;core/test;core/coverageReport"),
+    addCommandAlias("lawsTest", ";laws/clean;coverage;laws/test;laws/coverageReport"),
+    addCommandAlias("fs2Test", ";fs2/clean;coverage;fs2/test;fs2/coverageReport"),
+    addCommandAlias("circeJsTest", ";circeJS/clean;coverage;circeJS/test;circeJS/coverageReport"),
+    addCommandAlias("circeJvmTest", ";circe/clean;coverage;circe/test;circe/coverageReport"),
+    addCommandAlias("cliTest", ";cli/clean;coverage;cli/test;cli/coverageReport"),
+    // travis release aliases
+    addCommandAlias(
+      "setReleaseOptions",
+      "set scalacOptions ++= Seq(\"-opt:l:method\", \"-opt:l:inline\", \"-opt-inline-from:laserdisc.**\", \"-opt-inline-from:<sources>\")"
+    ),
+    addCommandAlias("releaseIt", ";clean;setReleaseOptions;session list;compile;ci-release")
   )

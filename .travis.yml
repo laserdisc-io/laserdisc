@@ -33,7 +33,7 @@ stages:
 scala:
 - 2.12.12
 - 2.13.2
-jvm:
+jdk:
 - openjdk8
 - openjdk13
 env:

@@ -12,14 +12,15 @@ before_cache:
 - find $HOME/.ivy2/cache -name "ivydata-*.properties" -print -delete
 - find $HOME/.sbt        -name "*.lock"               -print -delete
 
+after_success:
+- bash <(curl -s https://codecov.io/bash)
+
 sbt_args: -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false
 
 stages:
 - name: format-check
   if: tag IS NOT present
 - name: test
-  if: tag IS NOT present
-- name: codecov-upload
   if: tag IS NOT present
 - name: release-212
   if: branch = master AND tag IS present AND NOT fork
@@ -40,12 +41,6 @@ jobs:
   - stage: format-check
     name: Check with Scalafmt
     script: sbt ++$TRAVIS_SCALA_VERSION fmtCheck
-    jdk: openjdk8
-    scala: 2.13.2
-
-  - stage: codecov-upload
-    name: Upload Codecov results
-    script: bash <(curl -s https://codecov.io/bash)
     jdk: openjdk8
     scala: 2.13.2
 

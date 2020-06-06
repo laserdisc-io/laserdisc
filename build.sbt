@@ -365,14 +365,6 @@ lazy val laserdisc = project
     addCommandAlias("fmtCheck", ";scalafmtCheck;test:scalafmtCheck;scalafmtSbtCheck"),
     addCommandAlias("fullTest", ";clean;coverage;test;coverageReport"),
     addCommandAlias("prePr", ";fmtCheck;fullTest"),
-    // travis test aliases
-    addCommandAlias("coreJsTest", ";coreJS/clean;coreJS/test"),
-    addCommandAlias("coreJvmTest", ";core/clean;coverage;core/test;core/coverageReport"),
-    addCommandAlias("lawsTest", ";laws/clean;coverage;laws/test;laws/coverageReport"),
-    addCommandAlias("fs2Test", ";fs2/clean;coverage;fs2/test;fs2/coverageReport"),
-    addCommandAlias("circeJsTest", ";circeJS/clean;circeJS/test"),
-    addCommandAlias("circeJvmTest", ";circe/clean;coverage;circe/test;circe/coverageReport"),
-    addCommandAlias("cliTest", ";cli/clean;coverage;cli/test;cli/coverageReport"),
     // travis release aliases
     addCommandAlias(
       "setReleaseOptions",

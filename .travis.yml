@@ -82,7 +82,7 @@ jobs:
     jdk: openjdk8
     scala: 2.13.2
 
-  - stage: setup
+  - stage: cleanup
     name: Docker shutdown
     script: docker stop $(docker ps -a -q)
     jdk: openjdk8

@@ -25,7 +25,9 @@ stages:
 - name: format-check
   if: tag IS NOT present
 - name: setup
-- name: test
+- name: test-core
+  if: tag IS NOT present
+- name: test-others
   if: tag IS NOT present
 - name: codecov-upload
   if: tag IS NOT present
@@ -49,25 +51,26 @@ jobs:
     name: docker-keydb
     script: docker run -p 6380:6379 -d eqalpha/keydb
 
-  - stage: test
+  - stage: test-core
     name: test-core-Js
     script: sbt ++$TRAVIS_SCALA_VERSION coreJsTest
-  - stage: test
+  - stage: test-core
     name: test-core-Jvm
     script: sbt ++$TRAVIS_SCALA_VERSION coreJvmTest
-  - stage: test
+
+  - stage: test-others
     name: test-laws
     script: sbt ++$TRAVIS_SCALA_VERSION lawsTest
-  - stage: test
+  - stage: test-others
     name: test-fs2
     script: sbt ++$TRAVIS_SCALA_VERSION fs2Test
-  - stage: test
+  - stage: test-others
     name: test-circe-js
     script: sbt ++$TRAVIS_SCALA_VERSION circeJsTest
-  - stage: test
+  - stage: test-others
     name: test-circe-jvm
     script: sbt ++$TRAVIS_SCALA_VERSION circeJvmTest
-  - stage: test
+  - stage: test-others
     name: test-cli
     script: sbt ++$TRAVIS_SCALA_VERSION cliTest
 

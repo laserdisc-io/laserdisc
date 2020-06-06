@@ -1,5 +1,6 @@
 dist: xenial
 sudo: false
+language: scala
 
 before_install:
 - git fetch --tags
@@ -12,8 +13,6 @@ before_cache:
 - find $HOME/.sbt -name "*.lock" | xargs rm
 
 sbt_args: -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false
-
-language: scala
 
 stages:
 - name: format-check
@@ -37,7 +36,7 @@ scala:
 jvm:
 - openjdk8
 - openjdk13
-task:
+env:
 - RUN=coreJsTest
 - RUN=coreJvmTest
 - RUN=lawsTest
@@ -90,12 +89,6 @@ jobs:
 
 services:
 - docker
-
-env:
-  global:
-  - secure: Msrzp7tssXc1InD37lu2GXRBEgS9U7SGhS/7Us5GivwWnRrzpYhrGKg77sWYKeDHU5V8544T/1p3lNTeIOixmnwfHplSb8EifgE2QYItdgItwsthyH6kWVaR28WZe4u15Pl/ICGtO1Y41c6mH/LiE5X+4mZnpf66hG8GXcOCaLtTk/HD6ZjufaG8f/IidsV/dLFa4hSay1yvEcOwZhcxeaiKbXsOCwAARSNJ/oJhI4ERTNBgwjDueSbiYZHEf1kVMOH89FTSz9Viimw/hxMmW6Ouh6fAvgz5NRPHvNbNyCT9zxmGkregv8NhQwRzbfdWmhiG/MnpZ/FsxCNazMFPc/48OeUEAiEU/DKsYCy8etq6I2dfJ2AANazMUq0zfWAJzED+lARVl2TvSSuDJkRzGC0z5CsjuEDI40+LVHPsN53ARERygCX7ecmUBjQPdFQnSgYIdYgpGekB1ocXvVA7FKDJ5iFcJauIpGSNZha6kfjS0y49M5I6kjOhZV0c0J0GG8GTqpE/xe0nQhKbHN9Os5aY1WZb+JTYoQ5DrhAPlJcDyaT+5jrbgegowPnQxl5RLU5RT6NA95mo3EDM0xsYy03COl5GwANJcwJDaFkxJNgnmySlh0V5kuyxmdPnBYI4ATEyD3BbnpaN5AM7iNgS+mTbOHlsrqTAGKicHEJg40s=
-  - secure: UCmJ/R5ShE97hYIvsft4/Yh4B8gFKg2dJHvhlRJqb2VMWYFZZNRXiiFmpKUaaqWt0Wh3wstHKXIhTGHroqV9spnvd60EAFSeLZOp4ZaJx1F6ZM8af6jRyB5MHHaQb+50pjzq3ikkkP+fJ97+Ee8tN+o73M+CAHxYngJdzihXtpWNTaCyFHQMu2V38II1MAzvy3TeZt6EypTARQK6z4ZmipcGNF1Himb4cOsH1opoSRk+tFlTNO7lFCg9iz4mdCWspxMA6PCCQ575MouBv4gbwjCUPW825MazPSfEeMkwUfq5gxVCjFkYQIw+nZ3ZXtYs4N7E5HKS+VRUBAZNvs+mWFmGOfE5cHAI3fvUTyEyTMQUWVGjZ/5UHVVcrx1xbSWdTUczfwQvkTDcojTtQ6TOoo9kWJDJe2B/Oroxxgu7SirUNPOnBuC1ZhM3TtxI1Gzow4nHRYidD2kT5qOX/IRLtS4K2Iy2502X+Dn+6edLxb76v+ONOJ2NQd9G7tRsKbM/VIAby2/zQDeZetJ7NzQJLGj5ajagCvidzMiSq4w5PsAfRsUrhVtrhZ3zTKWHO87rShSz5oTMWAS0+RLZ0ra4YcEi8OnM1FUBf/nvZdiJu8X01UlGPHNXp0PkhPN3a1KT0sEPAm0OxTgo78+zosbuxKC+IswuWMeKsDkSRJDIbWQ=
-  - secure: dQfZfrC73Oyj+6jEpCpMWIIUsr6Wm7WBLREw1X+nSxA3/ZkIqZ25xIs4kN/o4gv2ay43hwLpDKfeP4dnpSYt7mPu5T2wlP+5Ih1zrZFXJrUD5RkuRzeKHG3S4aKEJcLK85dYCdKLhtJXeaBOeOUTrUcrEXPlbTTW91uWU5ewuTsjmI0TDPesi5YvCB2V0tihyMBmnXzxwZHKnJYVfdGQhPKyMB5JetIW7prvQoJtsK4ViIQJjunlY9wB9ENu92mXYQ8SbMo1gCjT3+XDcrYRgTh56uKx9hzp1o1RvColW2+kWM3OEWScU2Z/GPzDvn37i3e6DVP3SOhS/mAW3I8FyeRpGSRlPbB2RJ+qyc9gBWYgh2L3Y5sNVi7UrOYOjOAA/KWa8XYqVg+iTYjpnzIt1Qj7NdhjVuDpe4MJhz20wNXPyffqsNSrRrc524GebymyKK1Yll1nHDQNfpOaHoWudt4s8AIAkMJFPcGOi5WWZvaW5jQWJrTuX1cMvtx4nX85jhm8piEC0PVhxoB3GaxVWktrB6QVXFueFM7YYhu8PZxOshOFVmPcwD6E3hmspuNB2IIbdBPYlYrLl07hOq+I/+J94Hi+8asnPvujFmKH0lnJZiC0pwfzLAXV+E1b3DcxDw7Uf/x/8tKa0LOVYLYYbI3PRpBvTTrCNKXSq/0asTQ=
 
 cache:
   directories:

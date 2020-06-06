@@ -17,10 +17,6 @@ language: scala
 scala-2_12: &scala-2_12 2.12.12
 scala-2_13: &scala-2_13 2.13.2
 
-jdk:
-- openjdk8
-- openjdk13
-
 stages:
 - name: format-check
   if: tag IS NOT present
@@ -37,19 +33,18 @@ stages:
   if: branch = master AND tag IS present AND NOT fork
 - name: cleanup
 
+scala:
+- *scala-2_12
+- *scala-2_13
+jvm:
+- openjdk8
+- openjdk13
 jobs:
   include:
   - stage: format-check
     script: sbt ++$TRAVIS_SCALA_VERSION fmtCheck
     jdk: openjdk8
-
-  - &docker-setup
-    stage: setup
-    name: docker-redis
-    script: docker run -p 6379:6379 -d redis:alpine
-  - <<: *docker-setup
-    name: docker-keydb
-    script: docker run -p 6380:6379 -d eqalpha/keydb
+    scala: *scala-2_13
 
   - stage: test-core
     name: test-core-Js
@@ -63,7 +58,11 @@ jobs:
     script: sbt ++$TRAVIS_SCALA_VERSION lawsTest
   - stage: test-others
     name: test-fs2
-    script: sbt ++$TRAVIS_SCALA_VERSION fs2Test
+    script:
+    - docker run -p 6379:6379 -d redis:alpine
+    - docker run -p 6380:6379 -d eqalpha/keydb
+    - sbt ++$TRAVIS_SCALA_VERSION fs2Test
+    - docker stop $(docker ps -a -q)
   - stage: test-others
     name: test-circe-js
     script: sbt ++$TRAVIS_SCALA_VERSION circeJsTest
@@ -76,21 +75,20 @@ jobs:
 
   - stage: codecov-upload
     script: bash <(curl -s https://codecov.io/bash)
+    jdk: openjdk8
+    scala: *scala-2_13
 
   - stage: release-212
     name: release-scala-2_12
-    jdk: openjdk8
-    scala: *scala-2_12
     script: sbt ++$TRAVIS_SCALA_VERSION releaseIt
+    jdk: openjdk8
+    scala: *scala-2_13
 
   - stage: release-213
     name: release-scala-2_13
+    script: sbt ++$TRAVIS_SCALA_VERSION releaseIt
     jdk: openjdk8
     scala: *scala-2_13
-    script: sbt ++$TRAVIS_SCALA_VERSION releaseIt
-
-  - stage: cleanup
-    script: docker stop $(docker ps -a -q)
 
 services:
 - docker
@@ -106,3 +104,7 @@ cache:
   - "$HOME/.coursier"
   - "$HOME/.ivy2/cache"
   - "$HOME/.sbt/boot/"
+  - "$HOME/.sbt"
+  - "lib_managed"
+  - "target"
+  - "project/target"

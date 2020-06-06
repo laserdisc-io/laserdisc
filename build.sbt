@@ -238,7 +238,6 @@ lazy val publishSettings = Seq(
   ),
   licenses := Seq("MIT" -> url("https://raw.githubusercontent.com/laserdisc-io/laserdisc/master/LICENSE")),
   pgpPublicRing := file(".travis/local.pubring.asc"),
-  pgpSecretRing := file(".travis/local.secring.asc")
 )
 
 lazy val testSettings = Seq(

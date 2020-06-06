@@ -9,7 +9,6 @@ before_cache:
 - find $HOME/.ivy2/cache -name "ivydata-*.properties" | xargs rm
 - find $HOME/.ivy2/cache -name "*SNAPSHOT*" | xargs rm -rf
 - find $HOME/.ivy2/cache -name "*.lock" | xargs rm -rf
-- find $HOME/.coursier/cache -name "*.lock" -type f -delete
 - find $HOME/.sbt -name "*.lock" | xargs rm
 
 sbt_args: -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false
@@ -31,7 +30,7 @@ stages:
   if: tag IS NOT present
 
 scala:
-- 2.12.12
+- 2.12.11
 - 2.13.2
 jdk:
 - openjdk8
@@ -92,7 +91,7 @@ services:
 
 cache:
   directories:
-  - "$HOME/.coursier"
+  - "$HOME/.cache/coursier"
   - "$HOME/.ivy2/cache"
   - "$HOME/.sbt/boot/"
   - "$HOME/.sbt"

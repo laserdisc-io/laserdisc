@@ -3,6 +3,7 @@ import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 val V = new {
   val cats                   = "2.1.1"
+  val `cats-effect`          = "2.1.3"
   val `cats-discipline`      = "1.0.2"
   val `discipline-munit`     = "0.2.2"
   val circe                  = "0.13.0"
@@ -22,6 +23,7 @@ val V = new {
 }
 
 val `cats-core`      = Def.setting("org.typelevel" %% "cats-core" % V.cats)
+val `cats-effect`    = Def.setting("org.typelevel" %% "cats-effect" % V.`cats-effect`)
 val `cats-laws`      = Def.setting("org.typelevel" %% "cats-laws" % V.cats)
 val `circe-core`     = Def.setting("io.circe" %%% "circe-core" % V.circe)
 val `circe-parser`   = Def.setting("io.circe" %%% "circe-parser" % V.circe)
@@ -84,6 +86,7 @@ val fs2Deps = Def.Initialize
   .join {
     Seq(
       `kind-projector-compiler-plugin`,
+      `cats-effect`,
       `fs2-core`,
       `fs2-io`,
       kittens,
@@ -206,10 +209,6 @@ val versionDependantScalacOptions = Def.setting {
   versionDependent(scalaVersion.value, flags)
 }
 
-inThisBuild {
-  organization := "io.laserdisc"
-}
-
 lazy val commonSettings = Seq(
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
@@ -217,9 +216,10 @@ lazy val commonSettings = Seq(
 )
 
 lazy val publishSettings = Seq(
-  publishMavenStyle := true,
   Test / publishArtifact := false,
   pomIncludeRepository := (_ => false),
+  organization := "io.laserdisc",
+  homepage := Some(url("http://laserdisc.io")),
   developers := List(
     Developer("sirocchi", "Julien Sirocchi", "julien.sirocchi@gmail.com", url("https://github.com/sirocchj")),
     Developer("barambani", "Filippo Mariotti", "", url("https://github.com/barambani"))
@@ -231,11 +231,7 @@ lazy val publishSettings = Seq(
       "scm:git:git@github.com:laserdisc-io/laserdisc.git"
     )
   ),
-  homepage := Some(url("http://laserdisc.io")),
-  licenses := Seq("MIT" -> url("https://raw.githubusercontent.com/laserdisc-io/laserdisc/master/LICENSE")),
-  pgpPublicRing := file(".travis/local.pubring.asc"),
-  pgpSecretRing := file(".travis/local.secring.asc"),
-  releaseEarlyWith := SonatypePublisher
+  licenses := Seq("MIT" -> url("https://raw.githubusercontent.com/laserdisc-io/laserdisc/master/LICENSE"))
 )
 
 lazy val testSettings = Seq(
@@ -360,5 +356,12 @@ lazy val laserdisc = project
     publishArtifact := false,
     addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt"),
     addCommandAlias("fmtCheck", ";scalafmtCheck;test:scalafmtCheck;scalafmtSbtCheck"),
-    addCommandAlias("fullBuild", ";fmtCheck;clean;coverage;test;coverageReport")
+    addCommandAlias("fullTest", ";clean;coverage;test;coverageReport"),
+    addCommandAlias("prePr", ";fmtCheck;fullTest"),
+    // travis release aliases
+    addCommandAlias(
+      "setReleaseOptions",
+      "set scalacOptions ++= Seq(\"-opt:l:method\", \"-opt:l:inline\", \"-opt-inline-from:laserdisc.**\", \"-opt-inline-from:<sources>\")"
+    ),
+    addCommandAlias("releaseIt", ";clean;setReleaseOptions;session list;compile;ci-release")
   )

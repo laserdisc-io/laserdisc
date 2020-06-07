@@ -23,9 +23,9 @@ stages:
 - name: Test
   if: tag IS NOT present
 - name: Release 2.12
-  if: ((branch = master AND type = push) OR (tag IS present)) AND NOT fork
+  if: type != pull_request AND tag IS present AND NOT fork
 - name: Release 2.13
-  if: ((branch = master AND type = push) OR (tag IS present)) AND NOT fork
+  if: type != pull_request AND tag IS present AND NOT fork
 
 scala:
 - 2.13.2

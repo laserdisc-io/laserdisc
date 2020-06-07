@@ -18,13 +18,13 @@ after_success:
 sbt_args: -Dfile.encoding=UTF8 -Dsbt.color=always -Dsbt.supershell=false
 
 stages:
-- name: format-check
+- name: Format
   if: tag IS NOT present
-- name: test
+- name: Test
   if: tag IS NOT present
-- name: release-212
+- name: Release 2.12
   if: branch = master AND tag IS present AND NOT fork
-- name: release-213
+- name: Release 2.13
   if: branch = master AND tag IS present AND NOT fork
 
 scala:
@@ -38,19 +38,19 @@ script: sbt ++$TRAVIS_SCALA_VERSION fullTest
 
 jobs:
   include:
-  - stage: format-check
+  - stage: Format
     name: Check with Scalafmt
     script: sbt ++$TRAVIS_SCALA_VERSION fmtCheck
     jdk: openjdk8
     scala: 2.13.2
 
-  - stage: release-212
+  - stage: Release 2.12
     name: Release for Scala 2.12
     script: sbt ++$TRAVIS_SCALA_VERSION releaseIt
     jdk: openjdk8
     scala: 2.13.2
 
-  - stage: release-213
+  - stage: Release 2.13
     name: Release for Scala 2.13
     script: sbt ++$TRAVIS_SCALA_VERSION releaseIt
     jdk: openjdk8

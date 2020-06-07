@@ -28,8 +28,8 @@ stages:
   if: branch = master AND tag IS present AND NOT fork
 
 scala:
-- 2.12.11
 - 2.13.2
+- 2.12.11
 jdk:
 - openjdk8
 - openjdk13

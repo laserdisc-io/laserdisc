@@ -1,9 +1,6 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
-val `scala 2.12` = "2.12.11"
-val `scala 2.13` = "2.13.2"
-
 val V = new {
   val cats                   = "2.1.1"
   val `cats-effect`          = "2.1.3"
@@ -213,8 +210,6 @@ val versionDependantScalacOptions = Def.setting {
 }
 
 lazy val commonSettings = Seq(
-  crossScalaVersions := Seq(`scala 2.12`, `scala 2.13`),
-  scalaVersion := `scala 2.13`,
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value
@@ -359,7 +354,6 @@ lazy val laserdisc = project
   .aggregate(core.jvm, core.js, laws, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
-    crossScalaVersions := Seq(`scala 2.12`, `scala 2.13`),
     publishArtifact := false,
     addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt"),
     addCommandAlias("fmtCheck", ";scalafmtCheck;test:scalafmtCheck;scalafmtSbtCheck"),

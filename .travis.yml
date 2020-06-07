@@ -22,10 +22,14 @@ stages:
   if: tag IS NOT present
 - name: Test
   if: tag IS NOT present
+- name: Release Snapshot 2.12
+  if: branch = master AND type = push AND tag IS NOT present AND NOT fork
+- name: Release Snapshot 2.13
+  if: branch = master AND type = push AND tag IS NOT present AND NOT fork
 - name: Release 2.12
-  if: ((branch = master AND type = push) OR (tag IS present)) AND NOT fork
+  if: type != pull_request AND tag IS present AND NOT fork
 - name: Release 2.13
-  if: ((branch = master AND type = push) OR (tag IS present)) AND NOT fork
+  if: type != pull_request AND tag IS present AND NOT fork
 
 scala:
 - 2.13.2
@@ -44,11 +48,23 @@ jobs:
     jdk: openjdk8
     scala: 2.13.2
 
+  - stage: Release Snapshot 2.12
+    name: Release a snapshot for Scala 2.12
+    script: sbt ++$TRAVIS_SCALA_VERSION releaseIt
+    jdk: openjdk8
+    scala: 2.12.11
+
+  - stage: Release Snapshot 2.13
+    name: Release a snapshot for Scala 2.13
+    script: sbt ++$TRAVIS_SCALA_VERSION releaseIt
+    jdk: openjdk8
+    scala: 2.13.2
+
   - stage: Release 2.12
     name: Release for Scala 2.12
     script: sbt ++$TRAVIS_SCALA_VERSION releaseIt
     jdk: openjdk8
-    scala: 2.13.2
+    scala: 2.12.11
 
   - stage: Release 2.13
     name: Release for Scala 2.13

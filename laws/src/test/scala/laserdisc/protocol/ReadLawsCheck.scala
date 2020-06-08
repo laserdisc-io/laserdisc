@@ -1,9 +1,6 @@
 package laserdisc
 package protocol
 
-import cats.instances.int._
-import cats.instances.long._
-import cats.instances.string._
 import cats.laws.discipline.{ContravariantTests, MonadTests, SerializableTests}
 import cats.{Contravariant, Eq, Monad}
 import munit.DisciplineSuite

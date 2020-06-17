@@ -87,8 +87,6 @@ object Protocol {
     * This apply method requires the caller to provide the type of request parameters L this
     * [[Protocol]] expects to deal with when encoding the request parameters into a [[RESP]]
     * [[GenArr]] instance to send to Redis.
-    *
-    *
     */
   final def apply[L: RESPParamWrite](cmd: String, l: L): PartiallyAppliedProtocol[L] = new PartiallyAppliedProtocol(cmd, l) {}
 }

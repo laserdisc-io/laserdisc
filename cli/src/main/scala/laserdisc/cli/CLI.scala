@@ -106,8 +106,8 @@ object CLI extends IOApp { self =>
             def mkProtocol(code: String): IO[Maybe[Protocol]] =
               IO.delay {
                 tb.eval {
-                    tb.parse {
-                      s"""import laserdisc._
+                  tb.parse {
+                    s"""import laserdisc._
                         |import laserdisc.auto._
                         |import laserdisc.all._
                         |import laserdisc.fs2._
@@ -115,9 +115,8 @@ object CLI extends IOApp { self =>
                         |
                         |$code
                         |""".stripMargin
-                    }
                   }
-                  .asInstanceOf[Protocol]
+                }.asInstanceOf[Protocol]
               }.attempt
 
             _.evalMap(mkProtocol).flatMap {

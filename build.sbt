@@ -2,7 +2,7 @@
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 val V = new {
-  val cats                   = "2.2.0-M2"
+  val cats                   = "2.2.0-M3"
   val `cats-effect`          = "2.1.3"
   val `cats-discipline`      = "1.0.2"
   val `discipline-munit`     = "0.2.2"

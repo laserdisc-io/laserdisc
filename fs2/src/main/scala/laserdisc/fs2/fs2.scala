@@ -48,7 +48,5 @@ package object fs2 {
     }
 
   implicit final def showForCats[A](implicit S: cats.Show[A]): Show[A] =
-    new Show[A] {
-      def show(a: A): String = S.show(a)
-    }
+    (a: A) => S.show(a)
 }

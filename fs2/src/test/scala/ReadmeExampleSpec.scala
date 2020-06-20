@@ -43,7 +43,7 @@ final class ReadmeExampleSpec extends FunSuite with TestLogCapture {
     }
 
     assert(logged contains "Starting connection")
-    assert(logged contains "Server available for publishing: localhost:6379")
+    assert(logged contains "Connected to server localhost:6379")
     assert(logged contains "sending Arr(Bulk(SET),Bulk(a),Bulk(23))")
     assert(logged contains "receiving Str(OK)")
     assert(logged contains "sending Arr(Bulk(SET),Bulk(b),Bulk(55))")

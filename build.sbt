@@ -11,7 +11,7 @@ val V = new {
   val jedis                  = "3.2.0"
   val `kind-projector`       = "0.11.0"
   val kittens                = "2.1.0"
-  val `log-effect-fs2`       = "0.13.0"
+  val `log-effect`           = "0.13.0"
   val munit                  = "0.7.9"
   val `parallel-collections` = "0.2.0"
   val refined                = "0.9.14"
@@ -20,23 +20,28 @@ val V = new {
   val `scodec-core`          = "1.11.7"
   val `scodec-stream`        = "2.0.0"
   val shapeless              = "2.3.3"
+  val zio                    = "1.0.0-RC21"
+  val `zio-interop-cats`     = "2.0.0.0-RC14"
 }
 
-val `cats-core`      = Def.setting("org.typelevel" %% "cats-core" % V.cats)
-val `cats-effect`    = Def.setting("org.typelevel" %% "cats-effect" % V.`cats-effect`)
-val `cats-laws`      = Def.setting("org.typelevel" %% "cats-laws" % V.cats)
-val `circe-core`     = Def.setting("io.circe" %%% "circe-core" % V.circe)
-val `circe-parser`   = Def.setting("io.circe" %%% "circe-parser" % V.circe)
-val `fs2-core`       = Def.setting("co.fs2" %%% "fs2-core" % V.fs2)
-val `fs2-io`         = Def.setting("co.fs2" %% "fs2-io" % V.fs2)
-val jedis            = Def.setting("redis.clients" % "jedis" % V.jedis)
-val kittens          = Def.setting("org.typelevel" %%% "kittens" % V.kittens)
-val `log-effect-fs2` = Def.setting("io.laserdisc" %%% "log-effect-fs2" % V.`log-effect-fs2`)
-val refined          = Def.setting("eu.timepit" %%% "refined" % V.refined)
-val `scodec-bits`    = Def.setting("org.scodec" %%% "scodec-bits" % V.`scodec-bits`)
-val `scodec-core`    = Def.setting("org.scodec" %%% "scodec-core" % V.`scodec-core`)
-val `scodec-stream`  = Def.setting("org.scodec" %%% "scodec-stream" % V.`scodec-stream`)
-val shapeless        = Def.setting("com.chuusai" %%% "shapeless" % V.shapeless)
+val `cats-core`        = Def.setting("org.typelevel" %% "cats-core" % V.cats)
+val `cats-effect`      = Def.setting("org.typelevel" %% "cats-effect" % V.`cats-effect`)
+val `cats-laws`        = Def.setting("org.typelevel" %% "cats-laws" % V.cats)
+val `circe-core`       = Def.setting("io.circe" %%% "circe-core" % V.circe)
+val `circe-parser`     = Def.setting("io.circe" %%% "circe-parser" % V.circe)
+val `fs2-core`         = Def.setting("co.fs2" %%% "fs2-core" % V.fs2)
+val `fs2-io`           = Def.setting("co.fs2" %% "fs2-io" % V.fs2)
+val jedis              = Def.setting("redis.clients" % "jedis" % V.jedis)
+val kittens            = Def.setting("org.typelevel" %%% "kittens" % V.kittens)
+val `log-effect-fs2`   = Def.setting("io.laserdisc" %%% "log-effect-fs2" % V.`log-effect`)
+val `log-effect-zio`   = Def.setting("io.laserdisc" %% "log-effect-zio" % V.`log-effect`)
+val refined            = Def.setting("eu.timepit" %%% "refined" % V.refined)
+val `scodec-bits`      = Def.setting("org.scodec" %%% "scodec-bits" % V.`scodec-bits`)
+val `scodec-core`      = Def.setting("org.scodec" %%% "scodec-core" % V.`scodec-core`)
+val `scodec-stream`    = Def.setting("org.scodec" %%% "scodec-stream" % V.`scodec-stream`)
+val shapeless          = Def.setting("com.chuusai" %%% "shapeless" % V.shapeless)
+val zio                = Def.setting("dev.zio" %% "zio" % V.zio)
+val `zio-interop-cats` = Def.setting("dev.zio" %% "zio-interop-cats" % V.`zio-interop-cats`)
 
 val `cats-discipline`    = Def.setting("org.typelevel" %% "discipline-core" % V.`cats-discipline` % Test)
 val `discipline-munit`   = Def.setting("org.typelevel" %% "discipline-munit" % V.`discipline-munit` % Test)
@@ -105,7 +110,10 @@ val fs2Deps = Def.Initialize
 
 val fs2BenchDeps = Def.Initialize.join {
   Seq(
-    jedis
+    jedis,
+    zio,
+    `zio-interop-cats`,
+    `log-effect-zio`
   )
 }
 
@@ -323,7 +331,8 @@ lazy val `fs2-bench` = project
   .settings(
     name := "laserdisc-fs2-benchmarks",
     publishArtifact := false,
-    libraryDependencies ++= fs2BenchDeps.value
+    libraryDependencies ++= fs2BenchDeps.value,
+    run / fork := true
   )
 
 lazy val cli = project
@@ -355,8 +364,9 @@ lazy val laserdisc = project
   .settings(publishSettings)
   .settings(
     publishArtifact := false,
-    addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt"),
-    addCommandAlias("fmtCheck", ";scalafmtCheck;test:scalafmtCheck;scalafmtSbtCheck"),
+    addCommandAlias("benchBuild", ";core-bench/clean;core-bench/test:compile;fs2-bench/clean;fs2-bench/test:compile"),
+    addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt;fs2-bench/scalafmt"),
+    addCommandAlias("fmtCheck", ";scalafmtCheck;test:scalafmtCheck;scalafmtSbtCheck;fs2-bench/scalafmtCheck;fs2-bench/test:scalafmtCheck"),
     addCommandAlias("fullTest", ";clean;coverage;test;coverageReport"),
     addCommandAlias("prePr", ";fmtCheck;fullTest"),
     // travis release aliases

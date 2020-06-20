@@ -122,19 +122,19 @@ object Main extends IOApp {
 
 This should produce an output similar to the following one:
 ```
-[info] - [ioapp-compute-0] Starting connection
-[info] - [ioapp-compute-6] Server available for publishing: localhost:6379
-[debug] - [ioapp-compute-7] sending Arr(Bulk(SET),Bulk(a),Bulk(23))
-[debug] - [ioapp-compute-1] receiving Str(OK)
-[debug] - [ioapp-compute-2] sending Arr(Bulk(SET),Bulk(b),Bulk(55))
-[debug] - [ioapp-compute-2] receiving Str(OK)
-[debug] - [ioapp-compute-2] sending Arr(Bulk(GET),Bulk(b))
-[debug] - [ioapp-compute-6] receiving Bulk(55)
-[debug] - [ioapp-compute-6] sending Arr(Bulk(GET),Bulk(a))
-[debug] - [ioapp-compute-1] receiving Bulk(23)
+[debug] - [ioapp-compute-0] Starting connection
+[info] - [ioapp-compute-6] Connected to server localhost:6379
+[trace] - [ioapp-compute-7] sending Arr(Bulk(SET),Bulk(a),Bulk(23))
+[trace] - [ioapp-compute-1] receiving Str(OK)
+[trace] - [ioapp-compute-2] sending Arr(Bulk(SET),Bulk(b),Bulk(55))
+[trace] - [ioapp-compute-2] receiving Str(OK)
+[trace] - [ioapp-compute-2] sending Arr(Bulk(GET),Bulk(b))
+[trace] - [ioapp-compute-6] receiving Bulk(55)
+[trace] - [ioapp-compute-6] sending Arr(Bulk(GET),Bulk(a))
+[trace] - [ioapp-compute-1] receiving Bulk(23)
 [info] - [ioapp-compute-6] yay!
-[info] - [ioapp-compute-6] Shutting down connection
-[info] - [ioapp-compute-6] Shutdown complete
+[debug] - [ioapp-compute-6] Shutting down connection
+[debug] - [ioapp-compute-6] Shutdown complete
 [info] - [ioapp-compute-7] Connection terminated: No issues
 ```
 

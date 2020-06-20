@@ -21,23 +21,21 @@ object RedisChannel {
 
   private[fs2] final def apply[F[_]: ContextShift: LogWriter: Concurrent](
       address: InetSocketAddress,
-      writeTimeout: Option[FiniteDuration] = None,
-      readMaxBytes: Int = 256 * 1024
+      writeTimeout: Option[FiniteDuration],
+      readMaxBytes: Int
   )(blocker: Blocker): Pipe[F, RESP, RESP] = {
     def connectedSocket: Resource[F, Socket[F]] =
-      SocketGroup(blocker) >>= (_.client(address))
+      SocketGroup(blocker, nonBlockingThreadCount = 4) >>= (_.client(address, noDelay = true))
 
     stream =>
       Stream.resource(connectedSocket) >>= { socket =>
         val send    = stream.through(impl.send(socket.writes(writeTimeout)))
-        val receive = socket.reads(readMaxBytes).through(impl.receive)
+        val receive = socket.reads(readMaxBytes).through(impl.receiveResp)
 
         send.drain
           .covaryOutput[RESP]
-          .onFinalizeWeak(socket.endOfInput)
-          .mergeHaltBoth(
-            receive.onFinalizeWeak(socket.endOfOutput)
-          )
+          .mergeHaltBoth(receive)
+          .onFinalizeWeak(socket.endOfOutput)
       }
   }
 
@@ -45,12 +43,12 @@ object RedisChannel {
     def send[F[_]: MonadError[*[_], Throwable]](socketChannel: Pipe[F, Byte, Unit])(
         implicit log: LogWriter[F]
     ): Pipe[F, RESP, Unit] =
-      _.evalTap(resp => log.debug(s"sending $resp"))
+      _.evalTap(resp => log.trace(s"sending $resp"))
         .through(streamEncoder.encode[F])
         .flatMap(bits => Stream.chunk(Chunk.bytes(bits.toByteArray)))
         .through(socketChannel)
 
-    def receive[F[_]: MonadError[*[_], Throwable]](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
+    def receiveResp[F[_]: MonadError[*[_], Throwable]](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
       def framing: Pipe[F, Byte, CompleteFrame] = {
         def loopScan(bytesIn: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteFrame, Unit] =
           bytesIn.pull.uncons.flatMap {
@@ -75,7 +73,7 @@ object RedisChannel {
       pipeIn =>
         streamDecoder
           .decode(pipeIn.through(framing) map (_.bits))
-          .evalTap(resp => log.debug(s"receiving $resp"))
+          .evalTap(resp => log.trace(s"receiving $resp"))
     }
   }
 }

@@ -6,13 +6,14 @@ import java.util.concurrent.{Executors, TimeUnit}
 import cats.effect.{ContextShift, IO, Timer}
 import cats.syntax.flatMap._
 import laserdisc.auto._
+import laserdisc.fs2.parallel.testcases
 import log.effect.fs2.SyncLogWriter.consoleLogUpToLevel
 import log.effect.{LogLevels, LogWriter}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 
-object CatsIoTestRunner extends TestCases {
+object CatsIoTestRunner {
 
   private[this] val ec: ExecutionContext = fromExecutor(Executors.newFixedThreadPool(8))
 
@@ -22,11 +23,13 @@ object CatsIoTestRunner extends TestCases {
 
   def main(args: Array[String]): Unit = {
 
+    val runForMinutes = 2
     val task = timer.clock.monotonic(TimeUnit.MINUTES) >>= { start: Long =>
       RedisClient.to("localhost", 6379).use { cl =>
+        val cases = testcases.TestCasesLaserdisc[IO](cl)
         def loop(count: Long): IO[Long] =
-          case1(cl) >> timer.clock.monotonic(TimeUnit.MINUTES) >>= { current =>
-            if (current - start >= 2) IO.pure(count)
+          cases.case1 >> timer.clock.monotonic(TimeUnit.MINUTES) >>= { current =>
+            if (current - start >= runForMinutes) IO.pure(count)
             else loop(count + 1)
           }
 
@@ -34,7 +37,7 @@ object CatsIoTestRunner extends TestCases {
       }
     }
 
-    println(s"Avg send/s: ${task.unsafeRunSync() * 24.0 / 2 / 60}")
+    println(s"Avg send/s: ${task.unsafeRunSync() * 24.0 / runForMinutes / 60}")
     sys.exit()
   }
 }

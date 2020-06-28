@@ -12,13 +12,17 @@ val V = new {
   val `kind-projector`       = "0.11.0"
   val kittens                = "2.1.0"
   val `log-effect`           = "0.13.1"
+  val logback                = "1.2.3"
   val munit                  = "0.7.10"
   val `parallel-collections` = "0.2.0"
+  val redisForCats           = "0.10.0"
   val refined                = "0.9.15"
   val scalacheck             = "1.14.3"
+  val `scala-redis`          = "3.30"
   val `scodec-bits`          = "1.1.18"
   val `scodec-core`          = "1.11.7"
   val `scodec-stream`        = "2.0.0"
+  val scredis                = "2.3.3"
   val shapeless              = "2.3.3"
   val zio                    = "1.0.0-RC21"
   val `zio-interop-cats`     = "2.0.0.0-RC14"
@@ -35,10 +39,14 @@ val jedis              = Def.setting("redis.clients" % "jedis" % V.jedis)
 val kittens            = Def.setting("org.typelevel" %%% "kittens" % V.kittens)
 val `log-effect-fs2`   = Def.setting("io.laserdisc" %%% "log-effect-fs2" % V.`log-effect`)
 val `log-effect-zio`   = Def.setting("io.laserdisc" %% "log-effect-zio" % V.`log-effect`)
+val logback            = Def.setting("ch.qos.logback" % "logback-classic" % V.logback)
+val redisForCats       = Def.setting("dev.profunktor" %% "redis4cats-effects" % V.redisForCats)
 val refined            = Def.setting("eu.timepit" %%% "refined" % V.refined)
+val `scala-redis`      = Def.setting("net.debasishg" %% "redisclient" % V.`scala-redis`)
 val `scodec-bits`      = Def.setting("org.scodec" %%% "scodec-bits" % V.`scodec-bits`)
 val `scodec-core`      = Def.setting("org.scodec" %%% "scodec-core" % V.`scodec-core`)
 val `scodec-stream`    = Def.setting("org.scodec" %%% "scodec-stream" % V.`scodec-stream`)
+val scredis            = Def.setting("com.github.scredis" %% "scredis" % V.scredis)
 val shapeless          = Def.setting("com.chuusai" %%% "shapeless" % V.shapeless)
 val zio                = Def.setting("dev.zio" %% "zio" % V.zio)
 val `zio-interop-cats` = Def.setting("dev.zio" %% "zio-interop-cats" % V.`zio-interop-cats`)
@@ -110,10 +118,15 @@ val fs2Deps = Def.Initialize
 
 val fs2BenchDeps = Def.Initialize.join {
   Seq(
+    `kind-projector-compiler-plugin`,
     jedis,
+    redisForCats,
+    `scala-redis`,
+    scredis,
     zio,
     `zio-interop-cats`,
-    `log-effect-zio`
+    `log-effect-zio`,
+    logback
   )
 }
 
@@ -330,6 +343,7 @@ lazy val `fs2-bench` = project
   .settings(
     name := "laserdisc-fs2-benchmarks",
     publishArtifact := false,
+    scalacOptions ++= versionDependantScalacOptions.value,
     libraryDependencies ++= fs2BenchDeps.value,
     run / fork := true
   )

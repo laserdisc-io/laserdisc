@@ -1,4 +1,5 @@
-package laserdisc.protocol
+package laserdisc
+package protocol
 
 import shapeless._
 import shapeless.labelled.FieldType

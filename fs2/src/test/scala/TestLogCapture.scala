@@ -8,7 +8,7 @@ trait TestLogCapture {
     val lowerStream = new ByteArrayOutputStream()
     val outStream   = new PrintStream(lowerStream)
 
-    Console.withOut(outStream)(aWrite.unsafeRunSync)
+    Console.withOut(outStream)(aWrite.unsafeRunSync())
 
     lowerStream.toString
   }

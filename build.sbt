@@ -161,7 +161,7 @@ val externalApiMappings = Def.task {
 val versionDependantScalacOptions = Def.setting {
   def versionDependent(scalaVersion: String, flags: Seq[String]) =
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((2, major)) if major >= 13 => flags
+      case Some((2, major)) if major >= 13 => flags ++ Seq("-Wconf:any:error")
       case _ =>
         flags ++ Seq(
           "-Xfuture",                         // Turn on future language features.

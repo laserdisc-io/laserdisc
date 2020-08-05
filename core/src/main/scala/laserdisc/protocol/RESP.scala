@@ -21,7 +21,6 @@ import shapeless.Generic
   * Concrete instances of this trait must be created using this trait's companion
   * object's methods, were [[scodec.Codec]]s for each are also defined
   *
-  * @see [[RESPBuilders]]
   * @see [[RESPCodecs]]
   */
 sealed trait RESP extends AnyRef with Serializable
@@ -93,9 +92,6 @@ case object NullBulk extends GenBulk
 
 /**
   * This is the special case of a non-null RESP [[GenBulk]]
-  *
-  * These can be constructed by using the [[RESPBuilders#bulk]]
-  * method
   *
   * @param value The wrapped bulk string value
   */

@@ -33,9 +33,12 @@ stages:
 - name: Release 2.13
   if: type != pull_request AND tag IS present AND NOT fork
 
+scala_212: &scala_212 2.12.12
+scala_213: &scala_213 2.13.3
+
 scala:
-- 2.12.12
-- 2.13.3
+- *scala_212
+- *scala_213
 jdk:
 - openjdk8
 - openjdk13
@@ -48,37 +51,37 @@ jobs:
     name: Check with Scalafmt
     script: sbt ++$TRAVIS_SCALA_VERSION fmtCheck
     jdk: openjdk8
-    scala: 2.13.2
+    scala: *scala_213
 
   - stage: Compile Benchmarks
     name: Compile benchmarks
     script: sbt ++$TRAVIS_SCALA_VERSION benchBuild
     jdk: openjdk8
-    scala: 2.13.2
+    scala: *scala_213
 
   - stage: Publish Snapshot 2.12
     name: Publish a snapshot for Scala 2.12
     script: CI_SNAPSHOT_RELEASE=publish sbt ++$TRAVIS_SCALA_VERSION releaseIt
     jdk: openjdk8
-    scala: 2.12.11
+    scala: *scala_212
 
   - stage: Publish Snapshot 2.13
     name: Publish a snapshot for Scala 2.13
     script: CI_SNAPSHOT_RELEASE=publish sbt ++$TRAVIS_SCALA_VERSION releaseIt
     jdk: openjdk8
-    scala: 2.13.2
+    scala: *scala_213
 
   - stage: Release 2.12
     name: Release for Scala 2.12
     script: CI_RELEASE=publishSigned sbt ++$TRAVIS_SCALA_VERSION releaseIt
     jdk: openjdk8
-    scala: 2.12.11
+    scala: *scala_212
 
   - stage: Release 2.13
     name: Release for Scala 2.13
     script: CI_RELEASE=publishSigned sbt ++$TRAVIS_SCALA_VERSION releaseIt
     jdk: openjdk8
-    scala: 2.13.2
+    scala: *scala_213
 
 services:
 - docker

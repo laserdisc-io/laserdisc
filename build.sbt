@@ -377,9 +377,14 @@ lazy val laserdisc = project
   .settings(publishSettings)
   .settings(
     publishArtifact := false,
-    addCommandAlias("benchBuild", ";core-bench/clean;core-bench/test:compile;fs2-bench/clean;fs2-bench/test:compile"),
+    addCommandAlias("benchClean", "all core-bench/clean fs2-bench/clean"),
+    addCommandAlias("benchCompile", "all core-bench/test:compile fs2-bench/test:compile"),
+    addCommandAlias("benchBuild", ";benchClean;benchCompile"),
     addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt;fs2-bench/scalafmt"),
-    addCommandAlias("fmtCheck", ";scalafmtCheck;test:scalafmtCheck;scalafmtSbtCheck;fs2-bench/scalafmtCheck;fs2-bench/test:scalafmtCheck"),
+    addCommandAlias(
+      "fmtCheck",
+      "all scalafmtCheck test:scalafmtCheck scalafmtSbtCheck fs2-bench/scalafmtCheck fs2-bench/test:scalafmtCheck"
+    ),
     addCommandAlias("fullTest", ";clean;coverage;test;coverageReport"),
     addCommandAlias("prePr", ";fmtCheck;fullTest"),
     // travis release aliases

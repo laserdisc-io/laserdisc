@@ -8,7 +8,7 @@ import cats.effect.{Blocker, ContextShift, IO, Timer}
 import cats.syntax.flatMap._
 import laserdisc.auto._
 import laserdisc.fs2.parallel.SetUpLaserdiscBitVectorResp.LaserdiscCatsBitVectorSetUp
-import laserdisc.fs2.parallel.baseline.RedisBitVectorChannel
+import laserdisc.fs2.parallel.baseline.BenchRedisBitVectorChannel
 import laserdisc.fs2.parallel.testcases.TestCasesLaserdiscBitVector
 import log.effect.fs2.SyncLogWriter
 import log.effect.{LogLevels, LogWriter}
@@ -52,7 +52,7 @@ object SetUpLaserdiscBitVectorResp {
 
     val resource = Blocker[IO] evalMap { bl =>
       RedisAddress("localhost", 6379).toInetSocketAddress[IO] map { address =>
-        RedisBitVectorChannel[IO](address, writeTimeout = Some(10.seconds), readMaxBytes = 8 * 1024 * 1024)(bl)
+        BenchRedisBitVectorChannel[IO](address, writeTimeout = Some(10.seconds), readMaxBytes = 8 * 1024 * 1024)(bl)
       }
     }
 

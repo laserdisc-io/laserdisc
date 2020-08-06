@@ -5,14 +5,13 @@ package testcases
 
 import _root_.fs2.Chunk
 import cats.effect.Sync
-import scodec.bits.BitVector
 
 private[fs2] object TestCasesLaserdiscBaseline {
-  final def apply[F[_]: Sync](ch: Pipe[F, Byte, BitVector]): TestCasesLaserdiscBaseline[F] =
+  final def apply[F[_]: Sync](ch: Pipe[F, Byte, Byte]): TestCasesLaserdiscBaseline[F] =
     new TestCasesLaserdiscBaseline[F](ch) {}
 }
 
-private[fs2] abstract class TestCasesLaserdiscBaseline[F[_]: Sync](ch: Pipe[F, Byte, BitVector]) extends TestSendBaseline {
+private[fs2] abstract class TestCasesLaserdiscBaseline[F[_]: Sync](ch: Pipe[F, Byte, Byte]) extends TestSendBaseline {
   final def case1 = longSend.through(ch).compile.toVector
   final def case2 = shortSend.through(ch).compile.toVector
 }

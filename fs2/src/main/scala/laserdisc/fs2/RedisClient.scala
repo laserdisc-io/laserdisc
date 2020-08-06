@@ -122,9 +122,9 @@ object RedisClient {
 
             def pop: F[Option[Request[F]]] =
               inFlight
-                .modify {
-                  case h +: t => t     -> Some(h)
-                  case other  => other -> None
+                .modify { inFl =>
+                  if (inFl.nonEmpty) inFl.tail -> Some(inFl.head)
+                  else inFl                    -> None
                 }
 
             def serverAvailable(address: RedisAddress): Stream[F, Unit] =

@@ -1,14 +1,14 @@
 package laserdisc
 package fs2
 package parallel
-package baseline
+package channels
 
 import _root_.fs2.{Chunk, Pipe, Pull, Stream}
 import cats.MonadError
 import laserdisc.protocol._
 import scodec.bits.BitVector
 
-private[fs2] object BitVectorChannelCodec {
+private[channels] object BitVectorChannelAdapter {
   def send[F[_]: MonadError[*[_], Throwable]](socketChannel: Pipe[F, Byte, Unit]): Pipe[F, BitVector, Unit] =
     _.flatMap(bits => Stream.chunk(Chunk.bytes(bits.toByteArray)))
       .through(socketChannel)

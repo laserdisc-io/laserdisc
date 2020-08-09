@@ -1,7 +1,7 @@
 package laserdisc
 package fs2
 package parallel
-package baseline
+package channels
 
 import java.net.InetSocketAddress
 
@@ -13,7 +13,7 @@ import log.effect.LogWriter
 
 import scala.concurrent.duration.FiniteDuration
 
-object BenchRedisBaselineChannel {
+object ByteInByteOutChannel {
 
   private[fs2] final def apply[F[_]: ContextShift: LogWriter: Concurrent](
       address: InetSocketAddress,

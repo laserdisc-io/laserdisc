@@ -1,7 +1,7 @@
 package laserdisc
 package fs2
 package parallel
-package baseline
+package channels
 
 import java.net.InetSocketAddress
 
@@ -13,7 +13,7 @@ import scodec.bits.BitVector
 
 import scala.concurrent.duration.FiniteDuration
 
-object BenchRedisBitVectorChannel {
+object BitVectorInBitVectorOutChannel {
 
   private[fs2] final def apply[F[_]: ContextShift: Concurrent](
       address: InetSocketAddress,
@@ -25,8 +25,8 @@ object BenchRedisBitVectorChannel {
 
     stream =>
       Stream.resource(connectedSocket) >>= { socket =>
-        val send    = stream.through(BitVectorChannelCodec.send(socket.writes(writeTimeout)))
-        val receive = socket.reads(readMaxBytes).through(BitVectorChannelCodec.receive)
+        val send    = stream.through(BitVectorChannelAdapter.send(socket.writes(writeTimeout)))
+        val receive = socket.reads(readMaxBytes).through(BitVectorChannelAdapter.receive)
 
         send.drain
           .covaryOutput[BitVector]

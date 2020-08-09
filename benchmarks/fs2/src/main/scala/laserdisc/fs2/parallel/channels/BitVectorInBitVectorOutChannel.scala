@@ -25,7 +25,7 @@ object BitVectorInBitVectorOutChannel {
 
     stream =>
       Stream.resource(connectedSocket) >>= { socket =>
-        val send    = stream.through(BitVectorChannelAdapter.send(socket.writes(writeTimeout)))
+        val send    = stream.through(BitVectorChannelAdapter.send(socket.write(_, writeTimeout)))
         val receive = socket.reads(readMaxBytes).through(BitVectorChannelAdapter.receive)
 
         send.drain

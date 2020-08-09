@@ -232,7 +232,7 @@ val versionDependantScalacOptions = Def.setting {
 
 lazy val commonSettings = Seq(
   scalacOptions ++= versionDependantScalacOptions.value,
-  Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings"),
+  Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings", "-Wconf:any:error"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value
 )
 

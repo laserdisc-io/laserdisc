@@ -1,6 +1,7 @@
 # Metals + Bloop
 .metals/
 .bloop/
+metals.sbt
 
 # Intellij
 .idea

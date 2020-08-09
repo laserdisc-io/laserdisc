@@ -24,8 +24,8 @@ val V = new {
   val `scodec-stream`        = "2.0.0"
   val scredis                = "2.3.3"
   val shapeless              = "2.3.3"
-  val zio                    = "1.0.0-RC21"
-  val `zio-interop-cats`     = "2.0.0.0-RC14"
+  val zio                    = "1.0.0"
+  val `zio-interop-cats`     = "2.1.4.0"
 }
 
 val `cats-core`        = Def.setting("org.typelevel" %% "cats-core" % V.cats)

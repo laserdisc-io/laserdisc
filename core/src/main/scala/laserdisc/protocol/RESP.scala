@@ -158,20 +158,20 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   protected final val crlfBytes         = crlf.bytes
   private[this] final val crlfBytesSize = crlfBytes.size
 
-  private[this] final def crlfTerminatedCodec[A](baseCodec: Codec[A], from: Long = 0L): Codec[A] =
-    filtered(
-      baseCodec,
-      new Codec[BitVector] {
-        override final def sizeBound: SizeBound                        = SizeBound.unknown
-        override final def encode(bits: BitVector): Attempt[BitVector] = Attempt.successful(bits ++ crlf)
-        override final def decode(bits: BitVector): Attempt[DecodeResult[BitVector]] =
-          bits.bytes.indexOfSlice(crlfBytes, from) match {
-            case -1 =>
-              Attempt.failure(new MatchingDiscriminatorNotFound(s"Does not contain 'CRLF' termination bytes. Content: ${bits.tailToUtf8}"))
-            case i => Attempt.successful(DecodeResult(bits.take(i * BitsInByte), bits.drop(i * BitsInByte + crlfSize)))
-          }
+  private[this] final def crlfTerminatedFrom(from: Long) =
+    new Codec[BitVector] {
+      override final val sizeBound: SizeBound                        = SizeBound.unknown
+      override final def encode(bits: BitVector): Attempt[BitVector] = Attempt.successful(bits ++ crlf)
+      override final def decode(bits: BitVector): Attempt[DecodeResult[BitVector]] = {
+        val i = bits.bytes.indexOfSlice(crlfBytes, from)
+        if (i == -1)
+          Attempt.failure(new MatchingDiscriminatorNotFound(s"Does not contain 'CRLF' termination bytes. Content: ${bits.tailToUtf8}"))
+        else Attempt.successful(DecodeResult(bits.take(i * BitsInByte), bits.drop(i * BitsInByte + crlfSize)))
       }
-    )
+    }
+
+  private[this] final def crlfTerminatedCodec[A](baseCodec: Codec[A], from: Long = 0L): Codec[A] =
+    filtered(baseCodec, crlfTerminatedFrom(from))
 
   private[this] final val crlfTerminatedStringCodec: Codec[String] = crlfTerminatedCodec(utf8Codec)
   private[this] final val crlfTerminatedLongCodec: Codec[Long] = crlfTerminatedStringCodec.narrow(
@@ -222,7 +222,7 @@ sealed trait RESPCodecs extends BitVectorSyntax {
     private[this] final def failEnc(arr: GenArr, err: SErr) =
       General(s"failed to encode size of [$arr]: ${err.messageWithContext}", List("size"))
 
-    override final def sizeBound: SizeBound = SizeBound.unknown
+    override final val sizeBound: SizeBound = SizeBound.unknown
     override final def encode(arr: GenArr): Attempt[BitVector] =
       arr match {
         case NilArr              => Attempt.successful(nilArrBits)
@@ -234,7 +234,7 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   }
 
   implicit final val respCodec: Codec[RESP] = new Codec[RESP] {
-    override final def sizeBound: SizeBound = SizeBound.unknown
+    override final val sizeBound: SizeBound = SizeBound.unknown
     override final def encode(value: RESP): Attempt[BitVector] =
       value match {
         case str: Str      => strCodec.encode(str).map(plus ++ _)
@@ -255,12 +255,12 @@ sealed trait RESPCodecs extends BitVectorSyntax {
           case (other, _)            => Attempt.failure(SErr(s"unidentified RESP type (Hex: ${other.toHex})"))
         }
       )
-    override final def toString: String = "RESP"
+    override final val toString: String = "RESP"
   }
 
   protected final val crlfTerminatedReprOfLongDecoder: Decoder[Repr[Long]] = crlfTerminatedCodec(
     new Codec[Repr[String]] {
-      override final def sizeBound: SizeBound                                         = SizeBound.unknown
+      override final val sizeBound: SizeBound                                         = SizeBound.unknown
       override final def encode(bd: Repr[String]): Attempt[BitVector]                 = utf8Codec.encode(bd.decoded)
       override final def decode(bits: BitVector): Attempt[DecodeResult[Repr[String]]] = utf8Codec.decode(bits).map(_.map(Repr(_, bits)))
     }

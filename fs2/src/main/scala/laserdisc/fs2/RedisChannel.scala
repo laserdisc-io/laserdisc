@@ -11,6 +11,7 @@ import cats.syntax.flatMap._
 import laserdisc.protocol._
 import log.effect.LogWriter
 import scodec.Codec
+import scodec.bits.BitVector
 import scodec.stream.{StreamDecoder, StreamEncoder}
 
 import scala.concurrent.duration.FiniteDuration
@@ -29,7 +30,7 @@ object RedisChannel {
 
     stream =>
       Stream.resource(connectedSocket) >>= { socket =>
-        val send    = stream.through(impl.send(socket.writes(writeTimeout)))
+        val send    = stream.through(impl.send(socket.write(_, writeTimeout)))
         val receive = socket.reads(readMaxBytes).through(impl.receiveResp)
 
         send.drain
@@ -40,13 +41,13 @@ object RedisChannel {
   }
 
   private[this] final object impl {
-    def send[F[_]: MonadError[*[_], Throwable]](socketChannel: Pipe[F, Byte, Unit])(
+    def send[F[_]: MonadError[*[_], Throwable]](socketWrite: Chunk[Byte] => F[Unit])(
         implicit log: LogWriter[F]
     ): Pipe[F, RESP, Unit] =
       _.evalTap(resp => log.trace(s"sending $resp"))
         .through(streamEncoder.encode[F])
-        .flatMap(bits => Stream.chunk(Chunk.bytes(bits.toByteArray)))
-        .through(socketChannel)
+        .chunks
+        .evalMap(chunks => socketWrite(Chunk.bytes(chunks.foldLeft(BitVector.empty)(_ ++ _).toByteArray)))
 
     def receiveResp[F[_]: MonadError[*[_], Throwable]](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
       def framing: Pipe[F, Byte, CompleteFrame] = {

@@ -2,28 +2,27 @@ package laserdisc
 package fs2
 package parallel
 
-import java.util.concurrent.{Executors, TimeUnit}
-
 import cats.effect.{Blocker, ContextShift, IO, Timer}
 import cats.syntax.flatMap._
 import laserdisc.auto._
-import laserdisc.fs2.parallel.SetUpLaserdiscBitVectorResp.LaserdiscCatsBitVectorSetUp
-import laserdisc.fs2.parallel.channels.BitVectorInBitVectorOutChannel
-import laserdisc.fs2.parallel.testcases.TestCasesLaserdiscBitVector
+import laserdisc.fs2.parallel.SetUpLaserdiscCatsBitVectorByte.LaserdiscCatsBitVectorByteSetUp
+import laserdisc.fs2.parallel.channels.BitVectorInByteOutChannel
+import laserdisc.fs2.parallel.testcases.TestCasesLaserdiscBitVectorByte
 import log.effect.fs2.SyncLogWriter
 import log.effect.{LogLevels, LogWriter}
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 
+import java.util.concurrent.{Executors, TimeUnit}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
 import scala.concurrent.duration._
 
-class ParallelLoadLaserdiscCatsBitVectorBench() {
+class LaserdiscCatsBitVectorInByteOutBench() {
 
   @Benchmark
   @OperationsPerInvocation(48)
-  def parallelLoad1(setUp: LaserdiscCatsBitVectorSetUp, bh: Blackhole): Unit = {
+  def parallelLoad1(setUp: LaserdiscCatsBitVectorByteSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case1
     val res = run.unsafeRunSync()
 
@@ -32,7 +31,7 @@ class ParallelLoadLaserdiscCatsBitVectorBench() {
 
   @Benchmark
   @OperationsPerInvocation(48)
-  def parallelLoad2(setUp: LaserdiscCatsBitVectorSetUp, bh: Blackhole): Unit = {
+  def parallelLoad2(setUp: LaserdiscCatsBitVectorByteSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case2
     val res = run.unsafeRunSync()
 
@@ -40,10 +39,10 @@ class ParallelLoadLaserdiscCatsBitVectorBench() {
   }
 }
 
-object SetUpLaserdiscBitVectorResp {
+object SetUpLaserdiscCatsBitVectorByte {
 
   @State(Scope.Benchmark)
-  class LaserdiscCatsBitVectorSetUp {
+  class LaserdiscCatsBitVectorByteSetUp {
     private[this] val commandsService           = Executors.newFixedThreadPool(8)
     private[this] val ec: ExecutionContext      = fromExecutor(commandsService)
     implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
@@ -52,18 +51,18 @@ object SetUpLaserdiscBitVectorResp {
 
     val resource = Blocker[IO] evalMap { bl =>
       RedisAddress("localhost", 6379).toInetSocketAddress[IO] map { address =>
-        BitVectorInBitVectorOutChannel[IO](address, writeTimeout = Some(10.seconds), readMaxBytes = 8 * 1024 * 1024)(bl)
+        BitVectorInByteOutChannel[IO](address, writeTimeout = Some(10.seconds), readMaxBytes = 8 * 1024 * 1024)(bl)
       }
     }
 
-    private[fs2] var testCases: TestCasesLaserdiscBitVector[IO] = _
-    private[fs2] var clientCleanUp: IO[Unit]                    = _
+    private[fs2] var testCases: TestCasesLaserdiscBitVectorByte[IO] = _
+    private[fs2] var clientCleanUp: IO[Unit]                        = _
 
     @Setup(Level.Trial)
     def setup(): Unit =
       resource.allocated
         .map { case (rc, cu) =>
-          testCases = TestCasesLaserdiscBitVector(rc)
+          testCases = TestCasesLaserdiscBitVectorByte(rc)
           clientCleanUp = cu
         }
         .unsafeRunSync()

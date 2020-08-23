@@ -16,7 +16,7 @@ import scala.concurrent.ExecutionContext.fromExecutor
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext}
 
-class ParallelLoadScredisBench() {
+class ScredisBench() {
 
   @Benchmark
   @OperationsPerInvocation(48)

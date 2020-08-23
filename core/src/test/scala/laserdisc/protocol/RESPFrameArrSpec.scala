@@ -9,21 +9,21 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
 
   test("Appending an empty array bit vector to an empty GenArr frame gives a complete frame with the bits of an empty bulk") {
     val inputVector = BitVector("*0\r\n".getBytes)
-    assertEquals(EmptyFrame.append(inputVector.toByteBuffer), CompleteFrame(inputVector))
+    assertEquals(EmptyFrame.append(inputVector), CompleteFrame(inputVector))
   }
 
   test(
     "Appending a bit vector that contains only the size of a non empty array to an empty GenArr frame gives an incomplete frame with the bits of the size"
   ) {
     val inputVector = BitVector("*32\r\n".getBytes)
-    assertEquals(EmptyFrame.append(inputVector.toByteBuffer), IncompleteFrame(inputVector, 0))
+    assertEquals(EmptyFrame.append(inputVector), IncompleteFrame(inputVector, 0))
   }
 
   test("Appending to a non empty GenArr frame a bit vector that completes it gives a correct complete frame") {
     val nonEmptyFrame = IncompleteFrame(BitVector("*1\r\n$16\r\nTest bulk str".getBytes), 0)
     val inputVector   = BitVector("ing\r\n".getBytes)
     val expected      = BitVector("*1\r\n$16\r\nTest bulk string\r\n".getBytes)
-    assertEquals(nonEmptyFrame.append(inputVector.toByteBuffer), CompleteFrame(expected))
+    assertEquals(nonEmptyFrame.append(inputVector), CompleteFrame(expected))
   }
 
   test(
@@ -32,14 +32,14 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
     val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
     val inputVector   = BitVector("ing\r\n:100\r\n".getBytes)
     val expected      = BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n".getBytes)
-    assertEquals(nonEmptyFrame.append(inputVector.toByteBuffer), IncompleteFrame(expected, 0))
+    assertEquals(nonEmptyFrame.append(inputVector), IncompleteFrame(expected, 0))
   }
 
   test("Appending to a non empty GenArr frame a bit vector that completes the array gives a correct complete frame") {
     val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
     val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n".getBytes)
     val expected      = BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)
-    assertEquals(nonEmptyFrame.append(inputVector.toByteBuffer), CompleteFrame(expected))
+    assertEquals(nonEmptyFrame.append(inputVector), CompleteFrame(expected))
   }
 
   test(
@@ -48,7 +48,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
     val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
     val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n".getBytes)
     assertEquals(
-      nonEmptyFrame.append(inputVector.toByteBuffer),
+      nonEmptyFrame.append(inputVector),
       MoreThanOneFrame(
         Vector(
           CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
@@ -65,7 +65,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
     val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
     val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n$17\r\nAnother bulk ".getBytes)
     assertEquals(
-      nonEmptyFrame.append(inputVector.toByteBuffer),
+      nonEmptyFrame.append(inputVector),
       MoreThanOneFrame(
         Vector(
           CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
@@ -82,7 +82,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
     val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
     val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n*-1\r\n*-1\r\n*-1\r\n*-1\r\n*-1\r\n".getBytes)
     assertEquals(
-      nonEmptyFrame.append(inputVector.toByteBuffer),
+      nonEmptyFrame.append(inputVector),
       MoreThanOneFrame(
         Vector(
           CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
@@ -103,7 +103,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
     val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
     val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n*-1\r\n*-1\r\n*-1\r\n*-1\r\n*-1\r\n*".getBytes)
     assertEquals(
-      nonEmptyFrame.append(inputVector.toByteBuffer),
+      nonEmptyFrame.append(inputVector),
       MoreThanOneFrame(
         Vector(
           CompleteFrame(BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)),
@@ -126,7 +126,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
       "ing\r\n:100\r\n+A simple string\r\n*-1\r\n*-1\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n*-1\r\n*-1\r\n*-1\r\n".getBytes
     )
     nonEmptyFrame
-      .append(inputVector.toByteBuffer)
+      .append(inputVector)
       .fold(
         err => fail(s"expected a result but failed with $err"),
         {
@@ -156,7 +156,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
       "ing\r\n:100\r\n+A simple string\r\n*-1\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n*3\r\n$8\r\nAnother1\r\n*3\r\n*2\r\n+Simple string\r\n*2\r\n$3\r\nfoo\r\n-an error\r\n:13\r\n:12\r\n-An error\r\n*-1\r\n".getBytes
     )
     nonEmptyFrame
-      .append(inputVector.toByteBuffer)
+      .append(inputVector)
       .fold(
         err => fail(s"expected a result but failed with $err"),
         {

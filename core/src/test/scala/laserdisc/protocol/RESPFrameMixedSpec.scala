@@ -13,7 +13,7 @@ final class RESPFrameMixedSpec extends RESPFrameFixture {
     val inputVector = BitVector(
       "ing\r\n+OK\r\n$0\r\n\r\n+Another simple string\r\n*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n-Possible error message\r\n*0\r\n:1\r\n:2\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n:177\r\n+Another simple string\r\n$21\r\nTest bulk string 1 11\r\n*5\r\n$16\r\nTest bulk string\r\n:13\r\n-1234 An error with numbers\r\n:100\r\n+A simple string\r\n-And an error message\r\n".getBytes
     )
-    nonEmptyFrame.append(inputVector.toByteBuffer) onRightAll {
+    nonEmptyFrame.append(inputVector) onRightAll {
       case r @ MoreThanOneFrame(_, _) =>
         assertEquals(
           r.complete,
@@ -50,7 +50,7 @@ final class RESPFrameMixedSpec extends RESPFrameFixture {
     val inputVector = BitVector(
       "ing\r\n+OK\r\n+Another simple string\r\n-Possible error message\r\n:1\r\n:2\r\n:177\r\n+Another simple string\r\n$21\r\nTest bulk string 1 11\r\n-And an error message\r\n".getBytes
     )
-    nonEmptyFrame.append(inputVector.toByteBuffer) onRightAll {
+    nonEmptyFrame.append(inputVector) onRightAll {
       case r @ MoreThanOneFrame(_, _) =>
         assertEquals(
           r.complete,
@@ -75,7 +75,7 @@ final class RESPFrameMixedSpec extends RESPFrameFixture {
     forAll { testSet: OneOrMore[ProtocolEncoded] =>
       val vector = BitVector(testSet.value.map(_.encoded).mkString.getBytes)
 
-      EmptyFrame.append(vector.toByteBuffer) onRightAll {
+      EmptyFrame.append(vector) onRightAll {
         case MoreThanOneFrame(complete, remainder) =>
           assertEquals(complete.size, testSet.value.size)
           assert(remainder.isEmpty)

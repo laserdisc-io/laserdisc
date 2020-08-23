@@ -1,8 +1,6 @@
 package laserdisc
 package protocol
 
-import java.nio.ByteBuffer
-
 import laserdisc.protocol.BitVectorDecoding._
 import laserdisc.protocol.RESP.stateOf
 import scodec.bits.BitVector
@@ -10,7 +8,7 @@ import scodec.bits.BitVector
 import scala.annotation.tailrec
 
 private[laserdisc] sealed trait RESPFrame extends Product with Serializable with EitherSyntax with BitVectorSyntax {
-  def append(bytes: ByteBuffer): Exception | NonEmptyRESPFrame = nextFrame(BitVector.view(bytes))
+  def append(bits: BitVector): Exception | NonEmptyRESPFrame = nextFrame(bits)
   protected final def nextFrame(bits: BitVector): Exception | NonEmptyRESPFrame =
     stateOf(bits)
       .flatMap {
@@ -41,12 +39,10 @@ private[laserdisc] final case class CompleteFrame(bits: BitVector) extends NonEm
 private[laserdisc] final case class MoreThanOneFrame(private[laserdisc] val complete: Vector[CompleteFrame], remainder: BitVector)
     extends NonEmptyRESPFrame
 private[laserdisc] final case class IncompleteFrame(partial: BitVector, bitsToComplete: Long) extends NonEmptyRESPFrame {
-  override def append(bytes: ByteBuffer): Exception | NonEmptyRESPFrame = {
-    val newBits = BitVector.view(bytes)
+  override def append(bits: BitVector): Exception | NonEmptyRESPFrame =
     //  Saves some size checks
-    if (bitsToComplete > 0 && bitsToComplete == newBits.size) Right(CompleteFrame(partial ++ newBits))
-    else nextFrame(partial ++ newBits)
-  }
+    if (bitsToComplete > 0 && bitsToComplete == bits.size) Right(CompleteFrame(partial ++ bits))
+    else nextFrame(partial ++ bits)
 }
 
 private[laserdisc] final case class UnknownBufferState(message: String) extends laserdisc.Platform.LaserDiscRespFrameError(message)

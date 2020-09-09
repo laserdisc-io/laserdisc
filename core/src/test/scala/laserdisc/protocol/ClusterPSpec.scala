@@ -122,16 +122,15 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   } yield rss) :| "raw slots info"
   private[this] val slotsToArr: RawSlots => Arr = ss =>
     Arr(
-      ss.map {
-        case (f, t, rs) =>
-          Arr(
-            Num(f.value.toLong),
-            Num(t.value.toLong),
-            Arr(rs.toList.map {
-              case (h, p, Some(mrid)) => Arr(Bulk(h.fold(_.value, _.value)), Num(p.value.toLong), Bulk(mrid.value))
-              case (h, p, None)       => Arr(Bulk(h.fold(_.value, _.value)), Num(p.value.toLong))
-            })
-          )
+      ss.map { case (f, t, rs) =>
+        Arr(
+          Num(f.value.toLong),
+          Num(t.value.toLong),
+          Arr(rs.toList.map {
+            case (h, p, Some(mrid)) => Arr(Bulk(h.fold(_.value, _.value)), Num(p.value.toLong), Bulk(mrid.value))
+            case (h, p, None)       => Arr(Bulk(h.fold(_.value, _.value)), Num(p.value.toLong))
+          })
+        )
       }
     )
 
@@ -320,16 +319,15 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   property("The Cluster protocol using slots roundtrips successfully using val") {
     forAll(slotsGen) { ss =>
       val protocol = slots
-      val ssWithLoopback = ss.map {
-        case (f, t, assigned) =>
-          (
-            f,
-            t,
-            assigned.foldRight[List[(String, Port, Option[NodeId])]](Nil) {
-              case ((Left(_), p, n), css)  => (LoopbackHost.value, p, n) :: css
-              case ((Right(h), p, n), css) => (h.value, p, n) :: css
-            }
-          )
+      val ssWithLoopback = ss.map { case (f, t, assigned) =>
+        (
+          f,
+          t,
+          assigned.foldRight[List[(String, Port, Option[NodeId])]](Nil) {
+            case ((Left(_), p, n), css)  => (LoopbackHost.value, p, n) :: css
+            case ((Right(h), p, n), css) => (h.value, p, n) :: css
+          }
+        )
       }.toSet
 
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SLOTS")))
@@ -340,8 +338,8 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
           }
           assert(ssWithLoopback.contains((f, t, mrs)))
         case (ClusterRangeSlotType(f, t), ClusterOldSlotInfo(ClusterHostPort(mh, mp), rs)) =>
-          val mrs = (mh.value, mp, None) :: rs.foldLeft(List.empty[(String, Port, Option[NodeId])]) {
-            case (acc, ClusterHostPort(h, p)) => acc :+ ((h.value, p, None))
+          val mrs = (mh.value, mp, None) :: rs.foldLeft(List.empty[(String, Port, Option[NodeId])]) { case (acc, ClusterHostPort(h, p)) =>
+            acc :+ ((h.value, p, None))
           }
           assert(ssWithLoopback.contains((f, t, mrs)))
       })

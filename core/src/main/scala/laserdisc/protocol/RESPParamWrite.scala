@@ -33,8 +33,8 @@ private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteIns
       implicit A: RESPParamWrite[A],
       B: RESPParamWrite[B]
   ): RESPParamWrite[(A, B)] =
-    RESPParamWrite.instance {
-      case (a, b) => A.write(a) ++ B.write(b)
+    RESPParamWrite.instance { case (a, b) =>
+      A.write(a) ++ B.write(b)
     }
   implicit final def listRESPParamWrite[A](implicit A: RESPParamWrite[A]): RESPParamWrite[List[A]] =
     RESPParamWrite.instance(_.flatMap(A.write))
@@ -52,7 +52,7 @@ private[protocol] sealed trait RESPParamWriteInstances1 {
       implicit H: RESPParamWrite[H],
       T: RESPParamWrite[T]
   ): RESPParamWrite[H :: T] =
-    RESPParamWrite.instance {
-      case h :: t => H.write(h) ++: T.write(t)
+    RESPParamWrite.instance { case h :: t =>
+      H.write(h) ++: T.write(t)
     }
 }

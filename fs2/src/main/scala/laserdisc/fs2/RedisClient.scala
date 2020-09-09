@@ -210,8 +210,8 @@ object RedisClient {
               ): F[Out] = handler(queue -> timeout, in)
             }
 
-            Resource.make(newConnection.run map (newConnection -> _)) {
-              case (conn, fib) => conn.shutdown >> fib.join
+            Resource.make(newConnection.run map (newConnection -> _)) { case (conn, fib) =>
+              conn.shutdown >> fib.join
             } map { case (conn, _) => conn }
           }
         }

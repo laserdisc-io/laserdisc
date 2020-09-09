@@ -62,10 +62,9 @@ object SetUpLaserdiscBitVectorResp {
     @Setup(Level.Trial)
     def setup(): Unit =
       resource.allocated
-        .map {
-          case (rc, cu) =>
-            testCases = TestCasesLaserdiscBitVector(rc)
-            clientCleanUp = cu
+        .map { case (rc, cu) =>
+          testCases = TestCasesLaserdiscBitVector(rc)
+          clientCleanUp = cu
         }
         .unsafeRunSync()
 

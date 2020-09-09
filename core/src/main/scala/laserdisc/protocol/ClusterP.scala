@@ -70,16 +70,15 @@ object ClusterP {
       val R  = raw"(\d+)-(\d+)".r
       val IS = raw"\[(\d+)-<-(${NodeIdRegexWit.value})\]".r
       val MS = raw"\[(\d+)->-(${NodeIdRegexWit.value})\]".r
-      Read.instance {
-        case ss =>
-          ss.foldRight[RESPDecErr | List[SlotType]](Right(Nil)) {
-            case (ToInt(Slot(s)), Right(fgs))                    => Right(SlotType.Single(s) :: fgs)
-            case (R(ToInt(Slot(f)), ToInt(Slot(t))), Right(fgs)) => Right(SlotType.Range(f, t) :: fgs)
-            case (IS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.ImportingSlot(s, id) :: fgs)
-            case (MS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.MigratingSlot(s, id) :: fgs)
-            case (other, Right(_))                               => Left(RESPDecErr(s"Wrong encoding for Node's slot type. Was $other"))
-            case (_, left)                                       => left
-          }
+      Read.instance { case ss =>
+        ss.foldRight[RESPDecErr | List[SlotType]](Right(Nil)) {
+          case (ToInt(Slot(s)), Right(fgs))                    => Right(SlotType.Single(s) :: fgs)
+          case (R(ToInt(Slot(f)), ToInt(Slot(t))), Right(fgs)) => Right(SlotType.Range(f, t) :: fgs)
+          case (IS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.ImportingSlot(s, id) :: fgs)
+          case (MS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.MigratingSlot(s, id) :: fgs)
+          case (other, Right(_))                               => Left(RESPDecErr(s"Wrong encoding for Node's slot type. Was $other"))
+          case (_, left)                                       => left
+        }
       }
     }
     private final val ND: String ==> Node = {
@@ -102,16 +101,15 @@ object ClusterP {
       }
     }
 
-    implicit final val nodesRead: Bulk ==> Nodes = Read.instance {
-      case Bulk(s) =>
-        s.split(LF_CH)
-          .foldRight[RESPDecErr | (List[Node], Int)](Right(Nil -> 0)) {
-            case (ND(Right(node)), Right((ns, nsl))) => Right((node :: ns) -> (nsl + 1))
-            case (ND(Left(e)), Right((_, nsl))) =>
-              Left(RESPDecErr(s"Bulk ==> Nodes, Error decoding the cluster's node ${nsl + 1}. Error was: $e"))
-            case (_, left) => left
-          }
-          .map(n => Nodes(n._1))
+    implicit final val nodesRead: Bulk ==> Nodes = Read.instance { case Bulk(s) =>
+      s.split(LF_CH)
+        .foldRight[RESPDecErr | (List[Node], Int)](Right(Nil -> 0)) {
+          case (ND(Right(node)), Right((ns, nsl))) => Right((node :: ns) -> (nsl + 1))
+          case (ND(Left(e)), Right((_, nsl))) =>
+            Left(RESPDecErr(s"Bulk ==> Nodes, Error decoding the cluster's node ${nsl + 1}. Error was: $e"))
+          case (_, left) => left
+        }
+        .map(n => Nodes(n._1))
     }
   }
 
@@ -201,8 +199,8 @@ object ClusterP {
   final case class Slots(slots: Map[SlotType.Range, SlotInfo]) extends AnyVal {
     final def infoFor(slot: Slot): Option[SlotInfo] =
       slots
-        .find {
-          case (SlotType.Range(from, to), _) => slot.value >= from.value && slot.value <= to.value
+        .find { case (SlotType.Range(from, to), _) =>
+          slot.value >= from.value && slot.value <= to.value
         }
         .map { case (_, value) => value }
   }
@@ -251,21 +249,20 @@ object ClusterP {
       }
     }
 
-    implicit final val slotsRead: Arr ==> Slots = Read.instance {
-      case Arr(arrays) =>
-        arrays.foldRight[RESPDecErr | (Map[SlotType.Range, SlotInfo], Int)](Right(Map.empty -> 0)) {
-          case (Arr(Num(ToInt(Slot(from))) :: Num(ToInt(Slot(to))) :: Arr(SI(Right(si))) :: Nil), Right((sts, stsl))) =>
-            Right((sts + (Range(from, to) -> si)) -> (stsl + 1))
-          case (Arr(Num(ToInt(Slot(_))) :: Num(ToInt(Slot(_))) :: Arr(Nil) :: Nil), Right((_, stsl))) =>
-            Left(RESPDecErr(s"Unexpected slot assignment encoding at element ${stsl + 1}. The assignment list was empty"))
-          case (Arr(other), Right((_, stsl))) =>
-            Left(
-              RESPDecErr(
-                s"Arr ==> Slots unexpected slot encoding at element ${stsl + 1}. Expected [from, to, [[host, port], node id, replicas]] or [from, to, [[host, port], replicas]] but was $other"
-              )
+    implicit final val slotsRead: Arr ==> Slots = Read.instance { case Arr(arrays) =>
+      arrays.foldRight[RESPDecErr | (Map[SlotType.Range, SlotInfo], Int)](Right(Map.empty -> 0)) {
+        case (Arr(Num(ToInt(Slot(from))) :: Num(ToInt(Slot(to))) :: Arr(SI(Right(si))) :: Nil), Right((sts, stsl))) =>
+          Right((sts + (Range(from, to) -> si)) -> (stsl + 1))
+        case (Arr(Num(ToInt(Slot(_))) :: Num(ToInt(Slot(_))) :: Arr(Nil) :: Nil), Right((_, stsl))) =>
+          Left(RESPDecErr(s"Unexpected slot assignment encoding at element ${stsl + 1}. The assignment list was empty"))
+        case (Arr(other), Right((_, stsl))) =>
+          Left(
+            RESPDecErr(
+              s"Arr ==> Slots unexpected slot encoding at element ${stsl + 1}. Expected [from, to, [[host, port], node id, replicas]] or [from, to, [[host, port], replicas]] but was $other"
             )
-          case (_, left) => left
-        } map (r => Slots(r._1))
+          )
+        case (_, left) => left
+      } map (r => Slots(r._1))
     }
   }
 }

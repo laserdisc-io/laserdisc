@@ -62,10 +62,9 @@ object SetUpLaserdiscCatsBaseline {
     @Setup(Level.Trial)
     def setup(): Unit =
       resource.allocated
-        .map {
-          case (rc, cu) =>
-            testCases = TestCasesLaserdiscBaseline(rc)
-            clientCleanUp = cu
+        .map { case (rc, cu) =>
+          testCases = TestCasesLaserdiscBaseline(rc)
+          clientCleanUp = cu
         }
         .unsafeRunSync()
 

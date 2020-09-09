@@ -28,8 +28,8 @@ abstract class GeoPSpec extends BaseSpec with GeoP {
     Gen.oneOf(GeoUnit.meters, GeoUnit.kilometers, GeoUnit.miles, GeoUnit.feet)
   }
 
-  protected final val geoPositionToBulkList: GeoPosition => List[Bulk] = {
-    case GeoPosition(m, lat, long) => Bulk(long) :: Bulk(lat) :: Bulk(m) :: Nil
+  protected final val geoPositionToBulkList: GeoPosition => List[Bulk] = { case GeoPosition(m, lat, long) =>
+    Bulk(long) :: Bulk(lat) :: Bulk(m) :: Nil
   }
   protected final val nonNegDoubleOptionToBulk: Option[NonNegDouble] => GenBulk = _.fold(NullBulk: GenBulk)(Bulk(_))
   protected final val oneOrMoreGeoCoordinatesOptionToArr: OneOrMore[Option[GeoCoordinates]] => GenArr = _.value.foldLeft(NilArr: GenArr) {

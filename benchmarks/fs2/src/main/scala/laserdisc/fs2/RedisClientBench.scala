@@ -83,8 +83,8 @@ class RedisClientBench {
   def writeAndReadForKey[K](key: K, n: Int, write: (K, Int) => IO[Any], read: K => IO[Any]): IO[Int] = {
     val values = List.fill(n)((key, n))
     values
-      .traverse {
-        case (key, value) => write(key, value) *> read(key)
+      .traverse { case (key, value) =>
+        write(key, value) *> read(key)
       }
       .map(_.size)
   }

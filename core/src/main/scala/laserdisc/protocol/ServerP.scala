@@ -110,15 +110,14 @@ object ServerP {
   final object ConnectedClients {
     private val KVPair = "(.*)=(.*)".r
 
-    implicit val connectedClientsRead: Bulk ==> ConnectedClients = Read.instance {
-      case Bulk(s) =>
-        Right(
-          ConnectedClients(
-            s.split(LF_CH).toIndexedSeq.map { clientData =>
-              new Parameters(clientData.split(SPACE_CH).collect { case KVPair(k, v) => k -> v }.toMap)
-            }
-          )
+    implicit val connectedClientsRead: Bulk ==> ConnectedClients = Read.instance { case Bulk(s) =>
+      Right(
+        ConnectedClients(
+          s.split(LF_CH).toIndexedSeq.map { clientData =>
+            new Parameters(clientData.split(SPACE_CH).collect { case KVPair(k, v) => k -> v }.toMap)
+          }
         )
+      )
     }
   }
 
@@ -158,16 +157,15 @@ object ServerP {
       }
     }
 
-    implicit val infoRead: Bulk ==> Info = Read.instance {
-      case Bulk(s) =>
-        s.split(LF * 2)
-          .foldRight[RESPDecErr | (List[(InfoSection, Parameters)], Int)](Right(Nil -> 0)) {
-            case (IFI(Right(infoSection)), Right((iss, isl))) => Right((infoSection :: iss) -> (isl + 1))
-            case (IFI(Left(e)), Right((_, isl))) =>
-              Left(RESPDecErr(s"Bulk ==> Info, Error decoding the server's info section at position ${isl + 1}. Error was: $e"))
-            case (_, left) => left
-          }
-          .map(is => Info(is._1.toMap))
+    implicit val infoRead: Bulk ==> Info = Read.instance { case Bulk(s) =>
+      s.split(LF * 2)
+        .foldRight[RESPDecErr | (List[(InfoSection, Parameters)], Int)](Right(Nil -> 0)) {
+          case (IFI(Right(infoSection)), Right((iss, isl))) => Right((infoSection :: iss) -> (isl + 1))
+          case (IFI(Left(e)), Right((_, isl))) =>
+            Left(RESPDecErr(s"Bulk ==> Info, Error decoding the server's info section at position ${isl + 1}. Error was: $e"))
+          case (_, left) => left
+        }
+        .map(is => Info(is._1.toMap))
     }
   }
 }

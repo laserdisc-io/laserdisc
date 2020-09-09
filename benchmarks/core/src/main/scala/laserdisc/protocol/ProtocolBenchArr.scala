@@ -17,9 +17,7 @@ class ProtocolBenchArr {
     }
 
   private final def protocol = Protocol("CUSTOM", _: String :: HNil).as[Arr, Seq[Long]]
-  private final def protocolArr = Protocol("CUSTOM", _: String :: HNil).as[Arr, Seq[A]]
   private final def protocolWithNull = Protocol("CUSTOM", _: String :: HNil).as[Arr, Seq[Option[Long]]]
-  private final def protocolArrWithNull = Protocol("CUSTOM", _: String :: HNil).as[Arr, Seq[Option[A]]]
   private final def protocolPairs = Protocol("CUSTOM", _: String :: HNil).as[Arr, Seq[(String, Long)]]
 
   private final val request  = "id" :: HNil

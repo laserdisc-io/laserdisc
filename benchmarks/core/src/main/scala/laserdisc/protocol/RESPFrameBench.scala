@@ -10,7 +10,10 @@ import laserdisc.RESPFrameFixture
 import org.openjdk.jmh.infra.Blackhole
 
 @State(Scope.Benchmark)
-class RESPFrameBench extends RESPFrameFixture {
+class RESPFrameBench {
+
+  private[this] object Fixture extends RESPFrameFixture
+  import Fixture._
 
   val mixedNoArr = bytesOf(mixedNoArrList)
   val arrOneLevel = bytesOf(arrOneLevelList)

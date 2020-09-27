@@ -59,7 +59,7 @@ abstract class BaseSpec
     val piece                       = chooseNum(1, 62).flatMap(strOfNGen(_, 1 -> dashGen, 99 -> alphaNumChar))
     choose(1, 5).flatMap(listOfN(_, piece.retryUntil(!dashAtBeginOrEnd(_))).map(_.mkString(dotString)).retryUntil(_.size <= 255))
   }
-  private[this] final val rfc1918Gen: Gen[String] = Gen.oneOf(ipv4Gen(10), chooseNum(15, 31).flatMap(ipv4Gen(172, _)), ipv4Gen(192, 168))
+  private[this] final val rfc1918Gen: Gen[String] = Gen.oneOf(ipv4Gen(10), chooseNum(16, 31).flatMap(ipv4Gen(172, _)), ipv4Gen(192, 168))
   private[this] final val rfc5737Gen: Gen[String] = Gen.oneOf(ipv4Gen(192, 0, 2), ipv4Gen(198, 51, 100), ipv4Gen(203, 0, 113))
   private[this] final val rfc3927Gen: Gen[String] = ipv4Gen(169, 254)
   private[this] final val rfc2544Gen: Gen[String] = chooseNum(18, 19).flatMap(ipv4Gen(198, _))

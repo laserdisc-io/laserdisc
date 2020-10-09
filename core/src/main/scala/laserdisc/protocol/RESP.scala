@@ -25,8 +25,7 @@ import shapeless.Generic
   */
 sealed trait RESP extends AnyRef with Serializable
 
-/**
-  * RESP [[https://redis.io/topics/protocol#resp-simple-strings Simple Strings]]
+/** RESP [[https://redis.io/topics/protocol#resp-simple-strings Simple Strings]]
   *
   * @note Sometimes the value "OK" is used to represent a successful
   * acknowledgement/processing of a command.
@@ -43,8 +42,7 @@ object Str {
   final def apply[A](a: A)(implicit A: Show[A]): Str = new Str(A.show(a))
 }
 
-/**
-  * RESP [[https://redis.io/topics/protocol#resp-errors Errors]]
+/** RESP [[https://redis.io/topics/protocol#resp-errors Errors]]
   *
   * RESP [[Err]]s are also [[scala.RuntimeException]]s, although
   * __where possible__ they will not contain stacktrace data
@@ -57,8 +55,7 @@ object Str {
   */
 final case class Err(message: String) extends laserdisc.Platform.LaserDiscRuntimeError(message) with RESP
 
-/**
-  * RESP [[https://redis.io/topics/protocol#resp-integers Integers]]
+/** RESP [[https://redis.io/topics/protocol#resp-integers Integers]]
   *
   * @note Sometimes the values 0 and 1 are used to represent boolean
   * values. In this case 0 corresponds to False while 1 to True,
@@ -73,8 +70,7 @@ final case class Err(message: String) extends laserdisc.Platform.LaserDiscRuntim
   */
 final case class Num(value: Long) extends RESP
 
-/**
-  * RESP [[https://redis.io/topics/protocol#resp-bulk-strings Bulk Strings]]
+/** RESP [[https://redis.io/topics/protocol#resp-bulk-strings Bulk Strings]]
   *
   * There can be 2 cases:
   *  - `null` bulk strings, where the length is -1 and no actual underlying string is present
@@ -90,8 +86,7 @@ final case class Num(value: Long) extends RESP
 sealed trait GenBulk extends RESP
 case object NullBulk extends GenBulk
 
-/**
-  * This is the special case of a non-null RESP [[GenBulk]]
+/** This is the special case of a non-null RESP [[GenBulk]]
   *
   * @param value The wrapped bulk string value
   */
@@ -102,8 +97,7 @@ object Bulk {
   implicit final val bulkShow: Show[Bulk] = Show.instance(_.value)
 }
 
-/**
-  * RESP [[https://redis.io/topics/protocol#resp-arrays Arrays]]
+/** RESP [[https://redis.io/topics/protocol#resp-arrays Arrays]]
   *
   * There can be 2 cases:
   *  - `nil` arrays, where the length is -1 and no array element is present
@@ -124,8 +118,7 @@ object Bulk {
 sealed trait GenArr extends RESP
 case object NilArr  extends GenArr
 
-/**
-  * This is the special case of a non-nil RESP [[GenArr]]
+/** This is the special case of a non-nil RESP [[GenArr]]
   *
   * These can be constructed either by the default case class' apply by resorting to the overloaded
   * [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]]]

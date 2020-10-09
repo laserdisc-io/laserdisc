@@ -14,8 +14,7 @@ import scala.concurrent.duration._
 
 object RedisClient {
 
-  /**
-    * Creates a redis client that connects to a single
+  /** Creates a redis client that connects to a single
     * redis node and handles the blocking network
     * connection's operations on a cached thread pool.
     */
@@ -27,8 +26,7 @@ object RedisClient {
   ): Resource[F, RedisClient[F]] =
     Blocker[F] >>= (blockingPool => blockingOn(blockingPool)(Set(RedisAddress(host, port)), writeTimeout, readMaxBytes))
 
-  /**
-    * Creates a redis client that will handle the blocking network
+  /** Creates a redis client that will handle the blocking network
     * connection's operations on a cached thread pool.
     */
   @inline final def toNodes[F[_]: ContextShift: Timer: LogSelector: Concurrent](
@@ -38,8 +36,7 @@ object RedisClient {
   ): Resource[F, RedisClient[F]] =
     Blocker[F] >>= (blockingPool => blockingOn(blockingPool)(addresses, writeTimeout, readMaxBytes))
 
-  /**
-    * Creates a redis client that connects to a single
+  /** Creates a redis client that connects to a single
     * redis node and handles the blocking network
     * connection's operations on a cached thread pool.
     */
@@ -53,8 +50,7 @@ object RedisClient {
   ): Resource[F, RedisClient[F]] =
     blockingOn(blockingPool)(Set(RedisAddress(host, port)), writeTimeout, readMaxBytes)
 
-  /**
-    * Creates a redis client allowing to specify which
+  /** Creates a redis client allowing to specify which
     * thread pool is used to handle the blocking network
     * connection's operations.
     */

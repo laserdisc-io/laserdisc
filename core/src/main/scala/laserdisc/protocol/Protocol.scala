@@ -53,8 +53,7 @@ object Protocol {
       private[this] final val l: L
   ) { self =>
 
-    /**
-      * We request evidence that the [[RESP]] sent back by Redis can be deserialized
+    /** We request evidence that the [[RESP]] sent back by Redis can be deserialized
       * into an instance of a B.
       *
       * Ensuring this is the case here guarantees that no instance of a [[Protocol]]

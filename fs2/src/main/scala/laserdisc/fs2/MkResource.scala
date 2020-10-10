@@ -26,8 +26,7 @@ object MkResource {
   private[laserdisc] final def apply[F[_]: Sync, A](acquire: =>F[A])(implicit A: CanShutdown[A]): Resource[F, A] =
     Resource.make(acquire)(A.shutdown)
 
-  /**
-    * Creates an execution context that will wait on shut down.
+  /** Creates an execution context that will wait on shut down.
     */
   @inline final def of[F[_]: Sync](fe: F[ExecutionContextExecutorService]): Resource[F, ExecutionContext] =
     MkResource(fe).widenRight[ExecutionContext]

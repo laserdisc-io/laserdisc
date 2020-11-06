@@ -34,12 +34,15 @@ stages:
 scala_212: &scala_212 2.12.12
 scala_213: &scala_213 2.13.3
 
+jdk_lts: &jdk_lts openjdk11
+jdk_latest: &jdk_latest openjdk15
+
 scala:
 - *scala_212
 - *scala_213
 jdk:
-- openjdk8
-- openjdk13
+- *jdk_lts
+- *jdk_latest
 
 script: sbt ++$TRAVIS_SCALA_VERSION fullTest
 
@@ -48,37 +51,37 @@ jobs:
   - stage: Format
     name: Check with Scalafmt
     script: sbt ++$TRAVIS_SCALA_VERSION fmtCheck
-    jdk: openjdk8
+    jdk: *jdk_lts
     scala: *scala_213
 
   - stage: Test
     name: Compile benchmarks
     script: sbt ++$TRAVIS_SCALA_VERSION benchBuild
-    jdk: openjdk8
+    jdk: *jdk_lts
     scala: *scala_213
 
   - stage: Publish Snapshot 2.12
     name: Publish a snapshot for Scala 2.12
     script: CI_SNAPSHOT_RELEASE=publish sbt ++$TRAVIS_SCALA_VERSION releaseIt
-    jdk: openjdk8
+    jdk: *jdk_lts
     scala: *scala_212
 
   - stage: Publish Snapshot 2.13
     name: Publish a snapshot for Scala 2.13
     script: CI_SNAPSHOT_RELEASE=publish sbt ++$TRAVIS_SCALA_VERSION releaseIt
-    jdk: openjdk8
+    jdk: *jdk_lts
     scala: *scala_213
 
   - stage: Release 2.12
     name: Release for Scala 2.12
     script: CI_RELEASE=publishSigned sbt ++$TRAVIS_SCALA_VERSION releaseIt
-    jdk: openjdk8
+    jdk: *jdk_lts
     scala: *scala_212
 
   - stage: Release 2.13
     name: Release for Scala 2.13
     script: CI_RELEASE=publishSigned sbt ++$TRAVIS_SCALA_VERSION releaseIt
-    jdk: openjdk8
+    jdk: *jdk_lts
     scala: *scala_213
 
 services:

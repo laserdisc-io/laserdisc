@@ -61,7 +61,7 @@ jobs:
       - name: Compile benchmarks
         run: sbt ++2.13.3 benchBuild
   build:
-    name: Build
+    name: Test:: Scala ${{ matrix.scala }}, Java ${{ matrix.java }}
     needs: format
     strategy:
       matrix:
@@ -99,7 +99,7 @@ jobs:
         run: |
           docker run -p 6379:6379 -d redis:alpine
           docker run -p 6380:6379 -d eqalpha/keydb
-      - name: Test - [ ${{ matrix.java }} ] [ ${{ matrix.scala }} ]
+      - name: Test:: Scala ${{ matrix.scala }}, Java ${{ matrix.java }}
         run: sbt ++${{ matrix.scala }} fullTest
       - name: Upload To Codecov
         uses: codecov/codecov-action@v1.0.15

@@ -2,8 +2,8 @@
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 val V = new {
-  val cats                   = "2.2.0"
-  val `cats-effect`          = "2.2.0"
+  val cats                   = "2.3.0"
+  val `cats-effect`          = "2.3.0"
   val `cats-discipline`      = "1.1.2"
   val `discipline-munit`     = "1.0.3"
   val circe                  = "0.13.0"
@@ -11,7 +11,7 @@ val V = new {
   val jedis                  = "3.2.0"
   val `kind-projector`       = "0.11.2"
   val kittens                = "2.2.0"
-  val `log-effect`           = "0.13.2"
+  val `log-effect`           = "0.14.1"
   val logback                = "1.2.3"
   val munit                  = "0.7.19"
   val `parallel-collections` = "1.0.0"

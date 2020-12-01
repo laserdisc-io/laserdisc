@@ -337,6 +337,7 @@ lazy val `core-bench` = project
   .enablePlugins(JmhPlugin)
   .settings(
     name := "laserdisc-core-benchmarks",
+    scalaVersion := scala_213,
     publishArtifact := false
   )
 
@@ -346,6 +347,7 @@ lazy val `fs2-bench` = project
   .enablePlugins(JmhPlugin)
   .settings(
     name := "laserdisc-fs2-benchmarks",
+    scalaVersion := scala_213,
     publishArtifact := false,
     scalacOptions ++= versionDependantScalacOptions.value,
     libraryDependencies ++= fs2BenchDeps.value,

@@ -11,7 +11,7 @@ trait StringExtP { this: StringBaseP =>
   ]
 
   //MGET
-  [#final def mget[A: Arr ==> ?]([#key1: Key#]): Protocol.Aux[A] =
+  [#final def mget[A: Arr ==> *]([#key1: Key#]): Protocol.Aux[A] =
     mget[A](OneOrMoreKeys.unsafeFrom([#key1# :: ] :: Nil))#
   ]
 

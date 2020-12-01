@@ -8,7 +8,7 @@ trait SetExtP { this: SetBaseP =>
   ]
 
   //SDIFF
-  [..21#final def sdiff[A: Bulk ==> ?](key##1: Key, [#key2: Key#]): Protocol.Aux[Seq[A]] =
+  [..21#final def sdiff[A: Bulk ==> *](key##1: Key, [#key2: Key#]): Protocol.Aux[Seq[A]] =
     sdiff[A](TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil))#
   ]
 
@@ -18,7 +18,7 @@ trait SetExtP { this: SetBaseP =>
   ]
 
   //SINTER
-  [..21#final def sinter[A: Bulk ==> ?](key##1: Key, [#key2: Key#]): Protocol.Aux[Seq[A]] =
+  [..21#final def sinter[A: Bulk ==> *](key##1: Key, [#key2: Key#]): Protocol.Aux[Seq[A]] =
     sinter[A](TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil))#
   ]
 
@@ -33,7 +33,7 @@ trait SetExtP { this: SetBaseP =>
   ]
 
   //SUNION
-  [..21#final def sunion[A: Bulk ==> ?](key##1: Key, [#key2: Key#]): Protocol.Aux[Seq[A]] =
+  [..21#final def sunion[A: Bulk ==> *](key##1: Key, [#key2: Key#]): Protocol.Aux[Seq[A]] =
     sunion[A](TwoOrMoreKeys.unsafeFrom(key##1 :: [#key2# :: ] :: Nil))#
   ]
 

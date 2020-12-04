@@ -61,18 +61,18 @@ jobs:
       - name: Compile benchmarks
         run: sbt ++2.13.3 benchBuild
   build:
-    name: Test (${{ matrix.scala }}, ${{ matrix.java }})
+    name: Test
     needs: format
     strategy:
       matrix:
-        os:
-          - ubuntu-20.04
         scala:
           - 2.12.12
           - 2.13.3
         java:
           - adopt@1.11
           - adopt@1.15
+        os:
+          - ubuntu-20.04
     runs-on: ${{ matrix.os }}
     steps:
       - name: Branch Checkout

@@ -1,8 +1,8 @@
 ## LaserDisc
 
-![CI](https://github.com/laserdisc-io/laserdisc/workflows/CI/badge.svg?branch=master)
-![Release](https://github.com/laserdisc-io/laserdisc/workflows/Release/badge.svg)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/d548a2d7facc4e42b422940dbf5c8382)](https://app.codacy.com/app/barambani/laserdisc?utm_source=github.com&utm_medium=referral&utm_content=laserdisc-io/laserdisc&utm_campaign=Badge_Grade_Dashboard)
+[![CI](https://github.com/laserdisc-io/laserdisc/workflows/CI/badge.svg?branch=master)](https://github.com/laserdisc-io/laserdisc/actions?query=workflow%3ACI+branch%3Amaster+event%3Apush)
+[![Release](https://github.com/laserdisc-io/laserdisc/workflows/Release/badge.svg)](https://github.com/laserdisc-io/laserdisc/actions?query=workflow%3ARelease)
+[![Known Vulnerabilities](https://snyk.io/test/github/laserdisc-io/laserdisc/badge.svg?targetFile=build.sbt)](https://snyk.io/test/github/laserdisc-io/laserdisc?targetFile=build.sbt)
 [![codecov.io](https://codecov.io/github/laserdisc-io/laserdisc/coverage.svg?branch=master)](https://codecov.io/github/laserdisc-io/laserdisc?branch=master)
 [![Join the chat at https://gitter.im/laserdisc-io/laserdisc](https://badges.gitter.im/laserdisc-io/laserdisc.svg)](https://gitter.im/laserdisc-io/laserdisc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

@@ -4,8 +4,8 @@ lazy val scala_212 = "2.12.12"
 lazy val scala_213 = "2.13.3"
 
 val V = new {
-  val cats                   = "2.3.0"
-  val `cats-effect`          = "2.3.0"
+  val cats                   = "2.3.1"
+  val `cats-effect`          = "2.3.1"
   val `cats-discipline`      = "1.1.3"
   val `discipline-munit`     = "1.0.4"
   val circe                  = "0.13.0"

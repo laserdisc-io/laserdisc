@@ -19,10 +19,10 @@ class RESPFrameBench {
   val arrOneLevel = bytesOf(arrOneLevelList)
   val arrFiveLevels = bytesOf(arrFiveLevelsList)
 
-  val empty = BitVector.empty.toByteBuffer
-  val mixedNoArrFull = BitVector(mixedNoArr).toByteBuffer
-  val arrOneLevelFull = BitVector(arrOneLevel).toByteBuffer
-  val arrFiveLevelsFull = BitVector(arrFiveLevels).toByteBuffer
+  val empty = BitVector.empty
+  val mixedNoArrFull = BitVector(mixedNoArr)
+  val arrOneLevelFull = BitVector(arrOneLevel)
+  val arrFiveLevelsFull = BitVector(arrFiveLevels)
 
   @Benchmark def frameOfFullBaseline(bh: Blackhole)= {
     val frame = EmptyFrame.append(empty)

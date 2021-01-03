@@ -17,7 +17,7 @@ private[fs2] abstract class TestCasesLaserdiscBitVector[F[_]: Sync](ch: Pipe[F, 
   final def case2 = shortSend.through(ch).compile.toVector
 }
 
-private[fs2] sealed trait TestSendBitVector extends TestCommandsBitVector {
+private[fs2] trait TestSendBitVector extends TestCommandsBitVector {
 
   protected val longSend =
     Stream.chunk(

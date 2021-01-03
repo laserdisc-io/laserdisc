@@ -126,7 +126,7 @@ private[laserdisc] trait RESPFrameFixture extends HighPriorityGenerators {
       EmptyFrame -> Vector.empty[CompleteFrame]
     ) { (acc, n) =>
       val (accFrame, completed) = acc
-      accFrame.append(n.toByteBuffer) match {
+      accFrame.append(n) match {
         case Right(CompleteFrame(c)) =>
           EmptyFrame -> (completed :+ CompleteFrame(c))
         case Right(MoreThanOneFrame(c, reminder)) =>

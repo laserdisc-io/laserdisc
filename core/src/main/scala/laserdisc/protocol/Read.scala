@@ -56,6 +56,7 @@ object Read extends ReadInstances0 {
     Read.infallible {
       case Inl(i @ R(Right(b))) if !cond(i) => Some(b)
       case Inl(_)                           => None
+      case Inr(_)                           => absurd
     }
 
   @inline final def numMinusOneIsNone[A: Read[Num, *]]: Read[Num :+: CNil, Option[A]] =
@@ -206,6 +207,7 @@ trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
           Left(RESPDecErr(s"Arr ==> ScanKV error: uneven number of elements in Arr. Can't form a KV[String]."))
         case (_, left) => left
       } map (r => ScanKV(cursor, Some(r._1)))
+    case Arr(any) => Left(RESPDecErr(s"Arr ==> ScanKV error. $any is not a valid encoding for ScanKV"))
   }
   implicit final def arr2KV[A](implicit R: Read[Bulk, A]): Read[Arr, KV[A]] =
     instancePF("Arr(KV[A])") { case Arr(Bulk(Key(k)) +: R(Right(a)) +: Seq()) =>
@@ -244,15 +246,18 @@ sealed trait ReadInstances2 {
     Read.infallible {
       case Inl(R(Right(b))) => Some(b)
       case Inr(_)           => None
+      case Inl(_)           => absurd
     }
   implicit final def liftNilArr2Option[A, B](implicit R: Read[A, B]): Read[A :+: NilArr :+: CNil, Option[B]] =
     Read.infallible {
       case Inl(R(Right(b))) => Some(b)
       case Inr(_)           => None
+      case Inl(_)           => absurd
     }
   implicit final def liftSimpleToSum[A: <:!<[*, Coproduct], B](implicit R: Read[A, B]): Read[A :+: CNil, B] =
     Read.instance {
       case Inl(R(rb)) => rb
-      case Inl(R(le)) => le
+      case Inl(_)     => absurd
+      case Inr(_)     => absurd
     }
 }

@@ -133,6 +133,7 @@ object RedisClient {
                     pop >>= {
                       case Some(Request(protocol, cb)) => cb(protocol.decode(resp))
                       case None                        => Concurrent[F].raiseError[Unit](NoInFlightRequest(resp))
+                      case Some(_)                     => absurd
                     }
                   } ++ Stream.raiseError(ServerTerminatedConnection(address))
 

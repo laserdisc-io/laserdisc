@@ -217,5 +217,5 @@ package object laserdisc {
     def widenRight[AA: <:<[A, *]: =:!=[A, *]]: F[G, AA] = fga.asInstanceOf[F[G, AA]]
   }
 
-  private[laserdisc] def absurd: Nothing = throw new RuntimeException("This shouldn't happen. A but is present in the code")
+  private[laserdisc] def absurd: Nothing = throw new RuntimeException("This shouldn't happen. A bug is present in the code")
 }

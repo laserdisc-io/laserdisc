@@ -51,6 +51,7 @@ object RESPRead {
           rest
             .select[Err]
             .fold(Left(RESPDecErr(s"RESP type(s) did not match: $resp")).widenLeft[Throwable])(Left(_).widenLeft[Throwable])
+        case Right(_) => absurd
       }
   }
 

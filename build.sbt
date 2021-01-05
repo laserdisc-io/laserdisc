@@ -1,7 +1,8 @@
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
-lazy val scala_212 = "2.12.12"
-lazy val scala_213 = "2.13.3"
+val scala_212       = "2.12.12"
+val scala_213       = "2.13.4"
+val current_version = scala_213
 
 val V = new {
   val cats                   = "2.3.1"
@@ -176,7 +177,12 @@ val externalApiMappings = Def.task {
 val versionDependantScalacOptions = Def.setting {
   def versionDependent(scalaVersion: String, flags: Seq[String]) =
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((2, major)) if major >= 13 => flags ++ Seq("-Wconf:any:error")
+      case Some((2, major)) if major >= 13 =>
+        flags ++ Seq(
+          "-Wconf:any:error",
+          "-Ypatmat-exhaust-depth",
+          "off"
+        )
       case _ =>
         flags ++ Seq(
           "-Xfuture",                         // Turn on future language features.
@@ -233,7 +239,7 @@ val versionDependantScalacOptions = Def.setting {
 }
 
 lazy val commonSettings = Seq(
-  scalaVersion := scala_213,
+  scalaVersion := current_version,
   crossScalaVersions := Seq(scala_212, scala_213),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings", "-Wconf:any:error"),

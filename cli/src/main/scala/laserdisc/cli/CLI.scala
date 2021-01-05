@@ -138,8 +138,9 @@ object CLI extends IOApp { self =>
                 } yield maybeProtocolResponse.asInstanceOf[Maybe[Any]] -> (endTime - startTime)
               }
               .evalMap {
-                case (Left(t), ToMillis(ms))         => prompt(f"<<< ERROR ${t.getLocalizedMessage} - [$ms%.2fms]$LF")
+                case (Left(e), ToMillis(ms))         => prompt(f"<<< ERROR ${e.getLocalizedMessage} - [$ms%.2fms]$LF")
                 case (Right(response), ToMillis(ms)) => prompt(f"<<< $response - [$ms%.2fms]$LF")
+                case (_, _)                          => absurd
               }
               .compile
               .drain

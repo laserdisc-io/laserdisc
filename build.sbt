@@ -388,6 +388,7 @@ lazy val laserdisc = project
   .aggregate(core.jvm, core.js, laws, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
+    scalaVersion := current_version,
     publishArtifact := false,
     addCommandAlias("benchClean", "all core-bench/clean fs2-bench/clean"),
     addCommandAlias("benchCompile", "all core-bench/test:compile fs2-bench/test:compile"),

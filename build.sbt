@@ -343,7 +343,7 @@ lazy val `core-bench` = project
   .enablePlugins(JmhPlugin)
   .settings(
     name := "laserdisc-core-benchmarks",
-    scalaVersion := scala_213,
+    scalaVersion := current_version,
     publishArtifact := false
   )
 
@@ -353,7 +353,7 @@ lazy val `fs2-bench` = project
   .enablePlugins(JmhPlugin)
   .settings(
     name := "laserdisc-fs2-benchmarks",
-    scalaVersion := scala_213,
+    scalaVersion := current_version,
     publishArtifact := false,
     scalacOptions ++= versionDependantScalacOptions.value,
     libraryDependencies ++= fs2BenchDeps.value,
@@ -388,6 +388,7 @@ lazy val laserdisc = project
   .aggregate(core.jvm, core.js, laws, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
+    scalaVersion := current_version,
     publishArtifact := false,
     addCommandAlias("benchClean", "all core-bench/clean fs2-bench/clean"),
     addCommandAlias("benchCompile", "all core-bench/test:compile fs2-bench/test:compile"),

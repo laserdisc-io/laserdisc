@@ -1,7 +1,9 @@
-# Metals + Bloop
-.metals/
+# Bloop + Build Server Protocol (BSP) + Metals + VSCode
 .bloop/
+.bsp/
+.metals/
 metals.sbt
+.vscode/
 
 # Intellij
 .idea

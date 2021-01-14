@@ -1,6 +1,6 @@
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
-val scala_212       = "2.12.12"
+val scala_212       = "2.12.13"
 val scala_213       = "2.13.4"
 val current_version = scala_213
 
@@ -400,7 +400,6 @@ lazy val laserdisc = project
     ),
     addCommandAlias("fullTest", ";clean;coverage;test;coverageReport"),
     addCommandAlias("prePr", ";fmtCheck;fullTest"),
-    // travis release aliases
     addCommandAlias(
       "setReleaseOptions",
       "set scalacOptions ++= Seq(\"-opt:l:method\", \"-opt:l:inline\", \"-opt-inline-from:laserdisc.**\", \"-opt-inline-from:<sources>\")"

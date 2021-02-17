@@ -5,7 +5,7 @@ val scala_213       = "2.13.4"
 val current_version = scala_213
 
 val V = new {
-  val cats                   = "2.4.1"
+  val cats                   = "2.4.2"
   val `cats-effect`          = "2.3.1"
   val `cats-discipline`      = "1.1.4"
   val `discipline-munit`     = "1.0.6"

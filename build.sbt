@@ -393,7 +393,7 @@ lazy val laserdisc = project
     addCommandAlias("benchClean", "all core-bench/clean fs2-bench/clean"),
     addCommandAlias("benchCompile", "all core-bench/test:compile fs2-bench/test:compile"),
     addCommandAlias("benchBuild", ";benchClean;benchCompile"),
-    addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt;fs2-bench/scalafmt"),
+    addCommandAlias("fmt", "all scalafmt test:scalafmt scalafmtSbt fs2-bench/scalafmt"),
     addCommandAlias(
       "fmtCheck",
       "all scalafmtCheck test:scalafmtCheck scalafmtSbtCheck fs2-bench/scalafmtCheck fs2-bench/test:scalafmtCheck"

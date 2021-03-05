@@ -1,7 +1,8 @@
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 val scala_212       = "2.12.13"
-val scala_213       = "2.13.4"
+val scala_213       = "2.13.5"
+
 val current_version = scala_213
 
 val V = new {
@@ -17,7 +18,7 @@ val V = new {
   val `log-effect`           = "0.14.1"
   val logback                = "1.2.3"
   val munit                  = "0.7.22"
-  val `parallel-collections` = "1.0.0"
+  val `parallel-collections` = "1.0.1"
   val redis4Cats             = "0.11.1"
   val refined                = "0.9.21"
   val scalacheck             = "1.15.3"

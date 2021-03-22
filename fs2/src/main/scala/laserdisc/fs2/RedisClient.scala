@@ -109,9 +109,9 @@ object RedisClient {
         redisNetChannel: RedisAddress => Pipe[F, RESP, RESP],
         leader: F[Option[RedisAddress]]
     ): Resource[F, Connection[F]] =
-      Resource.liftF(Deferred[F, Throwable | Unit]) >>= { termSignal =>
-        Resource.liftF(Queue.bounded[F, Request[F]](512)) >>= { queue =>
-          Resource.liftF(Ref.of[F, Vector[Request[F]]](Vector.empty)) >>= { inFlight =>
+      Resource.eval(Deferred[F, Throwable | Unit]) >>= { termSignal =>
+        Resource.eval(Queue.bounded[F, Request[F]](512)) >>= { queue =>
+          Resource.eval(Ref.of[F, Vector[Request[F]]](Vector.empty)) >>= { inFlight =>
             def push(req: Request[F]): F[RESP] =
               inFlight
                 .modify(in => (in :+ req) -> req.protocol.encode)

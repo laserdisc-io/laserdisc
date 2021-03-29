@@ -1,9 +1,8 @@
 package laserdisc
 package fs2
 
-import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.syntax.concurrent._
-import cats.effect.{Blocker, Concurrent, ContextShift, Fiber, Resource, Sync, Timer}
+import cats.effect.{Concurrent, Fiber, Resource, Sync}
 import cats.syntax.all._
 import log.effect.LogWriter
 import log.effect.fs2.LogSelector
@@ -11,6 +10,7 @@ import shapeless._
 import log.effect.fs2.syntax._
 
 import scala.concurrent.duration._
+import cats.effect.{ Deferred, Ref, Temporal }
 
 object RedisClient {
 
@@ -18,31 +18,29 @@ object RedisClient {
     * redis node and handles the blocking network
     * connection's operations on a cached thread pool.
     */
-  @inline final def to[F[_]: ContextShift: Timer: LogSelector: Concurrent](
+  @inline final def to[F[_]: ContextShift: Temporal: LogSelector: Concurrent](
       host: Host,
       port: Port,
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 8 * 1024 * 1024
   ): Resource[F, RedisClient[F]] =
-    Blocker[F] >>= (blockingPool => blockingOn(blockingPool)(Set(RedisAddress(host, port)), writeTimeout, readMaxBytes))
+    Resource.unit[F] >>= (blockingPool => blockingOn(blockingPool)(Set(RedisAddress(host, port)), writeTimeout, readMaxBytes))
 
   /** Creates a redis client that will handle the blocking network
     * connection's operations on a cached thread pool.
     */
-  @inline final def toNodes[F[_]: ContextShift: Timer: LogSelector: Concurrent](
+  @inline final def toNodes[F[_]: ContextShift: Temporal: LogSelector: Concurrent](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 8 * 1024 * 1024
   ): Resource[F, RedisClient[F]] =
-    Blocker[F] >>= (blockingPool => blockingOn(blockingPool)(addresses, writeTimeout, readMaxBytes))
+    Resource.unit[F] >>= (blockingPool => blockingOn(blockingPool)(addresses, writeTimeout, readMaxBytes))
 
   /** Creates a redis client that connects to a single
     * redis node and handles the blocking network
     * connection's operations on a cached thread pool.
     */
-  @inline final def toNodeBlockingOn[F[_]: ContextShift: Timer: LogSelector: Concurrent](
-      blockingPool: Blocker
-  )(
+  @inline final def toNodeBlockingOn[F[_]: ContextShift: Temporal: LogSelector: Concurrent](
       host: Host,
       port: Port,
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
@@ -54,9 +52,7 @@ object RedisClient {
     * thread pool is used to handle the blocking network
     * connection's operations.
     */
-  @inline final def blockingOn[F[_]: ContextShift: Timer: LogSelector: Concurrent](
-      blockingPool: Blocker
-  )(
+  @inline final def blockingOn[F[_]: ContextShift: Temporal: LogSelector: Concurrent](
       addresses: Set[RedisAddress],
       writeTimeout: Option[FiniteDuration] = Some(10.seconds),
       readMaxBytes: Int = 8 * 1024 * 1024
@@ -93,7 +89,7 @@ object RedisClient {
       ): F[Out]
     }
 
-    def mkClient[F[_]: Timer: Concurrent: LogWriter](establishedConn: Connection[F]): Resource[F, RedisClient[F]] =
+    def mkClient[F[_]: Temporal: Concurrent: LogWriter](establishedConn: Connection[F]): Resource[F, RedisClient[F]] =
       Resource.make(mkPublisher(establishedConn) >>= { publ => publ.start map (_ => publ) })(_.shutdown) map { publisher =>
         new RedisClient[F] {
           override final def send[In <: HList, Out <: HList](in: In, timeout: FiniteDuration)(
@@ -105,7 +101,7 @@ object RedisClient {
     def currentServer[F[_]: Sync](addresses: Seq[RedisAddress]): F[Option[RedisAddress]] =
       Stream.emits(addresses).covary[F].compile.last //FIXME yeah, well...
 
-    def connection[F[_]: Timer: Concurrent: LogWriter](
+    def connection[F[_]: Temporal: Concurrent: LogWriter](
         redisNetChannel: RedisAddress => Pipe[F, RESP, RESP],
         leader: F[Option[RedisAddress]]
     ): Resource[F, Connection[F]] =

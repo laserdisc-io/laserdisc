@@ -1,17 +1,16 @@
 import java.util.concurrent.ForkJoinPool
 
-import cats.effect.IO
+import cats.effect.{IO, Temporal}
 import munit.FunSuite
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
-import cats.effect.Temporal
 
 final class ReadmeExampleSpec extends FunSuite with TestLogCapture {
 
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
-  private[this] implicit val timer: Temporal[IO]               = IO.timer(ec)
+  private[this] implicit val timer: Temporal[IO]            = IO.timer(ec)
   private[this] implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
   test("The readme example gives the expected output and logs when a LogWriter is in scope") {

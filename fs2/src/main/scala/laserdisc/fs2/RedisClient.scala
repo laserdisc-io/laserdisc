@@ -1,8 +1,8 @@
 package laserdisc
 package fs2
 
+import cats.effect.{Concurrent, Deferred, Fiber, Ref, Resource, Sync, Temporal}
 import cats.effect.syntax.concurrent._
-import cats.effect.{Concurrent, Fiber, Resource, Sync}
 import cats.syntax.all._
 import log.effect.LogWriter
 import log.effect.fs2.LogSelector
@@ -10,7 +10,6 @@ import shapeless._
 import log.effect.fs2.syntax._
 
 import scala.concurrent.duration._
-import cats.effect.{ Deferred, Ref, Temporal }
 
 object RedisClient {
 

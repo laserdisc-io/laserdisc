@@ -17,6 +17,7 @@ import laserdisc.fs2.LaserdiscFs2ClientSpec.ClientSpecIo
 import scala.collection.parallel.immutable.ParSeq
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.fromExecutor
+import cats.effect.Temporal
 
 final class RedisClientSpec extends ClientSpecIo(6379, "redis")
 final class KeyDbClientSpec extends ClientSpecIo(6380, "keyDb")
@@ -25,12 +26,12 @@ object LaserdiscFs2ClientSpec {
   private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
-  implicit val timer: Timer[IO]               = IO.timer(ec)
+  implicit val timer: Temporal[IO]               = IO.timer(ec)
 
   abstract class ClientSpecIo(p: Port, dest: String) extends LaserdiscFs2ClientSpec[IO](p, dest)
 }
 
-sealed abstract class LaserdiscFs2ClientSpec[F[_]: ContextShift: Timer: ConcurrentEffect](p: Port, dest: String)
+sealed abstract class LaserdiscFs2ClientSpec[F[_]: ContextShift: Temporal: ConcurrentEffect](p: Port, dest: String)
     extends LaserdiscFs2Suite[F](p) {
 
   def run[A]: F[A] => A = _.toIO.unsafeRunSync()

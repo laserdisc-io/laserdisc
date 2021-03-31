@@ -4,14 +4,14 @@ package parallel
 package testcases
 
 import _root_.fs2.Chunk
-import cats.effect.Sync
+import cats.effect.kernel.Concurrent
 
 private[fs2] object TestCasesLaserdiscByteBaseline {
-  final def apply[F[_]: Sync](ch: Pipe[F, Byte, Byte]): TestCasesLaserdiscByteBaseline[F] =
+  final def apply[F[_]: Concurrent](ch: Pipe[F, Byte, Byte]): TestCasesLaserdiscByteBaseline[F] =
     new TestCasesLaserdiscByteBaseline[F](ch) {}
 }
 
-private[fs2] abstract class TestCasesLaserdiscByteBaseline[F[_]: Sync](ch: Pipe[F, Byte, Byte]) extends TestSendBaseline {
+private[fs2] abstract class TestCasesLaserdiscByteBaseline[F[_]: Concurrent](ch: Pipe[F, Byte, Byte]) extends TestSendBaseline {
   final def case1 = longSend.through(ch).compile.toVector
   final def case2 = shortSend.through(ch).compile.toVector
 }
@@ -20,7 +20,7 @@ private[fs2] trait TestSendBaseline extends TestCommandsBitVector {
 
   protected val longSend =
     Stream.chunk(
-      Chunk.bytes(
+      Chunk.array(
         longBitVector1.toByteArray ++
           longBitVector2.toByteArray ++
           longBitVector3.toByteArray ++
@@ -74,7 +74,7 @@ private[fs2] trait TestSendBaseline extends TestCommandsBitVector {
 
   protected val shortSend =
     Stream.chunk(
-      Chunk.bytes(
+      Chunk.array(
         shortBitVector1.toByteArray ++
           shortBitVector2.toByteArray ++
           shortBitVector3.toByteArray ++

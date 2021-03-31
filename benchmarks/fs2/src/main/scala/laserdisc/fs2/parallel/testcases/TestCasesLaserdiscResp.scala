@@ -4,15 +4,15 @@ package parallel
 package testcases
 
 import _root_.fs2.Chunk
-import cats.effect.Sync
+import cats.effect.kernel.Concurrent
 import laserdisc.protocol.RESP
 
 private[fs2] object TestCasesLaserdiscResp {
-  final def apply[F[_]: Sync](ch: Pipe[F, RESP, RESP]): TestCasesLaserdiscResp[F] =
+  final def apply[F[_]: Concurrent](ch: Pipe[F, RESP, RESP]): TestCasesLaserdiscResp[F] =
     new TestCasesLaserdiscResp[F](ch) {}
 }
 
-private[fs2] abstract class TestCasesLaserdiscResp[F[_]: Sync](ch: Pipe[F, RESP, RESP]) extends TestSendResp {
+private[fs2] abstract class TestCasesLaserdiscResp[F[_]: Concurrent](ch: Pipe[F, RESP, RESP]) extends TestSendResp {
   final def case1 = longSend.through(ch).compile.toVector
   final def case2 = shortSend.through(ch).compile.toVector
 }

@@ -2,19 +2,17 @@ package laserdisc
 package fs2
 package parallel
 
-import java.util.concurrent.{Executors, TimeUnit}
-
-import cats.effect.{ContextShift, IO}
-import cats.syntax.flatMap._
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import laserdisc.fs2.parallel.SetUpScredis.ScredisSetUp
+import laserdisc.fs2.parallel.runtime.BenchRuntime.createNewRuntime
 import laserdisc.fs2.parallel.testcases.TestCasesScredis
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 import scredis.Redis
 
-import scala.concurrent.ExecutionContext.fromExecutor
+import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext}
 
 class ScredisBench() {
 
@@ -54,24 +52,22 @@ object SetUpScredis {
   @State(Scope.Benchmark)
   class ScredisSetUp {
 
-    private[this] val commandsService           = Executors.newFixedThreadPool(8)
-    private[fs2] val ec: ExecutionContext       = fromExecutor(commandsService)
-    implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
+    var runtime: IORuntime = _
 
     private[fs2] var client: Redis               = _
     private[fs2] var testCases: TestCasesScredis = _
 
     @Setup(Level.Trial)
     def setup(): Unit = {
+      runtime = createNewRuntime()
       client = Redis(host = "localhost", port = 6379)
-      testCases = TestCasesScredis(client)(ec)
+      testCases = TestCasesScredis(client)(runtime.compute)
     }
 
     @TearDown(Level.Trial)
-    def tearDown(): Unit =
-      (IO.fromFuture(IO(client.quit())) >>
-        IO.delay(commandsService.shutdown()) >>
-        IO.delay(commandsService.awaitTermination(2, TimeUnit.SECONDS)) >>
-        IO.unit).unsafeRunSync()
+    def tearDown(): Unit = {
+      (IO.fromFuture(IO(client.quit())) >> IO.unit).unsafeRunSync()(runtime)
+      runtime.shutdown()
+    }
   }
 }

@@ -4,18 +4,17 @@ package parallel
 package testcases
 
 import cats.Parallel
-import cats.effect.syntax.concurrent._
-import cats.effect.{Concurrent, ContextShift, Timer}
+import cats.effect.kernel.Temporal
+import cats.effect.syntax.spawn._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.parallel._
 
 private[fs2] object TestCasesLaserdisc {
-  final def apply[F[_]: Concurrent: ContextShift: Timer: Parallel](cl: RedisClient[F]): TestCasesLaserdisc[F] =
+  final def apply[F[_]: Temporal: Parallel](cl: RedisClient[F]): TestCasesLaserdisc[F] =
     new TestCasesLaserdisc[F](cl) {}
 }
-private[fs2] sealed abstract class TestCasesLaserdisc[F[_]: Concurrent: ContextShift: Timer: Parallel](cl: RedisClient[F])
-    extends TestSendLaserdisc(cl) {
+private[fs2] sealed abstract class TestCasesLaserdisc[F[_]: Temporal: Parallel](cl: RedisClient[F]) extends TestSendLaserdisc(cl) {
 
   final def case1 =
     for {
@@ -286,8 +285,7 @@ private[fs2] sealed abstract class TestCasesLaserdisc[F[_]: Concurrent: ContextS
     } yield j
 }
 
-private[fs2] sealed abstract class TestSendLaserdisc[F[_]: Concurrent: ContextShift: Timer: Parallel](cl: RedisClient[F])
-    extends TestCommandsProtocol {
+private[fs2] sealed abstract class TestSendLaserdisc[F[_]: Temporal: Parallel](cl: RedisClient[F]) extends TestCommandsProtocol {
 
   protected final def longSend1  = cl.send(longCmd1)
   protected final def longSend2  = cl.send(longCmd2)

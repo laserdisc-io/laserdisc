@@ -26,7 +26,7 @@ val V = new {
   val `scodec-core`          = "1.11.7"
   val `scodec-stream`        = "2.0.1"
   val scredis                = "2.3.3"
-  val shapeless              = "2.3.3"
+  val shapeless              = "2.3.4"
   val zio                    = "1.0.0"
   val `zio-interop-cats`     = "2.1.4.0"
 }

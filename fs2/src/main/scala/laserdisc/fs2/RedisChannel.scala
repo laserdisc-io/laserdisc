@@ -6,7 +6,7 @@ import java.net.InetSocketAddress
 import _root_.fs2._
 import _root_.fs2.io.tcp.{Socket, SocketGroup}
 import cats.MonadError
-import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
+import cats.effect.{Concurrent, Resource}
 import cats.syntax.flatMap._
 import laserdisc.protocol._
 import log.effect.LogWriter
@@ -24,7 +24,7 @@ object RedisChannel {
       address: InetSocketAddress,
       writeTimeout: Option[FiniteDuration],
       readMaxBytes: Int
-  )(blocker: Blocker): Pipe[F, RESP, RESP] = {
+  ): Pipe[F, RESP, RESP] = {
     def connectedSocket: Resource[F, Socket[F]] =
       SocketGroup(blocker, nonBlockingThreadCount = 4) >>= (_.client(address, noDelay = true))
 

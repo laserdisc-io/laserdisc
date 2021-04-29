@@ -102,7 +102,7 @@ jobs:
       - name: Test (${{ matrix.scala }}, ${{ matrix.java }})
         run: sbt ++${{ matrix.scala }} fullTest
       - name: Upload To Codecov
-        uses: codecov/codecov-action@v1.0.15
+        uses: codecov/codecov-action@v1.3.2
   publish_212:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     name: Publish Snapshot 2.12

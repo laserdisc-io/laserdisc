@@ -1,32 +1,33 @@
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
-val scala_212       = "2.12.12"
-val scala_213       = "2.13.5"
+val scala_212 = "2.12.13"
+val scala_213 = "2.13.5"
+
 val current_version = scala_213
 
 val V = new {
-  val cats                   = "2.6.0"
-  val `cats-effect`          = "2.5.0"
-  val `cats-discipline`      = "1.1.4"
-  val `discipline-munit`     = "1.0.8"
+  val cats                   = "2.6.1"
+  val `cats-effect`          = "2.5.1"
+  val `cats-discipline`      = "1.1.5"
+  val `discipline-munit`     = "1.0.9"
   val circe                  = "0.13.0"
-  val fs2                    = "3.0.2"
+  val fs2                    = "2.5.6"
   val jedis                  = "3.2.0"
-  val `kind-projector`       = "0.11.3"
-  val kittens                = "2.2.2"
-  val `log-effect`           = "0.14.1"
+  val `kind-projector`       = "0.12.0"
+  val kittens                = "2.3.1"
+  val `log-effect`           = "0.15.0"
   val logback                = "1.2.3"
-  val munit                  = "0.7.25"
-  val `parallel-collections` = "1.0.2"
+  val munit                  = "0.7.26"
+  val `parallel-collections` = "1.0.3"
   val redis4Cats             = "0.11.1"
   val refined                = "0.9.24"
-  val scalacheck             = "1.15.3"
+  val scalacheck             = "1.15.4"
   val `scala-redis`          = "3.30"
   val `scodec-bits`          = "1.1.26"
   val `scodec-core`          = "1.11.7"
   val `scodec-stream`        = "2.0.1"
   val scredis                = "2.3.3"
-  val shapeless              = "2.3.4"
+  val shapeless              = "2.3.6"
   val zio                    = "1.0.0"
   val `zio-interop-cats`     = "2.1.4.0"
 }
@@ -393,14 +394,13 @@ lazy val laserdisc = project
     addCommandAlias("benchClean", "all core-bench/clean fs2-bench/clean"),
     addCommandAlias("benchCompile", "all core-bench/test:compile fs2-bench/test:compile"),
     addCommandAlias("benchBuild", ";benchClean;benchCompile"),
-    addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt;fs2-bench/scalafmt"),
+    addCommandAlias("fmt", "all scalafmt test:scalafmt scalafmtSbt fs2-bench/scalafmt"),
     addCommandAlias(
       "fmtCheck",
       "all scalafmtCheck test:scalafmtCheck scalafmtSbtCheck fs2-bench/scalafmtCheck fs2-bench/test:scalafmtCheck"
     ),
     addCommandAlias("fullTest", ";clean;coverage;test;coverageReport"),
     addCommandAlias("prePr", ";fmtCheck;fullTest"),
-    // travis release aliases
     addCommandAlias(
       "setReleaseOptions",
       "set scalacOptions ++= Seq(\"-opt:l:method\", \"-opt:l:inline\", \"-opt-inline-from:laserdisc.**\", \"-opt-inline-from:<sources>\")"

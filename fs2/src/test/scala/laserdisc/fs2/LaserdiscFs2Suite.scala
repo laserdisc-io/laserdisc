@@ -2,11 +2,12 @@ package laserdisc
 package fs2
 
 import cats.effect.syntax.effect._
-import cats.effect.{ConcurrentEffect, ContextShift, Timer}
+import cats.effect.ConcurrentEffect
 import laserdisc.auto._
 import munit.FunSuite
+import cats.effect.Temporal
 
-abstract class LaserdiscFs2Suite[F[_]: ContextShift: Timer: ConcurrentEffect](p: Port) extends FunSuite {
+abstract class LaserdiscFs2Suite[F[_]: ContextShift: Temporal: ConcurrentEffect](p: Port) extends FunSuite {
 
   private var cleanUp: F[Unit]               = _
   protected final var client: RedisClient[F] = _

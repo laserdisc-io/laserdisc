@@ -276,7 +276,7 @@ lazy val scaladocSettings = Seq(
     "-doc-source-url",
     scmInfo.value.get.browseUrl + "/tree/master€{FILE_PATH}.scala",
     "-sourcepath",
-    baseDirectory.in(LocalRootProject).value.getAbsolutePath,
+    (LocalRootProject / baseDirectory).value.getAbsolutePath,
     "-implicits",
     "-implicits-show-all"
   ),
@@ -285,7 +285,7 @@ lazy val scaladocSettings = Seq(
 )
 
 lazy val scoverageSettings = Seq(
-  coverageMinimum := 60,
+  coverageMinimumStmtTotal := 60,
   coverageFailOnMinimum := false,
   coverageHighlighting := true
 )

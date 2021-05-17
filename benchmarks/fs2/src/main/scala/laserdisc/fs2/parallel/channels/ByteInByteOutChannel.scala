@@ -3,34 +3,26 @@ package fs2
 package parallel
 package channels
 
-import java.net.InetSocketAddress
-
 import _root_.fs2._
-import _root_.fs2.io.tcp.{Socket, SocketGroup}
-import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
+import _root_.fs2.io.net.Network
+import cats.effect.Concurrent
 import cats.syntax.flatMap._
-import log.effect.LogWriter
-
-import scala.concurrent.duration.FiniteDuration
+import com.comcast.ip4s.{Host, SocketAddress}
+import laserdisc.fs2.RedisChannel.connectedSocket
 
 object ByteInByteOutChannel {
 
-  private[fs2] final def apply[F[_]: ContextShift: LogWriter: Concurrent](
-      address: InetSocketAddress,
-      writeTimeout: Option[FiniteDuration],
-      readMaxBytes: Int
-  )(blocker: Blocker): Pipe[F, Byte, Byte] = {
-    def connectedSocket: Resource[F, Socket[F]] =
-      SocketGroup(blocker, nonBlockingThreadCount = 4) >>= (_.client(address, noDelay = true))
-
+  private[fs2] final def apply[F[_]: Network: Concurrent](
+      address: SocketAddress[Host],
+      receiveBufferSizeBytes: Int
+  ): Pipe[F, Byte, Byte] =
     stream =>
-      Stream.resource(connectedSocket) >>= { socket =>
-        val send    = stream.through(socket.writes(writeTimeout))
-        val receive = socket.reads(readMaxBytes)
+      Stream.resource(connectedSocket(address, receiveBufferSizeBytes)) >>= { socket =>
+        val send    = stream.through(socket.writes)
+        val receive = socket.reads
 
         send.drain
           .mergeHaltBoth(receive)
           .onFinalizeWeak(socket.endOfOutput)
       }
-  }
 }

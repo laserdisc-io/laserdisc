@@ -1,14 +1,11 @@
 package laserdisc
 package cli
 
-import java.util.concurrent.Executors._
-
 import _root_.fs2.{io, text}
 import cats.effect._
 import cats.syntax.all._
 import laserdisc.fs2._
 
-import scala.concurrent.ExecutionContext.fromExecutorService
 import scala.reflect.runtime.universe
 import scala.tools.reflect.ToolBox
 
@@ -78,36 +75,35 @@ object CLI extends IOApp { self =>
     private[this] val tb = universe.runtimeMirror(self.getClass.getClassLoader).mkToolBox()
 
     def mkStream(host: Host, port: Port): Stream[IO, ExitCode] =
-      Stream.resource(Blocker.fromExecutorService[IO](IO(fromExecutorService(newSingleThreadExecutor)))) >>= { replBlockingPool =>
-        Stream.resource(RedisClient.to(host, port)) evalMap { redisClient =>
-          val promptStream: Stream[IO, String] = Stream.emit(s"$host:$port> ").repeat
+      Stream.resource(RedisClient[IO].to(host, port)).evalMap { redisClient =>
+        val promptStream: Stream[IO, String] = Stream.emit(s"$host:$port> ").repeat
 
-          val emptyPrompt: IO[Unit] =
-            promptStream.head
-              .through(text.utf8Encode)
-              .through(io.stdout(replBlockingPool))
-              .compile
-              .drain
+        val emptyPrompt: IO[Unit] =
+          promptStream.head
+            .through(text.utf8Encode)
+            .through(io.stdout)
+            .compile
+            .drain
 
-          def prompt(msg: String): IO[Unit] =
-            Stream
-              .emit(msg)
-              .append(promptStream.head)
-              .through(text.utf8Encode)
-              .through(io.stdout(replBlockingPool))
-              .compile
-              .drain
+        def prompt(msg: String): IO[Unit] =
+          Stream
+            .emit(msg)
+            .append(promptStream.head)
+            .through(text.utf8Encode)
+            .through(io.stdout)
+            .compile
+            .drain
 
-          final object ToMillis {
-            def unapply(nanos: Long): Option[Double] = Some(nanos.toDouble / 1000000d)
-          }
+        final object ToMillis {
+          def unapply(nanos: Long): Option[Double] = Some(nanos.toDouble / 1000000d)
+        }
 
-          val protocol: Pipe[IO, String, Protocol] = {
-            def mkProtocol(code: String): IO[Maybe[Protocol]] =
-              IO.delay {
-                tb.eval {
-                  tb.parse {
-                    s"""import laserdisc._
+        val protocol: Pipe[IO, String, Protocol] = {
+          def mkProtocol(code: String): IO[Maybe[Protocol]] =
+            IO.delay {
+              tb.eval {
+                tb.parse {
+                  s"""import laserdisc._
                         |import laserdisc.auto._
                         |import laserdisc.all._
                         |import laserdisc.fs2._
@@ -115,37 +111,36 @@ object CLI extends IOApp { self =>
                         |
                         |$code
                         |""".stripMargin
-                  }
-                }.asInstanceOf[Protocol]
-              }.attempt
+                }
+              }.asInstanceOf[Protocol]
+            }.attempt
 
-            _.evalMap(mkProtocol).flatMap {
-              case Left(t)  => Stream.eval_(prompt(s"${t.getLocalizedMessage}$LF"))
-              case Right(p) => Stream.emit(p)
-            }
+          _.evalMap(mkProtocol).flatMap {
+            case Left(t)  => Stream.exec(prompt(s"${t.getLocalizedMessage}$LF"))
+            case Right(p) => Stream.emit(p)
           }
-
-          emptyPrompt >>
-            io.stdin[IO](bufSize = 10 * 1024, replBlockingPool)
-              .through(text.utf8Decode)
-              .through(text.lines)
-              .through(protocol)
-              .evalMap { protocol =>
-                for {
-                  startTime             <- IO(System.nanoTime())
-                  maybeProtocolResponse <- redisClient.send(protocol.asInstanceOf[Protocol.Aux[protocol.A]])
-                  endTime               <- IO(System.nanoTime())
-                } yield maybeProtocolResponse.asInstanceOf[Maybe[Any]] -> (endTime - startTime)
-              }
-              .evalMap {
-                case (Left(e), ToMillis(ms))         => prompt(f"<<< ERROR ${e.getLocalizedMessage} - [$ms%.2fms]$LF")
-                case (Right(response), ToMillis(ms)) => prompt(f"<<< $response - [$ms%.2fms]$LF")
-                case (_, _)                          => absurd
-              }
-              .compile
-              .drain
-              .as(ExitCode.Success)
         }
+
+        emptyPrompt >>
+          io.stdin[IO](bufSize = 10 * 1024)
+            .through(text.utf8Decode)
+            .through(text.lines)
+            .through(protocol)
+            .evalMap { protocol =>
+              for {
+                startTime             <- IO(System.nanoTime())
+                maybeProtocolResponse <- redisClient.send(protocol.asInstanceOf[Protocol.Aux[protocol.A]])
+                endTime               <- IO(System.nanoTime())
+              } yield maybeProtocolResponse.asInstanceOf[Maybe[Any]] -> (endTime - startTime)
+            }
+            .evalMap {
+              case (Left(e), ToMillis(ms))         => prompt(f"<<< ERROR ${e.getLocalizedMessage} - [$ms%.2fms]$LF")
+              case (Right(response), ToMillis(ms)) => prompt(f"<<< $response - [$ms%.2fms]$LF")
+              case (_, _)                          => absurd
+            }
+            .compile
+            .drain
+            .as(ExitCode.Success)
       }
   }
 }

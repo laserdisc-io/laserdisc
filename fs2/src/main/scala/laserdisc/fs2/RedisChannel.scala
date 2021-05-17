@@ -1,55 +1,59 @@
 package laserdisc
 package fs2
 
-import java.net.InetSocketAddress
-
 import _root_.fs2._
-import _root_.fs2.io.tcp.{Socket, SocketGroup}
+import _root_.fs2.io.net.{Network, Socket, SocketOption}
 import cats.MonadError
-import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
+import cats.effect.{Concurrent, Resource}
 import cats.syntax.flatMap._
+import com.comcast.ip4s.{Host, SocketAddress}
 import laserdisc.protocol._
-import log.effect.LogWriter
+import log.effect.fs2.LogSelector
 import scodec.Codec
 import scodec.bits.BitVector
 import scodec.stream.{StreamDecoder, StreamEncoder}
-
-import scala.concurrent.duration.FiniteDuration
 
 object RedisChannel {
   private[this] final val streamDecoder = StreamDecoder.many(Codec[RESP])
   private[this] final val streamEncoder = StreamEncoder.many(Codec[RESP])
 
-  private[fs2] final def apply[F[_]: ContextShift: LogWriter: Concurrent](
-      address: InetSocketAddress,
-      writeTimeout: Option[FiniteDuration],
-      readMaxBytes: Int
-  )(blocker: Blocker): Pipe[F, RESP, RESP] = {
-    def connectedSocket: Resource[F, Socket[F]] =
-      SocketGroup(blocker, nonBlockingThreadCount = 4) >>= (_.client(address, noDelay = true))
-
+  private[fs2] final def apply[F[_]: Network: LogSelector: Concurrent](
+      address: SocketAddress[Host],
+      receiveBufferSizeBytes: Int
+  ): Pipe[F, RESP, RESP] =
     stream =>
-      Stream.resource(connectedSocket) >>= { socket =>
-        val send    = stream.through(impl.send(socket.write(_, writeTimeout)))
-        val receive = socket.reads(readMaxBytes).through(impl.receiveResp)
+      Stream.resource(connectedSocket(address, receiveBufferSizeBytes)) >>= { socket =>
+        val send    = stream.through(impl.send(socket.write))
+        val receive = socket.reads.through(impl.receiveResp)
 
         send.drain
           .covaryOutput[RESP]
           .mergeHaltBoth(receive)
           .onFinalizeWeak(socket.endOfOutput)
       }
-  }
+
+  private[fs2] final def connectedSocket[F[_]: Network](
+      address: SocketAddress[Host],
+      receiveBufferSizeBytes: Int
+  ): Resource[F, Socket[F]] =
+    Network[F].client(
+      address,
+      List(
+        SocketOption.noDelay(true),
+        SocketOption.receiveBufferSize(receiveBufferSizeBytes)
+      )
+    )
 
   private[this] final object impl {
-    def send[F[_]: MonadError[*[_], Throwable]](socketWrite: Chunk[Byte] => F[Unit])(
-        implicit log: LogWriter[F]
+    def send[F[_]: LogSelector: MonadError[*[_], Throwable]](socketWrite: Chunk[Byte] => F[Unit])(
+        implicit logSelector: LogSelector[F]
     ): Pipe[F, RESP, Unit] =
-      _.evalTap(resp => log.trace(s"sending $resp"))
+      _.evalTap(resp => logSelector.log.trace(s"sending $resp"))
         .through(streamEncoder.encode[F])
         .chunks
-        .evalMap(chunks => socketWrite(Chunk.bytes(chunks.foldLeft(BitVector.empty)(_ ++ _).toByteArray)))
+        .evalMap(chunks => socketWrite(Chunk.array(chunks.foldLeft(BitVector.empty)(_ ++ _).toByteArray)))
 
-    def receiveResp[F[_]: MonadError[*[_], Throwable]](implicit log: LogWriter[F]): Pipe[F, Byte, RESP] = {
+    def receiveResp[F[_]: MonadError[*[_], Throwable]](implicit logSelector: LogSelector[F]): Pipe[F, Byte, RESP] = {
       def framing: Pipe[F, Byte, CompleteFrame] = {
         def loopScan(bytesIn: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteFrame, Unit] =
           bytesIn.pull.uncons.flatMap {
@@ -74,7 +78,7 @@ object RedisChannel {
       pipeIn =>
         streamDecoder
           .decode(pipeIn.through(framing) map (_.bits))
-          .evalTap(resp => log.trace(s"receiving $resp"))
+          .evalTap(resp => logSelector.log.trace(s"receiving $resp"))
     }
   }
 }

@@ -1,19 +1,9 @@
-import java.util.concurrent.ForkJoinPool
-
-import cats.effect.{ContextShift, IO, Timer}
 import munit.FunSuite
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.fromExecutor
+import cats.effect.IO
 
 final class DefaultLoggerSpec extends FunSuite with TestLogCapture {
 
   private def assertNot(c: =>Boolean): Unit = assert(!c)
-
-  private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
-
-  private[this] implicit val timer: Timer[IO]               = IO.timer(ec)
-  private[this] implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
   test("The readme example doesn't log when no LogWriter is given") {
     import cats.syntax.flatMap._
@@ -24,7 +14,7 @@ final class DefaultLoggerSpec extends FunSuite with TestLogCapture {
     import log.effect.fs2.SyncLogWriter.consoleLog
 
     val redisTest: IO[Unit] =
-      RedisClient.to("localhost", 6379).use { client =>
+      RedisClient[IO].to("localhost", 6379).use { client =>
         client.send(
           set("a", 23),
           set("b", 55),

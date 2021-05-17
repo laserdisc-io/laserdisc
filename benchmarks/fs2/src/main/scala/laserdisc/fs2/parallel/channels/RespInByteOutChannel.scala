@@ -4,31 +4,26 @@ package parallel
 package channels
 
 import _root_.fs2._
-import _root_.fs2.io.tcp.{Socket, SocketGroup}
-import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
+import _root_.fs2.io.net.Network
+import cats.effect.Concurrent
 import cats.syntax.flatMap._
-
-import java.net.InetSocketAddress
-import scala.concurrent.duration.FiniteDuration
+import com.comcast.ip4s.{Host, SocketAddress}
+import laserdisc.fs2.RedisChannel.connectedSocket
+import laserdisc.fs2.parallel.adapters.RespChannelAdapter
 
 object RespInByteOutChannel {
 
-  private[fs2] final def apply[F[_]: ContextShift: Concurrent](
-      address: InetSocketAddress,
-      writeTimeout: Option[FiniteDuration],
-      readMaxBytes: Int
-  )(blocker: Blocker): Pipe[F, RESP, Byte] = {
-    def connectedSocket: Resource[F, Socket[F]] =
-      SocketGroup(blocker, nonBlockingThreadCount = 4) >>= (_.client(address, noDelay = true))
-
+  private[fs2] final def apply[F[_]: Network: Concurrent](
+      address: SocketAddress[Host],
+      receiveBufferSizeBytes: Int
+  ): Pipe[F, RESP, Byte] =
     stream =>
-      Stream.resource(connectedSocket) >>= { socket =>
-        val send    = stream.through(RespChannelAdapter.send(socket.write(_, writeTimeout)))
-        val receive = socket.reads(readMaxBytes)
+      Stream.resource(connectedSocket(address, receiveBufferSizeBytes)) >>= { socket =>
+        val send    = stream.through(RespChannelAdapter.send(socket.write))
+        val receive = socket.reads
 
         send.drain
           .mergeHaltBoth(receive)
           .onFinalizeWeak(socket.endOfOutput)
       }
-  }
 }

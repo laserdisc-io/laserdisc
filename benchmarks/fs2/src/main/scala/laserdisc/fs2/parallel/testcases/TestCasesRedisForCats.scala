@@ -3,8 +3,8 @@ package fs2
 package parallel
 package testcases
 
-import cats.effect.Concurrent
-import cats.effect.syntax.concurrent._
+import cats.effect.kernel.Spawn
+import cats.effect.syntax.spawn._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.parallel._
@@ -12,11 +12,11 @@ import cats.{FlatMap, Parallel}
 import dev.profunktor.redis4cats.RedisCommands
 
 private[fs2] object RedisForCatsTestCases {
-  final def apply[F[_]: Concurrent: Parallel](cl: RedisCommands[F, String, String]): RedisForCatsTestCases[F] =
+  final def apply[F[_]: Spawn: Parallel](cl: RedisCommands[F, String, String]): RedisForCatsTestCases[F] =
     new RedisForCatsTestCases[F](cl) {}
 }
 
-private[fs2] sealed abstract class RedisForCatsTestCases[F[_]: Concurrent: Parallel](cl: RedisCommands[F, String, String])
+private[fs2] sealed abstract class RedisForCatsTestCases[F[_]: Spawn: Parallel](cl: RedisCommands[F, String, String])
     extends TestCommandsRedisForCats(cl) {
 
   final def case1 =

@@ -4,15 +4,15 @@ package parallel
 package testcases
 
 import _root_.fs2.Chunk
-import cats.effect.Sync
+import cats.effect.kernel.Concurrent
 import scodec.bits.BitVector
 
 private[fs2] object TestCasesLaserdiscBitVector {
-  final def apply[F[_]: Sync](ch: Pipe[F, BitVector, BitVector]): TestCasesLaserdiscBitVector[F] =
+  final def apply[F[_]: Concurrent](ch: Pipe[F, BitVector, BitVector]): TestCasesLaserdiscBitVector[F] =
     new TestCasesLaserdiscBitVector[F](ch) {}
 }
 
-private[fs2] abstract class TestCasesLaserdiscBitVector[F[_]: Sync](ch: Pipe[F, BitVector, BitVector]) extends TestSendBitVector {
+private[fs2] abstract class TestCasesLaserdiscBitVector[F[_]: Concurrent](ch: Pipe[F, BitVector, BitVector]) extends TestSendBitVector {
   final def case1 = longSend.through(ch).compile.toVector
   final def case2 = shortSend.through(ch).compile.toVector
 }

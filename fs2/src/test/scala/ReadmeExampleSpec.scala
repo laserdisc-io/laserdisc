@@ -1,17 +1,7 @@
-import java.util.concurrent.ForkJoinPool
-
-import cats.effect.{ContextShift, IO, Timer}
 import munit.FunSuite
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.fromExecutor
+import cats.effect.IO
 
 final class ReadmeExampleSpec extends FunSuite with TestLogCapture {
-
-  private[this] val ec: ExecutionContext = fromExecutor(new ForkJoinPool())
-
-  private[this] implicit val timer: Timer[IO]               = IO.timer(ec)
-  private[this] implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
   test("The readme example gives the expected output and logs when a LogWriter is in scope") {
     import cats.syntax.flatMap._
@@ -23,7 +13,7 @@ final class ReadmeExampleSpec extends FunSuite with TestLogCapture {
     import log.effect.fs2.SyncLogWriter
 
     def redisTest(implicit log: LogWriter[IO]): IO[Unit] =
-      RedisClient.to("localhost", 6379).use { client =>
+      RedisClient[IO].to("localhost", 6379).use { client =>
         client.send(
           set("a", 23),
           set("b", 55),

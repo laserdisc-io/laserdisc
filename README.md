@@ -88,20 +88,20 @@ of the JSON data structure, i.e. no spacing is used
 ### Example usage
 With a running Redis instance on `localhost:6379` try running the following:
 ```scala
-import cats.effect.{ExitCode, IO, IOApp}
-import cats.syntax.flatMap._
-import cats.syntax.functor._
-import laserdisc._
-import laserdisc.all._
-import laserdisc.auto._
-import laserdisc.fs2._
+import cats.effect.{IO, IOApp}
 import log.effect.LogWriter
 import log.effect.fs2.SyncLogWriter
+import cats.syntax.flatMap._
 
-object Main extends IOApp {
+object Main extends IOApp.Simple {
+
+  import laserdisc._
+  import laserdisc.all._
+  import laserdisc.auto._
+  import laserdisc.fs2._
 
   def redisTest(implicit log: LogWriter[IO]): IO[Unit] =
-    RedisClient.to("localhost", 6379).use { client =>
+    RedisClient[IO].to("localhost", 6379).use { client =>
       client.send(
         set("a", 23),
         set("b", 55),
@@ -116,27 +116,27 @@ object Main extends IOApp {
       }
     }
 
-  override final def run(args: List[String]): IO[ExitCode] =
-    redisTest(SyncLogWriter.consoleLog[IO]).as(ExitCode.Success)
+  override final def run: IO[Unit] =
+    redisTest(SyncLogWriter.consoleLog[IO])
 }
 ```
 
 This should produce an output similar to the following one:
 ```
-[debug] - [ioapp-compute-0] Starting connection
-[info] - [ioapp-compute-6] Connected to server localhost:6379
-[trace] - [ioapp-compute-7] sending Arr(Bulk(SET),Bulk(a),Bulk(23))
-[trace] - [ioapp-compute-1] receiving Str(OK)
-[trace] - [ioapp-compute-2] sending Arr(Bulk(SET),Bulk(b),Bulk(55))
-[trace] - [ioapp-compute-2] receiving Str(OK)
-[trace] - [ioapp-compute-2] sending Arr(Bulk(GET),Bulk(b))
-[trace] - [ioapp-compute-6] receiving Bulk(55)
-[trace] - [ioapp-compute-6] sending Arr(Bulk(GET),Bulk(a))
-[trace] - [ioapp-compute-1] receiving Bulk(23)
-[info] - [ioapp-compute-6] yay!
-[debug] - [ioapp-compute-6] Shutting down connection
-[debug] - [ioapp-compute-6] Shutdown complete
-[info] - [ioapp-compute-7] Connection terminated: No issues
+[debug] - [io-compute-3] Starting connection
+[info] - [io-compute-4] Connected to server localhost:6379
+[trace] - [io-compute-4] sending Arr(Bulk(SET),Bulk(a),Bulk(23))
+[trace] - [io-compute-3] receiving Str(OK)
+[trace] - [io-compute-1] sending Arr(Bulk(SET),Bulk(b),Bulk(55))
+[trace] - [io-compute-4] receiving Str(OK)
+[trace] - [io-compute-0] sending Arr(Bulk(GET),Bulk(b))
+[trace] - [io-compute-5] receiving Bulk(55)
+[trace] - [io-compute-0] sending Arr(Bulk(GET),Bulk(a))
+[trace] - [io-compute-0] receiving Bulk(23)
+[info] - [io-compute-5] yay!
+[debug] - [io-compute-5] Shutting down connection
+[debug] - [io-compute-5] Shutdown complete
+[info] - [io-compute-0] Connection terminated: No issues
 ```
 
 ## Dependencies

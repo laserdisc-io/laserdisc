@@ -1,19 +1,19 @@
 package laserdisc
 package fs2
 package parallel
-package channels
+package adapters
 
 import _root_.fs2.{Chunk, Pipe, Pull, Stream}
-import cats.MonadError
+import cats.ApplicativeError
 import laserdisc.protocol._
 import scodec.bits.BitVector
 
-private[channels] object BitVectorChannelAdapter {
-  def send[F[_]: MonadError[*[_], Throwable]](socketWrite: Chunk[Byte] => F[Unit]): Pipe[F, BitVector, Unit] =
+private[parallel] object BitVectorChannelAdapter {
+  def send[F[_]: ApplicativeError[*[_], Throwable]](socketWrite: Chunk[Byte] => F[Unit]): Pipe[F, BitVector, Unit] =
     _.chunks
-      .evalMap(chunks => socketWrite(Chunk.bytes(chunks.foldLeft(BitVector.empty)(_ ++ _).toByteArray)))
+      .evalMap(chunks => socketWrite(Chunk.array(chunks.foldLeft(BitVector.empty)(_ ++ _).toByteArray)))
 
-  def receive[F[_]: MonadError[*[_], Throwable]]: Pipe[F, Byte, BitVector] = {
+  def receive[F[_]: ApplicativeError[*[_], Throwable]]: Pipe[F, Byte, BitVector] = {
     def framing: Pipe[F, Byte, CompleteFrame] = {
       def loopScan(bytesIn: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteFrame, Unit] =
         bytesIn.pull.uncons.flatMap {

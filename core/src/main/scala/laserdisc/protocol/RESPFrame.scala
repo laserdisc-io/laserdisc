@@ -10,25 +10,20 @@ import scala.annotation.tailrec
 private[laserdisc] sealed trait RESPFrame extends Product with Serializable with EitherSyntax with BitVectorSyntax {
   def append(bits: BitVector): Exception | NonEmptyRESPFrame = nextFrame(bits)
   protected final def nextFrame(bits: BitVector): Exception | NonEmptyRESPFrame =
-    stateOf(bits)
-      .flatMap {
-        case MissingBits(n)              => Right(IncompleteFrame(bits, n))
-        case Incomplete                  => Right(IncompleteFrame(bits, 0L))
-        case Complete                    => Right(CompleteFrame(bits))
-        case CompleteWithRemainder(c, r) => consumeRemainder(Right(MoreThanOneFrame(Vector(CompleteFrame(c)), r)))
-      }
-      .leftMap(e => UnknownBufferState(s"Err building the frame from buffer: $e. Content: ${bits.tailToUtf8}"))
+    stateOf(bits) match {
+      case Right(MissingBits(n))              => Right(IncompleteFrame(bits, n))
+      case Right(Incomplete)                  => Right(IncompleteFrame(bits, 0L))
+      case Right(Complete)                    => Right(CompleteFrame(bits))
+      case Right(CompleteWithRemainder(c, r)) => consumeRemainder(MoreThanOneFrame(Vector(CompleteFrame(c)), r))
+      case Left(e)                            => Left(UnknownBufferState(s"Err building the frame from buffer: $e. Content: ${bits.tailToUtf8}"))
+    }
 
-  @tailrec private[this] final def consumeRemainder(current: String | MoreThanOneFrame): String | MoreThanOneFrame =
-    current match {
-      case Right(s) =>
-        stateOf(s.remainder) match {
-          case Left(ee)                           => Left(ee)
-          case Right(CompleteWithRemainder(c, r)) => consumeRemainder(Right(MoreThanOneFrame(s.complete :+ CompleteFrame(c), r)))
-          case Right(Complete)                    => Right(MoreThanOneFrame(s.complete :+ CompleteFrame(s.remainder), BitVector.empty))
-          case _                                  => Right(s)
-        }
-      case left => left
+  @tailrec private[this] final def consumeRemainder(current: MoreThanOneFrame): Exception | MoreThanOneFrame =
+    stateOf(current.remainder) match {
+      case Right(CompleteWithRemainder(c, r)) => consumeRemainder(MoreThanOneFrame(current.complete :+ CompleteFrame(c), r))
+      case Right(Complete)                    => Right(MoreThanOneFrame(current.complete :+ CompleteFrame(current.remainder), BitVector.empty))
+      case Left(ee)                           => Left(UnknownBufferState(s"Err building the frame from a remainder: $ee. Content: ${current.remainder.tailToUtf8}"))
+      case _                                  => Right(current)
     }
 }
 

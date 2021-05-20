@@ -13,8 +13,8 @@ import shapeless._
 
 package object laserdisc {
   // Basic type aliases
-  final type |[A, B]  = Either[A, B]
-  final type Maybe[A] = Throwable | A
+  final type |[+A, +B] = Either[A, B]
+  final type Maybe[A]  = Throwable | A
 
   // Type forwarders
   final type Arr        = protocol.Arr

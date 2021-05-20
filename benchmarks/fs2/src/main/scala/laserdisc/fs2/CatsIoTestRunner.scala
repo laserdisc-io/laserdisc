@@ -2,6 +2,7 @@ package laserdisc
 package fs2
 
 import cats.effect.IO
+import cats.syntax.either._
 import cats.syntax.flatMap._
 import laserdisc.auto._
 import laserdisc.fs2.parallel.runtime.BenchRuntime.fixedFixedRuntime
@@ -17,17 +18,17 @@ object CatsIoTestRunner {
 
   def main(args: Array[String]): Unit = {
 
-    val runFor = 2.minutes
+    val runFor = 15.minutes
+
     val task = IO.monotonic >>= { start =>
       RedisClient[IO].to("localhost", 6379).use { cl =>
         val cases = TestCasesLaserdisc[IO](cl)
-        def loop(count: Long): IO[Long] =
-          cases.case1 >> IO.monotonic >>= { current =>
-            if (current - start >= runFor) IO.pure(count)
-            else loop(count + 1)
+        0.tailRecM[IO, Int] { count =>
+          (cases.case1 >> IO.monotonic).map { current =>
+            if (current - start >= runFor) count.asRight
+            else (count + 1).asLeft
           }
-
-        loop(0)
+        }
       }
     }
 

@@ -80,7 +80,7 @@ object CLI extends IOApp { self =>
 
         val emptyPrompt: IO[Unit] =
           promptStream.head
-            .through(text.utf8Encode)
+            .through(text.utf8.encode)
             .through(io.stdout)
             .compile
             .drain
@@ -89,7 +89,7 @@ object CLI extends IOApp { self =>
           Stream
             .emit(msg)
             .append(promptStream.head)
-            .through(text.utf8Encode)
+            .through(text.utf8.encode)
             .through(io.stdout)
             .compile
             .drain
@@ -123,7 +123,7 @@ object CLI extends IOApp { self =>
 
         emptyPrompt >>
           io.stdin[IO](bufSize = 10 * 1024)
-            .through(text.utf8Decode)
+            .through(text.utf8.decode)
             .through(text.lines)
             .through(protocol)
             .evalMap { protocol =>

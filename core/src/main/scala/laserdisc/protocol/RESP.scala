@@ -9,7 +9,7 @@ import scodec.Encoder.encodeSeq
 import scodec.Err.{General, MatchingDiscriminatorNotFound}
 import scodec.bits.{BitVector, _}
 import scodec.codecs.{filtered, fixedSizeBytes}
-import scodec.{Attempt, Codec, DecodeResult, Decoder, SizeBound, Err => SErr}
+import scodec.{Attempt, Codec, DecodeResult, Decoder, Err => SErr, SizeBound}
 
 import scala.annotation.tailrec
 import shapeless.Generic
@@ -18,24 +18,26 @@ import shapeless.Generic
   *
   * This sealed trait represents the entire Redis Serialization Protocol algebra
   *
-  * Concrete instances of this trait must be created using this trait's companion
-  * object's methods, were [[scodec.Codec]]s for each are also defined
+  * Concrete instances of this trait must be created using this trait's companion object's methods, were [[scodec.Codec]] s for each are
+  * also defined
   *
-  * @see [[RESPCodecs]]
+  * @see
+  *   [[RESPCodecs]]
   */
 sealed trait RESP extends AnyRef with Serializable
 
 /** RESP [[https://redis.io/topics/protocol#resp-simple-strings Simple Strings]]
   *
-  * @note Sometimes the value "OK" is used to represent a successful
-  * acknowledgement/processing of a command.
+  * @note
+  *   Sometimes the value "OK" is used to represent a successful acknowledgement/processing of a command.
   *
   * @example
   * {{{
   *   val s: Str = Str("some string")
   * }}}
   *
-  * @param value The wrapped string value
+  * @param value
+  *   The wrapped string value
   */
 final case class Str(value: String) extends RESP
 object Str {
@@ -44,51 +46,53 @@ object Str {
 
 /** RESP [[https://redis.io/topics/protocol#resp-errors Errors]]
   *
-  * RESP [[Err]]s are also [[scala.RuntimeException]]s, although
-  * __where possible__ they will not contain stacktrace data
+  * RESP [[Err]] s are also [[scala.RuntimeException]] s, although __where possible__ they will not contain stacktrace data
   *
   * @example
   * {{{
   *   val e: Err = Err("some error message")
   * }}}
-  * @param message The wrapped exception's message
+  * @param message
+  *   The wrapped exception's message
   */
 final case class Err(message: String) extends laserdisc.Platform.LaserDiscRuntimeError(message) with RESP
 
 /** RESP [[https://redis.io/topics/protocol#resp-integers Integers]]
   *
-  * @note Sometimes the values 0 and 1 are used to represent boolean
-  * values. In this case 0 corresponds to False while 1 to True,
-  * respectively.
+  * @note
+  *   Sometimes the values 0 and 1 are used to represent boolean values. In this case 0 corresponds to False while 1 to True, respectively.
   *
   * @example
   * {{{
   *   val n: Num = Num(42)
   * }}}
   *
-  * @param value The wrapped long value
+  * @param value
+  *   The wrapped long value
   */
 final case class Num(value: Long) extends RESP
 
 /** RESP [[https://redis.io/topics/protocol#resp-bulk-strings Bulk Strings]]
   *
   * There can be 2 cases:
-  *  - `null` bulk strings, where the length is -1 and no actual underlying string is present
-  *  - actual (non-null) bulk strings, where the length is >= 0
+  *   - `null` bulk strings, where the length is -1 and no actual underlying string is present
+  *   - actual (non-null) bulk strings, where the length is >= 0
   *
   * @example
   * {{{
   *   val b: Bulk      = Bulk("some string")
   *   val nb: NullBulk = NullBulk
   * }}}
-  * @see [[Show]]
+  * @see
+  *   [[Show]]
   */
 sealed trait GenBulk extends RESP
 case object NullBulk extends GenBulk
 
 /** This is the special case of a non-null RESP [[GenBulk]]
   *
-  * @param value The wrapped bulk string value
+  * @param value
+  *   The wrapped bulk string value
   */
 final case class Bulk(value: String) extends GenBulk
 object Bulk {
@@ -100,13 +104,13 @@ object Bulk {
 /** RESP [[https://redis.io/topics/protocol#resp-arrays Arrays]]
   *
   * There can be 2 cases:
-  *  - `nil` arrays, where the length is -1 and no array element is present
-  *  - actual (non-nil) arrays, where the length is >= 0
+  *   - `nil` arrays, where the length is -1 and no array element is present
+  *   - actual (non-nil) arrays, where the length is >= 0
   *
-  * @note [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]]]
-  * is an overload which supports the creation of guaranteed non-empty
-  * sequences only. This is achieved through the usage of one fixed
-  * parameter followed by a var-arg of the same
+  * @note
+  *   [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]] ] is an overload
+  *   which supports the creation of guaranteed non-empty sequences only. This is achieved through the usage of one fixed parameter followed
+  *   by a var-arg of the same
   * @example
   * {{{
   *   val arr: Arr                = Arr(List(Str("hello"), Str("world")))
@@ -121,11 +125,11 @@ case object NilArr  extends GenArr
 /** This is the special case of a non-nil RESP [[GenArr]]
   *
   * These can be constructed either by the default case class' apply by resorting to the overloaded
-  * [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]]]
-  * method which expects one parameter to be supplied followed
-  * by a (possibly empty) sequence of [[RESP]]s (vararg).
+  * [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]] ] method which expects
+  * one parameter to be supplied followed by a (possibly empty) sequence of [[RESP]] s (vararg).
   *
-  * @param elements The wrapped array values, as a [[scala.List]] of [[RESP]]
+  * @param elements
+  *   The wrapped array values, as a [[scala.List]] of [[RESP]]
   */
 final case class Arr(elements: List[RESP]) extends GenArr {
   override def toString: String = s"Arr(${elements.mkString(COMMA)})"

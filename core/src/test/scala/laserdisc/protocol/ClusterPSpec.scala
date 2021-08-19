@@ -331,7 +331,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       }.toSet
 
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SLOTS")))
-      protocol.decode(slotsToArr(ss)) onRightAll (_.slots.foreach {
+      protocol.decode(slotsToArr(ss)) onRightAll _.slots.foreach {
         case (ClusterRangeSlotType(f, t), ClusterNewSlotInfo(ClusterHostPortNodeId(mh, mp, mid), rs)) =>
           val mrs = (mh.value, mp, Some(mid)) :: rs.foldLeft(List.empty[(String, Port, Option[NodeId])]) {
             case (acc, ClusterHostPortNodeId(h, p, nid)) => acc :+ ((h.value, p, Some(nid)))
@@ -342,7 +342,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             acc :+ ((h.value, p, None))
           }
           assert(ssWithLoopback.contains((f, t, mrs)))
-      })
+      }
     }
   }
 }

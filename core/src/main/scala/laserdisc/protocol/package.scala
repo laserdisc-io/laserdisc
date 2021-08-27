@@ -5,7 +5,7 @@ package object protocol {
 
   private[protocol] val KVP: String ==> (String, String) = {
     case KVPairRegex(k, v) => Right(k -> v)
-    case other             => Left(RESPDecErr(s"String ==> (String, String), error decoding key -> value pair. Expected [key:value] but was $other"))
+    case other => Left(RESPDecErr(s"String ==> (String, String), error decoding key -> value pair. Expected [key:value] but was $other"))
   }
 
   private[protocol] val KVPS: Seq[String] ==> List[(String, String)] = Read.instance { ss =>

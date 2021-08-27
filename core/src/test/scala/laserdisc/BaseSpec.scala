@@ -10,7 +10,7 @@ import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen._
 import org.scalacheck.{Arbitrary, Gen}
 
-import scala.Double.{NaN, MaxValue => DMax, MinValue => DMin}
+import scala.Double.{MaxValue => DMax, MinValue => DMin, NaN}
 import scala.Int.{MaxValue => IMax, MinValue => IMin}
 import scala.Long.{MaxValue => LMax, MinValue => LMin}
 
@@ -64,7 +64,7 @@ abstract class BaseSpec
   private[this] final val rfc3927Gen: Gen[String] = ipv4Gen(169, 254)
   private[this] final val rfc2544Gen: Gen[String] = chooseNum(18, 19).flatMap(ipv4Gen(198, _))
 
-  private[this] final def ipv4Gen(hs: Int*): Gen[String]           = listOfN(4 - hs.size, byteRange).map(ts => (hs ++: ts).mkString(dotString))
+  private[this] final def ipv4Gen(hs: Int*): Gen[String] = listOfN(4 - hs.size, byteRange).map(ts => (hs ++: ts).mkString(dotString))
   private[this] final def twoOrMore[A](ga: =>Gen[A]): Gen[List[A]] = nonEmptyListOf(ga).suchThat(_.size > 1)
   private[this] final def zip[A, B](arbA: =>Arbitrary[A], arbB: =>Arbitrary[B]): Gen[(A, B)] =
     arbA.arbitrary.flatMap(a => arbB.arbitrary.map(a -> _))

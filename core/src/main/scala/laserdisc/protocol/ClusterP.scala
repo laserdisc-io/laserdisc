@@ -219,8 +219,8 @@ object ClusterP {
           case (Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Bulk(NodeId(id)) :: Nil), Right(hsts)) =>
             Right(HostPortNodeId(h, p, id) +: hsts)
           case (Arr(H(Left(e)) :: _), Right(_)) => Left(RESPDecErr(s"Unexpected new replica's host encoding with error ${e.message}"))
-          case (Arr(other), Right(_))           => Left(RESPDecErr(s"Unexpected new replica encoding. Expected [host, port, node id] but was $other"))
-          case (_, left)                        => left
+          case (Arr(other), Right(_)) => Left(RESPDecErr(s"Unexpected new replica encoding. Expected [host, port, node id] but was $other"))
+          case (_, left)              => left
         }
       }
       val HPs: Seq[RESP] ==> Seq[HostPort] = Read.instance {
@@ -228,8 +228,8 @@ object ClusterP {
           case (Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Nil), Right(hsts)) =>
             Right(HostPort(h, p) +: hsts)
           case (Arr(H(Left(e)) :: _), Right(_)) => Left(RESPDecErr(s"Unexpected old replica's host encoding with error ${e.message}"))
-          case (Arr(other), Right(_))           => Left(RESPDecErr(s"Unexpected old replica encoding. Expected [host, port] but was $other"))
-          case (_, left)                        => left
+          case (Arr(other), Right(_)) => Left(RESPDecErr(s"Unexpected old replica encoding. Expected [host, port] but was $other"))
+          case (_, left)              => left
         }
       }
 

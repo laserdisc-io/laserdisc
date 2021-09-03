@@ -191,12 +191,12 @@ val versionDependantScalacOptions = Def.setting {
           "-Xfuture",                         // Turn on future language features.
           "-Xlint:by-name-right-associative", // By-name parameter of right associative operator.
           "-Xlint:unsound-match",             // Pattern match may not be typesafe.
-          "-Yno-adapted-args",                // Do not adapt an argument list (either by inserting () or creating a tuple) to match the receiver.
-          "-Ypartial-unification",            // Enable partial unification in type constructor inference
-          "-Ywarn-inaccessible",              // Warn about inaccessible types in method signatures.
-          "-Ywarn-infer-any",                 // Warn when a type argument is inferred to be `Any`.
-          "-Ywarn-nullary-override",          // Warn when non-nullary `def f()' overrides nullary `def f'.
-          "-Ywarn-nullary-unit"               // Warn when nullary methods return Unit.
+          "-Yno-adapted-args",       // Do not adapt an argument list (either by inserting () or creating a tuple) to match the receiver.
+          "-Ypartial-unification",   // Enable partial unification in type constructor inference
+          "-Ywarn-inaccessible",     // Warn about inaccessible types in method signatures.
+          "-Ywarn-infer-any",        // Warn when a type argument is inferred to be `Any`.
+          "-Ywarn-nullary-override", // Warn when non-nullary `def f()' overrides nullary `def f'.
+          "-Ywarn-nullary-unit"      // Warn when nullary methods return Unit.
         )
     }
 
@@ -242,7 +242,7 @@ val versionDependantScalacOptions = Def.setting {
 }
 
 lazy val commonSettings = Seq(
-  scalaVersion := current_version,
+  scalaVersion       := current_version,
   crossScalaVersions := Seq(scala_212, scala_213),
   scalacOptions ++= versionDependantScalacOptions.value,
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings", "-Wconf:any:error"),
@@ -251,9 +251,9 @@ lazy val commonSettings = Seq(
 
 lazy val publishSettings = Seq(
   Test / publishArtifact := false,
-  pomIncludeRepository := (_ => false),
-  organization := "io.laserdisc",
-  homepage := Some(url("http://laserdisc.io")),
+  pomIncludeRepository   := (_ => false),
+  organization           := "io.laserdisc",
+  homepage               := Some(url("http://laserdisc.io")),
   developers := List(
     Developer("sirocchi", "Julien Sirocchi", "julien.sirocchi@gmail.com", url("https://github.com/sirocchj")),
     Developer("barambani", "Filippo Mariotti", "", url("https://github.com/barambani"))
@@ -288,8 +288,8 @@ lazy val scaladocSettings = Seq(
 
 lazy val scoverageSettings = Seq(
   coverageMinimumStmtTotal := 60,
-  coverageFailOnMinimum := false,
-  coverageHighlighting := true
+  coverageFailOnMinimum    := false,
+  coverageHighlighting     := true
 )
 
 lazy val allSettings = commonSettings ++ testSettings ++ scaladocSettings ++ publishSettings ++ scoverageSettings
@@ -303,7 +303,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     name := "laserdisc-core",
     libraryDependencies ++= coreDeps.value,
     Compile / boilerplateSource := baseDirectory.value.getParentFile / "src" / "main" / "boilerplate",
-    Test / boilerplateSource := baseDirectory.value.getParentFile / "src" / "test" / "boilerplate"
+    Test / boilerplateSource    := baseDirectory.value.getParentFile / "src" / "test" / "boilerplate"
   )
   .jsSettings(
     coverageEnabled := false
@@ -345,8 +345,8 @@ lazy val `core-bench` = project
   .dependsOn(core.jvm % "compile->test;compile->compile")
   .enablePlugins(JmhPlugin)
   .settings(
-    name := "laserdisc-core-benchmarks",
-    scalaVersion := current_version,
+    name            := "laserdisc-core-benchmarks",
+    scalaVersion    := current_version,
     publishArtifact := false
   )
 
@@ -355,8 +355,8 @@ lazy val `fs2-bench` = project
   .dependsOn(fs2)
   .enablePlugins(JmhPlugin)
   .settings(
-    name := "laserdisc-fs2-benchmarks",
-    scalaVersion := current_version,
+    name            := "laserdisc-fs2-benchmarks",
+    scalaVersion    := current_version,
     publishArtifact := false,
     scalacOptions ++= versionDependantScalacOptions.value,
     libraryDependencies ++= fs2BenchDeps.value,
@@ -391,7 +391,7 @@ lazy val laserdisc = project
   .aggregate(core.jvm, core.js, laws, fs2, cli, circe.jvm, circe.js)
   .settings(publishSettings)
   .settings(
-    scalaVersion := current_version,
+    scalaVersion    := current_version,
     publishArtifact := false,
     addCommandAlias("benchClean", "all core-bench/clean fs2-bench/clean"),
     addCommandAlias("benchCompile", "all core-bench/test:compile fs2-bench/test:compile"),

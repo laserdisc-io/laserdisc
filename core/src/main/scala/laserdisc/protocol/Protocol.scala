@@ -53,18 +53,18 @@ object Protocol {
       private[this] final val l: L
   ) { self =>
 
-    /** We request evidence that the [[RESP]] sent back by Redis can be deserialized
-      * into an instance of a B.
+    /** We request evidence that the [[RESP]] sent back by Redis can be deserialized into an instance of a B.
       *
-      * Ensuring this is the case here guarantees that no instance of a [[Protocol]]
-      * can '''ever''' be constructed unless proven that the response we eventually
-      * will get back can be deserialized into the expected type B.
+      * Ensuring this is the case here guarantees that no instance of a [[Protocol]] can '''ever''' be constructed unless proven that the
+      * response we eventually will get back can be deserialized into the expected type B.
       *
-      * @tparam A The sum/co-product type of response(s) expected from Redis
-      * @tparam B The type we expect to convert an A into
+      * @tparam A
+      *   The sum/co-product type of response(s) expected from Redis
+      * @tparam B
+      *   The type we expect to convert an A into
       *
-      * @return A fully-fledged [[Protocol]] for the provided [[Request]]/[[Response]]
-      *         pair
+      * @return
+      *   A fully-fledged [[Protocol]] for the provided [[Request]] /[[Response]] pair
       */
     final def asC[A, B](implicit R: RESPRead.Aux[A, B]): Protocol.Aux[B] =
       new Protocol {
@@ -83,9 +83,8 @@ object Protocol {
 
   /** The only way a [[Protocol]] can be instantiated is through this partial application.
     *
-    * This apply method requires the caller to provide the type of request parameters L this
-    * [[Protocol]] expects to deal with when encoding the request parameters into a [[RESP]]
-    * [[GenArr]] instance to send to Redis.
+    * This apply method requires the caller to provide the type of request parameters L this [[Protocol]] expects to deal with when encoding
+    * the request parameters into a [[RESP]] [[GenArr]] instance to send to Redis.
     */
   final def apply[L: RESPParamWrite](cmd: String, l: L): PartiallyAppliedProtocol[L] = new PartiallyAppliedProtocol(cmd, l) {}
 }

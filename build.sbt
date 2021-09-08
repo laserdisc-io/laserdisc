@@ -394,18 +394,17 @@ lazy val laserdisc = project
     scalaVersion    := current_version,
     publishArtifact := false,
     addCommandAlias("benchClean", "all core-bench/clean fs2-bench/clean"),
-    addCommandAlias("benchCompile", "all core-bench/test:compile fs2-bench/test:compile"),
-    addCommandAlias("benchBuild", ";benchClean;benchCompile"),
-    addCommandAlias("fmt", "all scalafmt test:scalafmt scalafmtSbt fs2-bench/scalafmt"),
-    addCommandAlias(
-      "fmtCheck",
-      "all scalafmtCheck test:scalafmtCheck scalafmtSbtCheck fs2-bench/scalafmtCheck fs2-bench/test:scalafmtCheck"
-    ),
-    addCommandAlias("fullTest", ";clean;coverage;test;coverageReport"),
-    addCommandAlias("prePr", ";fmtCheck;fullTest"),
+    addCommandAlias("benchCompile", "all core-bench/compile fs2-bench/compile"),
+    addCommandAlias("benchBuild", "benchClean; benchCompile"),
+    addCommandAlias("fmt", "all scalafmtAll scalafmtSbt core-bench/scalafmtAll fs2-bench/scalafmtAll"),
+    addCommandAlias("fmtCheck", "all scalafmtCheckAll scalafmtSbtCheck core-bench/scalafmtCheckAll fs2-bench/scalafmtCheckAll"),
+    addCommandAlias("fullTest", "clean; coverage; test; coverageReport"),
+    addCommandAlias("prePr", "fmtCheck; fullTest"),
     addCommandAlias(
       "setReleaseOptions",
-      "set scalacOptions ++= Seq(\"-opt:l:method\", \"-opt:l:inline\", \"-opt-inline-from:laserdisc.**\", \"-opt-inline-from:<sources>\")"
+      """set scalacOptions ++= Seq("-opt:l:method", "-opt:l:inline", "-opt-inline-from:laserdisc.**", "-opt-inline-from:<sources>")"""
     ),
-    addCommandAlias("releaseIt", ";clean;setReleaseOptions;session list;compile;ci-release")
+    addCommandAlias("releaseIt", "clean; setReleaseOptions; session list; compile; ci-release")
   )
+
+Global / excludeLintKeys += scalaJSLinkerConfig

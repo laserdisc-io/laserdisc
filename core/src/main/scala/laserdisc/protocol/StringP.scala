@@ -93,7 +93,7 @@ trait StringBaseP {
   final def bitcount(key: Key, start: Index, end: Index): Protocol.Aux[NonNegInt] =
     Protocol("BITCOUNT", key :: start :: end :: HNil).as[Num, NonNegInt]
 
-  //FIXME add BITFIELD
+  // FIXME add BITFIELD
 
   final def bitop(bitwise: Bitwise, keys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[NonNegInt] =
     Protocol("BITOP", bitwise :: destinationKey :: keys.value :: HNil).as[Num, NonNegInt]
@@ -109,7 +109,7 @@ trait StringBaseP {
 
   final def decr[A: Num ==> *](key: Key): Protocol.Aux[A] = Protocol("DECR", key).as[Num, A]
 
-  //TODO verify ok to limit DECRBY to only positive values, REDIS happily accepts 0 and negatives and x + (-decrement)
+  // TODO verify ok to limit DECRBY to only positive values, REDIS happily accepts 0 and negatives and x + (-decrement)
   final def decrby[A: Num ==> *](key: Key, decrement: PosLong): Protocol.Aux[A] = Protocol("DECRBY", key :: decrement :: HNil).as[Num, A]
 
   final def get[A: Bulk ==> *](key: Key): Protocol.Aux[Option[A]] = Protocol("GET", key).opt[GenBulk].as[A]
@@ -123,7 +123,7 @@ trait StringBaseP {
 
   final def incr[A: Num ==> *](key: Key): Protocol.Aux[A] = Protocol("INCR", key).as[Num, A]
 
-  //TODO verify ok to limit INCRBY to only positive values, REDIS happily accepts 0 and negatives
+  // TODO verify ok to limit INCRBY to only positive values, REDIS happily accepts 0 and negatives
   final def incrby[A: Num ==> *](key: Key, increment: PosLong): Protocol.Aux[A] = Protocol("INCRBY", key :: increment :: HNil).as[Num, A]
 
   final def incrbyfloat(key: Key, increment: NonZeroDouble): Protocol.Aux[Double] =

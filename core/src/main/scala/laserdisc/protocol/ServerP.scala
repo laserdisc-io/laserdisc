@@ -188,7 +188,7 @@ trait ServerP {
 
     val getname: Protocol.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").opt[GenBulk].as[ConnectionName]
 
-    //FIXME other variations of kill
+    // FIXME other variations of kill
     def kill(host: Host, port: Port): Protocol.Aux[OK] =
       Protocol("CLIENT", "KILL" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Str, OK]
 
@@ -201,7 +201,7 @@ trait ServerP {
     val unsetname: Protocol.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
   }
 
-  //TODO command?
+  // TODO command?
 
   final object config {
     def get(parameter: GlobPattern): Protocol.Aux[Configuration] =
@@ -240,7 +240,7 @@ trait ServerP {
 
   final val slaveofnoone: Protocol.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
-  //TODO slowlog? sync?
+  // TODO slowlog? sync?
 
   final val time: Protocol.Aux[Time] = Protocol("TIME", Nil).as[Arr, Time]
 }

@@ -69,7 +69,7 @@ object RedisClient {
       }
 
     def currentServer[F[_]: Sync](addresses: Seq[RedisAddress]): F[Option[RedisAddress]] =
-      Stream.emits(addresses).covary[F].compile.last //FIXME yeah, well...
+      Stream.emits(addresses).covary[F].compile.last // FIXME yeah, well...
 
     def connection[F[_]: Temporal](
         redisNetChannel: RedisAddress => Pipe[F, RESP, RESP],
@@ -110,7 +110,7 @@ object RedisClient {
               log.errorS("Server unavailable for publishing") >>
                 Stream.eval(Signal[F, Option[RedisAddress]](None)).flatMap { serverSignal =>
                   val cancelIncoming = Stream.fromQueueUnterminated(queue).evalMap(_.callback(Left(ServerUnavailable))).drain
-                  val queryLeader = (Stream.awakeEvery[F](3.seconds) >> serverStream) //FIXME magic number
+                  val queryLeader = (Stream.awakeEvery[F](3.seconds) >> serverStream) // FIXME magic number
                     .evalMap(maybeAddress => serverSignal.update(_ => maybeAddress))
                     .drain
 

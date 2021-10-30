@@ -120,7 +120,7 @@ trait KeyBaseP {
 
   final def exists(keys: OneOrMoreKeys): Protocol.Aux[Option[PosInt]] = Protocol("EXISTS", keys.value).using(zeroIsNone)
 
-  //TODO check if we must support deletions via timeout < 0
+  // TODO check if we must support deletions via timeout < 0
   final def expire(key: Key, seconds: NonNegInt): Protocol.Aux[Boolean] = Protocol("EXPIRE", key :: seconds :: HNil).as[Num, Boolean]
 
   final def expireat(key: Key, seconds: NonNegInt): Protocol.Aux[Boolean] = Protocol("EXPIREAT", key :: seconds :: HNil).as[Num, Boolean]
@@ -165,7 +165,7 @@ trait KeyBaseP {
 
   final def persist(key: Key): Protocol.Aux[Boolean] = Protocol("PERSIST", key).as[Num, Boolean]
 
-  //TODO check if we must support deletions via timeout < 0
+  // TODO check if we must support deletions via timeout < 0
   final def pexpire(key: Key, milliseconds: NonNegLong): Protocol.Aux[Boolean] =
     Protocol("PEXPIRE", key :: milliseconds :: HNil).as[Num, Boolean]
 
@@ -203,7 +203,7 @@ trait KeyBaseP {
   final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Protocol.Aux[Scan[Key]] =
     Protocol("SCAN", cursor :: "MATCH" :: pattern :: "COUNT" :: count :: HNil).as[Arr, Scan[Key]]
 
-  //FIXME sort has many more combinations
+  // FIXME sort has many more combinations
   final def sort[A: Bulk ==> *](key: Key): Protocol.Aux[Seq[A]] = Protocol("SORT", key).as[Arr, Seq[A]]
   final def sort[A: Bulk ==> *](key: Key, pattern: GlobPattern): Protocol.Aux[Seq[A]] =
     Protocol("SORT", key :: "BY" :: pattern :: HNil).as[Arr, Seq[A]]

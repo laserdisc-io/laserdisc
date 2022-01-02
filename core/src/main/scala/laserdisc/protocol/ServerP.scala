@@ -145,7 +145,7 @@ object ServerP {
     private val PR: Seq[String] ==> Parameters =
       KVPS.map(kv => new Parameters(kv.toMap))
 
-    private val IFI: String ==> (InfoSection, Parameters) = {
+    private val IFI: String ==> (InfoSection, Parameters) =
       _.split(LF_CH).toList match {
         case ISR(Right(infoSection)) :: PR(Right(parameters)) => Right(infoSection -> parameters)
         case ISR(Left(e)) :: _ =>
@@ -155,7 +155,6 @@ object ServerP {
         case other =>
           Left(RESPDecErr(s"Unexpected encoding for server's info section. Expected [info section, [parameter: value]] but was $other"))
       }
-    }
 
     implicit val infoRead: Bulk ==> Info = Read.instance { case Bulk(s) =>
       s.split(LF * 2)

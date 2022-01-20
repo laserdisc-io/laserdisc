@@ -32,9 +32,9 @@ sealed trait RESP extends AnyRef with Serializable
   *   Sometimes the value "OK" is used to represent a successful acknowledgement/processing of a command.
   *
   * @example
-  * {{{
+  *   {{{
   *   val s: Str = Str("some string")
-  * }}}
+  *   }}}
   *
   * @param value
   *   The wrapped string value
@@ -49,9 +49,9 @@ object Str {
   * RESP [[Err]] s are also [[scala.RuntimeException]] s, although __where possible__ they will not contain stacktrace data
   *
   * @example
-  * {{{
+  *   {{{
   *   val e: Err = Err("some error message")
-  * }}}
+  *   }}}
   * @param message
   *   The wrapped exception's message
   */
@@ -63,9 +63,9 @@ final case class Err(message: String) extends laserdisc.Platform.LaserDiscRuntim
   *   Sometimes the values 0 and 1 are used to represent boolean values. In this case 0 corresponds to False while 1 to True, respectively.
   *
   * @example
-  * {{{
+  *   {{{
   *   val n: Num = Num(42)
-  * }}}
+  *   }}}
   *
   * @param value
   *   The wrapped long value
@@ -79,10 +79,10 @@ final case class Num(value: Long) extends RESP
   *   - actual (non-null) bulk strings, where the length is >= 0
   *
   * @example
-  * {{{
+  *   {{{
   *   val b: Bulk      = Bulk("some string")
   *   val nb: NullBulk = NullBulk
-  * }}}
+  *   }}}
   * @see
   *   [[Show]]
   */
@@ -112,12 +112,12 @@ object Bulk {
   *   which supports the creation of guaranteed non-empty sequences only. This is achieved through the usage of one fixed parameter followed
   *   by a var-arg of the same
   * @example
-  * {{{
+  *   {{{
   *   val arr: Arr                = Arr(List(Str("hello"), Str("world")))
   *   val guaranteedNonEmpty: Arr = Arr(Str("hello"), Str("world"))
   *   val empty: Arr              = Arr(List.empty)
   *   val nil: NilArr             = NilArr
-  * }}}
+  *   }}}
   */
 sealed trait GenArr extends RESP
 case object NilArr  extends GenArr

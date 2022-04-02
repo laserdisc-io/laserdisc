@@ -94,13 +94,13 @@ abstract class GeoPSpec extends BaseSpec with GeoP {
   }
   private[this] implicit final val geoRadiusModeArb: Arbitrary[(GeoRadiusMode, List[_])] = Arbitrary {
     Gen.oneOf(
-      listOf(geoKeyAndCoordArb.arbitrary).map(GeoRadiusMode.coordinates                -> _),
-      listOf(geoKeyAndDistArb.arbitrary).map(GeoRadiusMode.distance                    -> _),
-      listOf(geoKeyAndHashArb.arbitrary).map(GeoRadiusMode.hash                        -> _),
+      listOf(geoKeyAndCoordArb.arbitrary).map(GeoRadiusMode.coordinates -> _),
+      listOf(geoKeyAndDistArb.arbitrary).map(GeoRadiusMode.distance -> _),
+      listOf(geoKeyAndHashArb.arbitrary).map(GeoRadiusMode.hash -> _),
       listOf(geoKeyCoordAndDistArb.arbitrary).map(GeoRadiusMode.coordinatesAndDistance -> _),
-      listOf(geoKeyCoordAndHashArb.arbitrary).map(GeoRadiusMode.coordinatesAndHash     -> _),
-      listOf(geoKeyDistAndHashArb.arbitrary).map(GeoRadiusMode.distanceAndHash         -> _),
-      listOf(geoKeyCoordDistAndHashArb.arbitrary).map(GeoRadiusMode.all                -> _)
+      listOf(geoKeyCoordAndHashArb.arbitrary).map(GeoRadiusMode.coordinatesAndHash -> _),
+      listOf(geoKeyDistAndHashArb.arbitrary).map(GeoRadiusMode.distanceAndHash -> _),
+      listOf(geoKeyCoordDistAndHashArb.arbitrary).map(GeoRadiusMode.all -> _)
     )
   }
   private[this] implicit final val geoStoreModeArb: Arbitrary[GeoStoreMode] = Arbitrary {

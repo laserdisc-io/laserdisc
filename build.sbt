@@ -67,7 +67,7 @@ val `munit-scalacheck`   = Def.setting("org.scalameta" %%% "munit-scalacheck" % 
 
 val `scala-parallel-collections` = Def.setting {
   CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, major)) if major >= 13 =>
+    case Some(2, major) if major >= 13 =>
       Some("org.scala-lang.modules" %%% "scala-parallel-collections" % V.`parallel-collections` % Test)
     case _ =>
       None
@@ -172,7 +172,7 @@ val externalApiMappings = Def.task {
     }
   }
 
-  (coreDeps.value ++ fs2Deps.value ++ circeDeps.value :+ (scalaOrganization.value % "scala-library" % scalaVersion.value))
+  (coreDeps.value ++ fs2Deps.value ++ circeDeps.value :+ scalaOrganization.value % "scala-library" % scalaVersion.value)
     .flatMap(JavaDocIo.maybeDocsFor)
     .toMap
 }
@@ -180,7 +180,7 @@ val externalApiMappings = Def.task {
 val versionDependantScalacOptions = Def.setting {
   def versionDependent(scalaVersion: String, flags: Seq[String]) =
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((2, major)) if major >= 13 =>
+      case Some(2, major) if major >= 13 =>
         flags ++ Seq(
           "-Wconf:any:error",
           "-Ypatmat-exhaust-depth",

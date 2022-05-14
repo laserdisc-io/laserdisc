@@ -104,8 +104,8 @@ object ClusterP {
     implicit final val nodesRead: Bulk ==> Nodes = Read.instance { case Bulk(s) =>
       s.split(LF_CH)
         .foldRight[RESPDecErr | (List[Node], Int)](Right(Nil -> 0)) {
-          case (ND(Right(node)), Right((ns, nsl))) => Right((node :: ns) -> (nsl + 1))
-          case (ND(Left(e)), Right((_, nsl))) =>
+          case (ND(Right(node)), Right(ns, nsl)) => Right((node :: ns) -> (nsl + 1))
+          case (ND(Left(e)), Right(_, nsl)) =>
             Left(RESPDecErr(s"Bulk ==> Nodes, Error decoding the cluster's node ${nsl + 1}. Error was: $e"))
           case (_, left) => left
         }
@@ -251,11 +251,11 @@ object ClusterP {
 
     implicit final val slotsRead: Arr ==> Slots = Read.instance { case Arr(arrays) =>
       arrays.foldRight[RESPDecErr | (Map[SlotType.Range, SlotInfo], Int)](Right(Map.empty -> 0)) {
-        case (Arr(Num(ToInt(Slot(from))) :: Num(ToInt(Slot(to))) :: Arr(SI(Right(si))) :: Nil), Right((sts, stsl))) =>
-          Right((sts + (Range(from, to) -> si)) -> (stsl + 1))
-        case (Arr(Num(ToInt(Slot(_))) :: Num(ToInt(Slot(_))) :: Arr(Nil) :: Nil), Right((_, stsl))) =>
+        case (Arr(Num(ToInt(Slot(from))) :: Num(ToInt(Slot(to))) :: Arr(SI(Right(si))) :: Nil), Right(sts, stsl)) =>
+          Right(sts + (Range(from, to) -> si) -> (stsl + 1))
+        case (Arr(Num(ToInt(Slot(_))) :: Num(ToInt(Slot(_))) :: Arr(Nil) :: Nil), Right(_, stsl)) =>
           Left(RESPDecErr(s"Unexpected slot assignment encoding at element ${stsl + 1}. The assignment list was empty"))
-        case (Arr(other), Right((_, stsl))) =>
+        case (Arr(other), Right(_, stsl)) =>
           Left(
             RESPDecErr(
               s"Arr ==> Slots unexpected slot encoding at element ${stsl + 1}. Expected [from, to, [[host, port], node id, replicas]] or [from, to, [[host, port], replicas]] but was $other"

@@ -186,7 +186,7 @@ trait GeoBaseP {
   import geotypes._
 
   final def geoadd(key: Key, positions: OneOrMore[GeoPosition]): Protocol.Aux[NonNegInt] =
-    Protocol("GEOADD", key :: positions.value.map { case GeoPosition(m, lat, long) => (long -> lat) -> m } :: HNil).as[Num, NonNegInt]
+    Protocol("GEOADD", key :: positions.value.map { case GeoPosition(m, lat, long) => long -> lat -> m } :: HNil).as[Num, NonNegInt]
 
   final def geodist(key: Key, member1: Key, member2: Key): Protocol.Aux[Option[NonNegDouble]] =
     Protocol("GEODIST", key :: member1 :: member2 :: HNil).opt[GenBulk].as[NonNegDouble]

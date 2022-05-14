@@ -57,7 +57,7 @@ object RedisChannel {
       def framing: Pipe[F, Byte, CompleteFrame] = {
         def loopScan(bytesIn: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteFrame, Unit] =
           bytesIn.pull.uncons.flatMap {
-            case Some((chunk, rest)) =>
+            case Some(chunk, rest) =>
               previous.append(chunk.toBitVector) match {
                 case Left(ex)                    => Pull.raiseError(ex)
                 case Right(frame: CompleteFrame) => Pull.output1(frame) >> loopScan(rest, EmptyFrame)

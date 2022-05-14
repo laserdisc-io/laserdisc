@@ -15,7 +15,7 @@ trait TestLogCapture {
       shutdown = global.shutdown,
       config = IORuntimeConfig()
     )
-    val lowerStream = new ByteArrayOutputStream()
+    val lowerStream = new ByteArrayOutputStream
     val outStream   = new PrintStream(lowerStream)
 
     Console.withOut(outStream)(aWrite.unsafeRunSync()(runtime))

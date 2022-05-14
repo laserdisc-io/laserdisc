@@ -160,7 +160,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
         protocol.encode,
         Arr(
           Bulk("MIGRATE") :: Bulk(h) :: Bulk(p) :: Bulk("") :: Bulk(dbi) :: Bulk(nni) :: mm.params
-            .map(Bulk(_)) ::: (Bulk("KEYS") :: ks.value.map(Bulk(_)))
+            .map(Bulk(_)) ::: Bulk("KEYS") :: ks.value.map(Bulk(_))
         )
       )
       assertEquals(protocol.decode(noKeyOrOkToStr(nkOrOk)), nkOrOk)
@@ -293,7 +293,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
       assertEquals(
         protocol.encode,
         Arr(
-          Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)) ::: (Bulk(e.param) :: Bulk(e.seconds) :: Nil)
+          Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)) ::: Bulk(e.param) :: Bulk(e.seconds) :: Nil
         )
       )
       assertEquals(protocol.decode(Str(OK.value)), OK)

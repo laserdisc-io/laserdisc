@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 
 object RedisClient {
   @inline final def apply[F[_]: Async: LogSelector]: RedisClientConnector[F] =
-    new RedisClientConnector[F]()
+    new RedisClientConnector[F]
 
   private[fs2] class RedisClientConnector[F[_]: Async: LogSelector]() {
     @inline final def to(

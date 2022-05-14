@@ -129,7 +129,7 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
         .toList
         .sequence
 
-    val responses = (run compose requests)(client)
+    val responses = run compose requests (client)
 
     assertEquals(responses.size, 1000)
     assertAllEqual(responses, correct)

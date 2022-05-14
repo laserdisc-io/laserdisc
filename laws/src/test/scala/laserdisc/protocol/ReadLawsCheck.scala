@@ -48,9 +48,9 @@ private[protocol] sealed trait Implicits {
       val as = ga.sample.get
       as.forall { a =>
         (x.read(a), y.read(a)) match {
-          case (Right((b1, c1, d1)), Right((b2, c2, d2))) => eb.eqv(b1, b2) && ec.eqv(c1, c2) && ed.eqv(d1, d2)
-          case (Left(e1), Left(e2))                       => e1.message == e2.message
-          case _                                          => false
+          case (Right(b1, c1, d1), Right(b2, c2, d2)) => eb.eqv(b1, b2) && ec.eqv(c1, c2) && ed.eqv(d1, d2)
+          case (Left(e1), Left(e2))                   => e1.message == e2.message
+          case _                                      => false
         }
       }
     }

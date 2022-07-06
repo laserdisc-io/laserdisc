@@ -183,7 +183,7 @@ trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
   implicit final val arr2Map: Read[Arr, Map[Key, String]] = instance { case Arr(vector) =>
     vector.grouped(2).foldRight[RESPDecErr | (Map[Key, String], Int)](Right(Map.empty -> 0)) {
       case (Bulk(Key(k)) +: Bulk(v) +: Seq(), Right((kvs, kvl))) =>
-        Right(((kvs + (k -> v)) -> (kvl + 1)))
+        Right((kvs + (k -> v)) -> (kvl + 1))
       case (Bulk(Key(_)) +: any +: Seq(), Right((_, kvl))) =>
         Left(RESPDecErr(s"Arr ==> Map[Key, String] error in the value at pair ${kvl + 1}: $any is not Bulk(String)"))
       case (any +: Bulk(_) +: Seq(), Right((_, kvl))) =>

@@ -50,6 +50,6 @@ final class CirceSpec extends CirceCheckSettings with EitherTestSyntax {
   test("Circe interop fails to decode when handling a json that does not respect the contract") {
     Read[Bulk, Bar].read(
       Bulk("""{"i": null}""")
-    ) onLeft (e => assertEquals(e.message, "DecodingFailure at .x: Attempt to decode value on failed cursor"))
+    ) onLeft (e => assertEquals(e.message, "DecodingFailure at .x: Missing required field"))
   }
 }

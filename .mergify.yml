@@ -12,8 +12,8 @@ pull_request_rules:
       - author=scala-steward
       - status-success=Format
       - status-success=Compile benchmarks
-      - status-success=Test (2.12.15, adopt@1.11, ubuntu-20.04)
-      - status-success=Test (2.12.15, adopt@1.15, ubuntu-20.04)
+      - status-success=Test (2.12.16, adopt@1.11, ubuntu-20.04)
+      - status-success=Test (2.12.16, adopt@1.15, ubuntu-20.04)
       - status-success=Test (2.13.8, adopt@1.11, ubuntu-20.04)
       - status-success=Test (2.13.8, adopt@1.15, ubuntu-20.04)
     actions:

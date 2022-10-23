@@ -11,7 +11,7 @@ val V = new {
   val `cats-discipline`      = "1.5.1"
   val `discipline-munit`     = "1.0.9"
   val circe                  = "0.14.3"
-  val fs2                    = "3.2.14"
+  val fs2                    = "3.3.0"
   val jedis                  = "3.2.0"
   val `kind-projector`       = "0.13.2"
   val kittens                = "2.3.2"
@@ -27,7 +27,7 @@ val V = new {
   val `scodec-core`          = "1.11.10"
   val `scodec-stream`        = "3.0.2"
   val scredis                = "2.3.3"
-  val shapeless              = "2.3.9"
+  val shapeless              = "2.3.10"
   val zio                    = "1.0.0"
   val `zio-interop-cats`     = "2.1.4.0"
 }

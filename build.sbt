@@ -1,7 +1,7 @@
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
-val scala_212 = "2.12.16"
-val scala_213 = "2.13.8"
+val scala_212 = "2.12.17"
+val scala_213 = "2.13.10"
 
 val current_version = scala_213
 
@@ -10,7 +10,7 @@ val V = new {
   val `cats-effect`          = "3.3.14"
   val `cats-discipline`      = "1.5.1"
   val `discipline-munit`     = "1.0.9"
-  val circe                  = "0.14.2"
+  val circe                  = "0.14.3"
   val fs2                    = "3.2.14"
   val jedis                  = "3.2.0"
   val `kind-projector`       = "0.13.2"
@@ -21,7 +21,7 @@ val V = new {
   val `parallel-collections` = "1.0.4"
   val redis4Cats             = "1.0.0-RC3"
   val refined                = "0.10.1"
-  val scalacheck             = "1.16.0"
+  val scalacheck             = "1.17.0"
   val `scala-redis`          = "3.30"
   val `scodec-bits`          = "1.1.34"
   val `scodec-core`          = "1.11.10"

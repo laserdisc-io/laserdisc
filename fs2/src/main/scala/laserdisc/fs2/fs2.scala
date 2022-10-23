@@ -33,7 +33,7 @@ package object fs2 {
   ](
       implicit zc: ZipConst.Aux[Env[F], In, InEnvL],
       ma: Mapper.Aux[PromiseMapper.type, InEnvL, FuncL],
-      sequencer: Sequencer.Aux[FuncL, F, LOut0]
+      sequencer: Sequencer.Aux[F, FuncL, LOut0]
   ): RedisHandler.Aux[F, In, LOut0] =
     new RedisHandler[F, In] {
       override final type LOut = LOut0

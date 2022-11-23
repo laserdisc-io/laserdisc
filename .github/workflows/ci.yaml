@@ -18,7 +18,7 @@ jobs:
       - name: Install Java And Sbt
         uses: olafurpg/setup-scala@v13
         with:
-          java-version: adopt@1.17
+          java-version: openjdk@1.17
       - name: Cache
         uses: actions/cache@v2
         with:
@@ -45,7 +45,7 @@ jobs:
       - name: Install Java And Sbt
         uses: olafurpg/setup-scala@v13
         with:
-          java-version: adopt@1.17
+          java-version: openjdk@1.17
       - name: Cache
         uses: actions/cache@v2
         with:
@@ -69,8 +69,8 @@ jobs:
           - 2.12.17
           - 2.13.10
         java:
-          - adopt@1.11
-          - adopt@1.17
+          - openjdk@1.11
+          - openjdk@1.17
         os:
           - ubuntu-20.04
     runs-on: ${{ matrix.os }}
@@ -114,7 +114,7 @@ jobs:
       - name: Install Java And Sbt
         uses: olafurpg/setup-scala@v13
         with:
-          java-version: adopt@1.17
+          java-version: openjdk@1.17
       - name: Cache
         uses: actions/cache@v2
         with:
@@ -147,7 +147,7 @@ jobs:
       - name: Install Java And Sbt
         uses: olafurpg/setup-scala@v13
         with:
-          java-version: adopt@1.17
+          java-version: openjdk@1.17
       - name: Cache
         uses: actions/cache@v2
         with:

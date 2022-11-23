@@ -6,7 +6,7 @@ on:
 jobs:
   release_212:
     name: Release 2.12
-    runs-on: ubuntu-22.04.1
+    runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
         uses: actions/checkout@v2.3.4
@@ -40,7 +40,7 @@ jobs:
   release_213:
     name: Release 2.13
     needs: release_212
-    runs-on: ubuntu-22.04.1
+    runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
         uses: actions/checkout@v2.3.4

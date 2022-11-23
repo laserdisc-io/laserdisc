@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
           java-version: adopt@1.17
       - name: Cache
@@ -43,7 +43,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
           java-version: adopt@1.17
       - name: Cache
@@ -80,7 +80,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
           java-version: ${{ matrix.java }}
       - name: Cache
@@ -112,7 +112,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
           java-version: adopt@1.17
       - name: Cache
@@ -145,7 +145,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
           java-version: adopt@1.17
       - name: Cache

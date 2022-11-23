@@ -10,5 +10,5 @@ private[laserdisc] trait ScalaCheckSettings extends ScalaCheckSuite {
       .disableLegacyShrinking
       .withWorkers(16)
       .withMinSize(0)
-      .withMaxSize(200)
+      .withMaxSize(150)
 }

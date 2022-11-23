@@ -31,12 +31,16 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
   private[this] final val text     = "test text"
   private[this] final val correct  = "correct"
 
+  private[this] final val payloadSize        = 1000
+  private[this] final val requestsInParallel = 2000
+  private[this] final val requestsInSequence = 50
+
   test(s"an fs2 $dest client handles correctly hundreds of read requests in parallel for a large bulk text payload") {
-    val payload = List.fill(1000)(text).mkString(" - ")
+    val payload = List.fill(payloadSize)(text).mkString(" - ")
 
     def requests(cl: RedisClient[IO]): IO[List[String]] =
       collection.parallel.immutable.ParSeq
-        .range(0, 300)
+        .range(0, requestsInParallel)
         .map(_ => async.start(cl.send(get[String](key))))
         .map(ioFib => ioFib >>= (_.joinWith(cancellationError).attempt))
         .map(
@@ -54,15 +58,15 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
       preset(client, payload) *> requests(client)
     )
 
-    assertEquals(responses.size, 300)
+    assertEquals(responses.size, requestsInParallel)
     assertAllEqual(responses, payload)
   }
 
   test(s"an fs2 $dest client handles correctly some read requests in a row for a bulk text payload") {
-    val payload = List.fill(1000)(text).mkString(" - ")
+    val payload = List.fill(payloadSize)(text).mkString(" - ")
 
     def requests(cl: RedisClient[IO]): IO[List[String]] =
-      (1 to 50)
+      (1 to requestsInSequence)
         .map(_ => cl.send(get[String](key)))
         .map(
           _.map(_.fold(_ => "", _.getOrElse("")))
@@ -76,7 +80,7 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
       preset(client, payload) *> requests(client)
     )
 
-    assertEquals(responses.size, 50)
+    assertEquals(responses.size, requestsInSequence)
     assertAllEqual(responses, payload)
   }
 
@@ -85,7 +89,7 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
 
     def requests(cl: RedisClient[IO]): IO[List[String]] =
       ParSeq
-        .range(0, 1000)
+        .range(0, requestsInParallel)
         .map(_ => async.start(cl.send(get[String](key))))
         .map(ioFib => ioFib >>= (_.joinWith(cancellationError).attempt))
         .map(
@@ -106,7 +110,7 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
       preset(client, payload) *> requests(client)
     )
 
-    assertEquals(responses.size, 1000)
+    assertEquals(responses.size, requestsInParallel)
     assertAllEqual(responses, payload)
   }
 
@@ -115,7 +119,7 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
 
     def requests(cl: RedisClient[IO]): IO[List[String]] =
       ParSeq
-        .range(0, 1000)
+        .range(0, requestsInParallel)
         .map(_ => async.start(cl.send(get[String](key))))
         .map(ioFib => ioFib >>= (_.joinWith(cancellationError).attempt))
         .map(
@@ -131,7 +135,7 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
 
     val responses = (run compose requests)(client)
 
-    assertEquals(responses.size, 1000)
+    assertEquals(responses.size, requestsInParallel)
     assertAllEqual(responses, correct)
   }
 
@@ -139,18 +143,18 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
     implicit val listStringShow: Show[List[String]] = _ mkString COMMA
 
     val key: Key = "test-key-list"
-    val bulk     = List.fill(1000)(text).mkString(" - ")
+    val bulk     = List.fill(payloadSize)(text).mkString(" - ")
 
     def cleanup(cl: RedisClient[IO]): IO[Unit] =
       cl.send(lists.lrem(key, 0L, bulk)) >>= (_ => async.unit)
 
     def preset(cl: RedisClient[IO]): IO[Unit] =
-      (1 to 100).map(_ => cl.send(lists.rpush(key, bulk :: Nil))).toList.sequence >>= (_ => async.unit)
+      (1 to requestsInSequence).map(_ => cl.send(lists.rpush(key, bulk :: Nil))).toList.sequence >>= (_ => async.unit)
 
     def requests(cl: RedisClient[IO]): IO[List[String]] =
       ParSeq
-        .range(0, 50)
-        .map(_ => async.start(cl.send(lists.lrange[String](key, 0L, 1000L))))
+        .range(0, requestsInParallel)
+        .map(_ => async.start(cl.send(lists.lrange[String](key, 0L, Index(payloadSize)))))
         .map(ioFib => ioFib >>= (_.joinWith(cancellationError).attempt))
         .map(
           _.map(
@@ -168,7 +172,7 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
       cleanup(client) *> preset(client) *> requests(client)
     )
 
-    assertEquals(responses.size, 50 * 100)
+    assertEquals(responses.size, requestsInSequence * requestsInParallel)
     assertAllEqual(responses, bulk)
   }
 }

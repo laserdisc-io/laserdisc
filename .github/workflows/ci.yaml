@@ -18,7 +18,7 @@ jobs:
       - name: Install Java And Sbt
         uses: olafurpg/setup-scala@v10
         with:
-          java-version: adopt@1.11
+          java-version: adopt@1.17
       - name: Cache
         uses: actions/cache@v2
         with:
@@ -45,7 +45,7 @@ jobs:
       - name: Install Java And Sbt
         uses: olafurpg/setup-scala@v10
         with:
-          java-version: adopt@1.11
+          java-version: adopt@1.17
       - name: Cache
         uses: actions/cache@v2
         with:
@@ -70,7 +70,7 @@ jobs:
           - 2.13.10
         java:
           - adopt@1.11
-          - adopt@1.15
+          - adopt@1.17
         os:
           - ubuntu-20.04
     runs-on: ${{ matrix.os }}
@@ -100,9 +100,7 @@ jobs:
           docker run -p 6379:6379 -d redis:alpine
           docker run -p 6380:6379 -d eqalpha/keydb
       - name: Test (${{ matrix.scala }}, ${{ matrix.java }})
-        run: sbt ++${{ matrix.scala }} fullTest
-      - name: Upload To Codecov
-        uses: codecov/codecov-action@v1.3.2
+        run: SBT_OPTS="-Xms4096M -Xmx4096M -XX:MaxMetaspaceSize=2048M" sbt ++${{ matrix.scala }} fullTest
   publish_212:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     name: Publish Snapshot 2.12
@@ -116,7 +114,7 @@ jobs:
       - name: Install Java And Sbt
         uses: olafurpg/setup-scala@v10
         with:
-          java-version: adopt@1.11
+          java-version: adopt@1.17
       - name: Cache
         uses: actions/cache@v2
         with:
@@ -149,7 +147,7 @@ jobs:
       - name: Install Java And Sbt
         uses: olafurpg/setup-scala@v10
         with:
-          java-version: adopt@1.11
+          java-version: adopt@1.17
       - name: Cache
         uses: actions/cache@v2
         with:

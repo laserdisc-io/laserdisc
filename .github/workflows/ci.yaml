@@ -9,16 +9,16 @@ on:
 jobs:
   format:
     name: Format
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
         uses: actions/checkout@v2.3.4
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
-          java-version: adopt@1.11
+          java-version: openjdk@1.17
       - name: Cache
         uses: actions/cache@v2
         with:
@@ -36,16 +36,16 @@ jobs:
   build-bench:
     name: Compile benchmarks
     needs: format
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
         uses: actions/checkout@v2.3.4
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
-          java-version: adopt@1.11
+          java-version: openjdk@1.17
       - name: Cache
         uses: actions/cache@v2
         with:
@@ -69,10 +69,10 @@ jobs:
           - 2.12.17
           - 2.13.10
         java:
-          - adopt@1.11
-          - adopt@1.15
+          - openjdk@1.11
+          - openjdk@1.17
         os:
-          - ubuntu-20.04
+          - ubuntu-22.04
     runs-on: ${{ matrix.os }}
     steps:
       - name: Branch Checkout
@@ -80,7 +80,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
           java-version: ${{ matrix.java }}
       - name: Cache
@@ -100,23 +100,21 @@ jobs:
           docker run -p 6379:6379 -d redis:alpine
           docker run -p 6380:6379 -d eqalpha/keydb
       - name: Test (${{ matrix.scala }}, ${{ matrix.java }})
-        run: sbt ++${{ matrix.scala }} fullTest
-      - name: Upload To Codecov
-        uses: codecov/codecov-action@v1.3.2
+        run: SBT_OPTS="-Xms4096M -Xmx4096M -XX:MaxMetaspaceSize=2048M" sbt ++${{ matrix.scala }} fullTest
   publish_212:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     name: Publish Snapshot 2.12
     needs: [ build, build-bench ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
         uses: actions/checkout@v2.3.4
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
-          java-version: adopt@1.11
+          java-version: openjdk@1.17
       - name: Cache
         uses: actions/cache@v2
         with:
@@ -140,16 +138,16 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     name: Publish Snapshot 2.13
     needs: publish_212
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
         uses: actions/checkout@v2.3.4
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
-          java-version: adopt@1.11
+          java-version: openjdk@1.17
       - name: Cache
         uses: actions/cache@v2
         with:

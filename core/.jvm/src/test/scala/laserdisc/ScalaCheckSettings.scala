@@ -5,7 +5,7 @@ import munit.ScalaCheckSuite
 private[laserdisc] trait ScalaCheckSettings extends ScalaCheckSuite {
   override val scalaCheckTestParameters =
     super.scalaCheckTestParameters
-      .withMinSuccessfulTests(200)
+      .withMinSuccessfulTests(500)
       .withMaxDiscardRatio(20)
       .disableLegacyShrinking
       .withWorkers(16)

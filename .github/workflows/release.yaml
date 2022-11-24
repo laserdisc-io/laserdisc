@@ -6,16 +6,16 @@ on:
 jobs:
   release_212:
     name: Release 2.12
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
         uses: actions/checkout@v2.3.4
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
-          java-version: adopt@1.11
+          java-version: openjdk@1.17
       - name: Setup Gpg
         uses: olafurpg/setup-gpg@v3
       - name: Cache
@@ -40,16 +40,16 @@ jobs:
   release_213:
     name: Release 2.13
     needs: release_212
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
         uses: actions/checkout@v2.3.4
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
-        uses: olafurpg/setup-scala@v10
+        uses: olafurpg/setup-scala@v13
         with:
-          java-version: adopt@1.11
+          java-version: openjdk@1.17
       - name: Setup Gpg
         uses: olafurpg/setup-gpg@v3
       - name: Cache

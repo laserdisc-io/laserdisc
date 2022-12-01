@@ -32,6 +32,18 @@ val V = new {
   val `zio-interop-cats`     = "2.1.4.0"
 }
 
+// found this suggestion here
+// https://github.com/scala/bug/issues/10682#issuecomment-1005114838
+// and seems from here that it resolves
+// https://github.com/scala/bug/issues/10682#issuecomment-1005143679
+// It's a mitigation for errors like
+// https://github.com/laserdisc-io/laserdisc/actions/runs/3586636347/jobs/6036173999#step:6:396
+// tracked here:
+// https://github.com/fthomas/refined/issues/260
+// https://github.com/scala/bug/issues/9218
+// and for other sporadic compiler crashes
+Global / concurrentRestrictions += Tags.limit(Tags.Compile, 1)
+
 val `cats-core`          = Def.setting("org.typelevel" %% "cats-core" % V.cats)
 val `cats-effect-kernel` = Def.setting("org.typelevel" %% "cats-effect-kernel" % V.`cats-effect`)
 val `cats-effect-std`    = Def.setting("org.typelevel" %% "cats-effect-std" % V.`cats-effect`)

@@ -36,7 +36,7 @@ val V = new {
 // https://github.com/scala/bug/issues/10682#issuecomment-1005114838
 // and seems from here that it resolves
 // https://github.com/scala/bug/issues/10682#issuecomment-1005143679
-// It ia a mitigation for errors like
+// It's a mitigation for errors like
 // https://github.com/laserdisc-io/laserdisc/actions/runs/3586636347/jobs/6036173999#step:6:396
 // tracked here:
 // https://github.com/fthomas/refined/issues/260

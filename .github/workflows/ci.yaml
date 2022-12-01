@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
@@ -20,7 +20,7 @@ jobs:
         with:
           java-version: openjdk@1.17
       - name: Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             $HOME/.cache/coursier
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
@@ -47,7 +47,7 @@ jobs:
         with:
           java-version: openjdk@1.17
       - name: Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             $HOME/.cache/coursier
@@ -76,7 +76,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Branch Checkout
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
@@ -84,7 +84,7 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
       - name: Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             $HOME/.cache/coursier
@@ -100,7 +100,7 @@ jobs:
           docker run -p 6379:6379 -d redis:alpine
           docker run -p 6380:6379 -d eqalpha/keydb
       - name: Test (${{ matrix.scala }}, ${{ matrix.java }})
-        run: SBT_OPTS="-Xms4096M -Xmx4096M -XX:MaxMetaspaceSize=2048M" sbt ++${{ matrix.scala }} fullTest
+        run: SBT_OPTS="-Xms4096M -Xmx4096M -XX:MaxMetaspaceSize=2048M" sbt ++${{matrix.scala}} fullTest
   publish_212:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     name: Publish Snapshot 2.12
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
@@ -116,7 +116,7 @@ jobs:
         with:
           java-version: openjdk@1.17
       - name: Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             $HOME/.cache/coursier
@@ -141,7 +141,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Branch Checkout
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Install Java And Sbt
@@ -149,7 +149,7 @@ jobs:
         with:
           java-version: openjdk@1.17
       - name: Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             $HOME/.cache/coursier

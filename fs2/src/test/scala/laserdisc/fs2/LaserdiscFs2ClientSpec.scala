@@ -32,7 +32,7 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
   private[this] final val correct  = "correct"
 
   private[this] final val payloadSize        = 1000
-  private[this] final val requestsInParallel = 2000
+  private[this] final val requestsInParallel = 500
   private[this] final val requestsInSequence = 50
 
   test(s"an fs2 $dest client handles correctly hundreds of read requests in parallel for a large bulk text payload") {

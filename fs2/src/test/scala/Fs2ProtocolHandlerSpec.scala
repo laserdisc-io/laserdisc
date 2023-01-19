@@ -18,7 +18,7 @@ final class Fs2ProtocolHandlerSpec extends FunSuite {
       Mapper.Aux[
         PromiseMapper.type,
         (laserdisc.Protocol.Aux[laserdisc.OK], laserdisc.fs2.Env[cats.effect.IO]) :: shapeless.HNil,
-        cats.effect.IO[laserdisc.Maybe[laserdisc.OK]] :: shapeless.HNil,
+        cats.effect.IO[laserdisc.Maybe[laserdisc.OK]] :: shapeless.HNil
       ]
     ]
 
@@ -51,7 +51,7 @@ final class Fs2ProtocolHandlerSpec extends FunSuite {
           cats.effect.IO[laserdisc.Maybe[laserdisc.OK]] ::
           cats.effect.IO[laserdisc.Maybe[Option[laserdisc.PosInt]]] ::
           cats.effect.IO[laserdisc.Maybe[Option[laserdisc.PosInt]]] ::
-          shapeless.HNil,
+          shapeless.HNil
       ]
     ]
 
@@ -136,7 +136,7 @@ final class Fs2ProtocolHandlerSpec extends FunSuite {
           cats.effect.IO[laserdisc.Maybe[Option[laserdisc.PosInt]]] ::
           cats.effect.IO[laserdisc.Maybe[Option[laserdisc.PosInt]]] ::
           cats.effect.IO[laserdisc.Maybe[Option[laserdisc.PosInt]]] ::
-          shapeless.HNil,
+          shapeless.HNil
       ]
     ]
 

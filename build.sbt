@@ -7,7 +7,7 @@ val current_version = scala_213
 
 val V = new {
   val cats                   = "2.9.0"
-  val `cats-effect`          = "3.4.7"
+  val `cats-effect`          = "3.4.8"
   val `cats-discipline`      = "1.5.1"
   val `discipline-munit`     = "1.0.9"
   val circe                  = "0.14.4"
@@ -23,7 +23,7 @@ val V = new {
   val refined                = "0.10.1"
   val scalacheck             = "1.17.0"
   val `scala-redis`          = "3.30"
-  val `scodec-bits`          = "1.1.35"
+  val `scodec-bits`          = "1.1.36"
   val `scodec-core`          = "1.11.10"
   val `scodec-stream`        = "3.0.2"
   val scredis                = "2.3.3"

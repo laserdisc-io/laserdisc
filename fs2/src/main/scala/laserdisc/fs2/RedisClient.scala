@@ -16,6 +16,8 @@ object RedisClient {
     new RedisClientConnector[F]()
 
   private[fs2] class RedisClientConnector[F[_]: Async: LogSelector]() {
+    private[this] implicit val _network: Network[F] = Network.forAsync[F]
+
     @inline final def to(
         host: Host,
         port: Port,

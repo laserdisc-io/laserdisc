@@ -2,7 +2,7 @@ package laserdisc
 package fs2
 
 import _root_.fs2._
-import _root_.fs2.io.net.{Network, Socket, SocketOption}
+import _root_.fs2.io.net.{Socket, SocketOption}
 import cats.MonadError
 import cats.effect.{Concurrent, Resource}
 import cats.syntax.flatMap._

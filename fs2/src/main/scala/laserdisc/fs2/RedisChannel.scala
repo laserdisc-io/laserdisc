@@ -62,7 +62,7 @@ object RedisChannel {
                 case Left(ex)                    => Pull.raiseError(ex)
                 case Right(frame: CompleteFrame) => Pull.output1(frame) >> loopScan(rest, EmptyFrame)
                 case Right(frame: MoreThanOneFrame) =>
-                  Pull.output(Chunk.vector(frame.complete)) >> {
+                  Pull.output(Chunk.from(frame.complete)) >> {
                     if (frame.remainder.isEmpty) loopScan(rest, EmptyFrame)
                     else loopScan(rest, IncompleteFrame(frame.remainder, 0L))
                   }

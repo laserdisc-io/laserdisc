@@ -17,7 +17,8 @@ val V = new {
   val kittens                = "3.4.0"
   val `log-effect`           = "0.19.2"
   val logback                = "1.2.13"
-  val munit                  = "0.7.29"
+  val munit                  = "1.0.3"
+  val `munit-scalacheck`     = "1.0.0"
   val `parallel-collections` = "1.0.4"
   val redis4Cats             = "1.0.0-RC3"
   val refined                = "0.11.2"
@@ -75,7 +76,7 @@ val `circe-generic`      = Def.setting("io.circe" %%% "circe-generic" % V.circe 
 val `refined-scalacheck` = Def.setting("eu.timepit" %%% "refined-scalacheck" % V.refined % Test)
 val scalacheck           = Def.setting("org.scalacheck" %%% "scalacheck" % V.scalacheck % Test)
 val munit                = Def.setting("org.scalameta" %%% "munit" % V.munit % Test)
-val `munit-scalacheck`   = Def.setting("org.scalameta" %%% "munit-scalacheck" % V.munit % Test)
+val `munit-scalacheck`   = Def.setting("org.scalameta" %%% "munit-scalacheck" % V.`munit-scalacheck` % Test)
 
 val `scala-parallel-collections` = Def.setting {
   CrossVersion.partialVersion(scalaVersion.value) match {

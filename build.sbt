@@ -160,6 +160,8 @@ ThisBuild / githubWorkflowBuildPreamble ++= Seq(
     name = Some("Start up Valkey")
   )
 )
+ThisBuild / mergifyLabelPaths    := Map.empty
+ThisBuild / mergifyStewardConfig := Some(MergifyStewardConfig(action = MergifyAction.Merge(Some("squash"))))
 
 lazy val commonSettings = Seq(
   coverageEnabled          := false,

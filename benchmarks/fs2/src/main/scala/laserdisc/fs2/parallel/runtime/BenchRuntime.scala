@@ -7,6 +7,7 @@ import cats.effect.unsafe.{IORuntime, IORuntimeConfig, Scheduler}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, ThreadFactory, TimeUnit}
+import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext.fromExecutor
 
 object BenchRuntime {
@@ -31,8 +32,8 @@ object BenchRuntime {
       shutdown = () => {
         computeExecutor.shutdown()
         blockingExecutor.shutdown()
-        val _ = computeExecutor.awaitTermination(2, TimeUnit.SECONDS)
-        val _ = blockingExecutor.awaitTermination(2, TimeUnit.SECONDS)
+        @nowarn val b1 = computeExecutor.awaitTermination(2, TimeUnit.SECONDS)
+        @nowarn val b2 = blockingExecutor.awaitTermination(2, TimeUnit.SECONDS)
       },
       config = IORuntimeConfig()
     )

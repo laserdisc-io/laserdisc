@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2018-2025 LaserDisc
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 package laserdisc
 package fs2
 
@@ -11,8 +32,9 @@ import laserdisc.fs2.LaserdiscFs2ClientSpec.ClientSpecIo
 import scala.collection.parallel.immutable.ParSeq
 import scala.concurrent.duration._
 
-final class RedisClientSpec extends ClientSpecIo(6379, "redis")
-final class KeyDbClientSpec extends ClientSpecIo(6380, "keyDb")
+final class RedisClientSpec  extends ClientSpecIo(6379, "redis")
+final class KeyDbClientSpec  extends ClientSpecIo(6380, "keyDb")
+final class ValkeyClientSpec extends ClientSpecIo(6381, "valkey")
 
 object LaserdiscFs2ClientSpec {
   abstract class ClientSpecIo(p: Port, dest: String) extends LaserdiscFs2ClientSpec(p, dest)

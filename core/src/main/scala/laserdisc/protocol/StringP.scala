@@ -1,5 +1,28 @@
+/*
+ * Copyright (c) 2018-2025 LaserDisc
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 package laserdisc
 package protocol
+
+import scala.annotation.nowarn
 
 object StringP {
   sealed trait Bit
@@ -131,11 +154,11 @@ trait StringBaseP {
 
   final def mget[A: Arr ==> *](keys: OneOrMoreKeys): Protocol.Aux[A] = Protocol("MGET", keys.value).as[Arr, A]
 
-  final def mset[L <: HList: RESPParamWrite: LUBConstraint[*, (Key, _)], N <: Nat](l: L)(
+  @nowarn final def mset[L <: HList: RESPParamWrite: LUBConstraint[*, (Key, _)], N <: Nat](l: L)(
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1
   ): Protocol.Aux[OK] = Protocol("MSET", l).as[Str, OK]
-  final def mset[P <: Product, L <: HList, N <: Nat](product: P)(
+  @nowarn final def mset[P <: Product, L <: HList, N <: Nat](product: P)(
       implicit gen: LabelledGeneric.Aux[P, L],
       ev0: Length.Aux[L, N],
       ev1: N >= _1,
@@ -145,12 +168,12 @@ trait StringBaseP {
 
   final def mset[A: Show](values: OneOrMore[(Key, A)]): Protocol.Aux[OK] = Protocol("MSET", values.value).as[Str, OK]
 
-  final def msetnx[L <: HList: RESPParamWrite: LUBConstraint[*, (Key, _)], N <: Nat](l: L)(
+  @nowarn final def msetnx[L <: HList: RESPParamWrite: LUBConstraint[*, (Key, _)], N <: Nat](l: L)(
       implicit ev0: Length.Aux[L, N],
       ev1: N >= _1
   ): Protocol.Aux[Boolean] = Protocol("MSETNX", l).as[Num, Boolean]
 
-  final def msetnx[P <: Product, L <: HList, N <: Nat](product: P)(
+  @nowarn final def msetnx[P <: Product, L <: HList, N <: Nat](product: P)(
       implicit gen: LabelledGeneric.Aux[P, L],
       ev0: Length.Aux[L, N],
       ev1: N >= _1,

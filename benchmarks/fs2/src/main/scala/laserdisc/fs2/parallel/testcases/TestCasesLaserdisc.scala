@@ -285,7 +285,7 @@ private[fs2] sealed abstract class TestCasesLaserdisc[F[_]: Temporal: Parallel](
     } yield j
 }
 
-private[fs2] sealed abstract class TestSendLaserdisc[F[_]: Temporal: Parallel](cl: RedisClient[F]) extends TestCommandsProtocol {
+private[fs2] sealed abstract class TestSendLaserdisc[F[_]: Temporal](cl: RedisClient[F]) extends TestCommandsProtocol {
 
   protected final def longSend1  = cl.send(longCmd1)
   protected final def longSend2  = cl.send(longCmd2)

@@ -30,100 +30,6 @@ val V = new {
   val slf4j                  = "2.0.16"
 }
 
-val D = new {
-  val `cats-core`          = Def.setting("org.typelevel" %%% "cats-core" % V.cats)
-  val `cats-effect-kernel` = Def.setting("org.typelevel" %%% "cats-effect-kernel" % V.`cats-effect`)
-  val `cats-effect-std`    = Def.setting("org.typelevel" %%% "cats-effect-std" % V.`cats-effect`)
-  val `cats-effect`        = Def.setting("org.typelevel" %%% "cats-effect" % V.`cats-effect`)
-  val `cats-laws`          = Def.setting("org.typelevel" %%% "cats-laws" % V.cats)
-  val `circe-core`         = Def.setting("io.circe" %%% "circe-core" % V.circe)
-  val `circe-parser`       = Def.setting("io.circe" %%% "circe-parser" % V.circe)
-  val `fs2-core`           = Def.setting("co.fs2" %%% "fs2-core" % V.fs2)
-  val `fs2-io`             = Def.setting("co.fs2" %%% "fs2-io" % V.fs2)
-  val jedis                = Def.setting("redis.clients" % "jedis" % V.jedis)
-  val kittens              = Def.setting("org.typelevel" %%% "kittens" % V.kittens)
-  val `log-effect-fs2`     = Def.setting("io.laserdisc" %%% "log-effect-fs2" % V.`log-effect`)
-  val logback              = Def.setting("ch.qos.logback" % "logback-classic" % V.logback)
-  val redis4Cats           = Def.setting("dev.profunktor" %% "redis4cats-effects" % V.redis4Cats)
-  val refined              = Def.setting("eu.timepit" %%% "refined" % V.refined)
-  val `scala-redis`        = Def.setting("net.debasishg" %% "redisclient" % V.`scala-redis`)
-  val `scodec-bits`        = Def.setting("org.scodec" %%% "scodec-bits" % V.`scodec-bits`)
-  val `scodec-core`        = Def.setting("org.scodec" %%% "scodec-core" % V.`scodec-core`)
-  val `scodec-stream`      = Def.setting("org.scodec" %%% "scodec-stream" % V.`scodec-stream`)
-  val scredis              = Def.setting("com.github.scredis" %% "scredis" % V.scredis)
-  val shapeless            = Def.setting("com.chuusai" %%% "shapeless" % V.shapeless)
-  val `slf4j-api`          = Def.setting("org.slf4j" % "slf4j-api" % V.slf4j)
-
-  val `cats-discipline`    = Def.setting("org.typelevel" %%% "discipline-core" % V.`cats-discipline` % Test)
-  val `discipline-munit`   = Def.setting("org.typelevel" %%% "discipline-munit" % V.`discipline-munit` % Test)
-  val `circe-generic`      = Def.setting("io.circe" %%% "circe-generic" % V.circe % Test)
-  val `refined-scalacheck` = Def.setting("eu.timepit" %%% "refined-scalacheck" % V.refined % Test)
-  val scalacheck           = Def.setting("org.scalacheck" %%% "scalacheck" % V.scalacheck % Test)
-  val munit                = Def.setting("org.scalameta" %%% "munit" % V.munit % Test)
-  val `munit-cats-effect`  = Def.setting("org.typelevel" %%% "munit-cats-effect" % V.`munit-cats-effect` % Test)
-  val `munit-scalacheck`   = Def.setting("org.scalameta" %%% "munit-scalacheck" % V.`munit-scalacheck` % Test)
-
-  val core = Def.Initialize.join {
-    Seq(
-      refined,
-      `scodec-bits`,
-      `scodec-core`,
-      shapeless,
-      `refined-scalacheck`,
-      scalacheck,
-      munit,
-      `munit-scalacheck`
-    )
-  }
-
-  val laws = Def.Initialize.join {
-    Seq(
-      `cats-core`,
-      `cats-laws`,
-      `cats-discipline`,
-      `discipline-munit`
-    )
-  }
-
-  val fs2 = Def.Initialize.join {
-    Seq(
-      `cats-core`,
-      `cats-effect`,
-      `fs2-core`,
-      `fs2-io`,
-      kittens,
-      `log-effect-fs2`,
-      `scodec-stream`,
-      scalacheck,
-      munit,
-      `munit-cats-effect`,
-      `munit-scalacheck`
-    )
-  }
-
-  val `fs2-bench` = Def.Initialize.join {
-    Seq(
-      jedis,
-      redis4Cats,
-      `scala-redis`,
-      scredis,
-      logback,
-      `slf4j-api`
-    )
-  }
-
-  val circe = Def.Initialize.join {
-    Seq(
-      `circe-core`,
-      `circe-parser`,
-      `circe-generic`,
-      scalacheck,
-      munit,
-      `munit-scalacheck`
-    )
-  }
-}
-
 // found this suggestion here
 // https://github.com/scala/bug/issues/10682#issuecomment-1005114838
 // and seems from here that it resolves
@@ -205,7 +111,16 @@ lazy val laserdisc = tlCrossRootProject
 lazy val core = laserdiscCrossModule("core")
   .enablePlugins(BoilerplatePlugin)
   .settings(
-    libraryDependencies ++= D.core.value,
+    libraryDependencies ++= Seq(
+      "com.chuusai"    %%% "shapeless"          % V.shapeless,
+      "eu.timepit"     %%% "refined"            % V.refined,
+      "org.scodec"     %%% "scodec-bits"        % V.`scodec-bits`,
+      "org.scodec"     %%% "scodec-core"        % V.`scodec-core`,
+      "eu.timepit"     %%% "refined-scalacheck" % V.refined            % Test,
+      "org.scalacheck" %%% "scalacheck"         % V.scalacheck         % Test,
+      "org.scalameta"  %%% "munit"              % V.munit              % Test,
+      "org.scalameta"  %%% "munit-scalacheck"   % V.`munit-scalacheck` % Test
+    ),
     Compile / boilerplateSource := crossProjectBaseDirectory.value / "src" / "main" / "boilerplate",
     Test / boilerplateSource    := crossProjectBaseDirectory.value / "src" / "test" / "boilerplate"
   )
@@ -223,13 +138,38 @@ lazy val laws = laserdiscCrossModule("laws")
   .dependsOn(core)
   .enablePlugins(NoPublishPlugin)
   .settings(
-    libraryDependencies ++= D.core.value ++ D.laws.value
+    libraryDependencies ++= Seq(
+      "eu.timepit"     %%% "refined"            % V.refined,
+      "org.scodec"     %%% "scodec-bits"        % V.`scodec-bits`,
+      "org.scodec"     %%% "scodec-core"        % V.`scodec-core`,
+      "com.chuusai"    %%% "shapeless"          % V.shapeless,
+      "org.typelevel"  %%% "cats-core"          % V.cats,
+      "org.typelevel"  %%% "cats-laws"          % V.cats,
+      "eu.timepit"     %%% "refined-scalacheck" % V.refined            % Test,
+      "org.scalacheck" %%% "scalacheck"         % V.scalacheck         % Test,
+      "org.scalameta"  %%% "munit"              % V.munit              % Test,
+      "org.scalameta"  %%% "munit-scalacheck"   % V.`munit-scalacheck` % Test,
+      "org.typelevel"  %%% "discipline-core"    % V.`cats-discipline`  % Test,
+      "org.typelevel"  %%% "discipline-munit"   % V.`discipline-munit` % Test
+    )
   )
 
 lazy val fs2 = laserdiscCrossModule("fs2")
   .dependsOn(core)
   .settings(
-    libraryDependencies ++= D.fs2.value
+    libraryDependencies ++= Seq(
+      "co.fs2"         %%% "fs2-core"          % V.fs2,
+      "co.fs2"         %%% "fs2-io"            % V.fs2,
+      "io.laserdisc"   %%% "log-effect-fs2"    % V.`log-effect`,
+      "org.scodec"     %%% "scodec-stream"     % V.`scodec-stream`,
+      "org.typelevel"  %%% "cats-core"         % V.cats,
+      "org.typelevel"  %%% "cats-effect"       % V.`cats-effect`,
+      "org.typelevel"  %%% "kittens"           % V.kittens,
+      "org.scalacheck" %%% "scalacheck"        % V.scalacheck          % Test,
+      "org.scalameta"  %%% "munit"             % V.munit               % Test,
+      "org.scalameta"  %%% "munit-scalacheck"  % V.`munit-scalacheck`  % Test,
+      "org.typelevel"  %%% "munit-cats-effect" % V.`munit-cats-effect` % Test
+    )
   )
   .jvmSettings(
     libraryDependencies ++= {
@@ -245,13 +185,24 @@ lazy val fs2 = laserdiscCrossModule("fs2")
 lazy val cli = laserdiscCrossModule("cli")
   .dependsOn(fs2)
   .settings(
-    libraryDependencies ++= D.fs2.value
+    libraryDependencies ++= Seq(
+      "co.fs2"        %%% "fs2-io"      % V.fs2,
+      "org.typelevel" %%% "cats-core"   % V.cats,
+      "org.typelevel" %%% "cats-effect" % V.`cats-effect`
+    )
   )
 
 lazy val circe = laserdiscCrossModule("circe")
   .dependsOn(core)
   .settings(
-    libraryDependencies ++= D.circe.value
+    libraryDependencies ++= Seq(
+      "io.circe"       %%% "circe-core"       % V.circe,
+      "io.circe"       %%% "circe-parser"     % V.circe,
+      "io.circe"       %%% "circe-generic"    % V.circe              % Test,
+      "org.scalacheck" %%% "scalacheck"       % V.scalacheck         % Test,
+      "org.scalameta"  %%% "munit"            % V.munit              % Test,
+      "org.scalameta"  %%% "munit-scalacheck" % V.`munit-scalacheck` % Test
+    )
   )
 
 lazy val `core-bench` = project
@@ -264,5 +215,12 @@ lazy val `fs2-bench` = project
   .dependsOn(fs2.jvm)
   .enablePlugins(JmhPlugin, NoPublishPlugin)
   .settings(
-    libraryDependencies ++= D.`fs2-bench`.value
+    libraryDependencies ++= Seq(
+      "ch.qos.logback"      % "logback-classic"    % V.logback,
+      "com.github.scredis" %% "scredis"            % V.scredis,
+      "dev.profunktor"     %% "redis4cats-effects" % V.redis4Cats,
+      "net.debasishg"      %% "redisclient"        % V.`scala-redis`,
+      "org.slf4j"           % "slf4j-api"          % V.slf4j,
+      "redis.clients"       % "jedis"              % V.jedis
+    )
   )

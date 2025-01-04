@@ -9,7 +9,7 @@ import laserdisc.protocol._
 import scodec.bits.BitVector
 
 private[parallel] object BitVectorChannelAdapter {
-  def send[F[_]: ApplicativeError[*[_], Throwable]](socketWrite: Chunk[Byte] => F[Unit]): Pipe[F, BitVector, Unit] =
+  def send[F[_]](socketWrite: Chunk[Byte] => F[Unit]): Pipe[F, BitVector, Unit] =
     _.chunks
       .evalMap(chunks => socketWrite(Chunk.array(chunks.foldLeft(BitVector.empty)(_ ++ _).toByteArray)))
 

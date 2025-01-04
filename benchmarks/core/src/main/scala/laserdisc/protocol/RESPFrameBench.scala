@@ -3,8 +3,6 @@ package protocol
 
 import org.openjdk.jmh.annotations.{Benchmark, Scope, State}
 import scodec.bits.BitVector
-import eu.timepit.refined.types.string.NonEmptyString
-import java.nio.ByteBuffer
 
 import laserdisc.RESPFrameFixture
 import org.openjdk.jmh.infra.Blackhole

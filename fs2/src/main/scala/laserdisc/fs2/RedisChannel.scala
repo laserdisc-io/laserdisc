@@ -1,8 +1,29 @@
+/*
+ * Copyright (c) 2018-2025 LaserDisc
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 package laserdisc
 package fs2
 
-import _root_.fs2._
-import _root_.fs2.io.net.{Socket, SocketOption}
+import _root_.fs2.{Chunk, Pull}
+import _root_.fs2.io.net.Socket
 import cats.MonadError
 import cats.effect.{Concurrent, Resource}
 import cats.syntax.flatMap._
@@ -36,16 +57,10 @@ object RedisChannel {
       address: SocketAddress[Host],
       receiveBufferSizeBytes: Int
   ): Resource[F, Socket[F]] =
-    Network[F].client(
-      address,
-      List(
-        SocketOption.noDelay(true),
-        SocketOption.receiveBufferSize(receiveBufferSizeBytes)
-      )
-    )
+    Network[F].client(address, PlatformDependent.socketOptions(receiveBufferSizeBytes))
 
   private[this] final object impl {
-    def send[F[_]: LogSelector: MonadError[*[_], Throwable]](socketWrite: Chunk[Byte] => F[Unit])(
+    def send[F[_]: MonadError[*[_], Throwable]](socketWrite: Chunk[Byte] => F[Unit])(
         implicit logSelector: LogSelector[F]
     ): Pipe[F, RESP, Unit] =
       _.evalTap(resp => logSelector.log.trace(s"sending $resp"))

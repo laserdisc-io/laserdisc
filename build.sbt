@@ -13,7 +13,7 @@ val V = new {
   val jedis                  = "3.2.0"
   val kittens                = "3.4.0"
   val `log-effect`           = "0.19.2"
-  val logback                = "1.2.13"
+  val logback                = "1.5.15"
   val munit                  = "1.0.3"
   val `munit-cats-effect`    = "2.0.0"
   val `munit-scalacheck`     = "1.0.0"
@@ -27,6 +27,7 @@ val V = new {
   val `scodec-stream`        = "3.0.2"
   val scredis                = "2.3.3"
   val shapeless              = "2.3.12"
+  val slf4j                  = "2.0.16"
 }
 
 val D = new {
@@ -51,6 +52,7 @@ val D = new {
   val `scodec-stream`      = Def.setting("org.scodec" %%% "scodec-stream" % V.`scodec-stream`)
   val scredis              = Def.setting("com.github.scredis" %% "scredis" % V.scredis)
   val shapeless            = Def.setting("com.chuusai" %%% "shapeless" % V.shapeless)
+  val `slf4j-api`          = Def.setting("org.slf4j" % "slf4j-api" % V.slf4j)
 
   val `cats-discipline`    = Def.setting("org.typelevel" %%% "discipline-core" % V.`cats-discipline` % Test)
   val `discipline-munit`   = Def.setting("org.typelevel" %%% "discipline-munit" % V.`discipline-munit` % Test)
@@ -105,7 +107,8 @@ val D = new {
       redis4Cats,
       `scala-redis`,
       scredis,
-      logback
+      logback,
+      `slf4j-api`
     )
   }
 

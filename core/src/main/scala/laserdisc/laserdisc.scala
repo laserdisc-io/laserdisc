@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2018-2025 LaserDisc
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 import java.{lang => j}
 
 import eu.timepit.refined.W
@@ -10,6 +31,8 @@ import eu.timepit.refined.numeric.{Interval, NonNaN, NonNegative, Positive}
 import eu.timepit.refined.string.{IPv4, MatchesRegex}
 import eu.timepit.refined.types.net.PrivateNetworks._
 import shapeless._
+
+import scala.annotation.nowarn
 
 package object laserdisc {
   // Basic type aliases
@@ -207,10 +230,10 @@ package object laserdisc {
   }
 
   private[laserdisc] implicit final class WidenOps2[F[_, _], A, B](private val fab: F[A, B]) extends AnyVal {
-    def widenLeft[AA: <:<[A, *]: =:!=[A, *]]: F[AA, B]                            = fab.asInstanceOf[F[AA, B]]
-    def widenRight[BB: <:<[B, *]: =:!=[B, *]]: F[A, BB]                           = fab.asInstanceOf[F[A, BB]]
-    def coerceLeft[AA, FF[_, _]](implicit ev: F[AA, B] <:< FF[AA, B]): FF[AA, B]  = fab.asInstanceOf[FF[AA, B]]
-    def coerceRight[FF[_, _], BB](implicit ev: F[A, BB] <:< FF[A, BB]): FF[A, BB] = fab.asInstanceOf[FF[A, BB]]
+    def widenLeft[AA: <:<[A, *]: =:!=[A, *]]: F[AA, B]                                    = fab.asInstanceOf[F[AA, B]]
+    def widenRight[BB: <:<[B, *]: =:!=[B, *]]: F[A, BB]                                   = fab.asInstanceOf[F[A, BB]]
+    def coerceLeft[AA, FF[_, _]](implicit @nowarn ev: F[AA, B] <:< FF[AA, B]): FF[AA, B]  = fab.asInstanceOf[FF[AA, B]]
+    def coerceRight[FF[_, _], BB](implicit @nowarn ev: F[A, BB] <:< FF[A, BB]): FF[A, BB] = fab.asInstanceOf[FF[A, BB]]
   }
 
   private[laserdisc] implicit final class WidenOps3[F[_[_], _], G[_], A](private val fga: F[G, A]) extends AnyVal {

@@ -18,7 +18,7 @@ private[parallel] object RespChannelAdapter {
       .evalMap(chunks => socketWrite(Chunk.array(chunks.foldLeft(BitVector.empty)(_ ++ _).toByteArray)))
   }
 
-  def sendChunks[F[_]: ApplicativeError[*[_], Throwable]](socketWrite: Chunk[Byte] => F[Unit]): Pipe[F, Chunk[RESP], Unit] = {
+  def sendChunks[F[_]](socketWrite: Chunk[Byte] => F[Unit]): Pipe[F, Chunk[RESP], Unit] = {
     val encoder = Codec[RESP]
 
     _.map(chunk =>

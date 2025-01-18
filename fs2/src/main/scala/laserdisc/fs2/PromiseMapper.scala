@@ -40,11 +40,10 @@ object PromiseMapper extends Poly1 {
       val complete: Maybe[A] => F[Unit] =
         mba => promise.complete(mba).as(())
 
-      queue.offer(Request(protocol, complete)) >> {
+      queue.offer(Request(protocol, complete)) >>
         promise.get
           .timeout(duration)
           .adaptError { case _: TimeoutException => RequestTimedOut(protocol) }
-      }
     }
   }
 

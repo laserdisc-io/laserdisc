@@ -4,7 +4,7 @@ val scala_212 = "2.12.20"
 val scala_213 = "2.13.16"
 
 val V = new {
-  val cats                   = "2.12.0"
+  val cats                   = "2.13.0"
   val `cats-effect`          = "3.5.7"
   val `cats-discipline`      = "1.7.0"
   val `discipline-munit`     = "2.0.0"

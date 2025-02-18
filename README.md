@@ -1,7 +1,6 @@
 ## LaserDisc
 
-[![CI](https://github.com/laserdisc-io/laserdisc/workflows/CI/badge.svg?branch=master)](https://github.com/laserdisc-io/laserdisc/actions?query=workflow%3ACI+branch%3Amaster+event%3Apush)
-[![Release](https://github.com/laserdisc-io/laserdisc/workflows/Release/badge.svg)](https://github.com/laserdisc-io/laserdisc/actions?query=workflow%3ARelease)
+[![Continuous Integration](https://github.com/laserdisc-io/laserdisc/actions/workflows/ci.yml/badge.svg)](https://github.com/laserdisc-io/laserdisc/actions/workflows/ci.yml)
 [![Known Vulnerabilities](https://snyk.io/test/github/laserdisc-io/laserdisc/badge.svg?targetFile=build.sbt)](https://snyk.io/test/github/laserdisc-io/laserdisc?targetFile=build.sbt)
 [![Join the chat at https://gitter.im/laserdisc-io/laserdisc](https://badges.gitter.im/laserdisc-io/laserdisc.svg)](https://gitter.im/laserdisc-io/laserdisc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

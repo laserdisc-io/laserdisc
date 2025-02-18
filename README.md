@@ -5,15 +5,9 @@
 [![Join the chat at https://gitter.im/laserdisc-io/laserdisc](https://badges.gitter.im/laserdisc-io/laserdisc.svg)](https://gitter.im/laserdisc-io/laserdisc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-blue.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
-<br>
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.13.svg?label=laserdisc-core&colorB=orange)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-core_2.13.svg?label=laserdisc-core%20docs&colorB=orange)](https://javadoc.io/doc/io.laserdisc/laserdisc-core_2.13)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.13.svg?label=laserdisc-fs2&colorB=blue)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-fs2)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.13.svg?label=laserdisc-fs2%20docs&colorB=blue)](https://javadoc.io/doc/io.laserdisc/laserdisc-fs2_2.13)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.13.svg?label=laserdisc-circe&colorB=darkgreen)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-circe)
-[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-circe_2.13.svg?label=laserdisc-circe%20docs&colorB=darkgreen)](https://javadoc.io/doc/io.laserdisc/laserdisc-circe_2.13)
-<br>
-[![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.17.svg)](http://scala-js.org)
+
+[![laserdisc-core Scala version support](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core/latest-by-scala-version.svg?targetType=Js)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
+
 
 LaserDisc is a(nother) Scala driver for [Redis](https://redis.io/), written in Scala from the ground up.
 

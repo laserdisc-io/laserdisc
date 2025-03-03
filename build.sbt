@@ -26,7 +26,7 @@ val V = new {
   val `scodec-core`          = "1.11.10"
   val `scodec-stream`        = "3.0.2"
   val scredis                = "2.3.3"
-  val shapeless              = "2.3.12"
+  val shapeless              = "2.3.13"
   val slf4j                  = "2.0.16"
 }
 

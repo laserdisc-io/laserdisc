@@ -34,8 +34,8 @@ private[protocol] object ReadInstances {
 
   implicit def readMonad[X]: Monad[X ==> *] =
     new Monad[X ==> *] {
-      override def pure[A](x: A): X ==> A                               = Read.const(x)
-      override def flatMap[A, B](fa: X ==> A)(f: A => X ==> B): X ==> B = fa.flatMap(f)
+      override def pure[A](x: A): X ==> A                                    = Read.const(x)
+      override def flatMap[A, B](fa: X ==> A)(f: A => X ==> B): X ==> B      = fa.flatMap(f)
       override def tailRecM[A, B](a: A)(f: A => X ==> Either[A, B]): X ==> B =
         flatMap(f(a)) {
           case Left(a)  => tailRecM(a)(f)

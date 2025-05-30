@@ -29,7 +29,7 @@ import scodec.bits.BitVector
 import scala.annotation.tailrec
 
 private[laserdisc] sealed trait RESPFrame extends Product with Serializable with EitherSyntax with BitVectorSyntax {
-  def append(bits: BitVector): Exception | NonEmptyRESPFrame = nextFrame(bits)
+  def append(bits: BitVector): Exception | NonEmptyRESPFrame                    = nextFrame(bits)
   protected final def nextFrame(bits: BitVector): Exception | NonEmptyRESPFrame =
     stateOf(bits) match {
       case Right(MissingBits(n))              => Right(IncompleteFrame(bits, n))

@@ -143,7 +143,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
     "Appending to a non empty GenArr frame a bit vector with multiple arrays interleaved with null arrays gives as `complete` more than one frame with a list of the complete ones in the right order"
   ) {
     val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
-    val inputVector = BitVector(
+    val inputVector   = BitVector(
       "ing\r\n:100\r\n+A simple string\r\n*-1\r\n*-1\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n*-1\r\n*-1\r\n*-1\r\n".getBytes
     )
     nonEmptyFrame
@@ -173,7 +173,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
     "Appending to a non empty GenArr frame a bit vector with multiple arrays containing nested arrays gives as `complete` more than one frame with a list of the complete ones in the correct order"
   ) {
     val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
-    val inputVector = BitVector(
+    val inputVector   = BitVector(
       "ing\r\n:100\r\n+A simple string\r\n*-1\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n*3\r\n$8\r\nAnother1\r\n*3\r\n*2\r\n+Simple string\r\n*2\r\n$3\r\nfoo\r\n-an error\r\n:13\r\n:12\r\n-An error\r\n*-1\r\n".getBytes
     )
     nonEmptyFrame

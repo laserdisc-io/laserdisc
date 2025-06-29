@@ -67,7 +67,7 @@ object ClusterP {
     }
     private final val Fs: String ==> Seq[Flag] = Read.instance {
       case "noflags" => Right(Seq.empty)
-      case s =>
+      case s         =>
         s.split(COMMA_CH).foldRight[RESPDecErr | List[Flag]](Right(Nil)) {
           case ("myself", Right(fgs))    => Right(Flag.myself :: fgs)
           case ("master", Right(fgs))    => Right(Flag.master :: fgs)
@@ -116,7 +116,7 @@ object ClusterP {
         case _ :: _ :: _ :: MM(Left(e)) :: _ :: _ :: _ :: _ :: _ => Left(RESPDecErr(s"$errorS $e"))
         case _ :: _ :: _ :: _ :: _ :: _ :: _ :: L(Left(e)) :: _  => Left(RESPDecErr(s"$errorS $e"))
         case _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: Ss(Left(e)) => Left(RESPDecErr(s"$errorS $e"))
-        case other =>
+        case other                                               =>
           Left(
             RESPDecErr(
               s"Unexpected encoding for a cluster node. Expected [node id, address, [flags], master id, pings, pongs, epoch, link status, slots] but was $other"
@@ -129,7 +129,7 @@ object ClusterP {
       s.split(LF_CH)
         .foldRight[RESPDecErr | (List[Node], Int)](Right(Nil -> 0)) {
           case (ND(Right(node)), Right((ns, nsl))) => Right((node :: ns) -> (nsl + 1))
-          case (ND(Left(e)), Right((_, nsl))) =>
+          case (ND(Left(e)), Right((_, nsl)))      =>
             Left(RESPDecErr(s"Bulk ==> Nodes, Error decoding the cluster's node ${nsl + 1}. Error was: $e"))
           case (_, left) => left
         }
@@ -264,7 +264,7 @@ object ClusterP {
           Right(NewSlotInfo(HostPortNodeId(h, p, id), rs))
         case Arr(H(Left(e)) :: _) +: _ => Left(RESPDecErr(s"Unexpected host encoding in the slot info. ${e.message}"))
         case Arr(_ :: otherPort) +: _  => Left(RESPDecErr(s"Unexpected port encoding in the slot info. Was $otherPort"))
-        case other =>
+        case other                     =>
           Left(
             RESPDecErr(
               s"Unexpected slot info encoding. Expected [[host, port, node id], replicas]] or [[host, port], replicas] but was $other"

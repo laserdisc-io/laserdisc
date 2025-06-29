@@ -42,7 +42,7 @@ object GeoP {
   final case class KeyCoordinatesDistanceAndHash(key: Key, coordinates: Coordinates, distance: NonNegDouble, hash: NonNegLong)
 
   sealed trait RadiusMode { type Res; def params: List[String]; def r: Arr ==> Res }
-  object RadiusMode {
+  object RadiusMode       {
     final object coordinates extends RadiusMode {
       override final type Res = KeyAndCoordinates
       override final val params: List[String] = List("WITHCOORD")
@@ -96,7 +96,7 @@ object GeoP {
   }
 
   sealed trait StoreMode { def params: List[String] }
-  object StoreMode {
+  object StoreMode       {
     final case class Hash(key: Key)     extends StoreMode { override final val params: List[String] = List("STORE", key.value)     }
     final case class Distance(key: Key) extends StoreMode { override final val params: List[String] = List("STOREDIST", key.value) }
     final case class Both(hashKey: Key, distanceKey: Key) extends StoreMode {

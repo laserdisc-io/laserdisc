@@ -101,7 +101,7 @@ object RedisClient {
       Resource.eval(Deferred[F, Throwable | Unit]).flatMap { termSignal =>
         Resource.eval(Queue.bounded[F, Request[F]](1024)).flatMap { queue =>
           Resource.eval(Ref.of[F, Vector[Request[F]]](Vector.empty)).flatMap { inFlight =>
-            val log = logSelector.log
+            val log                            = logSelector.log
             def push(req: Request[F]): F[RESP] =
               inFlight
                 .modify(in => (in :+ req) -> req.protocol.encode)
@@ -133,7 +133,7 @@ object RedisClient {
               log.errorS("Server unavailable for publishing") >>
                 Stream.eval(Signal[F, Option[RedisAddress]](None)).flatMap { serverSignal =>
                   val cancelIncoming = Stream.fromQueueUnterminated(queue).evalMap(_.callback(Left(ServerUnavailable))).drain
-                  val queryLeader = (Stream.awakeEvery[F](3.seconds) >> serverStream) // FIXME magic number
+                  val queryLeader    = (Stream.awakeEvery[F](3.seconds) >> serverStream) // FIXME magic number
                     .evalMap(maybeAddress => serverSignal.update(_ => maybeAddress))
                     .drain
 

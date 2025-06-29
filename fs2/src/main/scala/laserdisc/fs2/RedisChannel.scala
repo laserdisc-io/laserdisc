@@ -74,8 +74,8 @@ object RedisChannel {
           bytesIn.pull.uncons.flatMap {
             case Some((chunk, rest)) =>
               previous.append(chunk.toBitVector) match {
-                case Left(ex)                    => Pull.raiseError(ex)
-                case Right(frame: CompleteFrame) => Pull.output1(frame) >> loopScan(rest, EmptyFrame)
+                case Left(ex)                       => Pull.raiseError(ex)
+                case Right(frame: CompleteFrame)    => Pull.output1(frame) >> loopScan(rest, EmptyFrame)
                 case Right(frame: MoreThanOneFrame) =>
                   Pull.output(Chunk.from(frame.complete)) >> {
                     if (frame.remainder.isEmpty) loopScan(rest, EmptyFrame)

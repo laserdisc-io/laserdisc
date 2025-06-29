@@ -87,7 +87,7 @@ package object laserdisc {
   final val PortMaxValueWit             = W(49151)
   final val RangeOffsetMaxValueWit      = W(536870911)
   final val Rfc1123HostnameMaxLengthWit = W(255)
-  final val Rfc1123HostnameRegexWit = W(
+  final val Rfc1123HostnameRegexWit     = W(
     "(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*"
   )
   final val SlotMaxValueWit         = W(16383)
@@ -98,7 +98,7 @@ package object laserdisc {
   final type DbIndexRef        = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
   final type GeoHashRef        = MatchesRegex[GeoHashRegexWit.T]
   final type GlobPatternRef    = MatchesRegex[GlobPatternRegexWit.T]
-  final type HostRef = Equal[AllNICsEqWit.T] Or
+  final type HostRef           = Equal[AllNICsEqWit.T] Or
     Equal[LoopbackEqWit.T] Or
     (Not[IPv4] And MaxSize[Rfc1123HostnameMaxLengthWit.T] And MatchesRegex[Rfc1123HostnameRegexWit.T]) Or
     Rfc1918PrivateSpec Or

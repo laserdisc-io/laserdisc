@@ -15,7 +15,7 @@ object BenchRuntime {
   private[fs2] def createNewRuntime(): IORuntime = {
 
     def namedThreadFactory(name: String) = new ThreadFactory {
-      val count = new AtomicInteger(0)
+      val count                                   = new AtomicInteger(0)
       override def newThread(r: Runnable): Thread =
         new Thread(r, s"$name-${count.incrementAndGet()}")
     }

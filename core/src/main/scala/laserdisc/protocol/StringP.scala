@@ -112,7 +112,7 @@ trait StringBaseP {
 
   final def append[A: Show](key: Key, value: A): Protocol.Aux[NonNegInt] = Protocol("APPEND", key :: value :: HNil).as[Num, NonNegInt]
 
-  final def bitcount(key: Key): Protocol.Aux[NonNegInt] = Protocol("BITCOUNT", key).as[Num, NonNegInt]
+  final def bitcount(key: Key): Protocol.Aux[NonNegInt]                           = Protocol("BITCOUNT", key).as[Num, NonNegInt]
   final def bitcount(key: Key, start: Index, end: Index): Protocol.Aux[NonNegInt] =
     Protocol("BITCOUNT", key :: start :: end :: HNil).as[Num, NonNegInt]
 
@@ -186,7 +186,7 @@ trait StringBaseP {
   final def psetex[A: Show](key: Key, milliseconds: PosLong, value: A): Protocol.Aux[OK] =
     Protocol("PSETEX", key :: milliseconds :: value :: HNil).as[Str, OK]
 
-  final def set[A: Show](key: Key, value: A): Protocol.Aux[OK] = Protocol("SET", key :: value :: HNil).as[Str, OK]
+  final def set[A: Show](key: Key, value: A): Protocol.Aux[OK]                 = Protocol("SET", key :: value :: HNil).as[Str, OK]
   final def set[A: Show](key: Key, value: A, expiry: Expiry): Protocol.Aux[OK] =
     Protocol("SET", key :: value :: expiry.unit :: expiry.value :: HNil).as[Str, OK]
   final def set[A: Show](key: Key, value: A, flag: Flag): Protocol.Aux[Option[OK]] =

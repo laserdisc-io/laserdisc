@@ -42,7 +42,7 @@ object SetUpLaserdiscCatsByteResp {
       SyncLogWriter.consoleLogUpToLevel(LogLevels.Error)
 
     var runtime: IORuntime = _
-    private val channel = RedisAddress("localhost", 6379).toSocketAddress[IO] map { address =>
+    private val channel    = RedisAddress("localhost", 6379).toSocketAddress[IO] map { address =>
       ByteInRespOutChannel[IO](address, receiveBufferSizeBytes = 8 * 1024 * 1024)
     }
 

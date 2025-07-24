@@ -41,7 +41,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
   private[this] final val kvPairPattern                         = KVPairRegex.pattern
   private[this] val infoIsValid: Map[String, String] => Boolean = _.forall { case (k, v) => kvPairPattern.matcher(s"$k:$v").matches }
-  private[this] val infoGen: Gen[Map[String, String]] =
+  private[this] val infoGen: Gen[Map[String, String]]           =
     nonEmptyMap(identifier.flatMap(k => alphaStr.map(k -> _))).filter(infoIsValid) :| "info map"
   private[this] implicit val infoShow: Show[Map[String, String]] = Show.instance {
     _.map { case (k, v) => s"$k:$v" }.mkString(CRLF)
@@ -68,7 +68,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     _.map(rawNodeToString).forall { case R(_*) => true; case _ => false }
   }
   private[this] val nodesGen: Gen[RawNodes] = {
-    val flag = Gen.oneOf("myself", "master", "slave", "fail?", "fail", "handshake", "noaddr")
+    val flag     = Gen.oneOf("myself", "master", "slave", "fail?", "fail", "handshake", "noaddr")
     val slotType = Gen.oneOf(
       slotGen.map(_.toString),
       slotGen.flatMap(f => slotGen.map(t => s"$f-$t")),
@@ -127,7 +127,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   private[this] type RawSlots = List[RawSlot]
   private[this] val slotsGen: Gen[RawSlots] = (for {
     isOld <- Gen.oneOf(true, false)
-    rss <- nonEmptyListOf(
+    rss   <- nonEmptyListOf(
       for {
         fst <- slotGen
         snd <- slotGen
@@ -339,7 +339,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
   property("The Cluster protocol using slots roundtrips successfully using val") {
     forAll(slotsGen) { ss =>
-      val protocol = slots
+      val protocol       = slots
       val ssWithLoopback = ss.map { case (f, t, assigned) =>
         (
           f,

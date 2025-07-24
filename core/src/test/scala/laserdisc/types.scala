@@ -45,8 +45,8 @@ object Baz {
   }
 }
 
-private[laserdisc] sealed trait ProtocolEncoded extends Product with Serializable { def encoded: String }
-private[laserdisc] final case class ArrEncoded(v: List[ProtocolEncoded]) extends ProtocolEncoded {
+private[laserdisc] sealed trait ProtocolEncoded                          extends Product with Serializable { def encoded: String }
+private[laserdisc] final case class ArrEncoded(v: List[ProtocolEncoded]) extends ProtocolEncoded           {
   def encoded: String = s"*${v.size}$CRLF${v.map(_.encoded).mkString}"
 }
 private[laserdisc] final case class EmptyArrEncoded() extends ProtocolEncoded {

@@ -30,7 +30,7 @@ import scodec.bits.BitVector
 import scala.Long.{MaxValue, MinValue}
 
 private[laserdisc] trait RESPFrameFixture extends HighPriorityGenerators {
-  final val shortStr = " Short string repeated string repeated string repeated"
+  final val shortStr  = " Short string repeated string repeated string repeated"
   final val mediumStr =
     "Medium size string repeated medium size string repeated medium size string repeated medium size string repeated medium size string repeated medium size string repeated medium size string repeated medium size string repeated medium size string"
   final val longStr =

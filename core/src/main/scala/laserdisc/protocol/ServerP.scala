@@ -45,7 +45,7 @@ object ServerP {
     final object all          extends InfoSection
     final object default      extends InfoSection
 
-    implicit val defaultShow: Show[default] = Show.const("default")
+    implicit val defaultShow: Show[default]         = Show.const("default")
     implicit val infoSectionShow: Show[InfoSection] = Show.instance {
       case `server`       => "server"
       case `clients`      => "clients"
@@ -172,7 +172,7 @@ object ServerP {
     private val IFI: String ==> (InfoSection, Parameters) =
       _.split(LF_CH).toList match {
         case ISR(Right(infoSection)) :: PR(Right(parameters)) => Right(infoSection -> parameters)
-        case ISR(Left(e)) :: _ =>
+        case ISR(Left(e)) :: _                                =>
           Left(RESPDecErr(s"String ==> (InfoSection, Parameters), Error decoding server's info section. Error was: $e"))
         case _ :: PR(Left(e)) =>
           Left(RESPDecErr(s"String ==> (InfoSection, Parameters), Error decoding server's info section parameters. Error was: $e"))
@@ -184,7 +184,7 @@ object ServerP {
       s.split(LF * 2)
         .foldRight[RESPDecErr | (List[(InfoSection, Parameters)], Int)](Right(Nil -> 0)) {
           case (IFI(Right(infoSection)), Right((iss, isl))) => Right((infoSection :: iss) -> (isl + 1))
-          case (IFI(Left(e)), Right((_, isl))) =>
+          case (IFI(Left(e)), Right((_, isl)))              =>
             Left(RESPDecErr(s"Bulk ==> Info, Error decoding the server's info section at position ${isl + 1}. Error was: $e"))
           case (_, left) => left
         }

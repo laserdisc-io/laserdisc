@@ -216,7 +216,7 @@ trait KeyBaseP {
   ): Protocol.Aux[OK] =
     Protocol("RESTORE", key :: ttl :: serializedValue :: mode.params :: eviction.param :: eviction.seconds :: HNil).as[Str, OK]
 
-  final def scan(cursor: NonNegLong): Protocol.Aux[Scan[Key]] = Protocol("SCAN", cursor).as[Arr, Scan[Key]]
+  final def scan(cursor: NonNegLong): Protocol.Aux[Scan[Key]]                       = Protocol("SCAN", cursor).as[Arr, Scan[Key]]
   final def scan(cursor: NonNegLong, pattern: GlobPattern): Protocol.Aux[Scan[Key]] =
     Protocol("SCAN", cursor :: "MATCH" :: pattern :: HNil).as[Arr, Scan[Key]]
   final def scan(cursor: NonNegLong, count: PosInt): Protocol.Aux[Scan[Key]] =
@@ -225,7 +225,7 @@ trait KeyBaseP {
     Protocol("SCAN", cursor :: "MATCH" :: pattern :: "COUNT" :: count :: HNil).as[Arr, Scan[Key]]
 
   // FIXME sort has many more combinations
-  final def sort[A: Bulk ==> *](key: Key): Protocol.Aux[Seq[A]] = Protocol("SORT", key).as[Arr, Seq[A]]
+  final def sort[A: Bulk ==> *](key: Key): Protocol.Aux[Seq[A]]                       = Protocol("SORT", key).as[Arr, Seq[A]]
   final def sort[A: Bulk ==> *](key: Key, pattern: GlobPattern): Protocol.Aux[Seq[A]] =
     Protocol("SORT", key :: "BY" :: pattern :: HNil).as[Arr, Seq[A]]
   final def sort[A: Bulk ==> *](key: Key, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =

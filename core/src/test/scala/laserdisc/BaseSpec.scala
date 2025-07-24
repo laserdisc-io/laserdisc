@@ -50,10 +50,10 @@ abstract class BaseSpec
   private[this] final val dotString: String  = 0x002e.toChar.toString
   private[this] final val spaceChar: Char    = 0x0020.toChar
 
-  private[this] final val byteRange: Gen[Int] = chooseNum(0, 255)
-  private[this] final val dashGen: Gen[Char]  = const(dashChar)
-  private[this] final val hexGen: Gen[Char]   = frequency(10 -> numChar, 6 -> choose(0x0061.toChar, 0x0066.toChar))
-  private[this] final val spaceGen: Gen[Char] = const(spaceChar)
+  private[this] final val byteRange: Gen[Int]   = chooseNum(0, 255)
+  private[this] final val dashGen: Gen[Char]    = const(dashChar)
+  private[this] final val hexGen: Gen[Char]     = frequency(10 -> numChar, 6 -> choose(0x0061.toChar, 0x0066.toChar))
+  private[this] final val spaceGen: Gen[Char]   = const(spaceChar)
   protected final val utf8BMPCharGen: Gen[Char] = {
     val b01 = 24 -> choose(spaceChar, 0x007e.toChar)     // 75% it's a 7-bit ASCII char
     val b02 = 1  -> choose(0x00a0.toChar, 0x085f.toChar) // 3.125% for all other cases
@@ -86,7 +86,7 @@ abstract class BaseSpec
   private[this] final val rfc2544Gen: Gen[String] = chooseNum(18, 19).flatMap(ipv4Gen(198, _))
 
   private[this] final def ipv4Gen(hs: Int*): Gen[String] = listOfN(4 - hs.size, byteRange).map(ts => (hs ++: ts).mkString(dotString))
-  private[this] final def twoOrMore[A](ga: =>Gen[A]): Gen[List[A]] = nonEmptyListOf(ga).suchThat(_.size > 1)
+  private[this] final def twoOrMore[A](ga: =>Gen[A]): Gen[List[A]]                           = nonEmptyListOf(ga).suchThat(_.size > 1)
   private[this] final def zip[A, B](arbA: =>Arbitrary[A], arbB: =>Arbitrary[B]): Gen[(A, B)] =
     arbA.arbitrary.flatMap(a => arbB.arbitrary.map(a -> _))
 
@@ -125,7 +125,7 @@ abstract class BaseSpec
   final val directionGen: Gen[Direction] = Gen.oneOf(Direction.asc, Direction.desc) :| "direction"
   final val geoHashGen: Gen[String]      = strOfNGen(11, 1 -> numChar, 9 -> alphaLowerChar).filter(geoHashIsValid) :| "geo hash"
   final val globPatternGen: Gen[String]  = nonEmptyListOf(globGen).map(_.mkString).filter(globPatternIsValid) :| "glob pattern"
-  final val hostGen: Gen[Host] = {
+  final val hostGen: Gen[Host]           = {
     val hosts = 7 -> Gen
       .oneOf(allNICsGen, lbGen, rfc1123Gen, rfc1918Gen, rfc5737Gen, rfc3927Gen, rfc2544Gen)
       .filter(hostIsValid)
@@ -140,29 +140,29 @@ abstract class BaseSpec
   final val latitudeGen: Gen[Double] = chooseNum(LatitudeMinValueWit.value, LatitudeMaxValueWit.value).filter(latitudeIsValid) :| "latitude"
   final val longitudeGen: Gen[Double] =
     chooseNum(LongitudeMinValueWit.value, LongitudeMaxValueWit.value).filter(longitudeIsValid) :| "longitude"
-  final val nodeIdGen: Gen[String]       = strOfNSameFreqGen(40, hexGen).filter(nodeIdIsValid) :| "node id"
-  final val nonNegDoubleGen: Gen[Double] = chooseNum(0.0d, DMax).filter(nonNegDoubleIsValid) :| "double >= 0.0D"
-  final val nonNegIntGen: Gen[Int]       = chooseNum(0, IMax).filter(nonNegIntIsValid) :| "int >= 0"
-  final val nonNegLongGen: Gen[Long]     = chooseNum(0L, LMax).filter(nonNegLongIsValid) :| "long >= 0L"
+  final val nodeIdGen: Gen[String]        = strOfNSameFreqGen(40, hexGen).filter(nodeIdIsValid) :| "node id"
+  final val nonNegDoubleGen: Gen[Double]  = chooseNum(0.0d, DMax).filter(nonNegDoubleIsValid) :| "double >= 0.0D"
+  final val nonNegIntGen: Gen[Int]        = chooseNum(0, IMax).filter(nonNegIntIsValid) :| "int >= 0"
+  final val nonNegLongGen: Gen[Long]      = chooseNum(0L, LMax).filter(nonNegLongIsValid) :| "long >= 0L"
   final val nonZeroDoubleGen: Gen[Double] =
     chooseNum(DMin, DMax).suchThat(d => d != 0.0d && d != NaN).filter(nonZeroDoubleIsValid) :| "double != 0.0D and != NaN"
-  final val nonZeroIntGen: Gen[Int]    = chooseNum(IMin, IMax).suchThat(_ != 0).filter(nonZeroIntIsValid) :| "int != 0"
-  final val nonZeroLongGen: Gen[Long]  = chooseNum(LMin, LMax).suchThat(_ != 0L).filter(nonZeroLongIsValid) :| "long != 0L"
-  final val portGen: Gen[Port]         = chooseNum(PortMinValueWit.value, PortMaxValueWit.value).map(Port.unsafeFrom) :| "port"
-  final val rangeOffsetGen: Gen[Int]   = chooseNum(0, RangeOffsetMaxValueWit.value).filter(rangeOffsetIsValid) :| "range offset"
-  final val slotGen: Gen[Slot]         = chooseNum(0, SlotMaxValueWit.value).map(Slot.unsafeFrom) :| "slot"
-  final val stringLengthGen: Gen[Long] = chooseNum(0L, StringLengthMaxValueWit.value).filter(stringLengthIsValid) :| "string length"
+  final val nonZeroIntGen: Gen[Int]           = chooseNum(IMin, IMax).suchThat(_ != 0).filter(nonZeroIntIsValid) :| "int != 0"
+  final val nonZeroLongGen: Gen[Long]         = chooseNum(LMin, LMax).suchThat(_ != 0L).filter(nonZeroLongIsValid) :| "long != 0L"
+  final val portGen: Gen[Port]                = chooseNum(PortMinValueWit.value, PortMaxValueWit.value).map(Port.unsafeFrom) :| "port"
+  final val rangeOffsetGen: Gen[Int]          = chooseNum(0, RangeOffsetMaxValueWit.value).filter(rangeOffsetIsValid) :| "range offset"
+  final val slotGen: Gen[Slot]                = chooseNum(0, SlotMaxValueWit.value).map(Slot.unsafeFrom) :| "slot"
+  final val stringLengthGen: Gen[Long]        = chooseNum(0L, StringLengthMaxValueWit.value).filter(stringLengthIsValid) :| "string length"
   final val stringsWithSpacesGen: Gen[String] =
     strGen(listOf(frequency(1 -> spaceGen, 10 -> noSpaceUtf8BMPCharGen))).filterNot(connectionNameIsValid) :| "string w/ spaces"
   final val validDoubleGen: Gen[Double] = chooseNum(DMin, DMax).suchThat(_ != NaN) :| "double != NaN"
 
-  implicit final val connectionNameArb: Arbitrary[ConnectionName] = arbitraryRefType(connectionNameGen)
-  implicit final val directionArb: Arbitrary[Direction]           = Arbitrary(directionGen)
-  implicit final val geoHashArb: Arbitrary[GeoHash]               = arbitraryRefType(geoHashGen)
-  implicit final val globPatternArb: Arbitrary[GlobPattern]       = arbitraryRefType(globPatternGen)
-  implicit final val hostArb: Arbitrary[Host]                     = Arbitrary(hostGen)
-  implicit final val indexArb: Arbitrary[Index]                   = arbitraryRefType(arbitrary[Long])
-  implicit final val keyArb: Arbitrary[Key]                       = Arbitrary(keyGen)
+  implicit final val connectionNameArb: Arbitrary[ConnectionName]         = arbitraryRefType(connectionNameGen)
+  implicit final val directionArb: Arbitrary[Direction]                   = Arbitrary(directionGen)
+  implicit final val geoHashArb: Arbitrary[GeoHash]                       = arbitraryRefType(geoHashGen)
+  implicit final val globPatternArb: Arbitrary[GlobPattern]               = arbitraryRefType(globPatternGen)
+  implicit final val hostArb: Arbitrary[Host]                             = Arbitrary(hostGen)
+  implicit final val indexArb: Arbitrary[Index]                           = arbitraryRefType(arbitrary[Long])
+  implicit final val keyArb: Arbitrary[Key]                               = Arbitrary(keyGen)
   implicit final def kvArb[A](implicit A: Arbitrary[A]): Arbitrary[KV[A]] =
     Arbitrary(keyArb.arbitrary.flatMap(k => A.arbitrary.map(KV(k, _))))
   implicit final val nodeIdArb: Arbitrary[NodeId]               = arbitraryRefType(nodeIdGen)
@@ -172,7 +172,7 @@ abstract class BaseSpec
   implicit final val nonZeroDoubleArb: Arbitrary[NonZeroDouble] = arbitraryRefType(nonZeroDoubleGen)
   implicit final val nonZeroIntArb: Arbitrary[NonZeroInt]       = arbitraryRefType(nonZeroIntGen)
   implicit final val nonZeroLongArb: Arbitrary[NonZeroLong]     = arbitraryRefType(nonZeroLongGen)
-  implicit final val scanKeyArb: Arbitrary[Scan[Key]] =
+  implicit final val scanKeyArb: Arbitrary[Scan[Key]]           =
     Arbitrary(nonNegLongArb.arbitrary.flatMap(l => option(listOf(keyArb.arbitrary)).map(Scan(l, _))))
   implicit final val scanKVArb: Arbitrary[ScanKV] =
     Arbitrary(nonNegLongArb.arbitrary.flatMap(l => option(listOf(kvArb[String].arbitrary)).map(ScanKV(l, _))))

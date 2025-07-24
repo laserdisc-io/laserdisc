@@ -76,15 +76,15 @@ object RESPCodecsSpec {
 final class RESPCodecsSpec extends BaseSpec {
   import RESPCodecsSpec._
 
-  private[this] val smallNumGen: Gen[Int] = chooseNum(0, 20)
+  private[this] val smallNumGen: Gen[Int]         = chooseNum(0, 20)
   private[this] val invalidProtocolGen: Gen[Char] = {
     val exclusions = List('+', '-', ':', '$', '*')
     choose[Char](0, 127).suchThat(!exclusions.contains(_))
   } :| "invalid protocol discriminator"
-  private[this] val stringGen: Gen[String] = listOf(utf8BMPCharGen).map(_.mkString) :| "string"
-  private[this] val strGen: Gen[Str]       = stringGen.map(Str.apply) :| "simple string RESP"
-  private[this] val errGen: Gen[Err]       = stringGen.map(Err.apply) :| "error RESP"
-  private[this] val numGen: Gen[Num]       = arbitrary[Long].map(Num.apply) :| "integer RESP"
+  private[this] val stringGen: Gen[String]   = listOf(utf8BMPCharGen).map(_.mkString) :| "string"
+  private[this] val strGen: Gen[Str]         = stringGen.map(Str.apply) :| "simple string RESP"
+  private[this] val errGen: Gen[Err]         = stringGen.map(Err.apply) :| "error RESP"
+  private[this] val numGen: Gen[Num]         = arbitrary[Long].map(Num.apply) :| "integer RESP"
   private[this] val genBulkGen: Gen[GenBulk] = option(stringGen).map {
     case None    => NullBulk
     case Some(s) => Bulk(s)

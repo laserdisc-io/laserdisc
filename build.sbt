@@ -45,7 +45,6 @@ Global / excludeLintKeys += scalaJSLinkerConfig
 
 ThisBuild / tlBaseVersion              := "0.7"
 ThisBuild / tlCiReleaseBranches        := Seq("master")
-ThisBuild / sonatypeCredentialHost     := Sonatype.sonatypeLegacy
 ThisBuild / organization               := "io.laserdisc"
 ThisBuild / organizationName           := "LaserDisc"
 ThisBuild / licenses                   := Seq(License.MIT)

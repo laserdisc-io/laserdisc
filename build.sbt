@@ -1,6 +1,6 @@
 import sbtcrossproject.CrossProject
 
-val scala_212 = "2.12.20"
+val scala_212 = "2.12.21"
 val scala_213 = "2.13.16"
 
 val V = new {

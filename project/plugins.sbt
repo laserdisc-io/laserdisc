@@ -1,7 +1,7 @@
 addSbtPlugin("com.github.sbt"     % "sbt-boilerplate"          % "0.7.0")
 addSbtPlugin("net.virtual-void"   % "sbt-dependency-graph"     % "0.10.0-RC1")
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.3.2")
-addSbtPlugin("org.scala-js"       % "sbt-scalajs"              % "1.20.1")
+addSbtPlugin("org.scala-js"       % "sbt-scalajs"              % "1.20.2")
 addSbtPlugin("org.typelevel"      % "sbt-typelevel"            % "0.8.0")
 addSbtPlugin("org.typelevel"      % "sbt-typelevel-mergify"    % "0.8.0")
 addSbtPlugin("org.scoverage"      % "sbt-scoverage"            % "2.3.1")

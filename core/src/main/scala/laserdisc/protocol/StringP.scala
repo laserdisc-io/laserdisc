@@ -179,7 +179,7 @@ trait StringBaseP {
       ev1: N >= _1,
       ev2: LUBConstraint[L, FieldType[_, _]],
       ev3: RESPParamWrite[L]
-  ): Protocol.Aux[Boolean] = Protocol("MSETNX", gen.to(product)).as[Num, Boolean]
+  ): Protocol.Aux[Boolean]                                                      = Protocol("MSETNX", gen.to(product)).as[Num, Boolean]
   final def msetnx[A: Show](values: OneOrMore[(Key, A)]): Protocol.Aux[Boolean] =
     Protocol("MSETNX", values.value).as[Num, Boolean]
 

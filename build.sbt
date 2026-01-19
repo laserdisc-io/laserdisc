@@ -1,20 +1,20 @@
 import sbtcrossproject.CrossProject
 
-val scala_212 = "2.12.20"
-val scala_213 = "2.13.16"
+val scala_212 = "2.12.21"
+val scala_213 = "2.13.18"
 
 val V = new {
   val cats                   = "2.13.0"
   val `cats-effect`          = "3.6.3"
   val `cats-discipline`      = "1.7.0"
   val `discipline-munit`     = "2.0.0"
-  val circe                  = "0.14.14"
+  val circe                  = "0.14.15"
   val fs2                    = "3.12.2"
   val jedis                  = "3.2.0"
   val kittens                = "3.5.0"
   val `log-effect`           = "0.19.8"
-  val logback                = "1.5.15"
-  val munit                  = "1.2.0"
+  val logback                = "1.5.19"
+  val munit                  = "1.2.1"
   val `munit-cats-effect`    = "2.1.0"
   val `munit-scalacheck`     = "1.2.0"
   val `parallel-collections` = "1.2.0"

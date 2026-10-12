@@ -5,7 +5,7 @@ val scala_213 = "2.13.18"
 
 val V = new {
   val cats                   = "2.13.0"
-  val `cats-effect`          = "3.6.3"
+  val `cats-effect`          = "3.7.0"
   val `cats-discipline`      = "1.7.0"
   val `discipline-munit`     = "2.0.0"
   val circe                  = "0.14.15"
@@ -22,7 +22,7 @@ val V = new {
   val refined                = "0.11.4"
   val scalacheck             = "1.19.0"
   val `scala-redis`          = "3.30"
-  val `scodec-bits`          = "1.2.4"
+  val `scodec-bits`          = "1.2.5"
   val `scodec-core`          = "1.11.11"
   val `scodec-stream`        = "3.0.2"
   val scredis                = "2.3.3"

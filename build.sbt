@@ -5,10 +5,10 @@ val scala_213 = "2.13.18"
 
 val V = new {
   val cats                   = "2.13.0"
-  val `cats-effect`          = "3.7.0"
+  val `cats-effect`          = "3.7.1"
   val `cats-discipline`      = "1.7.0"
   val `discipline-munit`     = "2.0.0"
-  val circe                  = "0.14.15"
+  val circe                  = "0.14.17"
   val fs2                    = "3.12.2"
   val jedis                  = "3.2.0"
   val kittens                = "3.5.0"

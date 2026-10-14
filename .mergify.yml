@@ -12,10 +12,10 @@ pull_request_rules:
   - body~=labels:.*early-semver-patch
   - status-success=Test (ubuntu-22.04, 2.12, temurin@11, laserdiscJVM)
   - status-success=Test (ubuntu-22.04, 2.12, temurin@11, laserdiscJS)
-  - status-success=Test (ubuntu-22.04, 2.13, temurin@11, laserdiscJVM)
-  - status-success=Test (ubuntu-22.04, 2.13, temurin@11, laserdiscJS)
-  - status-success=Test (ubuntu-22.04, 2.13, temurin@17, laserdiscJVM)
-  - status-success=Test (ubuntu-22.04, 2.13, temurin@21, laserdiscJVM)
+  - status-success=Test (ubuntu-22.04, 3, temurin@11, laserdiscJVM)
+  - status-success=Test (ubuntu-22.04, 3, temurin@11, laserdiscJS)
+  - status-success=Test (ubuntu-22.04, 3, temurin@17, laserdiscJVM)
+  - status-success=Test (ubuntu-22.04, 3, temurin@21, laserdiscJVM)
   actions:
     merge:
       method: squash

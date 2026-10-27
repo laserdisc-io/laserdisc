@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        scala: [2.12, 2.13]
+        scala: [2.12, 3]
         java: [temurin@11, temurin@17, temurin@21]
         project: [laserdiscJVM, laserdiscJS]
         exclude:
@@ -213,22 +213,22 @@ jobs:
           tar xf targets.tar
           rm targets.tar
 
-      - name: Download target directories (2.13, laserdiscJVM)
+      - name: Download target directories (3, laserdiscJVM)
         uses: actions/download-artifact@v6
         with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-2.13-laserdiscJVM
+          name: target-${{ matrix.os }}-${{ matrix.java }}-3-laserdiscJVM
 
-      - name: Inflate target directories (2.13, laserdiscJVM)
+      - name: Inflate target directories (3, laserdiscJVM)
         run: |
           tar xf targets.tar
           rm targets.tar
 
-      - name: Download target directories (2.13, laserdiscJS)
+      - name: Download target directories (3, laserdiscJS)
         uses: actions/download-artifact@v6
         with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-2.13-laserdiscJS
+          name: target-${{ matrix.os }}-${{ matrix.java }}-3-laserdiscJS
 
-      - name: Inflate target directories (2.13, laserdiscJS)
+      - name: Inflate target directories (3, laserdiscJS)
         run: |
           tar xf targets.tar
           rm targets.tar
@@ -316,5 +316,5 @@ jobs:
       - name: Submit Dependencies
         uses: scalacenter/sbt-dependency-submission@v2
         with:
-          modules-ignore: fs2-bench_2.12 fs2-bench_2.13 laserdiscjvm_2.12 laserdiscjvm_2.13 laserdiscnative_2.12 laserdiscnative_2.13 laserdisc-laws_2.12 laserdisc-laws_2.13 core-bench_2.12 core-bench_2.13 laserdisc-laws_sjs1_2.12 laserdisc-laws_sjs1_2.13 laserdiscjs_2.12 laserdiscjs_2.13
+          modules-ignore: fs2-bench_2.12 fs2-bench_3 laserdiscjvm_2.12 laserdiscjvm_3 laserdiscnative_2.12 laserdiscnative_3 laserdisc-laws_2.12 laserdisc-laws_3 core-bench_2.12 core-bench_3 laserdisc-laws_sjs1_2.12 laserdisc-laws_sjs1_3 laserdiscjs_2.12 laserdiscjs_3
           configs-ignore: test scala-tool scala-doc-tool test-internal

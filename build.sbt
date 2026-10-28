@@ -13,7 +13,7 @@ val V = new {
   val jedis                  = "3.2.0"
   val kittens                = "3.5.0"
   val `log-effect`           = "0.19.9"
-  val logback                = "1.5.26"
+  val logback                = "1.6.6"
   val munit                  = "1.3.6"
   val `munit-cats-effect`    = "2.2.1"
   val `munit-scalacheck`     = "1.3.1"
@@ -27,7 +27,7 @@ val V = new {
   val `scodec-stream`        = "3.0.2"
   val scredis                = "2.3.3"
   val shapeless              = "2.3.13"
-  val slf4j                  = "2.0.16"
+  val slf4j                  = "2.0.20"
 }
 
 // found this suggestion here

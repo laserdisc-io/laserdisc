@@ -56,6 +56,13 @@ final class RESPReadSpec extends BaseSpec {
     assertEquals(optArr.read(NilArr), None)
   }
 
+  test("raw RESPRead reads any reply as is, except errors") {
+    List(Str("OK"), Bulk("b"), Num(1L), NullBulk, NilArr, Arr(Bulk("a"), Num(2L))).foreach(resp =>
+      assertEquals(RESPRead.raw.read(resp), resp)
+    )
+    assertLeftEquals(RESPRead.raw.read(Err("boom")), Err("boom"))
+  }
+
   test("nullable RESPRead does not accept the wrong null") {
     assertLeftEquals(optBulk.read(NilArr), RESPDecErr("RESP type(s) did not match: NilArr"))
     assertLeftEquals(optArr.read(NullBulk), RESPDecErr("RESP type(s) did not match: NullBulk"))

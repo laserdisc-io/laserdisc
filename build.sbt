@@ -206,7 +206,8 @@ lazy val cli = laserdiscCrossModule("cli")
     libraryDependencies ++= Seq(
       "co.fs2"        %%% "fs2-io"      % V.fs2,
       "org.typelevel" %%% "cats-core"   % V.cats,
-      "org.typelevel" %%% "cats-effect" % V.`cats-effect`
+      "org.typelevel" %%% "cats-effect" % V.`cats-effect`,
+      "org.scalameta" %%% "munit"       % V.munit % Test
     )
   )
 

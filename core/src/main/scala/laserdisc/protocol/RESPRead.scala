@@ -106,4 +106,15 @@ object RESPRead {
     }
 
   implicit final def derive[A: RESPSub, B](implicit R: Read[A, B]): RESPRead.Aux[A, B] = instance(R)
+
+  /** Reads whatever Redis replies with as is ([[Err]] still being a failure), for commands without a dedicated [[Protocol]] (e.g. the CLI)
+    */
+  private[laserdisc] final val raw: RESPRead.Aux[RESP, RESP] =
+    new RESPRead[RESP] {
+      override final type Sub = RESP
+      override final def read(resp: RESP): Maybe[RESP] = resp match {
+        case err: Err => Left(err)
+        case other    => Right(other)
+      }
+    }
 }

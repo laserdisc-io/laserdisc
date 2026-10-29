@@ -26,9 +26,7 @@ import _root_.fs2.{io, text}
 import cats.effect.*
 import cats.syntax.all.*
 import laserdisc.fs2.*
-
-import scala.reflect.runtime.universe
-import scala.tools.reflect.ToolBox
+import laserdisc.protocol.RESPRead
 
 object CLI extends IOApp { self =>
 
@@ -93,8 +91,6 @@ object CLI extends IOApp { self =>
     }
 
   private[cli] object impl {
-    private[this] val tb = universe.runtimeMirror(self.getClass.getClassLoader).mkToolBox()
-
     def mkStream(host: Host, port: Port): Stream[IO, ExitCode] =
       Stream.resource(RedisClient[IO].to(host, port)).evalMap { redisClient =>
         val promptStream: Stream[IO, String] = Stream.emit(s"$host:$port> ").repeat
@@ -119,27 +115,12 @@ object CLI extends IOApp { self =>
           def unapply(nanos: Long): Option[Double] = Some(nanos.toDouble / 1000000d)
         }
 
-        val protocol: Pipe[IO, String, Protocol] = {
-          def mkProtocol(code: String): IO[Maybe[Protocol]] =
-            IO.delay {
-              tb.eval {
-                tb.parse {
-                  s"""import laserdisc.*
-                        |import laserdisc.auto.*
-                        |import laserdisc.all.*
-                        |import laserdisc.fs2.*
-                        |
-                        |$code
-                        |""".stripMargin
-                }
-              }.asInstanceOf[Protocol]
-            }.attempt
-
-          _.evalMap(mkProtocol).flatMap {
-            case Left(t)  => Stream.exec(prompt(s"${t.getLocalizedMessage}$LF"))
-            case Right(p) => Stream.emit(p)
+        val protocol: Pipe[IO, String, Protocol.Aux[RESP]] =
+          _.map(CommandLine.parse).flatMap {
+            case Left(error)            => Stream.exec(prompt(s"(error) $error$LF"))
+            case Right(Nil)             => Stream.exec(emptyPrompt)
+            case Right(command :: args) => Stream.emit(Protocol(command, args).using(RESPRead.raw))
           }
-        }
 
         val bufSize = 10 * 1024
 
@@ -151,13 +132,14 @@ object CLI extends IOApp { self =>
             .evalMap { protocol =>
               for {
                 startTime             <- IO(System.nanoTime())
-                maybeProtocolResponse <- redisClient.send(protocol.asInstanceOf[Protocol.Aux[protocol.A]])
+                maybeProtocolResponse <- redisClient.send(protocol)
                 endTime               <- IO(System.nanoTime())
-              } yield maybeProtocolResponse.asInstanceOf[Maybe[Any]] -> (endTime - startTime)
+              } yield maybeProtocolResponse -> (endTime - startTime)
             }
             .evalMap {
+              case (Left(err: Err), ToMillis(ms))  => prompt(f"<<< ${RESPFormat.format(err)} - [$ms%.2fms]$LF")
               case (Left(e), ToMillis(ms))         => prompt(f"<<< ERROR ${e.getLocalizedMessage} - [$ms%.2fms]$LF")
-              case (Right(response), ToMillis(ms)) => prompt(f"<<< $response - [$ms%.2fms]$LF")
+              case (Right(response), ToMillis(ms)) => prompt(f"<<< ${RESPFormat.format(response)} - [$ms%.2fms]$LF")
               case (_, _)                          => absurd
             }
             .compile

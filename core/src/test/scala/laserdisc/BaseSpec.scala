@@ -203,6 +203,12 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
     if (isScala3) assert(obtained.contains(scala3), s"expected a compile error containing [$scala3] but got:\n$obtained")
     else assertNoDiff(obtained, scala2)
 
+  /** Like [[assertCompileErrors]], for errors whose exact Scala 2 text also varies between 2.12 and 2.13 */
+  protected final def assertCompileErrorsContain(obtained: String, scala2: String, scala3: String)(implicit loc: munit.Location): Unit = {
+    val expected = if (isScala3) scala3 else scala2
+    assert(obtained.contains(expected), s"expected a compile error containing [$expected] but got:\n$obtained")
+  }
+
   protected[this] implicit final class EitherSyntax[A, B](private val eab: Either[A, B]) {
     def onRight[C](f: B => Boolean): Unit =
       eab.fold(err => fail(s"It Should be right but was left with $err"), b => assert(f(b)))

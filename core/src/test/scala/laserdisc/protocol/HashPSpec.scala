@@ -180,16 +180,9 @@ abstract class HashPSpec extends BaseSpec with HashP {
   }
 
   test("The Hash protocol using hmset fails to compile given key and EmptyTuple") {
-    assertCompileErrors(
+    assertCompileErrorsContain(
       compileErrors("""hmset(Key("a"), EmptyTuple)"""),
-      """|error:
-         |ambiguous implicit values:
-         | both method nsubAmbig1 in package laserdisc of type [A, B >: A]A <:!< B
-         | and method nsubAmbig2 in package laserdisc of type [A, B >: A]A <:!< B
-         | match expected type shapeless.HNil <:!< laserdisc.EmptyTuple
-         |hmset(Key("a"), EmptyTuple)
-         |     ^
-         |""".stripMargin,
+      "match expected type shapeless.HNil <:!< laserdisc.EmptyTuple",
       "error: EmptyTuple must not be a subtype of EmptyTuple.type"
     )
   }

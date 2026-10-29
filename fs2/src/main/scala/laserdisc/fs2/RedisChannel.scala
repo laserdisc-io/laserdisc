@@ -56,7 +56,7 @@ object RedisChannel {
       address: SocketAddress[Host],
       receiveBufferSizeBytes: Int
   ): Resource[F, Socket[F]] =
-    Network[F].client(address, PlatformDependent.socketOptions(receiveBufferSizeBytes))
+    Network[F].connect(address, PlatformDependent.socketOptions(receiveBufferSizeBytes))
 
   private object impl {
     def send[F[_]: MonadThrow](socketWrite: Chunk[Byte] => F[Unit])(

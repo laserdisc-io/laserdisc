@@ -1,4 +1,4 @@
-import sbtcrossproject.CrossProject
+import sbtcrossproject.{CrossProject, Platform}
 
 val scala_212 = "2.12.21"
 val scala_213 = "2.13.18"
@@ -82,11 +82,12 @@ lazy val commonSettings = Seq(
   scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
 )
 
-def laserdiscCrossModule(path: String) = {
+// fs2 (and cli, which depends on it) aren't on Scala Native yet: log-effect isn't published for it (laserdisc-io/log-effect#780)
+def laserdiscCrossModule(path: String, platforms: Platform*) = {
   val pathBits    = path.split("[-/]")
   val id          = pathBits.reduce(_ + _.capitalize)
   val namePartial = pathBits.reverse.mkString("-")
-  CrossProject(id, file(path))(JVMPlatform, JSPlatform)
+  CrossProject(id, file(path))((if (platforms.isEmpty) Seq(JVMPlatform, JSPlatform) else platforms): _*)
     .crossType(CrossType.Pure)
     .withoutSuffixFor(JVMPlatform)
     .settings(commonSettings)
@@ -116,7 +117,7 @@ lazy val laserdisc = tlCrossRootProject
   .aggregate(core, laws, fs2, cli, circe, `core-bench`, `fs2-bench`)
   .settings(commonSettings)
 
-lazy val core = laserdiscCrossModule("core")
+lazy val core = laserdiscCrossModule("core", JVMPlatform, JSPlatform, NativePlatform)
   .settings(
     libraryDependencies ++= Seq(
       "org.scodec"     %%% "scodec-bits"        % V.`scodec-bits`,
@@ -147,7 +148,7 @@ lazy val core = laserdiscCrossModule("core")
       |""".stripMargin
   )
 
-lazy val laws = laserdiscCrossModule("laws")
+lazy val laws = laserdiscCrossModule("laws", JVMPlatform, JSPlatform, NativePlatform)
   .dependsOn(core)
   .enablePlugins(NoPublishPlugin)
   .settings(
@@ -211,7 +212,7 @@ lazy val cli = laserdiscCrossModule("cli")
     )
   )
 
-lazy val circe = laserdiscCrossModule("circe")
+lazy val circe = laserdiscCrossModule("circe", JVMPlatform, JSPlatform, NativePlatform)
   .dependsOn(core)
   .settings(
     libraryDependencies ++= Seq(

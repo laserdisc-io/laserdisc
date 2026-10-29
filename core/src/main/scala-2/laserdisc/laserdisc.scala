@@ -54,8 +54,7 @@ package object laserdisc {
   type LUBConstraint[L <: Tuple, A] = shapeless.LUBConstraint[L, A]
 
   // Basic type aliases
-  final type |[+A, +B] = Either[A, B]
-  final type Maybe[A]  = Throwable | A
+  final type Maybe[A] = Either[Throwable, A]
 
   // Type forwarders
   final type Arr        = protocol.Arr
@@ -179,9 +178,9 @@ package object laserdisc {
 
   // New types' ops
   object OneOrMore {
-    def from[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): String | OneOrMore[A] = rt.refine(l)
-    def unapply[A](l: List[A]): Option[OneOrMore[A]]                                                     = from(l).toOption
-    def unsafeFrom[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): OneOrMore[A]    = rt.unsafeRefine(l)
+    def from[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): Either[String, OneOrMore[A]] = rt.refine(l)
+    def unapply[A](l: List[A]): Option[OneOrMore[A]]                                                            = from(l).toOption
+    def unsafeFrom[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): OneOrMore[A]           = rt.unsafeRefine(l)
   }
 
   object ConnectionName        extends RefinedTypeOps[ConnectionName, String]

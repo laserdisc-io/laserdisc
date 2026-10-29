@@ -70,7 +70,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
       scanKey.values.fold(NilArr: GenArr)(ks => Arr(ks.map(k => Bulk(k.value)).toList))
     )
 
-  protected final val noKeyOrOkToStr: (NOKEY | OK) => Str = {
+  protected final val noKeyOrOkToStr: Either[NOKEY, OK] => Str = {
     case Left(_)  => Str(NOKEY.value)
     case Right(_) => Str(OK.value)
   }
@@ -78,7 +78,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   protected implicit final val keyMigrateModeArb: Arbitrary[KeyMigrateMode] = Arbitrary {
     Gen.oneOf(KeyMigrateMode.both, KeyMigrateMode.copy, KeyMigrateMode.replace)
   }
-  protected implicit final val nokeyOrOkArb: Arbitrary[NOKEY | OK] = Arbitrary(
+  protected implicit final val nokeyOrOkArb: Arbitrary[Either[NOKEY, OK]] = Arbitrary(
     Gen.oneOf(NOKEY, OK).map {
       case NOKEY => Left(NOKEY)
       case OK    => Right(OK)
@@ -135,7 +135,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using migrate roundtrips successfully given key, host, port, db index and timeout") {
-    forAll { (k: Key, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: NOKEY | OK) =>
+    forAll { (k: Key, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: Either[NOKEY, OK]) =>
       val protocol = migrate(k, h, p, dbi, nni)
       assertEquals(protocol.encode, Arr(Bulk("MIGRATE"), Bulk(h), Bulk(p), Bulk(k), Bulk(dbi), Bulk(nni)))
       assertEquals(protocol.decode(noKeyOrOkToStr(nkOrOk)), nkOrOk)
@@ -143,7 +143,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using migrate roundtrips successfully given keys, host, port, db index and timeout") {
-    forAll { (ks: TwoOrMoreKeys, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: NOKEY | OK) =>
+    forAll { (ks: TwoOrMoreKeys, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: Either[NOKEY, OK]) =>
       val protocol = migrate(ks, h, p, dbi, nni)
       assertEquals(
         protocol.encode,
@@ -163,7 +163,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using migrate roundtrips successfully given key, host, port, db index, timeout and migrate mode") {
-    forAll { (input: (Key, Host, Port, DbIndex, NonNegInt, NOKEY | OK), mm: KeyMigrateMode) =>
+    forAll { (input: (Key, Host, Port, DbIndex, NonNegInt, Either[NOKEY, OK]), mm: KeyMigrateMode) =>
       val (k, h, p, dbi, nni, nkOrOk) = input
       val protocol                    = migrate(k, h, p, dbi, nni, mm)
       assertEquals(
@@ -175,7 +175,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using migrate roundtrips successfully given keys, host, port, db index, timeout and migrate mode") {
-    forAll { (input: (TwoOrMoreKeys, Host, Port, DbIndex, NonNegInt, NOKEY | OK), mm: KeyMigrateMode) =>
+    forAll { (input: (TwoOrMoreKeys, Host, Port, DbIndex, NonNegInt, Either[NOKEY, OK]), mm: KeyMigrateMode) =>
       val (ks, h, p, dbi, nni, nkOrOk) = input
       val protocol                     = migrate(ks, h, p, dbi, nni, mm)
       assertEquals(

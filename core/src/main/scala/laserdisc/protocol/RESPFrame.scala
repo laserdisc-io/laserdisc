@@ -29,8 +29,8 @@ import scodec.bits.BitVector
 import scala.annotation.tailrec
 
 private[laserdisc] sealed trait RESPFrame extends Product with Serializable with EitherSyntax with BitVectorSyntax {
-  def append(bits: BitVector): Exception | NonEmptyRESPFrame                    = nextFrame(bits)
-  protected final def nextFrame(bits: BitVector): Exception | NonEmptyRESPFrame =
+  def append(bits: BitVector): Either[Exception, NonEmptyRESPFrame]                    = nextFrame(bits)
+  protected final def nextFrame(bits: BitVector): Either[Exception, NonEmptyRESPFrame] =
     stateOf(bits) match {
       case Right(MissingBits(n))              => Right(IncompleteFrame(bits, n))
       case Right(Incomplete)                  => Right(IncompleteFrame(bits, 0L))
@@ -39,7 +39,7 @@ private[laserdisc] sealed trait RESPFrame extends Product with Serializable with
       case Left(e) => Left(UnknownBufferState(s"Err building the frame from buffer: $e. Content: ${bits.tailToUtf8}"))
     }
 
-  @tailrec private[this] final def consumeRemainder(current: MoreThanOneFrame): Exception | MoreThanOneFrame =
+  @tailrec private[this] final def consumeRemainder(current: MoreThanOneFrame): Either[Exception, MoreThanOneFrame] =
     stateOf(current.remainder) match {
       case Right(CompleteWithRemainder(c, r)) => consumeRemainder(MoreThanOneFrame(current.complete :+ CompleteFrame(c), r))
       case Right(Complete) => Right(MoreThanOneFrame(current.complete :+ CompleteFrame(current.remainder), BitVector.empty))
@@ -55,7 +55,7 @@ private[laserdisc] final case class CompleteFrame(bits: BitVector) extends NonEm
 private[laserdisc] final case class MoreThanOneFrame(private[laserdisc] val complete: Vector[CompleteFrame], remainder: BitVector)
     extends NonEmptyRESPFrame
 private[laserdisc] final case class IncompleteFrame(partial: BitVector, bitsToComplete: Long) extends NonEmptyRESPFrame {
-  override def append(bits: BitVector): Exception | NonEmptyRESPFrame =
+  override def append(bits: BitVector): Either[Exception, NonEmptyRESPFrame] =
     //  Saves some size checks
     if (bitsToComplete > 0 && bitsToComplete == bits.size) Right(CompleteFrame(partial ++ bits))
     else nextFrame(partial ++ bits)

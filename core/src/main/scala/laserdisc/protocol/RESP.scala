@@ -294,10 +294,10 @@ sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
 
   import BitVectorDecoding.*
 
-  private[this] final val readDiscriminator: BitVector => ((BitVector, BitVector) => String | State) => String | State =
+  private[this] final val readDiscriminator: BitVector => ((BitVector, BitVector) => Either[String, State]) => Either[String, State] =
     bits => f => bits.consumeThen(BitsInByte)(_.asLeft, f)
 
-  final val stateOf: BitVector => String | State = bits =>
+  final val stateOf: BitVector => Either[String, State] = bits =>
     readDiscriminator(bits) {
       case (`plus` | `minus` | `colon`, _) =>
         val eomIndex = bits.bytes.indexOfSlice(crlfBytes, from = 0L)
@@ -334,7 +334,7 @@ sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
     }
 
   @tailrec
-  private[this] final def stateOfArr(missing: Long, remainder: BitVector, bits: BitVector): String | State =
+  private[this] final def stateOfArr(missing: Long, remainder: BitVector, bits: BitVector): Either[String, State] =
     missing match {
       case 0L =>
         if (remainder.isEmpty) Right(Complete)
@@ -352,12 +352,14 @@ sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
         }
     }
 
-  private[this] final def evalWithSizeDecodedFrom[A](bits: BitVector)(f: (Incomplete | DecodeResult[Repr[Long]]) => A): String | A =
+  private[this] final def evalWithSizeDecodedFrom[A](bits: BitVector)(
+      f: Either[Incomplete, DecodeResult[Repr[Long]]] => A
+  ): Either[String, A] =
     attemptEvalWithSizeDecodedFrom(bits)(x => Right(f(x)))
 
   private[this] final def attemptEvalWithSizeDecodedFrom[A](bits: BitVector)(
-      f: (Incomplete | DecodeResult[Repr[Long]]) => String | A
-  ): String | A =
+      f: Either[Incomplete, DecodeResult[Repr[Long]]] => Either[String, A]
+  ): Either[String, A] =
     crlfTerminatedReprOfLongDecoder
       .decode(bits)
       .fold(

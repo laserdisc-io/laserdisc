@@ -97,7 +97,7 @@ object RedisClient {
         redisNetChannel: RedisAddress => Pipe[F, RESP, RESP],
         leader: F[Option[RedisAddress]]
     )(implicit logSelector: LogSelector[F]): Resource[F, Connection[F]] =
-      Resource.eval(Deferred[F, Throwable | Unit]).flatMap { termSignal =>
+      Resource.eval(Deferred[F, Either[Throwable, Unit]]).flatMap { termSignal =>
         Resource.eval(Queue.bounded[F, Request[F]](1024)).flatMap { queue =>
           Resource.eval(Ref.of[F, Vector[Request[F]]](Vector.empty)).flatMap { inFlight =>
             val log                            = logSelector.log

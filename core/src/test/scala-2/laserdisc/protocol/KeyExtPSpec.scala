@@ -98,7 +98,7 @@ final class KeyExtPSpec extends KeyPSpec {
     }
   }
   property("The Key extended protocol using migrate roundtrips successfully given key1, key2, host, port, db index and timeout") {
-    forAll { (keys: (Key, Key), input: (Host, Port, DbIndex, NonNegInt, NOKEY | OK)) =>
+    forAll { (keys: (Key, Key), input: (Host, Port, DbIndex, NonNegInt, Either[NOKEY, OK])) =>
       val (k1, k2)                 = keys
       val (h, p, dbi, nni, nkOrOk) = input
       val protocol                 = migrate(k1, k2, h, p, dbi, nni)
@@ -112,7 +112,7 @@ final class KeyExtPSpec extends KeyPSpec {
     }
   }
   property("The Key extended protocol using migrate roundtrips successfully given key1, key2, key3, host, port, db index and timeout") {
-    forAll { (keys: (Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, NOKEY | OK)) =>
+    forAll { (keys: (Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, Either[NOKEY, OK])) =>
       val (k1, k2, k3)             = keys
       val (h, p, dbi, nni, nkOrOk) = input
       val protocol                 = migrate(k1, k2, k3, h, p, dbi, nni)
@@ -130,7 +130,7 @@ final class KeyExtPSpec extends KeyPSpec {
   property(
     "The Key extended protocol using migrate roundtrips successfully given key1, key2, key3, key4, host, port, db index and timeout"
   ) {
-    forAll { (keys: (Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, NOKEY | OK)) =>
+    forAll { (keys: (Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, Either[NOKEY, OK])) =>
       val (k1, k2, k3, k4)         = keys
       val (h, p, dbi, nni, nkOrOk) = input
       val protocol                 = migrate(k1, k2, k3, k4, h, p, dbi, nni)
@@ -148,7 +148,7 @@ final class KeyExtPSpec extends KeyPSpec {
   property(
     "The Key extended protocol using migrate roundtrips successfully given key1, key2, key3, key4, key5, host, port, db index and timeout"
   ) {
-    forAll { (keys: (Key, Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, NOKEY | OK)) =>
+    forAll { (keys: (Key, Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, Either[NOKEY, OK])) =>
       val (k1, k2, k3, k4, k5)     = keys
       val (h, p, dbi, nni, nkOrOk) = input
       val protocol                 = migrate(k1, k2, k3, k4, k5, h, p, dbi, nni)
@@ -166,7 +166,7 @@ final class KeyExtPSpec extends KeyPSpec {
   property(
     "The Key extended protocol using migrate roundtrips successfully given key1, key2, key3, key4, key5, key6, host, port, db index and timeout"
   ) {
-    forAll { (keys: (Key, Key, Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, NOKEY | OK)) =>
+    forAll { (keys: (Key, Key, Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, Either[NOKEY, OK])) =>
       val (k1, k2, k3, k4, k5, k6) = keys
       val (h, p, dbi, nni, nkOrOk) = input
       val protocol                 = migrate(k1, k2, k3, k4, k5, k6, h, p, dbi, nni)
@@ -184,7 +184,7 @@ final class KeyExtPSpec extends KeyPSpec {
   property(
     "The Key extended protocol using migrate roundtrips successfully given key1, key2, host, port, db index, timeout and migrate mode"
   ) {
-    forAll { (keys: (Key, Key), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, NOKEY | OK)) =>
+    forAll { (keys: (Key, Key), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, Either[NOKEY, OK])) =>
       val (k1, k2)                     = keys
       val (h, p, dbi, nni, mm, nkOrOk) = input
       val protocol                     = migrate(k1, k2, h, p, dbi, nni, mm)
@@ -201,7 +201,7 @@ final class KeyExtPSpec extends KeyPSpec {
   property(
     "The Key extended protocol using migrate roundtrips successfully given key1, key2, key3, host, port, db index, timeout and migrate mode"
   ) {
-    forAll { (keys: (Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, NOKEY | OK)) =>
+    forAll { (keys: (Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, Either[NOKEY, OK])) =>
       val (k1, k2, k3)                 = keys
       val (h, p, dbi, nni, mm, nkOrOk) = input
       val protocol                     = migrate(k1, k2, k3, h, p, dbi, nni, mm)
@@ -218,7 +218,7 @@ final class KeyExtPSpec extends KeyPSpec {
   property(
     "The Key extended protocol using migrate roundtrips successfully given key1, key2, key3, key4, host, port, db index, timeout and migrate mode"
   ) {
-    forAll { (keys: (Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, NOKEY | OK)) =>
+    forAll { (keys: (Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, Either[NOKEY, OK])) =>
       val (k1, k2, k3, k4)             = keys
       val (h, p, dbi, nni, mm, nkOrOk) = input
       val protocol                     = migrate(k1, k2, k3, k4, h, p, dbi, nni, mm)
@@ -235,7 +235,7 @@ final class KeyExtPSpec extends KeyPSpec {
   property(
     "The Key extended protocol using migrate roundtrips successfully given key1, key2, key3, key4, key5, host, port, db index, timeout and migrate mode"
   ) {
-    forAll { (keys: (Key, Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, NOKEY | OK)) =>
+    forAll { (keys: (Key, Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, Either[NOKEY, OK])) =>
       val (k1, k2, k3, k4, k5)         = keys
       val (h, p, dbi, nni, mm, nkOrOk) = input
       val protocol                     = migrate(k1, k2, k3, k4, k5, h, p, dbi, nni, mm)
@@ -252,7 +252,7 @@ final class KeyExtPSpec extends KeyPSpec {
   property(
     "The Key extended protocol using migrate roundtrips successfully given key1, key2, key3, key4, key5, key6, host, port, db index, timeout and migrate mode"
   ) {
-    forAll { (keys: (Key, Key, Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, NOKEY | OK)) =>
+    forAll { (keys: (Key, Key, Key, Key, Key, Key), input: (Host, Port, DbIndex, NonNegInt, KeyMigrateMode, Either[NOKEY, OK])) =>
       val (k1, k2, k3, k4, k5, k6)     = keys
       val (h, p, dbi, nni, mm, nkOrOk) = input
       val protocol                     = migrate(k1, k2, k3, k4, k5, k6, h, p, dbi, nni, mm)

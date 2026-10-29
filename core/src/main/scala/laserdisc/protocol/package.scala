@@ -30,7 +30,7 @@ package object protocol {
   }
 
   private[protocol] val KVPS: Read[Seq[String], List[(String, String)]] = Read.instance { ss =>
-    ss.foldRight[RESPDecErr | (List[(String, String)], Int)](Right(Nil -> 0)) {
+    ss.foldRight[Either[RESPDecErr, (List[(String, String)], Int)]](Right(Nil -> 0)) {
       case (KVP(Right((k, v))), Right((kvs, kvl))) => Right(((k -> v) :: kvs) -> (kvl + 1))
       case (KVP(Left(e)), Right((_, kvl)))         =>
         Left(

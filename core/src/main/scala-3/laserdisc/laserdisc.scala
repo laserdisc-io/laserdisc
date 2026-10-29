@@ -30,8 +30,7 @@ import scala.annotation.{implicitNotFound, nowarn}
 import scala.util.NotGiven
 
 // Basic type aliases
-final type |[+A, +B] = Either[A, B]
-final type Maybe[A]  = Throwable | A
+final type Maybe[A] = Either[Throwable, A]
 
 // Export all protocol
 export protocol.{Arr, Bulk, Err, NilArr, NullBulk, Num, Protocol, RESP, RESPDecErr, Read, Show, Str}
@@ -40,10 +39,6 @@ final type NullBulk = protocol.NullBulk.type
 
 // Specialized type lambda
 final type ReadArrToSeq[A] = Read[Arr, Seq[A]]
-
-// `|` is Either within laserdisc (see above), so iron's union / intersection constraints are spelled refined-style
-private final infix type Or[A, B]  = scala.|[A, B]
-private final infix type And[A, B] = A & B
 
 private final type NoControlChar = Not[ControlChar]
 private final type NoWhitespace  = Not[WhitespaceChar]
@@ -91,28 +86,28 @@ final val StringLengthMaxValueWit = 4294967295L
 
 // Refinements
 private final type IPv4Ref        = Match["^(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)){3}$"]
-private final type Rfc1918Ref     = IPv4Ref And (Match["^10\\..*"] Or Match["^172\\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31)\\..+"] Or Match["^192\\.168\\..*"])
-private final type Rfc5737Ref     = IPv4Ref And (Match["^192\\.0\\.2\\..*"] Or Match["^198\\.51\\.100\\..*"] Or Match["^203\\.0\\.113\\..*"])
-private final type Rfc3927Ref     = IPv4Ref And Match["^169\\.254\\..*"]
-private final type Rfc2544Ref     = IPv4Ref And (Match["^198\\.18\\..*"] Or Match["^198\\.19\\..*"])
+private final type Rfc1918Ref     = IPv4Ref & (Match["^10\\..*"] | Match["^172\\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31)\\..+"] | Match["^192\\.168\\..*"])
+private final type Rfc5737Ref     = IPv4Ref & (Match["^192\\.0\\.2\\..*"] | Match["^198\\.51\\.100\\..*"] | Match["^203\\.0\\.113\\..*"])
+private final type Rfc3927Ref     = IPv4Ref & Match["^169\\.254\\..*"]
+private final type Rfc2544Ref     = IPv4Ref & (Match["^198\\.18\\..*"] | Match["^198\\.19\\..*"])
 private final type ValidDoubleRef = Not[NaN]
 
-final type ConnectionNameRef = MinLength[1] And ForAll[NoWhitespace And NoControlChar]
+final type ConnectionNameRef = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
 final type DbIndexRef        = Interval.Closed[0, DbIndexMaxValueWit.type]
 final type GeoHashRef        = Match[GeoHashRegexWit.type]
 final type GlobPatternRef    = Match[GlobPatternRegexWit.type]
-final type HostRef           = StrictEqual[AllNICsEqWit.type] Or StrictEqual[LoopbackEqWit.type] Or
-  (Not[IPv4Ref] And MaxLength[Rfc1123HostnameMaxLengthWit.type] And Match[Rfc1123HostnameRegexWit.type]) Or Rfc1918Ref Or Rfc5737Ref Or
-  Rfc3927Ref Or Rfc2544Ref
+final type HostRef           = StrictEqual[AllNICsEqWit.type] | StrictEqual[LoopbackEqWit.type] |
+  (Not[IPv4Ref] & MaxLength[Rfc1123HostnameMaxLengthWit.type] & Match[Rfc1123HostnameRegexWit.type]) | Rfc1918Ref | Rfc5737Ref |
+  Rfc3927Ref | Rfc2544Ref
 final type IndexRef         = Pure
-final type KeyRef           = MinLength[1] And ForAll[NoControlChar]
+final type KeyRef           = MinLength[1] & ForAll[NoControlChar]
 final type LatitudeRef      = Interval.Closed[LatitudeMinValueWit.type, LatitudeMaxValueWit.type]
 final type LongitudeRef     = Interval.Closed[LongitudeMinValueWit.type, LongitudeMaxValueWit.type]
 final type NodeIdRef        = Match[NodeIdRegexWit.type]
 final type NOKEYRef         = StrictEqual[NOKEYEqWit.type]
 final type NonNegRef        = Positive0
-final type NonNegDoubleRef  = ValidDoubleRef And Positive0
-final type NonZeroDoubleRef = ValidDoubleRef And Not[StrictEqual[0.0d]]
+final type NonNegDoubleRef  = ValidDoubleRef & Positive0
+final type NonZeroDoubleRef = ValidDoubleRef & Not[StrictEqual[0.0d]]
 final type NonZeroIntRef    = Not[StrictEqual[0]]
 final type NonZeroLongRef   = Not[StrictEqual[0L]]
 final type OKRef            = StrictEqual[OKEqWit.type]

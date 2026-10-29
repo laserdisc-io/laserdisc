@@ -48,7 +48,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   }
 
   private[this] type RawNode =
-    (String, EmptyString | Host, Port, Option[Port], Seq[String], String, Int, Int, Int, String, Seq[String])
+    (String, Either[EmptyString, Host], Port, Option[Port], Seq[String], String, Int, Int, Int, String, Seq[String])
   private[this] type RawNodes = List[RawNode]
   private[this] val rawNodeToString: RawNode => String = {
     case (nid, h, p, None, fs, mnid, ps, pr, ce, l, ss) =>
@@ -123,7 +123,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
             )
         }
 
-  private[this] type RawSlot  = (Slot, Slot, Seq[(EmptyString | Host, Port, Option[NodeId])])
+  private[this] type RawSlot  = (Slot, Slot, Seq[(Either[EmptyString, Host], Port, Option[NodeId])])
   private[this] type RawSlots = List[RawSlot]
   private[this] val slotsGen: Gen[RawSlots] = (for {
     isOld <- Gen.oneOf(true, false)

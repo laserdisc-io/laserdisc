@@ -105,7 +105,7 @@ object ServerP {
 
       Read.instance {
         case Arr(Bulk("master") +: Num(NonNegLong(offset)) +: Arr(v) +: Seq()) =>
-          v.foldRight[RESPDecErr | (List[Client], Int)](Right(Nil -> 0)) {
+          v.foldRight[Either[RESPDecErr, (List[Client], Int)]](Right(Nil -> 0)) {
             case (CR(Right(client)), Right((cs, csl))) => Right((client :: cs) -> (csl + 1))
             case (CR(Left(e)), Right((_, csl))) => Left(RESPDecErr(s"Read[Arr, Role] clients error at element ${csl + 1}: ${e.message}"))
             case (_, left)                      => left
@@ -182,7 +182,7 @@ object ServerP {
 
     implicit val infoRead: Read[Bulk, Info] = Read.instance { case Bulk(s) =>
       s.split(LF * 2)
-        .foldRight[RESPDecErr | (List[(InfoSection, Parameters)], Int)](Right(Nil -> 0)) {
+        .foldRight[Either[RESPDecErr, (List[(InfoSection, Parameters)], Int)]](Right(Nil -> 0)) {
           case (IFI(Right(infoSection)), Right((iss, isl))) => Right((infoSection :: iss) -> (isl + 1))
           case (IFI(Left(e)), Right((_, isl)))              =>
             Left(RESPDecErr(s"Read[Bulk, Info], Error decoding the server's info section at position ${isl + 1}. Error was: $e"))

@@ -68,7 +68,7 @@ object ClusterP {
     private final val Fs: Read[String, Seq[Flag]] = Read.instance {
       case "noflags" => Right(Seq.empty)
       case s         =>
-        s.split(COMMA_CH).foldRight[RESPDecErr | List[Flag]](Right(Nil)) {
+        s.split(COMMA_CH).foldRight[Either[RESPDecErr, List[Flag]]](Right(Nil)) {
           case ("myself", Right(fgs))    => Right(Flag.myself :: fgs)
           case ("master", Right(fgs))    => Right(Flag.master :: fgs)
           case ("slave", Right(fgs))     => Right(Flag.replica :: fgs)
@@ -95,7 +95,7 @@ object ClusterP {
       val IS = raw"\[(\d+)-<-($NodeIdRegex)\]".r
       val MS = raw"\[(\d+)->-($NodeIdRegex)\]".r
       Read.instance { case ss =>
-        ss.foldRight[RESPDecErr | List[SlotType]](Right(Nil)) {
+        ss.foldRight[Either[RESPDecErr, List[SlotType]]](Right(Nil)) {
           case (ToInt(Slot(s)), Right(fgs))                    => Right(SlotType.Single(s) :: fgs)
           case (R(ToInt(Slot(f)), ToInt(Slot(t))), Right(fgs)) => Right(SlotType.Range(f, t) :: fgs)
           case (IS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.ImportingSlot(s, id) :: fgs)
@@ -127,7 +127,7 @@ object ClusterP {
 
     implicit final val nodesRead: Read[Bulk, Nodes] = Read.instance { case Bulk(s) =>
       s.split(LF_CH)
-        .foldRight[RESPDecErr | (List[Node], Int)](Right(Nil -> 0)) {
+        .foldRight[Either[RESPDecErr, (List[Node], Int)]](Right(Nil -> 0)) {
           case (ND(Right(node)), Right((ns, nsl))) => Right((node :: ns) -> (nsl + 1))
           case (ND(Left(e)), Right((_, nsl)))      =>
             Left(RESPDecErr(s"Read[Bulk, Nodes], Error decoding the cluster's node ${nsl + 1}. Error was: $e"))
@@ -239,7 +239,7 @@ object ClusterP {
 
     private val SI: Read[Seq[RESP], SlotInfo] = {
       val HPNIs: Read[Seq[RESP], Seq[HostPortNodeId]] = Read.instance {
-        _.foldRight[RESPDecErr | Seq[HostPortNodeId]](Right(Seq.empty)) {
+        _.foldRight[Either[RESPDecErr, Seq[HostPortNodeId]]](Right(Seq.empty)) {
           case (Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Bulk(NodeId(id)) :: Nil), Right(hsts)) =>
             Right(HostPortNodeId(h, p, id) +: hsts)
           case (Arr(H(Left(e)) :: _), Right(_)) => Left(RESPDecErr(s"Unexpected new replica's host encoding with error ${e.message}"))
@@ -248,7 +248,7 @@ object ClusterP {
         }
       }
       val HPs: Read[Seq[RESP], Seq[HostPort]] = Read.instance {
-        _.foldRight[RESPDecErr | Seq[HostPort]](Right(Seq.empty)) {
+        _.foldRight[Either[RESPDecErr, Seq[HostPort]]](Right(Seq.empty)) {
           case (Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Nil), Right(hsts)) =>
             Right(HostPort(h, p) +: hsts)
           case (Arr(H(Left(e)) :: _), Right(_)) => Left(RESPDecErr(s"Unexpected old replica's host encoding with error ${e.message}"))
@@ -275,7 +275,7 @@ object ClusterP {
 
     implicit final val slotsRead: Read[Arr, Slots] = Read.instance { case Arr(arrays) =>
       arrays
-        .foldRight[RESPDecErr | (Map[SlotType.Range, SlotInfo], Int)](Right(Map.empty -> 0)) {
+        .foldRight[Either[RESPDecErr, (Map[SlotType.Range, SlotInfo], Int)]](Right(Map.empty -> 0)) {
           case (Arr(Num(ToInt(Slot(from))) :: Num(ToInt(Slot(to))) :: Arr(SI(Right(si))) :: Nil), Right((sts, stsl))) =>
             Right((sts + (Range(from, to) -> si)) -> (stsl + 1))
           case (Arr(Num(ToInt(Slot(_))) :: Num(ToInt(Slot(_))) :: Arr(Nil) :: Nil), Right((_, stsl))) =>

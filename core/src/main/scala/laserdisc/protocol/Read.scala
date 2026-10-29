@@ -38,7 +38,7 @@ Note 2: make sure to inspect the combinators as you may be able to leverage some
 """
 ) trait Read[A, B] { self =>
 
-  def read(a: A): RESPDecErr | B
+  def read(a: A): Either[RESPDecErr, B]
 
   final def map[C](f: B => C): Read[A, C] = Read.instance(read(_).map(f))
 
@@ -46,9 +46,9 @@ Note 2: make sure to inspect the combinators as you may be able to leverage some
 
   final def flatMap[C](f: B => Read[A, C]): Read[A, C] = Read.instance(a => read(a).flatMap(f(_).read(a)))
 
-  private[this] final val _extract: Any => Read.Extract[Any] = new Read.Extract[Any](_)
-  final def unapply(a: A): Read.Extract[RESPDecErr | B]      =
-    _extract(read(a)).asInstanceOf[Read.Extract[RESPDecErr | B]]
+  private[this] final val _extract: Any => Read.Extract[Any]   = new Read.Extract[Any](_)
+  final def unapply(a: A): Read.Extract[Either[RESPDecErr, B]] =
+    _extract(read(a)).asInstanceOf[Read.Extract[Either[RESPDecErr, B]]]
 }
 
 object Read extends ReadInstances0 {
@@ -59,7 +59,7 @@ object Read extends ReadInstances0 {
 
   @inline final def apply[A, B](implicit instance: Read[A, B]): Read[A, B] = instance
 
-  @inline final def instance[A, B](f: A => RESPDecErr | B): Read[A, B] = (a: A) => f(a)
+  @inline final def instance[A, B](f: A => Either[RESPDecErr, B]): Read[A, B] = (a: A) => f(a)
 
   @inline final def infallible[A, B](f: A => B): Read[A, B] = (a: A) => Right(f(a))
 
@@ -137,7 +137,7 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
 
   implicit final def arrOfBulk2Seq[A](implicit R: Read[Bulk, A]): Read[Arr, Seq[A]] = instance { case Arr(vector) =>
     vector
-      .foldRight[RESPDecErr | (List[A], Int)](Right(Nil -> 0)) {
+      .foldRight[Either[RESPDecErr, (List[A], Int)]](Right(Nil -> 0)) {
         case (R(Right(a)), Right((as0, asl))) => Right((a :: as0) -> (asl + 1))
         case (R(Left(e)), Right((_, asl)))    => Left(RESPDecErr(s"Read[Arr(Bulk), Seq[A]] error at element ${asl + 1}: ${e.message}"))
         case (other, Right((_, asl)))         =>
@@ -148,7 +148,7 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   }
   implicit final def arrOfArr2Seq[A](implicit R: Read[Arr, A]): Read[Arr, Seq[A]] = instance { case Arr(vector) =>
     vector
-      .foldRight[RESPDecErr | (List[A], Int)](Right(Nil -> 0)) {
+      .foldRight[Either[RESPDecErr, (List[A], Int)]](Right(Nil -> 0)) {
         case (R(Right(a)), Right((as0, asl))) => Right((a :: as0) -> (asl + 1))
         case (R(Left(e)), Right((_, asl)))    => Left(RESPDecErr(s"Read[Arr(Arr), Seq[A]] error at element ${asl + 1}: ${e.message}"))
         case (other, Right((_, asl)))         =>
@@ -159,7 +159,7 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   }
   implicit final def arrOfBulk2OptionSeq[A](implicit R: Read[Bulk, A]): Read[Arr, Seq[Option[A]]] = instance { case Arr(vector) =>
     vector
-      .foldRight[RESPDecErr | (List[Option[A]], Int)](Right(Nil -> 0)) {
+      .foldRight[Either[RESPDecErr, (List[Option[A]], Int)]](Right(Nil -> 0)) {
         case (NullBulk, Right((as0, asl)))    => Right((None :: as0) -> (asl + 1))
         case (R(Right(a)), Right((as0, asl))) => Right((Some(a) :: as0) -> (asl + 1))
         case (R(Left(e)), Right((_, asl))) => Left(RESPDecErr(s"Read[Arr(Bulk), Seq[Option[A]]] error at element ${asl + 1}: ${e.message}"))
@@ -171,7 +171,7 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   }
   implicit final def arrOfArr2OptionSeq[A](implicit R: Read[Arr, A]): Read[Arr, Seq[Option[A]]] = instance { case Arr(vector) =>
     vector
-      .foldRight[RESPDecErr | (List[Option[A]], Int)](Right(Nil -> 0)) {
+      .foldRight[Either[RESPDecErr, (List[Option[A]], Int)]](Right(Nil -> 0)) {
         case (NilArr, Right((as0, asl)))      => Right((None :: as0) -> (asl + 1))
         case (R(Right(a)), Right((as0, asl))) => Right((Some(a) :: as0) -> (asl + 1))
         case (R(Left(e)), Right((_, asl))) => Left(RESPDecErr(s"Read[Arr(Arr), Seq[Option[A]]] error at element ${asl + 1}: ${e.message}"))
@@ -188,7 +188,7 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
     case Arr(vector) =>
       vector
         .grouped(2)
-        .foldRight[RESPDecErr | (List[(A, B)], Int)](Right(Nil -> 0)) {
+        .foldRight[Either[RESPDecErr, (List[(A, B)], Int)]](Right(Nil -> 0)) {
           case (RA(Right(a)) +: RB(Right(b)) +: Seq(), Right((abs0, absl))) =>
             Right(((a -> b) :: abs0) -> (absl + 1))
           case (RA(Left(ea)) +: _ +: Seq(), Right((_, absl))) =>
@@ -206,7 +206,7 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   implicit final val arr2Map: Read[Arr, Map[Key, String]] = instance { case Arr(vector) =>
     vector
       .grouped(2)
-      .foldRight[RESPDecErr | (Map[Key, String], Int)](Right(Map.empty -> 0)) {
+      .foldRight[Either[RESPDecErr, (Map[Key, String], Int)]](Right(Map.empty -> 0)) {
         case (Bulk(Key(k)) +: Bulk(v) +: Seq(), Right((kvs, kvl))) =>
           Right((kvs + (k -> v)) -> (kvl + 1))
         case (Bulk(Key(_)) +: any +: Seq(), Right((_, kvl))) =>
@@ -224,7 +224,7 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
     case Arr(Bulk(ToLong(NonNegLong(cursor))) +: Arr(vector) +: Seq()) =>
       vector
         .grouped(2)
-        .foldRight[RESPDecErr | (List[KV[String]], Int)](Right(Nil -> 0)) {
+        .foldRight[Either[RESPDecErr, (List[KV[String]], Int)]](Right(Nil -> 0)) {
           case (Bulk(Key(k)) +: Bulk(v) +: Seq(), Right((kv, kvl))) =>
             Right((KV(k, v) :: kv) -> (kvl + 1))
           case (Bulk(Key(_)) +: any +: Seq(), Right((_, kvl))) =>

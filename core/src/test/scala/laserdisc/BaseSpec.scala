@@ -134,7 +134,7 @@ abstract class BaseSpec
 
     frequency(hosts, loopbackHost)
   } :| "host"
-  final val hostOrEmptyGen: Gen[EmptyString | Host] =
+  final val hostOrEmptyGen: Gen[Either[EmptyString, Host]] =
     frequency(10 -> hostGen.map(Right.apply), 1 -> const(EmptyString).map(Left.apply)) :| "host or empty string"
   final val keyGen: Gen[Key]         = strGen(nonEmptyListOf(utf8BMPCharGen)).filter(keyIsValid).map(Key.unsafeFrom) :| "key"
   final val latitudeGen: Gen[Double] = chooseNum(LatitudeMinValueWit.value, LatitudeMaxValueWit.value).filter(latitudeIsValid) :| "latitude"

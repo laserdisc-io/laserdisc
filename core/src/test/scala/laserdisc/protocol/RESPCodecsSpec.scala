@@ -59,8 +59,8 @@ object RESPCodecsSpec {
   }
 
   private implicit final class RichString(private val underlying: String) extends AnyVal {
-    def RESP: SErr | RESP = functions.stringToRESPAttempt(underlying).toEither
-    def bytesLength: Int  = functions.stringToBytesLength(underlying)
+    def RESP: Either[SErr, RESP] = functions.stringToRESPAttempt(underlying).toEither
+    def bytesLength: Int         = functions.stringToBytesLength(underlying)
   }
 
   private implicit final class RichRESP(private val underlying: RESP) extends AnyVal {

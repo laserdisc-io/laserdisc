@@ -115,7 +115,7 @@ trait KeyBaseP {
 
   import keytypes.*
 
-  private[this] implicit final val str2NOKEYOrOK: Read[Str, (NOKEY | OK)] = Read.instance {
+  private[this] implicit final val str2NOKEYOrOK: Read[Str, Either[NOKEY, OK]] = Read.instance {
     case Str("NOKEY") => Right(Left(NOKEY))
     case Str("OK")    => Right(Right(OK))
     case Str(other)   => Left(RESPDecErr(s"Unexpected string for Read[Str, (NOKEY | OK)]. Was $other"))
@@ -147,10 +147,10 @@ trait KeyBaseP {
 
   final def keys(pattern: GlobPattern): Protocol.Aux[Seq[Key]] = Protocol("KEYS", pattern *: EmptyTuple).as[Arr, Seq[Key]]
 
-  final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Protocol.Aux[NOKEY | OK] =
-    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: EmptyTuple).as[Str, NOKEY | OK]
-  final def migrate(keys: TwoOrMoreKeys, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Protocol.Aux[NOKEY | OK] =
-    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: "KEYS" *: keys.value *: EmptyTuple).as[Str, NOKEY | OK]
+  final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Protocol.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: EmptyTuple).as[Str, Either[NOKEY, OK]]
+  final def migrate(keys: TwoOrMoreKeys, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Protocol.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: "KEYS" *: keys.value *: EmptyTuple).as[Str, Either[NOKEY, OK]]
   final def migrate(
       key: Key,
       host: Host,
@@ -158,8 +158,8 @@ trait KeyBaseP {
       dbIndex: DbIndex,
       timeout: NonNegInt,
       mode: KeyMigrateMode
-  ): Protocol.Aux[NOKEY | OK] =
-    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: mode.params *: EmptyTuple).as[Str, NOKEY | OK]
+  ): Protocol.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: mode.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
   final def migrate(
       keys: TwoOrMoreKeys,
       host: Host,
@@ -167,9 +167,9 @@ trait KeyBaseP {
       dbIndex: DbIndex,
       timeout: NonNegInt,
       mode: KeyMigrateMode
-  ): Protocol.Aux[NOKEY | OK] =
+  ): Protocol.Aux[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: mode.params *: "KEYS" *: keys.value *: EmptyTuple)
-      .as[Str, NOKEY | OK]
+      .as[Str, Either[NOKEY, OK]]
 
   final def move(key: Key, db: DbIndex): Protocol.Aux[Boolean] = Protocol("MOVE", key *: db *: EmptyTuple).as[Num, Boolean]
 

@@ -235,7 +235,7 @@ private[fs2] trait TestCommandsResp extends TestCommandsProtocol {
 
 private[fs2] trait TestCommandsBitVector extends TestCommandsResp {
 
-  private[this] val respEncoder = Codec[RESP]
+  private val respEncoder = Codec[RESP]
 
   protected val longBitVector1: BitVector  = respEncoder.encode(longResp1).getOrElse(throw new Exception("failed encode"))
   protected val longBitVector2: BitVector  = respEncoder.encode(longResp2).getOrElse(throw new Exception("failed encode"))

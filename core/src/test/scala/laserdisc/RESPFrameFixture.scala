@@ -166,13 +166,13 @@ private[laserdisc] trait RESPFrameFixture extends HighPriorityGenerators {
 
 private[laserdisc] trait HighPriorityGenerators extends LowPriorityGenerators {
 
-  private[this] def oneOrMoreProtocol(gen: Gen[ProtocolEncoded]): Gen[OneOrMore[ProtocolEncoded]] =
+  private def oneOrMoreProtocol(gen: Gen[ProtocolEncoded]): Gen[OneOrMore[ProtocolEncoded]] =
     Gen.chooseNum(1, Math.min(scalaCheckTestParameters.maxSize, 300)).flatMap(Gen.listOfN(_, gen)).map(OneOrMore.unsafeFrom)
 
-  private[this] def listProtocol(gen: Gen[ProtocolEncoded]): Gen[List[ProtocolEncoded]] =
+  private def listProtocol(gen: Gen[ProtocolEncoded]): Gen[List[ProtocolEncoded]] =
     Gen.chooseNum(1, 20).flatMap(Gen.listOfN(_, gen))
 
-  private[this] final def noArrEncoded(
+  private final def noArrEncoded(
       implicit bulk: Gen[BulkEncoded],
       num: Gen[NumEncoded],
       str: Gen[StrEncoded],
@@ -193,10 +193,10 @@ private[laserdisc] trait HighPriorityGenerators extends LowPriorityGenerators {
       3  -> nullArr
     )
 
-  private[this] final val noArrArrEncoded: Gen[ArrEncoded] =
+  private final val noArrArrEncoded: Gen[ArrEncoded] =
     listProtocol(noArrEncoded).map(ArrEncoded.apply)
 
-  private[this] final def oneLevelArrEncoded(arrGen: Gen[ArrEncoded]): Gen[ArrEncoded] =
+  private final def oneLevelArrEncoded(arrGen: Gen[ArrEncoded]): Gen[ArrEncoded] =
     listProtocol(
       Gen.frequency(
         20 -> noArrEncoded,
@@ -204,7 +204,7 @@ private[laserdisc] trait HighPriorityGenerators extends LowPriorityGenerators {
       )
     ).map(ArrEncoded.apply)
 
-  private[this] final def xLevelsNestedArrEncoded(x: Int): Gen[ArrEncoded] = {
+  private final def xLevelsNestedArrEncoded(x: Int): Gen[ArrEncoded] = {
     @scala.annotation.tailrec
     def loop(left: Int, soFar: Gen[ArrEncoded]): Gen[ArrEncoded] =
       if (left > 0) loop(left - 1, oneLevelArrEncoded(soFar))
@@ -213,7 +213,7 @@ private[laserdisc] trait HighPriorityGenerators extends LowPriorityGenerators {
     loop(x, oneLevelArrEncoded(noArrArrEncoded))
   }
 
-  private[this] final val protocolEncoded: Gen[ProtocolEncoded] =
+  private final val protocolEncoded: Gen[ProtocolEncoded] =
     Gen.frequency(
       50 -> noArrEncoded,
       25 -> oneLevelArrEncoded(noArrArrEncoded),

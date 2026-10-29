@@ -93,7 +93,7 @@ object StringP {
 trait StringBaseP {
   import StringP.{Bit, Bitwise, Expiry, Flag, PartiallyAppliedGetSet}
 
-  private[this] final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
+  private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
 
   object strings {
     final val bit     = Bit

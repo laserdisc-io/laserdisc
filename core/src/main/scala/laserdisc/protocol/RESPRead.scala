@@ -44,7 +44,7 @@ ${A} must be one of the RESP types Arr, Bulk, NilArr, NullBulk, Num or Str
 object RESPSub {
   @inline final def apply[A](implicit instance: RESPSub[A]): RESPSub[A] = instance
 
-  private[this] final def instance[A](nil: RESP)(pf: PartialFunction[RESP, A]): RESPSub[A] =
+  private final def instance[A](nil: RESP)(pf: PartialFunction[RESP, A]): RESPSub[A] =
     new RESPSub[A](nil) {
       override final def unapply(resp: RESP): Option[A] = pf.lift(resp)
     }
@@ -74,12 +74,12 @@ object RESPRead {
   final type Aux[Sub0, A] = RESPRead[A] { type Sub = Sub0 }
   final def apply[Sub, A](implicit instance: Aux[Sub, A]): Aux[Sub, A] = instance
 
-  private[this] final def mismatch(resp: RESP): Maybe[Nothing] = resp match {
+  private final def mismatch(resp: RESP): Maybe[Nothing] = resp match {
     case err: Err => Left(err)
     case other    => Left(RESPDecErr(s"RESP type(s) did not match: $other"))
   }
 
-  private[this] final def readMatched[A, B](R: Read[A, B], resp: RESP, a: A): Maybe[B] = R.read(a) match {
+  private final def readMatched[A, B](R: Read[A, B], resp: RESP, a: A): Maybe[B] = R.read(a) match {
     case Right(b)            => Right(b)
     case Left(RESPDecErr(m)) =>
       Left(RESPDecErr(s"RESP type(s) of $resp matched but failed to deserialize correctly with error $m")).widenLeft[Throwable]

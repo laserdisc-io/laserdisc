@@ -46,7 +46,7 @@ Note 2: make sure to inspect the combinators as you may be able to leverage some
 
   final def flatMap[C](f: B => Read[A, C]): Read[A, C] = Read.instance(a => read(a).flatMap(f(_).read(a)))
 
-  private[this] final val _extract: Any => Read.Extract[Any]   = new Read.Extract[Any](_)
+  private final val _extract: Any => Read.Extract[Any]         = new Read.Extract[Any](_)
   final def unapply(a: A): Read.Extract[Either[RESPDecErr, B]] =
     _extract(read(a)).asInstanceOf[Read.Extract[Either[RESPDecErr, B]]]
 }

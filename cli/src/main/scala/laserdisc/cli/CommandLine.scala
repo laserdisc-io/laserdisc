@@ -70,5 +70,5 @@ private[cli] object CommandLine {
     unquoted(0, new StringBuilder, Nil)
   }
 
-  private[this] final def isHex(c: Char): Boolean = Character.digit(c, 16) >= 0
+  private final def isHex(c: Char): Boolean = Character.digit(c, 16) >= 0
 }

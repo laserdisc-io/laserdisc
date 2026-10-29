@@ -44,8 +44,8 @@ trait ListBaseP {
 
   import listtypes.*
 
-  private[this] final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[PosInt])
-  private[this] final val zeroIsNone     = RESPRead.instance(Read.numZeroIsNone[PosInt])
+  private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[PosInt])
+  private final val zeroIsNone     = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
   final def lindex[A: Read[Bulk, _]](key: Key, index: Index): Protocol.Aux[Option[A]] =
     Protocol("LINDEX", key *: index *: EmptyTuple).asOpt[Bulk, A]

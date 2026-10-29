@@ -23,9 +23,9 @@ package laserdisc
 package protocol
 
 final class RESPReadSpec extends BaseSpec {
-  private[this] val num: RESPRead.Aux[Num, Long]             = RESPRead.derive
-  private[this] val optBulk: RESPRead.Aux[Bulk, Option[Int]] = RESPRead.nullable(Read[Bulk, Int])
-  private[this] val optArr: RESPRead.Aux[Arr, Option[Arr]]   = RESPRead.nullable(Read[Arr, Arr])
+  private val num: RESPRead.Aux[Num, Long]             = RESPRead.derive
+  private val optBulk: RESPRead.Aux[Bulk, Option[Int]] = RESPRead.nullable(Read[Bulk, Int])
+  private val optArr: RESPRead.Aux[Arr, Option[Arr]]   = RESPRead.nullable(Read[Arr, Arr])
 
   test("RESPRead reads a matching RESP type") {
     assertEquals(num.read(Num(42L)), 42L)

@@ -49,42 +49,40 @@ object SortedSetP {
 
   sealed trait LexRange { def min: String; def max: String }
   object LexRange       {
-    private[this] def open(s: String)  = s"($s"
-    private[this] def close(s: String) = s"[$s"
-    private[this] final val posInf     = "+"
-    private[this] final val negInf     = "-"
+    private def open(s: String)  = s"($s"
+    private def close(s: String) = s"[$s"
+    private final val posInf     = "+"
+    private final val negInf     = "-"
 
-    sealed abstract class Open private[LexRange] (private[this] val minimum: String, private[this] val maximum: String) extends LexRange {
+    sealed abstract class Open private[LexRange] (private val minimum: String, private val maximum: String) extends LexRange {
       override final val min: String = open(minimum)
       override final val max: String = open(maximum)
     }
-    sealed abstract class OpenClosed private[LexRange] (private[this] val minimum: String, private[this] val maximum: String)
-        extends LexRange {
+    sealed abstract class OpenClosed private[LexRange] (private val minimum: String, private val maximum: String) extends LexRange {
       override final val min: String = open(minimum)
       override final val max: String = close(maximum)
     }
-    sealed abstract class ClosedOpen private[LexRange] (private[this] val minimum: String, private[this] val maximum: String)
-        extends LexRange {
+    sealed abstract class ClosedOpen private[LexRange] (private val minimum: String, private val maximum: String) extends LexRange {
       override final val min: String = close(minimum)
       override final val max: String = open(maximum)
     }
-    sealed abstract class Closed private[LexRange] (private[this] val minimum: String, private[this] val maximum: String) extends LexRange {
+    sealed abstract class Closed private[LexRange] (private val minimum: String, private val maximum: String) extends LexRange {
       override final val min: String = close(minimum)
       override final val max: String = close(maximum)
     }
-    sealed abstract class OpenInf private[LexRange] (private[this] val minimum: String) extends LexRange {
+    sealed abstract class OpenInf private[LexRange] (private val minimum: String) extends LexRange {
       override final val min: String = open(minimum)
       override final val max: String = posInf
     }
-    sealed abstract class ClosedInf private[LexRange] (private[this] val minimum: String) extends LexRange {
+    sealed abstract class ClosedInf private[LexRange] (private val minimum: String) extends LexRange {
       override final val min: String = close(minimum)
       override final val max: String = posInf
     }
-    sealed abstract class InfOpen private[LexRange] (private[this] val maximum: String) extends LexRange {
+    sealed abstract class InfOpen private[LexRange] (private val maximum: String) extends LexRange {
       override final val min: String = negInf
       override final val max: String = open(maximum)
     }
-    sealed abstract class InfClosed private[LexRange] (private[this] val maximum: String) extends LexRange {
+    sealed abstract class InfClosed private[LexRange] (private val maximum: String) extends LexRange {
       override final val min: String = negInf
       override final val max: String = close(maximum)
     }
@@ -103,25 +101,24 @@ object SortedSetP {
   object ScoreRange       {
     import Show.validDoubleShow
 
-    private[this] def open(d: ValidDouble)  = s"(${validDoubleShow.show(d)}"
-    private[this] def close(d: ValidDouble) = validDoubleShow.show(d)
+    private def open(d: ValidDouble)  = s"(${validDoubleShow.show(d)}"
+    private def close(d: ValidDouble) = validDoubleShow.show(d)
 
-    sealed abstract class Open private[ScoreRange] (private[this] val minimum: ValidDouble, private[this] val maximum: ValidDouble)
-        extends ScoreRange {
+    sealed abstract class Open private[ScoreRange] (private val minimum: ValidDouble, private val maximum: ValidDouble) extends ScoreRange {
       override final val min: String = open(minimum)
       override final val max: String = open(maximum)
     }
-    sealed abstract class OpenClosed private[ScoreRange] (private[this] val minimum: ValidDouble, private[this] val maximum: ValidDouble)
+    sealed abstract class OpenClosed private[ScoreRange] (private val minimum: ValidDouble, private val maximum: ValidDouble)
         extends ScoreRange {
       override final val min: String = open(minimum)
       override final val max: String = close(maximum)
     }
-    sealed abstract class ClosedOpen private[ScoreRange] (private[this] val minimum: ValidDouble, private[this] val maximum: ValidDouble)
+    sealed abstract class ClosedOpen private[ScoreRange] (private val minimum: ValidDouble, private val maximum: ValidDouble)
         extends ScoreRange {
       override final val min: String = close(minimum)
       override final val max: String = open(maximum)
     }
-    sealed abstract class Closed private[ScoreRange] (private[this] val minimum: ValidDouble, private[this] val maximum: ValidDouble)
+    sealed abstract class Closed private[ScoreRange] (private val minimum: ValidDouble, private val maximum: ValidDouble)
         extends ScoreRange {
       override final val min: String = close(minimum)
       override final val max: String = close(maximum)
@@ -138,7 +135,7 @@ trait SortedSetBaseP {
   import SortedSetP.{Aggregate, Flag, LexRange, ScoreRange}
   import auto.*
 
-  private[this] final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
+  private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
   object sortedsets {
     final val aggregate  = Aggregate

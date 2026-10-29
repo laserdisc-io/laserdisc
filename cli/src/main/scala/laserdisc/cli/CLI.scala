@@ -30,7 +30,7 @@ import laserdisc.protocol.RESPRead
 
 object CLI extends IOApp { self =>
 
-  private[this] final val logo =
+  private final val logo =
     """
       |                                            ,,,,'''''',,,,
       |                                   ./oydmNmmmmmmmmmmmmmmmmmmNmdyo/-

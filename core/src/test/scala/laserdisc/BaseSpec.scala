@@ -35,15 +35,15 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   protected final type EmptyString = TestTypes.EmptyString
   protected final val EmptyString: EmptyString = TestTypes.EmptyString
 
-  private[this] final val dashChar: Char     = 0x002d.toChar
-  private[this] final val dashString: String = dashChar.toString
-  private[this] final val dotString: String  = 0x002e.toChar.toString
-  private[this] final val spaceChar: Char    = 0x0020.toChar
+  private final val dashChar: Char     = 0x002d.toChar
+  private final val dashString: String = dashChar.toString
+  private final val dotString: String  = 0x002e.toChar.toString
+  private final val spaceChar: Char    = 0x0020.toChar
 
-  private[this] final val byteRange: Gen[Int]   = chooseNum(0, 255)
-  private[this] final val dashGen: Gen[Char]    = const(dashChar)
-  private[this] final val hexGen: Gen[Char]     = frequency(10 -> numChar, 6 -> choose(0x0061.toChar, 0x0066.toChar))
-  private[this] final val spaceGen: Gen[Char]   = const(spaceChar)
+  private final val byteRange: Gen[Int]         = chooseNum(0, 255)
+  private final val dashGen: Gen[Char]          = const(dashChar)
+  private final val hexGen: Gen[Char]           = frequency(10 -> numChar, 6 -> choose(0x0061.toChar, 0x0066.toChar))
+  private final val spaceGen: Gen[Char]         = const(spaceChar)
   protected final val utf8BMPCharGen: Gen[Char] = {
     val b01 = 24 -> choose(spaceChar, 0x007e.toChar)     // 75% it's a 7-bit ASCII char
     val b02 = 1  -> choose(0x00a0.toChar, 0x085f.toChar) // 3.125% for all other cases
@@ -57,32 +57,32 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
 
     frequency(b01, b02, b03, b04, b05, b06, b07, b08, b09)
   }
-  private[this] final val noSpaceUtf8BMPCharGen: Gen[Char] = utf8BMPCharGen.suchThat(_ != spaceChar)
+  private final val noSpaceUtf8BMPCharGen: Gen[Char] = utf8BMPCharGen.suchThat(_ != spaceChar)
 
-  private[this] final val globGen: Gen[String] = {
+  private final val globGen: Gen[String] = {
     val basicGlob = nonEmptyListOf(frequency(1 -> const('*'), 1 -> const('?'), 1 -> alphaNumChar)).map(_.mkString)
     Gen.oneOf(0, 1).flatMap(f => if (f == 0) basicGlob else basicGlob.map(g => s"[$g]"))
   }
-  private[this] final val allNICsGen: Gen[String] = const(AllNICsEqWit.value)
-  private[this] final val lbGen: Gen[String]      = const(LoopbackEqWit.value)
-  private[this] final val rfc1123Gen: Gen[String] = {
+  private final val allNICsGen: Gen[String] = const(AllNICsEqWit.value)
+  private final val lbGen: Gen[String]      = const(LoopbackEqWit.value)
+  private final val rfc1123Gen: Gen[String] = {
     def dashAtBeginOrEnd(s: String) = s.startsWith(dashString) || s.endsWith(dashString)
     val piece                       = chooseNum(1, 62).flatMap(strOfNGen(_, 1 -> dashGen, 99 -> alphaNumChar))
     choose(1, 5).flatMap(listOfN(_, piece.retryUntil(!dashAtBeginOrEnd(_))).map(_.mkString(dotString)).retryUntil(_.size <= 255))
   }
-  private[this] final val rfc1918Gen: Gen[String] = Gen.oneOf(ipv4Gen(10), chooseNum(16, 31).flatMap(ipv4Gen(172, _)), ipv4Gen(192, 168))
-  private[this] final val rfc5737Gen: Gen[String] = Gen.oneOf(ipv4Gen(192, 0, 2), ipv4Gen(198, 51, 100), ipv4Gen(203, 0, 113))
-  private[this] final val rfc3927Gen: Gen[String] = ipv4Gen(169, 254)
-  private[this] final val rfc2544Gen: Gen[String] = chooseNum(18, 19).flatMap(ipv4Gen(198, _))
+  private final val rfc1918Gen: Gen[String] = Gen.oneOf(ipv4Gen(10), chooseNum(16, 31).flatMap(ipv4Gen(172, _)), ipv4Gen(192, 168))
+  private final val rfc5737Gen: Gen[String] = Gen.oneOf(ipv4Gen(192, 0, 2), ipv4Gen(198, 51, 100), ipv4Gen(203, 0, 113))
+  private final val rfc3927Gen: Gen[String] = ipv4Gen(169, 254)
+  private final val rfc2544Gen: Gen[String] = chooseNum(18, 19).flatMap(ipv4Gen(198, _))
 
-  private[this] final def ipv4Gen(hs: Int*): Gen[String] = listOfN(4 - hs.size, byteRange).map(ts => (hs ++: ts).mkString(dotString))
-  private[this] final def twoOrMore[A](ga: =>Gen[A]): Gen[List[A]]                           = nonEmptyListOf(ga).suchThat(_.size > 1)
-  private[this] final def zip[A, B](arbA: =>Arbitrary[A], arbB: =>Arbitrary[B]): Gen[(A, B)] =
+  private final def ipv4Gen(hs: Int*): Gen[String]           = listOfN(4 - hs.size, byteRange).map(ts => (hs ++: ts).mkString(dotString))
+  private final def twoOrMore[A](ga: =>Gen[A]): Gen[List[A]] = nonEmptyListOf(ga).suchThat(_.size > 1)
+  private final def zip[A, B](arbA: =>Arbitrary[A], arbB: =>Arbitrary[B]): Gen[(A, B)] =
     arbA.arbitrary.flatMap(a => arbB.arbitrary.map(a -> _))
 
-  private[this] final def strGen(lc: Gen[List[Char]]): Gen[String]               = lc.map(_.mkString)
-  private[this] final def strOfNGen(n: Int, fs: (Int, Gen[Char])*): Gen[String]  = listOfN(n, frequency(fs: _*)).map(_.mkString)
-  private[this] final def strOfNSameFreqGen(n: Int, gs: Gen[Char]*): Gen[String] = strOfNGen(n, gs.map(1 -> _): _*)
+  private final def strGen(lc: Gen[List[Char]]): Gen[String]               = lc.map(_.mkString)
+  private final def strOfNGen(n: Int, fs: (Int, Gen[Char])*): Gen[String]  = listOfN(n, frequency(fs: _*)).map(_.mkString)
+  private final def strOfNSameFreqGen(n: Int, gs: Gen[Char]*): Gen[String] = strOfNGen(n, gs.map(1 -> _): _*)
 
   final val connectionNameIsValid: String => Boolean                          = ConnectionName.from(_).isRight
   final val dbIndexIsValid: Int => Boolean                                    = DbIndex.from(_).isRight
@@ -209,7 +209,7 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
     assert(obtained.contains(expected), s"expected a compile error containing [$expected] but got:\n$obtained")
   }
 
-  protected[this] implicit final class EitherSyntax[A, B](private val eab: Either[A, B]) {
+  protected implicit final class EitherSyntax[A, B](private val eab: Either[A, B]) {
     def onRight[C](f: B => Boolean): Unit =
       eab.fold(err => fail(s"It Should be right but was left with $err"), b => assert(f(b)))
 

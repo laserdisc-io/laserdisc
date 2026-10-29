@@ -50,7 +50,7 @@ package object fs2 {
     type Aux[F[_], In <: Tuple, LOut0 <: Tuple] = RedisHandler[F, In] { type LOut = LOut0 }
   }
 
-  private[this] final def request[F[_]: Temporal, A](protocol: Protocol.Aux[A], env: Env[F]): F[Maybe[A]] = {
+  private final def request[F[_]: Temporal, A](protocol: Protocol.Aux[A], env: Env[F]): F[Maybe[A]] = {
     val (queue, duration) = env
     Deferred[F, Maybe[A]].flatMap { promise =>
       val complete: Maybe[A] => F[Unit] =

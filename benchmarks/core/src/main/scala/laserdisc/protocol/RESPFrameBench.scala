@@ -31,7 +31,7 @@ import org.openjdk.jmh.infra.Blackhole
 @State(Scope.Benchmark)
 class RESPFrameBench {
 
-  private[this] object Fixture extends RESPFrameFixture
+  private object Fixture extends RESPFrameFixture
   import Fixture.*
 
   private final val mixedNoArr    = bytesOf(mixedNoArrList)

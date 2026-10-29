@@ -34,8 +34,8 @@ import scodec.Codec
 import scodec.bits.BitVector
 
 object RedisChannel {
-  private[this] final val streamDecoder = StreamDecoder.many(Codec[RESP])
-  private[this] final val streamEncoder = StreamEncoder.many(Codec[RESP])
+  private final val streamDecoder = StreamDecoder.many(Codec[RESP])
+  private final val streamEncoder = StreamEncoder.many(Codec[RESP])
 
   private[fs2] final def apply[F[_]: Network: LogSelector: Concurrent](
       address: SocketAddress[Host],
@@ -58,7 +58,7 @@ object RedisChannel {
   ): Resource[F, Socket[F]] =
     Network[F].client(address, PlatformDependent.socketOptions(receiveBufferSizeBytes))
 
-  private[this] object impl {
+  private object impl {
     def send[F[_]: MonadThrow](socketWrite: Chunk[Byte] => F[Unit])(
         implicit logSelector: LogSelector[F]
     ): Pipe[F, RESP, Unit] =

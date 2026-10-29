@@ -25,7 +25,7 @@ package protocol
 import org.scalacheck.Prop.forAll
 
 abstract class HashPSpec extends BaseSpec with HashP {
-  private[this] final val scanKVToArr: ScanKV => Arr = scanKV =>
+  private final val scanKVToArr: ScanKV => Arr = scanKV =>
     Arr(
       Bulk(scanKV.cursor.value),
       scanKV.maybeValues.fold(NilArr: GenArr)(kvs => Arr(kvs.flatMap { case KV(k, v) => List(Bulk(k.value), Bulk(v)) }.toList))

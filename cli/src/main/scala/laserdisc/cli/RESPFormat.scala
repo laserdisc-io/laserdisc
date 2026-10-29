@@ -26,7 +26,7 @@ package cli
 private[cli] object RESPFormat {
   final def format(resp: RESP): String = lines(resp).mkString(LF)
 
-  private[this] final def lines(resp: RESP): List[String] = resp match {
+  private final def lines(resp: RESP): List[String] = resp match {
     case Str(value)        => value :: Nil
     case Bulk(value)       => quote(value) :: Nil
     case Num(value)        => s"(integer) $value" :: Nil
@@ -44,7 +44,7 @@ private[cli] object RESPFormat {
       }
   }
 
-  private[this] final def quote(s: String): String =
+  private final def quote(s: String): String =
     s.flatMap {
       case '"'                     => "\\\""
       case '\\'                    => "\\\\"

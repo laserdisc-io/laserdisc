@@ -66,46 +66,46 @@ abstract class GeoPSpec extends BaseSpec with GeoP {
     case (Arr(e), None)     => Arr(e :+ NullBulk)
   }
 
-  private[this] implicit final val geoKeyAndCoordArb: Arbitrary[GeoKeyAndCoord] = Arbitrary {
+  private implicit final val geoKeyAndCoordArb: Arbitrary[GeoKeyAndCoord] = Arbitrary {
     for {
       k <- arbitrary[Key]
       c <- arbitrary[GeoCoordinates]
     } yield GeoKeyAndCoord(k, c)
   }
-  private[this] implicit final val geoKeyAndDistArb: Arbitrary[GeoKeyAndDist] = Arbitrary {
+  private implicit final val geoKeyAndDistArb: Arbitrary[GeoKeyAndDist] = Arbitrary {
     for {
       k <- arbitrary[Key]
       d <- arbitrary[NonNegDouble]
     } yield GeoKeyAndDist(k, d)
   }
-  private[this] implicit final val geoKeyAndHashArb: Arbitrary[GeoKeyAndHash] = Arbitrary {
+  private implicit final val geoKeyAndHashArb: Arbitrary[GeoKeyAndHash] = Arbitrary {
     for {
       k <- arbitrary[Key]
       l <- arbitrary[NonNegLong]
     } yield GeoKeyAndHash(k, l)
   }
-  private[this] implicit final val geoKeyCoordAndDistArb: Arbitrary[GeoKeyCoordAndDist] = Arbitrary {
+  private implicit final val geoKeyCoordAndDistArb: Arbitrary[GeoKeyCoordAndDist] = Arbitrary {
     for {
       k <- arbitrary[Key]
       c <- arbitrary[GeoCoordinates]
       d <- arbitrary[NonNegDouble]
     } yield GeoKeyCoordAndDist(k, c, d)
   }
-  private[this] implicit final val geoKeyCoordAndHashArb: Arbitrary[GeoKeyCoordAndHash] = Arbitrary {
+  private implicit final val geoKeyCoordAndHashArb: Arbitrary[GeoKeyCoordAndHash] = Arbitrary {
     for {
       k <- arbitrary[Key]
       c <- arbitrary[GeoCoordinates]
       l <- arbitrary[NonNegLong]
     } yield GeoKeyCoordAndHash(k, c, l)
   }
-  private[this] implicit final val geoKeyDistAndHashArb: Arbitrary[GeoKeyDistAndHash] = Arbitrary {
+  private implicit final val geoKeyDistAndHashArb: Arbitrary[GeoKeyDistAndHash] = Arbitrary {
     for {
       k <- arbitrary[Key]
       d <- arbitrary[NonNegDouble]
       l <- arbitrary[NonNegLong]
     } yield GeoKeyDistAndHash(k, d, l)
   }
-  private[this] implicit final val geoKeyCoordDistAndHashArb: Arbitrary[GeoKeyCoordDistAndHash] = Arbitrary {
+  private implicit final val geoKeyCoordDistAndHashArb: Arbitrary[GeoKeyCoordDistAndHash] = Arbitrary {
     for {
       k <- arbitrary[Key]
       c <- arbitrary[GeoCoordinates]
@@ -113,7 +113,7 @@ abstract class GeoPSpec extends BaseSpec with GeoP {
       l <- arbitrary[NonNegLong]
     } yield GeoKeyCoordDistAndHash(k, c, d, l)
   }
-  private[this] implicit final val geoRadiusModeArb: Arbitrary[(GeoRadiusMode, List[?])] = Arbitrary {
+  private implicit final val geoRadiusModeArb: Arbitrary[(GeoRadiusMode, List[?])] = Arbitrary {
     Gen.oneOf(
       listOf(geoKeyAndCoordArb.arbitrary).map(GeoRadiusMode.coordinates -> _),
       listOf(geoKeyAndDistArb.arbitrary).map(GeoRadiusMode.distance -> _),
@@ -124,7 +124,7 @@ abstract class GeoPSpec extends BaseSpec with GeoP {
       listOf(geoKeyCoordDistAndHashArb.arbitrary).map(GeoRadiusMode.all -> _)
     )
   }
-  private[this] implicit final val geoStoreModeArb: Arbitrary[GeoStoreMode] = Arbitrary {
+  private implicit final val geoStoreModeArb: Arbitrary[GeoStoreMode] = Arbitrary {
     Gen.oneOf(
       arbitrary[Key].map(GeoStoreHash(_)),
       arbitrary[Key].map(GeoStoreDistance(_)),
@@ -132,7 +132,7 @@ abstract class GeoPSpec extends BaseSpec with GeoP {
     )
   }
 
-  private[this] final val listToArr: List[?] => Arr = l =>
+  private final val listToArr: List[?] => Arr = l =>
     Arr(l.collect {
       case GeoKeyAndCoord(k, GeoCoordinates(lat, long))               => Arr(Bulk(k), Arr(Bulk(long), Bulk(lat)))
       case GeoKeyAndDist(k, d)                                        => Arr(Bulk(k), Bulk(d))

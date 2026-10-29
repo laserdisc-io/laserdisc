@@ -23,7 +23,7 @@ package laserdisc
 package protocol
 
 trait SetBaseP {
-  private[this] final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
+  private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
   final def sadd[A: Show](key: Key, members: OneOrMore[A]): Protocol.Aux[NonNegInt] =
     Protocol("SADD", key *: members.value *: EmptyTuple).as[Num, NonNegInt]

@@ -24,7 +24,7 @@ package fs2
 package parallel
 package testcases
 
-import scredis.Redis
+import scredis.*
 
 import scala.concurrent.{ExecutionContext, Future}
 

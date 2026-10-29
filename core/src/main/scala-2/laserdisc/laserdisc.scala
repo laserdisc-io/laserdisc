@@ -86,8 +86,8 @@ package object laserdisc {
   final val Str        = protocol.Str
   final val RESPDecErr = protocol.RESPDecErr
 
-  private[this] final type NoControlChar = Not[ControlChar]
-  private[this] final type NoWhitespace  = Not[Whitespace]
+  private final type NoControlChar = Not[ControlChar]
+  private final type NoWhitespace  = Not[Whitespace]
 
   // Witnesses
   final val AllNICsEqWit                = W("0.0.0.0")

@@ -46,15 +46,15 @@ object Baz {
 }
 
 final class CirceSpec extends CirceCheckSettings with EitherTestSyntax {
-  private[this] val barGen: Gen[Bar] = Arbitrary.arbitrary[Int].map(Bar.apply)
-  private[this] val bazGen: Gen[Baz] = for {
+  private val barGen: Gen[Bar] = Arbitrary.arbitrary[Int].map(Bar.apply)
+  private val bazGen: Gen[Baz] = for {
     s   <- Arbitrary.arbitrary[String]
     foo <- fooGen
   } yield Baz(s, foo)
-  private[this] def fooGen: Gen[Foo] = Gen.oneOf(barGen, bazGen)
+  private def fooGen: Gen[Foo] = Gen.oneOf(barGen, bazGen)
 
-  private[this] implicit val barArbitrary: Arbitrary[Bar] = Arbitrary(barGen)
-  private[this] implicit val bazArbitrary: Arbitrary[Baz] = Arbitrary(bazGen)
+  private implicit val barArbitrary: Arbitrary[Bar] = Arbitrary(barGen)
+  private implicit val bazArbitrary: Arbitrary[Baz] = Arbitrary(bazGen)
 
   property("Circe interop roundtrips with no errors when handling a simple type") {
     forAll { (bar: Bar) =>

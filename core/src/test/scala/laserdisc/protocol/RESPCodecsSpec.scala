@@ -32,10 +32,10 @@ import scodec.bits.BitVector
 import scodec.{Attempt, Codec, Err => SErr}
 
 object RESPCodecsSpec {
-  private[this] object functions {
-    private[this] final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
-    private[this] final val requireEncode = (resp: RESP) => Codec[RESP].encode(resp).require
-    private[this] final val stringToBytes = (s: String) => s.getBytes(UTF_8)
+  private object functions {
+    private final val attemptDecode = (bits: BitVector) => Codec[RESP].decodeValue(bits)
+    private final val requireEncode = (resp: RESP) => Codec[RESP].encode(resp).require
+    private final val stringToBytes = (s: String) => s.getBytes(UTF_8)
 
     final val stringToBytesLength: String => Int = stringToBytes andThen (bytes => bytes.length)
 
@@ -76,40 +76,40 @@ object RESPCodecsSpec {
 final class RESPCodecsSpec extends BaseSpec {
   import RESPCodecsSpec.*
 
-  private[this] val smallNumGen: Gen[Int]         = chooseNum(0, 20)
-  private[this] val invalidProtocolGen: Gen[Char] = {
+  private val smallNumGen: Gen[Int]         = chooseNum(0, 20)
+  private val invalidProtocolGen: Gen[Char] = {
     val exclusions = List('+', '-', ':', '$', '*')
     choose[Char](0, 127).suchThat(!exclusions.contains(_))
   } :| "invalid protocol discriminator"
-  private[this] val stringGen: Gen[String]   = listOf(utf8BMPCharGen).map(_.mkString) :| "string"
-  private[this] val strGen: Gen[Str]         = stringGen.map(Str.apply) :| "simple string RESP"
-  private[this] val errGen: Gen[Err]         = stringGen.map(Err.apply) :| "error RESP"
-  private[this] val numGen: Gen[Num]         = arbitrary[Long].map(Num.apply) :| "integer RESP"
-  private[this] val genBulkGen: Gen[GenBulk] = option(stringGen).map {
+  private val stringGen: Gen[String]   = listOf(utf8BMPCharGen).map(_.mkString) :| "string"
+  private val strGen: Gen[Str]         = stringGen.map(Str.apply) :| "simple string RESP"
+  private val errGen: Gen[Err]         = stringGen.map(Err.apply) :| "error RESP"
+  private val numGen: Gen[Num]         = arbitrary[Long].map(Num.apply) :| "integer RESP"
+  private val genBulkGen: Gen[GenBulk] = option(stringGen).map {
     case None    => NullBulk
     case Some(s) => Bulk(s)
   } :| "bulk string RESP"
-  private[this] def genArrGen: Gen[GenArr] =
+  private def genArrGen: Gen[GenArr] =
     smallNumGen.flatMap { size =>
       option(listOfN(size, respGen)).map {
         case None    => NilArr
         case Some(v) => Arr(v)
       }
     } :| "array RESP"
-  private[this] def respGen: Gen[RESP] =
+  private def respGen: Gen[RESP] =
     lzy {
       frequency(2 -> strGen, 1 -> errGen, 2 -> numGen, 4 -> genBulkGen, 1 -> genArrGen)
     } :| "RESP"
-  private[this] def respListGen: Gen[List[RESP]] = smallNumGen.flatMap(listOfN(_, respGen)) :| "list of RESPs"
+  private def respListGen: Gen[List[RESP]] = smallNumGen.flatMap(listOfN(_, respGen)) :| "list of RESPs"
 
-  private[this] implicit val stringArb: Arbitrary[String]        = Arbitrary(stringGen)
-  private[this] implicit val invalidProtocolArb: Arbitrary[Char] = Arbitrary(invalidProtocolGen)
-  private[this] implicit val strArb: Arbitrary[Str]              = Arbitrary(strGen)
-  private[this] implicit val errArb: Arbitrary[Err]              = Arbitrary(errGen)
-  private[this] implicit val numArb: Arbitrary[Num]              = Arbitrary(numGen)
-  private[this] implicit val genBulkArb: Arbitrary[GenBulk]      = Arbitrary(genBulkGen)
-  private[this] implicit val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
-  private[this] implicit val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
+  private implicit val stringArb: Arbitrary[String]        = Arbitrary(stringGen)
+  private implicit val invalidProtocolArb: Arbitrary[Char] = Arbitrary(invalidProtocolGen)
+  private implicit val strArb: Arbitrary[Str]              = Arbitrary(strGen)
+  private implicit val errArb: Arbitrary[Err]              = Arbitrary(errGen)
+  private implicit val numArb: Arbitrary[Num]              = Arbitrary(numGen)
+  private implicit val genBulkArb: Arbitrary[GenBulk]      = Arbitrary(genBulkGen)
+  private implicit val genArrArb: Arbitrary[GenArr]        = Arbitrary(genArrGen)
+  private implicit val respListArb: Arbitrary[List[RESP]]  = Arbitrary(respListGen)
 
   property("A RESP codec handling unknown protocol type fails with correct error message") {
     forAll { (c: Char) =>

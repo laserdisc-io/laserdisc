@@ -49,13 +49,13 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
 
   private val cancellationError = IO.raiseError(new Exception("Test failed. Requests interrupted"))
 
-  private[this] final val key: Key = "test-key"
-  private[this] final val text     = "test text"
-  private[this] final val correct  = "correct"
+  private final val key: Key = "test-key"
+  private final val text     = "test text"
+  private final val correct  = "correct"
 
-  private[this] final val payloadSize        = 1000
-  private[this] final val requestsInParallel = 500
-  private[this] final val requestsInSequence = 50
+  private final val payloadSize        = 1000
+  private final val requestsInParallel = 500
+  private final val requestsInSequence = 50
 
   override val munitTimeout: FiniteDuration = 2.minutes
 

@@ -28,8 +28,8 @@ import munit.CatsEffectSuite
 import scala.concurrent.duration.*
 
 final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
-  private[this] val num: Protocol.Aux[Long]   = Protocol("NUM", EmptyTuple).as[Num, Long]
-  private[this] val str: Protocol.Aux[String] = Protocol("STR", EmptyTuple).as[Str, String]
+  private val num: Protocol.Aux[Long]   = Protocol("NUM", EmptyTuple).as[Num, Long]
+  private val str: Protocol.Aux[String] = Protocol("STR", EmptyTuple).as[Str, String]
 
   test("The fs2 protocol handler sends requests in order and collects their responses") {
     val handler =

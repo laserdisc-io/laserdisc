@@ -115,15 +115,15 @@ trait KeyBaseP {
 
   import keytypes.*
 
-  private[this] implicit final val str2NOKEYOrOK: Read[Str, Either[NOKEY, OK]] = Read.instance {
+  private implicit final val str2NOKEYOrOK: Read[Str, Either[NOKEY, OK]] = Read.instance {
     case Str("NOKEY") => Right(Left(NOKEY))
     case Str("OK")    => Right(Right(OK))
     case Str(other)   => Left(RESPDecErr(s"Unexpected string for Read[Str, (NOKEY | OK)]. Was $other"))
   }
 
-  private[this] final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
+  private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  private[this] implicit final val str2OptionType: Read[Str, Option[KeyType]] = Read.instance {
+  private implicit final val str2OptionType: Read[Str, Option[KeyType]] = Read.instance {
     case Str("string") => Right(Some(KeyType.string))
     case Str("list")   => Right(Some(KeyType.list))
     case Str("set")    => Right(Some(KeyType.set))

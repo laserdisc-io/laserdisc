@@ -57,7 +57,7 @@ object Show extends ShowInstances {
 }
 
 private[protocol] sealed trait ShowInstances {
-  private[this] final def doubleCases(d: Double): String = d match {
+  private final def doubleCases(d: Double): String = d match {
     case Double.NegativeInfinity => "-inf"
     case Double.PositiveInfinity => "+inf"
     case d                       => d.toString

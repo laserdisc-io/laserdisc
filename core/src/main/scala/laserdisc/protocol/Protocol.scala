@@ -64,8 +64,8 @@ object Protocol {
   }
 
   sealed abstract class PartiallyAppliedProtocol[L: RESPParamWrite](
-      private[this] final val command: String,
-      private[this] final val l: L
+      private final val command: String,
+      private final val l: L
   ) { self =>
 
     /** We request evidence that the [[RESP]] sent back by Redis can be deserialized into an instance of a B.

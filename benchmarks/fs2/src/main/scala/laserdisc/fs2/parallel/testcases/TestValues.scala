@@ -29,13 +29,13 @@ import java.util.UUID
 import laserdisc.auto.*
 
 private[fs2] trait TestValues {
-  private[this] def generateList(n: Int): OneOrMore[String] =
+  private def generateList(n: Int): OneOrMore[String] =
     OneOrMore.unsafeFrom((1 to n).map(_ => UUID.randomUUID().toString).toList)
 
-  private[this] def generateString(n: Int): String =
+  private def generateString(n: Int): String =
     (1 to n).map(_ => UUID.randomUUID().toString).mkString(" ")
 
-  private[this] def generateMulti(n: Int): OneOrMore[(Key, Int)] =
+  private def generateMulti(n: Int): OneOrMore[(Key, Int)] =
     OneOrMore.unsafeFrom(
       (1 to n).map(c => (Key.unsafeFrom(s"keyM$c"), UUID.randomUUID().hashCode())).toList
     )

@@ -35,7 +35,7 @@ import scala.concurrent.duration.DurationInt
 
 object CatsIoTestRunner {
 
-  private[this] implicit val logWriter: LogWriter[IO] = consoleLogUpToLevel(LogLevels.Error)
+  private implicit val logWriter: LogWriter[IO] = consoleLogUpToLevel(LogLevels.Error)
 
   def main(args: Array[String]): Unit = {
 

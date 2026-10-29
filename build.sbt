@@ -83,12 +83,16 @@ lazy val commonSettings = Seq(
 )
 
 // fs2 (and cli, which depends on it) aren't on Scala Native yet: log-effect isn't published for it (laserdisc-io/log-effect#780)
-def laserdiscCrossModule(path: String, platforms: Platform*) = {
+def laserdiscCrossModule(
+    path: String,
+    crossType: CrossType = CrossType.Pure,
+    platforms: Seq[Platform] = Seq(JVMPlatform, JSPlatform)
+) = {
   val pathBits    = path.split("[-/]")
   val id          = pathBits.reduce(_ + _.capitalize)
   val namePartial = pathBits.reverse.mkString("-")
-  CrossProject(id, file(path))((if (platforms.isEmpty) Seq(JVMPlatform, JSPlatform) else platforms): _*)
-    .crossType(CrossType.Pure)
+  CrossProject(id, file(path))(platforms: _*)
+    .crossType(crossType)
     .withoutSuffixFor(JVMPlatform)
     .settings(commonSettings)
     .settings(
@@ -117,7 +121,7 @@ lazy val laserdisc = tlCrossRootProject
   .aggregate(core, laws, fs2, cli, circe, `core-bench`, `fs2-bench`)
   .settings(commonSettings)
 
-lazy val core = laserdiscCrossModule("core", JVMPlatform, JSPlatform, NativePlatform)
+lazy val core = laserdiscCrossModule("core", CrossType.Full, Seq(JVMPlatform, JSPlatform, NativePlatform))
   .settings(
     libraryDependencies ++= Seq(
       "org.scodec"     %%% "scodec-bits"        % V.`scodec-bits`,
@@ -148,7 +152,7 @@ lazy val core = laserdiscCrossModule("core", JVMPlatform, JSPlatform, NativePlat
       |""".stripMargin
   )
 
-lazy val laws = laserdiscCrossModule("laws", JVMPlatform, JSPlatform, NativePlatform)
+lazy val laws = laserdiscCrossModule("laws", platforms = Seq(JVMPlatform, JSPlatform, NativePlatform))
   .dependsOn(core)
   .enablePlugins(NoPublishPlugin)
   .settings(
@@ -174,7 +178,7 @@ lazy val laws = laserdiscCrossModule("laws", JVMPlatform, JSPlatform, NativePlat
     }
   )
 
-lazy val fs2 = laserdiscCrossModule("fs2")
+lazy val fs2 = laserdiscCrossModule("fs2", CrossType.Full)
   .dependsOn(core)
   .settings(
     libraryDependencies ++= Seq(
@@ -212,7 +216,7 @@ lazy val cli = laserdiscCrossModule("cli")
     )
   )
 
-lazy val circe = laserdiscCrossModule("circe", JVMPlatform, JSPlatform, NativePlatform)
+lazy val circe = laserdiscCrossModule("circe", CrossType.Full, Seq(JVMPlatform, JSPlatform, NativePlatform))
   .dependsOn(core)
   .settings(
     libraryDependencies ++= Seq(

@@ -26,22 +26,24 @@ import org.scalacheck.Prop.forAll
 
 final class SlotSuite extends BaseSpec {
   test("Slot fails to compile given out of range Int (< 0)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("Slot(-1)"),
       """|error: Left predicate of (!(-1 < 0) && !(-1 > 16383)) failed: Predicate (-1 < 0) did not fail.
          |Slot(-1)
          |    ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [0, 16383]"
     )
   }
 
   test("Slot fails to compile given out of range Int (> 16383)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("Slot(16384)"),
       """|error: Right predicate of (!(16384 < 0) && !(16384 > 16383)) failed: Predicate (16384 > 16383) did not fail.
          |Slot(16384)
          |    ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [0, 16383]"
     )
   }
 

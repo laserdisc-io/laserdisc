@@ -26,42 +26,46 @@ import org.scalacheck.Prop.forAll
 
 final class GeoHashSuite extends BaseSpec {
   test("GeoHash fails to compile given a non conformant String (length < 11)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""GeoHash("abcdefghij")"""),
       """|error: Predicate failed: "abcdefghij".matches("[a-z0-9]{11}").
          |GeoHash("abcdefghij")
          |       ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should match [a-z0-9]{11}"
     )
   }
 
   test("GeoHash fails to compile given a non conformant String (length > 11)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""GeoHash("abcdefghijkl")"""),
       """|error: Predicate failed: "abcdefghijkl".matches("[a-z0-9]{11}").
          |GeoHash("abcdefghijkl")
          |       ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should match [a-z0-9]{11}"
     )
   }
 
   test("GeoHash fails to compile given a non conformant String (uppercase)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""GeoHash("abCdefghijk")"""),
       """|error: Predicate failed: "abCdefghijk".matches("[a-z0-9]{11}").
          |GeoHash("abCdefghijk")
          |       ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should match [a-z0-9]{11}"
     )
   }
 
   test("GeoHash fails to compile given a non conformant String (invalid chars)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""GeoHash("abcd&fghijk")"""),
       """|error: Predicate failed: "abcd&fghijk".matches("[a-z0-9]{11}").
          |GeoHash("abcd&fghijk")
          |       ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should match [a-z0-9]{11}"
     )
   }
 

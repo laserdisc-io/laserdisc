@@ -26,22 +26,24 @@ import org.scalacheck.Prop.forAll
 
 final class GlobPatternSuite extends BaseSpec {
   test("GlobPattern fails to compile given an empty String") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""GlobPattern("")"""),
       """|error: Predicate failed: "".matches("(\[?[\w\*\?]+\]?)+").
          |GlobPattern("")
          |           ^
-         |""".stripMargin
+         |""".stripMargin,
+      """Message: Should match (\[?[\w\*\?]+\]?)+"""
     )
   }
 
   test("GlobPattern fails to compile given a non conformant String") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""GlobPattern("!")"""),
       """|error: Predicate failed: "!".matches("(\[?[\w\*\?]+\]?)+").
          |GlobPattern("!")
          |           ^
-         |""".stripMargin
+         |""".stripMargin,
+      """Message: Should match (\[?[\w\*\?]+\]?)+"""
     )
   }
 

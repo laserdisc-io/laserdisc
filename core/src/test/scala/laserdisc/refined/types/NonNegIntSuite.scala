@@ -26,12 +26,13 @@ import org.scalacheck.Prop.forAll
 
 final class NonNegIntSuite extends BaseSpec {
   test("NonNegInt fails to compile given out of range Ints (< 0)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("NonNegInt(-1)"),
       """|error: Predicate (-1 < 0) did not fail.
          |NonNegInt(-1)
          |         ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be positive or zero"
     )
   }
 

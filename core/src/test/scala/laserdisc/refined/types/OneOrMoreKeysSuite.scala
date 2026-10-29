@@ -26,22 +26,24 @@ import org.scalacheck.Prop.forAll
 
 final class OneOrMoreKeysSuite extends BaseSpec {
   test("OneOrMoreKeys fails to compile given non literal empty List") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("OneOrMoreKeys(List.empty)"),
       """|error: compile-time refinement only works with literals
          |OneOrMoreKeys(List.empty)
          |             ^
-         |""".stripMargin
+         |""".stripMargin,
+      "error: object OneOrMoreKeys in package laserdisc does not take parameters"
     )
   }
 
   test("OneOrMoreKeys fails to compile given non literal non empty List") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""OneOrMoreKeys(List(Key("a")))"""),
       """|error: compile-time refinement only works with literals
          |OneOrMoreKeys(List(Key("a")))
          |             ^
-         |""".stripMargin
+         |""".stripMargin,
+      "error: object OneOrMoreKeys in package laserdisc does not take parameters"
     )
   }
 

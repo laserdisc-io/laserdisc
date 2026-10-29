@@ -43,8 +43,8 @@ final type ReadArrToSeq[A] = Read[Arr, Seq[A]]
 private final type NoControlChar = Not[ControlChar]
 private final type NoWhitespace  = Not[WhitespaceChar]
 
-/** Refined-style operations (as found in Scala 2's refined `RefinedTypeOps`) on top of iron's [[RefinedSubtype]], so that shared code
-  * can create and deconstruct refined values the same way regardless of the Scala version.
+/** Refined-style operations (as found in Scala 2's refined `RefinedTypeOps`) on top of iron's [[RefinedSubtype]], so that shared code can
+  * create and deconstruct refined values the same way regardless of the Scala version.
   */
 trait RefinedTypeOps[A, C](using RuntimeConstraint[A, C]) extends RefinedSubtype[A, C] {
   final def from(a: A): Either[String, T] = either(a)
@@ -53,12 +53,15 @@ trait RefinedTypeOps[A, C](using RuntimeConstraint[A, C]) extends RefinedSubtype
 
 /** Refined-style operations for refined collections, which are plain iron types rather than [[RefinedSubtype]] s */
 sealed abstract class RefinedCollectionOps[A, C](using C: RuntimeConstraint[A, C]) {
-  final def from(a: A): Either[String, A :| C]    = if (C.test(a)) Right(a.asInstanceOf[A :| C]) else Left(C.message)
-  final def unsafeFrom(a: A): A :| C              = from(a).fold(e => throw new IllegalArgumentException(e), identity)
-  final def unapply(a: A): Option[A :| C]         = from(a).toOption
+  final def from(a: A): Either[String, A :| C] = if (C.test(a)) Right(a.asInstanceOf[A :| C]) else Left(C.message)
+  final def unsafeFrom(a: A): A :| C           = from(a).fold(e => throw new IllegalArgumentException(e), identity)
+  final def unapply(a: A): Option[A :| C]      = from(a).toOption
 }
 
 extension [A, C](a: A :| C) inline def value: A = a
+
+/** Scala 2 witnesses (refined's `W`) expose their literal as `.value`: literal constants (e.g. [[PortMinValueWit]]) do the same here */
+extension [A <: Singleton & (String | Int | Long | Double)](wit: A) inline def value: A = wit
 
 // Witnesses
 final val AllNICsEqWit                = "0.0.0.0"
@@ -85,12 +88,13 @@ final val SlotMaxValueWit         = 16383
 final val StringLengthMaxValueWit = 4294967295L
 
 // Refinements
-private final type IPv4Ref        = Match["^(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)){3}$"]
-private final type Rfc1918Ref     = IPv4Ref & (Match["^10\\..*"] | Match["^172\\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31)\\..+"] | Match["^192\\.168\\..*"])
+private final type IPv4Ref    = Match["^(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)){3}$"]
+private final type Rfc1918Ref = IPv4Ref &
+  (Match["^10\\..*"] | Match["^172\\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31)\\..+"] | Match["^192\\.168\\..*"])
 private final type Rfc5737Ref     = IPv4Ref & (Match["^192\\.0\\.2\\..*"] | Match["^198\\.51\\.100\\..*"] | Match["^203\\.0\\.113\\..*"])
 private final type Rfc3927Ref     = IPv4Ref & Match["^169\\.254\\..*"]
 private final type Rfc2544Ref     = IPv4Ref & (Match["^198\\.18\\..*"] | Match["^198\\.19\\..*"])
-private final type ValidDoubleRef = Not[NaN]
+private final type ValidDoubleRef = NonNaN
 
 final type ConnectionNameRef = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
 final type DbIndexRef        = Interval.Closed[0, DbIndexMaxValueWit.type]

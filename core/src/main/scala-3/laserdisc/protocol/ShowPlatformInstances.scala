@@ -20,26 +20,12 @@
  */
 
 package laserdisc
+package protocol
 
-import io.github.iltotore.iron.Constraint
+import io.github.iltotore.iron.:|
 
-/* Both predicates below are spelled out as character ranges, rather than delegating to `Char.isControl` / `Char.isWhitespace`, so that
- * iron can evaluate them at compile time when refining literals. They match the JDK methods for every Char. */
+private[protocol] trait ShowPlatformInstances {
 
-final case class ControlChar()
-object ControlChar {
-  given Constraint[Char, ControlChar] with {
-    override inline def test(inline c: Char): Boolean = c <= '\u001f' || (c >= '\u007f' && c <= '\u009f')
-    override inline def message: String               = "isControl"
-  }
-}
-
-private[laserdisc] final case class WhitespaceChar()
-private[laserdisc] object WhitespaceChar {
-  given Constraint[Char, WhitespaceChar] with {
-    override inline def test(inline c: Char): Boolean =
-      (c >= '\t' && c <= '\r') || (c >= '\u001c' && c <= ' ') || c == '\u1680' || (c >= '\u2000' && c <= '\u2006') ||
-        (c >= '\u2008' && c <= '\u200a') || c == '\u2028' || c == '\u2029' || c == '\u205f' || c == '\u3000'
-    override inline def message: String = "isWhitespace"
-  }
+  /** `.value` on an iron refined type gives back an iron type (e.g. `Long :| NonNegRef`), which is shown as its base type */
+  implicit final def ironShow[A, C](implicit A: Show[A]): Show[A :| C] = A.contramap(identity)
 }

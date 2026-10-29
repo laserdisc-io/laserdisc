@@ -38,4 +38,5 @@ package object types {
     listOf(kv.arbitrary)
 
   private[types] implicit val illegalArgumentException: IllegalArgumentException => Prop = _ => Prop.passed
+
 }

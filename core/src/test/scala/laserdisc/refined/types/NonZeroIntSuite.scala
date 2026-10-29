@@ -26,12 +26,13 @@ import org.scalacheck.Prop.forAll
 
 final class NonZeroIntSuite extends BaseSpec {
   test("NonZeroInt fails to compile given 0") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("NonZeroInt(0)"),
       """|error: Predicate (0 == 0) did not fail.
          |NonZeroInt(0)
          |          ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: !(Should strictly equal to 0)"
     )
   }
 

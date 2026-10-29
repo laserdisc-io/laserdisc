@@ -26,22 +26,24 @@ import org.scalacheck.Prop.forAll
 
 final class LongitudeSuite extends BaseSpec {
   test("Longitude fails to compile given out of range Double (< -180.0D)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("Longitude(-180.00000001D)"),
       """|error: Left predicate of (!(-180.00000001 < -180.0) && !(-180.00000001 > 180.0)) failed: Predicate (-180.00000001 < -180.0) did not fail.
          |Longitude(-180.00000001D)
          |         ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [-180.0, 180.0]"
     )
   }
 
   test("Longitude fails to compile given out of range Double (> 180.0D)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("Longitude(180.00000001D)"),
       """|error: Right predicate of (!(180.00000001 < -180.0) && !(180.00000001 > 180.0)) failed: Predicate (180.00000001 > 180.0) did not fail.
          |Longitude(180.00000001D)
          |         ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [-180.0, 180.0]"
     )
   }
 

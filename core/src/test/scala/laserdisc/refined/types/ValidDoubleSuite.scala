@@ -26,12 +26,13 @@ import org.scalacheck.Prop.forAll
 
 final class ValidDoubleSuite extends BaseSpec {
   test("ValidDouble fails to compile given Double.NaN") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("ValidDouble(Double.NaN)"),
       """|error: Predicate failed: (NaN != NaN).
          |ValidDouble(Double.NaN)
          |           ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: !isNaN"
     )
   }
 

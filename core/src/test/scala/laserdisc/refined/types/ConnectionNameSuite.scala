@@ -26,22 +26,24 @@ import org.scalacheck.Prop.forAll
 
 final class ConnectionNameSuite extends BaseSpec {
   test("ConnectionName fails to compile given an empty string") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""ConnectionName("")"""),
       """|error: Left predicate of (!isEmpty() && ()) failed: Predicate isEmpty() did not fail.
          |ConnectionName("")
          |              ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should have a minimum length of 1 & For each element: (!(isWhitespace) & !(isControl))"
     )
   }
 
   test("ConnectionName fails to compile given a space") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""ConnectionName(" ")"""),
       """|error: Right predicate of (!isEmpty( ) && ((!isWhitespace(' ') && !isControl(' ')))) failed: Predicate failed: ((!isWhitespace(' ') && !isControl(' '))).
          |ConnectionName(" ")
          |              ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should have a minimum length of 1 & For each element: (!(isWhitespace) & !(isControl))"
     )
   }
 

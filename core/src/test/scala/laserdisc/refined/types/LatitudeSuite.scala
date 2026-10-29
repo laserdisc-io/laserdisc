@@ -26,22 +26,24 @@ import org.scalacheck.Prop.forAll
 
 final class LatitudeSuite extends BaseSpec {
   test("Latitude fails to compile given out of range Double (< -85.05112878D)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("Latitude(-85.05112879D)"),
       """|error: Left predicate of (!(-85.05112879 < -85.05112878) && !(-85.05112879 > 85.05112878)) failed: Predicate (-85.05112879 < -85.05112878) did not fail.
          |Latitude(-85.05112879D)
          |        ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [-85.05112878, 85.05112878]"
     )
   }
 
   test("Latitude fails to compile given out of range Double (> 85.05112878D)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("Latitude(85.05112879D)"),
       """|error: Right predicate of (!(85.05112879 < -85.05112878) && !(85.05112879 > 85.05112878)) failed: Predicate (85.05112879 > 85.05112878) did not fail.
          |Latitude(85.05112879D)
          |        ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [-85.05112878, 85.05112878]"
     )
   }
 

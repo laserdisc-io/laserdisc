@@ -27,7 +27,7 @@ import scala.language.implicitConversions
 object auto {
 
   /** Refines a literal into any laserdisc refined type (e.g. `val k: Key = "foo"`), checking it at compile time */
-  implicit inline def autoRefine[A, C, T](inline a: A)(
+  inline implicit def autoRefine[A, C, T](inline a: A)(
       using m: RefinedType.Mirror[T] { type BaseType = A; type ConstraintType = C },
       inline c: Constraint[A, C]
   ): T = io.github.iltotore.iron.autoRefine[A, C](a).asInstanceOf[T]

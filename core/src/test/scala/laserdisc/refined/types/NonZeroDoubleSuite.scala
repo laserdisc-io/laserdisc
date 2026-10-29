@@ -26,22 +26,24 @@ import org.scalacheck.Prop.forAll
 
 final class NonZeroDoubleSuite extends BaseSpec {
   test("NonZeroDouble fails to compile given 0.0D") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("NonZeroDouble(0.0D)"),
       """|error: Right predicate of ((0.0 != NaN) && !(0.0 == 0.0)) failed: Predicate (0.0 == 0.0) did not fail.
          |NonZeroDouble(0.0D)
          |             ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: !isNaN & !(Should strictly equal to 0.0)"
     )
   }
 
   test("NonZeroDouble fails to compile given NaN") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("NonZeroDouble(Double.NaN)"),
       """|error: Left predicate of ((NaN != NaN) && !(NaN == 0.0)) failed: Predicate failed: (NaN != NaN).
          |NonZeroDouble(Double.NaN)
          |             ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: !isNaN & !(Should strictly equal to 0.0)"
     )
   }
 

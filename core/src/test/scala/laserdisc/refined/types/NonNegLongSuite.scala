@@ -26,12 +26,13 @@ import org.scalacheck.Prop.forAll
 
 final class NonNegLongSuite extends BaseSpec {
   test("NonNegLong fails to compile given out of range Longs (< 0L)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("NonNegLong(-1L)"),
       """|error: Predicate (-1 < 0) did not fail.
          |NonNegLong(-1L)
          |          ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be positive or zero"
     )
   }
 

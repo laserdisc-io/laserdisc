@@ -26,22 +26,24 @@ import org.scalacheck.Prop.*
 
 final class DbIndexSuite extends BaseSpec {
   test("DbIndex fail to compile given out of range Int (< 0)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("DbIndex(-1)"),
       """|error: Left predicate of (!(-1 < 0) && !(-1 > 15)) failed: Predicate (-1 < 0) did not fail.
          |DbIndex(-1)
          |       ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [0, 15]"
     )
   }
 
   test("DbIndex fail to compile given out of range Int (> 15)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("DbIndex(16)"),
       """|error: Right predicate of (!(16 < 0) && !(16 > 15)) failed: Predicate (16 > 15) did not fail.
          |DbIndex(16)
          |       ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [0, 15]"
     )
   }
 

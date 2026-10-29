@@ -21,11 +21,6 @@
 
 package laserdisc
 
-import eu.timepit.refined.W
-import eu.timepit.refined.api.*
-import eu.timepit.refined.generic.Equal
-import eu.timepit.refined.scalacheck.reftype.arbitraryRefType
-import eu.timepit.refined.scalacheck.{CollectionInstancesBinCompat1, NumericInstances, StringInstances}
 import munit.ScalaCheckSuite
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.*
@@ -35,15 +30,10 @@ import scala.Double.{MaxValue => DMax, MinValue => DMin, NaN}
 import scala.Int.{MaxValue => IMax, MinValue => IMin}
 import scala.Long.{MaxValue => LMax, MinValue => LMin}
 
-abstract class BaseSpec
-    extends ScalaCheckSuite
-    with ScalaCheckSettings
-    with CollectionInstancesBinCompat1
-    with NumericInstances
-    with StringInstances {
+abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with BaseSpecPlatform {
 
-  protected final type EmptyString = String Refined Equal[W.`""`.T]
-  protected final val EmptyString: EmptyString = RefType.applyRefM[EmptyString]("")
+  protected final type EmptyString = TestTypes.EmptyString
+  protected final val EmptyString: EmptyString = TestTypes.EmptyString
 
   private[this] final val dashChar: Char     = 0x002d.toChar
   private[this] final val dashString: String = dashChar.toString
@@ -94,30 +84,30 @@ abstract class BaseSpec
   private[this] final def strOfNGen(n: Int, fs: (Int, Gen[Char])*): Gen[String]  = listOfN(n, frequency(fs: _*)).map(_.mkString)
   private[this] final def strOfNSameFreqGen(n: Int, gs: Gen[Char]*): Gen[String] = strOfNGen(n, gs.map(1 -> _): _*)
 
-  final val connectionNameIsValid: String => Boolean                          = Validate[String, ConnectionNameRef].isValid
-  final val dbIndexIsValid: Int => Boolean                                    = Validate[Int, DbIndexRef].isValid
-  final val geoHashIsValid: String => Boolean                                 = Validate[String, GeoHashRef].isValid
-  final val globPatternIsValid: String => Boolean                             = Validate[String, GlobPatternRef].isValid
-  final val hostIsValid: String => Boolean                                    = Validate[String, HostRef].isValid
-  final val keyIsValid: String => Boolean                                     = Validate[String, KeyRef].isValid
-  final val latitudeIsValid: Double => Boolean                                = Validate[Double, LatitudeRef].isValid
-  final val longitudeIsValid: Double => Boolean                               = Validate[Double, LongitudeRef].isValid
-  final val nodeIdIsValid: String => Boolean                                  = Validate[String, NodeIdRef].isValid
-  final val nonNegDoubleIsValid: Double => Boolean                            = Validate[Double, NonNegDoubleRef].isValid
-  final val nonNegIntIsValid: Int => Boolean                                  = Validate[Int, NonNegRef].isValid
-  final val nonNegLongIsValid: Long => Boolean                                = Validate[Long, NonNegRef].isValid
-  final val nonZeroDoubleIsValid: Double => Boolean                           = Validate[Double, NonZeroDoubleRef].isValid
-  final val nonZeroIntIsValid: Int => Boolean                                 = Validate[Int, NonZeroIntRef].isValid
-  final val nonZeroLongIsValid: Long => Boolean                               = Validate[Long, NonZeroLongRef].isValid
-  final def oneOrMoreIsValid[A]: List[A] => Boolean                           = Validate[List[A], OneOrMoreRef].isValid
-  final val oneOrMoreKeysIsValid: List[Key] => Boolean                        = Validate[List[Key], OneOrMoreRef].isValid
-  final val portIsValid: Int => Boolean                                       = Validate[Int, PortRef].isValid
-  final val rangeOffsetIsValid: Int => Boolean                                = Validate[Int, RangeOffsetRef].isValid
-  final val slotIsValid: Int => Boolean                                       = Validate[Int, SlotRef].isValid
-  final val stringLengthIsValid: Long => Boolean                              = Validate[Long, StringLengthRef].isValid
-  final val twoOrMoreKeysIsValid: List[Key] => Boolean                        = Validate[List[Key], TwoOrMoreRef].isValid
-  final val twoOrMoreWeightedKeysIsValid: List[(Key, ValidDouble)] => Boolean = Validate[List[(Key, ValidDouble)], TwoOrMoreRef].isValid
-  final val validDoubleIsValid: Double => Boolean                             = Validate[Double, ValidDoubleRef].isValid
+  final val connectionNameIsValid: String => Boolean                          = ConnectionName.from(_).isRight
+  final val dbIndexIsValid: Int => Boolean                                    = DbIndex.from(_).isRight
+  final val geoHashIsValid: String => Boolean                                 = GeoHash.from(_).isRight
+  final val globPatternIsValid: String => Boolean                             = GlobPattern.from(_).isRight
+  final val hostIsValid: String => Boolean                                    = Host.from(_).isRight
+  final val keyIsValid: String => Boolean                                     = Key.from(_).isRight
+  final val latitudeIsValid: Double => Boolean                                = Latitude.from(_).isRight
+  final val longitudeIsValid: Double => Boolean                               = Longitude.from(_).isRight
+  final val nodeIdIsValid: String => Boolean                                  = NodeId.from(_).isRight
+  final val nonNegDoubleIsValid: Double => Boolean                            = NonNegDouble.from(_).isRight
+  final val nonNegIntIsValid: Int => Boolean                                  = NonNegInt.from(_).isRight
+  final val nonNegLongIsValid: Long => Boolean                                = NonNegLong.from(_).isRight
+  final val nonZeroDoubleIsValid: Double => Boolean                           = NonZeroDouble.from(_).isRight
+  final val nonZeroIntIsValid: Int => Boolean                                 = NonZeroInt.from(_).isRight
+  final val nonZeroLongIsValid: Long => Boolean                               = NonZeroLong.from(_).isRight
+  final def oneOrMoreIsValid[A]: List[A] => Boolean                           = OneOrMore.from(_).isRight
+  final val oneOrMoreKeysIsValid: List[Key] => Boolean                        = OneOrMoreKeys.from(_).isRight
+  final val portIsValid: Int => Boolean                                       = Port.from(_).isRight
+  final val rangeOffsetIsValid: Int => Boolean                                = RangeOffset.from(_).isRight
+  final val slotIsValid: Int => Boolean                                       = Slot.from(_).isRight
+  final val stringLengthIsValid: Long => Boolean                              = StringLength.from(_).isRight
+  final val twoOrMoreKeysIsValid: List[Key] => Boolean                        = TwoOrMoreKeys.from(_).isRight
+  final val twoOrMoreWeightedKeysIsValid: List[(Key, ValidDouble)] => Boolean = TwoOrMoreWeightedKeys.from(_).isRight
+  final val validDoubleIsValid: Double => Boolean                             = ValidDouble.from(_).isRight
 
   final val connectionNameGen: Gen[String] =
     strGen(nonEmptyListOf(noSpaceUtf8BMPCharGen)).filter(connectionNameIsValid) :| "connection name"
@@ -156,30 +146,42 @@ abstract class BaseSpec
     strGen(listOf(frequency(1 -> spaceGen, 10 -> noSpaceUtf8BMPCharGen))).filterNot(connectionNameIsValid) :| "string w/ spaces"
   final val validDoubleGen: Gen[Double] = chooseNum(DMin, DMax).suchThat(_ != NaN) :| "double != NaN"
 
-  implicit final val connectionNameArb: Arbitrary[ConnectionName]         = arbitraryRefType(connectionNameGen)
+  implicit final val connectionNameArb: Arbitrary[ConnectionName]         = Arbitrary(connectionNameGen.map(ConnectionName.unsafeFrom))
   implicit final val directionArb: Arbitrary[Direction]                   = Arbitrary(directionGen)
-  implicit final val geoHashArb: Arbitrary[GeoHash]                       = arbitraryRefType(geoHashGen)
-  implicit final val globPatternArb: Arbitrary[GlobPattern]               = arbitraryRefType(globPatternGen)
+  implicit final val geoHashArb: Arbitrary[GeoHash]                       = Arbitrary(geoHashGen.map(GeoHash.unsafeFrom))
+  implicit final val globPatternArb: Arbitrary[GlobPattern]               = Arbitrary(globPatternGen.map(GlobPattern.unsafeFrom))
   implicit final val hostArb: Arbitrary[Host]                             = Arbitrary(hostGen)
-  implicit final val indexArb: Arbitrary[Index]                           = arbitraryRefType(arbitrary[Long])
+  implicit final val indexArb: Arbitrary[Index]                           = Arbitrary(arbitrary[Long].map(Index.unsafeFrom))
   implicit final val keyArb: Arbitrary[Key]                               = Arbitrary(keyGen)
   implicit final def kvArb[A](implicit A: Arbitrary[A]): Arbitrary[KV[A]] =
     Arbitrary(keyArb.arbitrary.flatMap(k => A.arbitrary.map(KV(k, _))))
-  implicit final val nodeIdArb: Arbitrary[NodeId]               = arbitraryRefType(nodeIdGen)
-  implicit final val nonNegDoubleArb: Arbitrary[NonNegDouble]   = arbitraryRefType(nonNegDoubleGen)
-  implicit final val nonNegIntArb: Arbitrary[NonNegInt]         = arbitraryRefType(nonNegIntGen)
-  implicit final val nonNegLongArb: Arbitrary[NonNegLong]       = arbitraryRefType(nonNegLongGen)
-  implicit final val nonZeroDoubleArb: Arbitrary[NonZeroDouble] = arbitraryRefType(nonZeroDoubleGen)
-  implicit final val nonZeroIntArb: Arbitrary[NonZeroInt]       = arbitraryRefType(nonZeroIntGen)
-  implicit final val nonZeroLongArb: Arbitrary[NonZeroLong]     = arbitraryRefType(nonZeroLongGen)
+  implicit final val nodeIdArb: Arbitrary[NodeId]               = Arbitrary(nodeIdGen.map(NodeId.unsafeFrom))
+  implicit final val nonNegDoubleArb: Arbitrary[NonNegDouble]   = Arbitrary(nonNegDoubleGen.map(NonNegDouble.unsafeFrom))
+  implicit final val nonNegIntArb: Arbitrary[NonNegInt]         = Arbitrary(nonNegIntGen.map(NonNegInt.unsafeFrom))
+  implicit final val nonNegLongArb: Arbitrary[NonNegLong]       = Arbitrary(nonNegLongGen.map(NonNegLong.unsafeFrom))
+  implicit final val nonZeroDoubleArb: Arbitrary[NonZeroDouble] = Arbitrary(nonZeroDoubleGen.map(NonZeroDouble.unsafeFrom))
+  implicit final val nonZeroIntArb: Arbitrary[NonZeroInt]       = Arbitrary(nonZeroIntGen.map(NonZeroInt.unsafeFrom))
+  implicit final val nonZeroLongArb: Arbitrary[NonZeroLong]     = Arbitrary(nonZeroLongGen.map(NonZeroLong.unsafeFrom))
   implicit final val scanKeyArb: Arbitrary[Scan[Key]]           =
     Arbitrary(nonNegLongArb.arbitrary.flatMap(l => option(listOf(keyArb.arbitrary)).map(Scan(l, _))))
   implicit final val scanKVArb: Arbitrary[ScanKV] =
     Arbitrary(nonNegLongArb.arbitrary.flatMap(l => option(listOf(kvArb[String].arbitrary)).map(ScanKV(l, _))))
-  implicit final val slotArb: Arbitrary[Slot]                                   = Arbitrary(slotGen)
-  implicit final val twoOrMoreKeysArb: Arbitrary[TwoOrMoreKeys]                 = arbitraryRefType(twoOrMore(keyArb.arbitrary))
-  implicit final val twoOrMoreWeightedKeysArb: Arbitrary[TwoOrMoreWeightedKeys] = arbitraryRefType(twoOrMore(zip(keyArb, validDoubleArb)))
-  implicit final val validDoubleArb: Arbitrary[ValidDouble]                     = arbitraryRefType(validDoubleGen)
+  implicit final val slotArb: Arbitrary[Slot]                   = Arbitrary(slotGen)
+  implicit final val twoOrMoreKeysArb: Arbitrary[TwoOrMoreKeys] = Arbitrary(twoOrMore(keyArb.arbitrary).map(TwoOrMoreKeys.unsafeFrom))
+  implicit final val twoOrMoreWeightedKeysArb: Arbitrary[TwoOrMoreWeightedKeys] = Arbitrary(
+    twoOrMore(zip(keyArb, validDoubleArb)).map(TwoOrMoreWeightedKeys.unsafeFrom)
+  )
+  implicit final val dbIndexArb: Arbitrary[DbIndex]                                     = Arbitrary(dbIndexGen.map(DbIndex.unsafeFrom))
+  implicit final val latitudeArb: Arbitrary[Latitude]                                   = Arbitrary(latitudeGen.map(Latitude.unsafeFrom))
+  implicit final val longitudeArb: Arbitrary[Longitude]                                 = Arbitrary(longitudeGen.map(Longitude.unsafeFrom))
+  implicit final def oneOrMoreArb[A](implicit A: Arbitrary[A]): Arbitrary[OneOrMore[A]] =
+    Arbitrary(nonEmptyListOf(A.arbitrary).map(OneOrMore.unsafeFrom))
+  implicit final val portArb: Arbitrary[Port]                 = Arbitrary(portGen)
+  implicit final val posIntArb: Arbitrary[PosInt]             = Arbitrary(chooseNum(1, IMax).map(PosInt.unsafeFrom))
+  implicit final val posLongArb: Arbitrary[PosLong]           = Arbitrary(chooseNum(1L, LMax).map(PosLong.unsafeFrom))
+  implicit final val rangeOffsetArb: Arbitrary[RangeOffset]   = Arbitrary(rangeOffsetGen.map(RangeOffset.unsafeFrom))
+  implicit final val stringLengthArb: Arbitrary[StringLength] = Arbitrary(stringLengthGen.map(StringLength.unsafeFrom))
+  implicit final val validDoubleArb: Arbitrary[ValidDouble]   = Arbitrary(validDoubleGen.map(ValidDouble.unsafeFrom))
 
   final val boolToNum: Boolean => Num = b => Num(if (b) 1 else 0)
 
@@ -193,6 +195,13 @@ abstract class BaseSpec
     eab.fold(e => assertEquals(e, a), res => fail(s"It Should be left but was right with $res"))
 
   final val succeed: Unit = assert(cond = true)
+
+  /** Compile errors are worded differently by refined/shapeless (Scala 2) and iron/dotty (Scala 3): on Scala 2 the exact `scala2` text is
+    * checked, on Scala 3 only that compilation fails with an error containing `scala3`.
+    */
+  protected final def assertCompileErrors(obtained: String, scala2: String, scala3: String)(implicit loc: munit.Location): Unit =
+    if (isScala3) assert(obtained.contains(scala3), s"expected a compile error containing [$scala3] but got:\n$obtained")
+    else assertNoDiff(obtained, scala2)
 
   protected[this] implicit final class EitherSyntax[A, B](private val eab: Either[A, B]) {
     def onRight[C](f: B => Boolean): Unit =

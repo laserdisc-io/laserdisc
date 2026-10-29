@@ -48,7 +48,7 @@ abstract class HashPSpec extends BaseSpec with HashP {
   }
 
   test("The Hash protocol using hget fails to compile given key and field but missing read instance") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""hget[Bar](Key("a"), Key("f"))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
@@ -64,7 +64,8 @@ abstract class HashPSpec extends BaseSpec with HashP {
          |
          |hget[Bar](Key("a"), Key("f"))
          |         ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
     )
   }
 
@@ -85,7 +86,7 @@ abstract class HashPSpec extends BaseSpec with HashP {
   }
 
   test("The Hash protocol using hgetall fails to compile given key but missing read instance") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""hgetall[Map[String, Int]](Key("a"))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Arr, Map[String,Int]].
@@ -101,7 +102,8 @@ abstract class HashPSpec extends BaseSpec with HashP {
          |
          |hgetall[Map[String, Int]](Key("a"))
          |                         ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Implicit not found Read[laserdisc.protocol.Arr, Map[String, Int]]."
     )
   }
 
@@ -178,7 +180,7 @@ abstract class HashPSpec extends BaseSpec with HashP {
   }
 
   test("The Hash protocol using hmset fails to compile given key and EmptyTuple") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""hmset(Key("a"), EmptyTuple)"""),
       """|error:
          |ambiguous implicit values:
@@ -187,7 +189,8 @@ abstract class HashPSpec extends BaseSpec with HashP {
          | match expected type shapeless.HNil <:!< laserdisc.EmptyTuple
          |hmset(Key("a"), EmptyTuple)
          |     ^
-         |""".stripMargin
+         |""".stripMargin,
+      "error: EmptyTuple must not be a subtype of EmptyTuple.type"
     )
   }
 

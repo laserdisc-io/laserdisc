@@ -26,22 +26,24 @@ import org.scalacheck.Prop.forAll
 
 final class StringLengthSuite extends BaseSpec {
   test("StringLength fails to compile given out of range Long (< 0L)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("StringLength(-1L)"),
       """|error: Left predicate of (!(-1 < 0) && !(-1 > 4294967295)) failed: Predicate (-1 < 0) did not fail.
          |StringLength(-1L)
          |            ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [0, 4294967295]"
     )
   }
 
   test("StringLength fails to compile given out of range Long (> 4294967295L)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("StringLength(4294967296L)"),
       """|error: Right predicate of (!(4294967296 < 0) && !(4294967296 > 4294967295)) failed: Predicate (4294967296 > 4294967295) did not fail.
          |StringLength(4294967296L)
          |            ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [0, 4294967295]"
     )
   }
 

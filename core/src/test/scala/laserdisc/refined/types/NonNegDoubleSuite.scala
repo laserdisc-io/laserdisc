@@ -26,22 +26,24 @@ import org.scalacheck.Prop.forAll
 
 final class NonNegDoubleSuite extends BaseSpec {
   test("NonNegDouble fails to compile given out of range Double (< 0.0D)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("NonNegDouble(-0.00000001D)"),
       """|error: Right predicate of ((-1.0E-8 != NaN) && !(-1.0E-8 < 0.0)) failed: Predicate (-1.0E-8 < 0.0) did not fail.
          |NonNegDouble(-0.00000001D)
          |            ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: !isNaN & Should be positive or zero"
     )
   }
 
   test("NonNegDouble fails to compile given NaN Double") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("NonNegDouble(Double.NaN)"),
       """|error: Left predicate of ((NaN != NaN) && !(NaN < 0.0)) failed: Predicate failed: (NaN != NaN).
          |NonNegDouble(Double.NaN)
          |            ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: !isNaN & Should be positive or zero"
     )
   }
 

@@ -26,40 +26,43 @@ import org.scalacheck.Prop.forAll
 
 final class TwoOrMoreKeysSuite extends BaseSpec {
   test("TwoOrMoreKeys fails to compile given non literal empty List") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("TwoOrMoreKeys(List.empty)"),
       """|error: compile-time refinement only works with literals
          |TwoOrMoreKeys(List.empty)
          |             ^
-         |""".stripMargin
+         |""".stripMargin,
+      "error: object TwoOrMoreKeys in package laserdisc does not take parameters"
     )
   }
 
   test("TwoOrMoreKeys fails to compile given non literal single element List") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""TwoOrMoreKeys(List(Key("a")))"""),
       """|error: compile-time refinement only works with literals
          |TwoOrMoreKeys(List(Key("a")))
          |             ^
-         |""".stripMargin
+         |""".stripMargin,
+      "error: object TwoOrMoreKeys in package laserdisc does not take parameters"
     )
   }
 
   test("TwoOrMoreKeys fails to compile given non literal List of two elements") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""TwoOrMoreKeys(List(Key("a"), Key("b")))"""),
       """|error: compile-time refinement only works with literals
          |TwoOrMoreKeys(List(Key("a"), Key("b")))
          |             ^
-         |""".stripMargin
+         |""".stripMargin,
+      "error: object TwoOrMoreKeys in package laserdisc does not take parameters"
     )
   }
 
-  property("TwoOrMoreKeys fails at runtime provided empty List") {
+  test("TwoOrMoreKeys fails at runtime provided empty List") {
     intercept[IllegalArgumentException](TwoOrMoreKeys.unsafeFrom(List.empty))
   }
 
-  property("TwoOrMoreKeys fails at runtime provided single element List") {
+  test("TwoOrMoreKeys fails at runtime provided single element List") {
     intercept[IllegalArgumentException](TwoOrMoreKeys.unsafeFrom(List(Key("a"))))
   }
 

@@ -26,32 +26,35 @@ import org.scalacheck.Prop.forAll
 
 final class TwoOrMoreWeightedKeysSuite extends BaseSpec {
   test("TwoOrMoreWeightedKeys fails to compile given non literal empty List") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("TwoOrMoreWeightedKeys(List.empty)"),
       """|error: compile-time refinement only works with literals
          |TwoOrMoreWeightedKeys(List.empty)
          |                     ^
-         |""".stripMargin
+         |""".stripMargin,
+      "error: object TwoOrMoreWeightedKeys in package laserdisc does not take parameters"
     )
   }
 
   test("TwoOrMoreWeightedKeys fails to compile given non literal single element List") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""TwoOrMoreWeightedKeys(List(Key("a") -> ValidDouble(42.0D)))"""),
       """|error: compile-time refinement only works with literals
          |TwoOrMoreWeightedKeys(List(Key("a") -> ValidDouble(42.0D)))
          |                     ^
-         |""".stripMargin
+         |""".stripMargin,
+      "error: object TwoOrMoreWeightedKeys in package laserdisc does not take parameters"
     )
   }
 
   test("TwoOrMoreWeightedKeys fails to compile given non literal List of two elements") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""TwoOrMoreWeightedKeys(List(Key("a") -> ValidDouble(42.0D), Key("b") -> ValidDouble(23.0D)))"""),
       """|error: compile-time refinement only works with literals
          |TwoOrMoreWeightedKeys(List(Key("a") -> ValidDouble(42.0D), Key("b") -> ValidDouble(23.0D)))
          |                     ^
-         |""".stripMargin
+         |""".stripMargin,
+      "error: object TwoOrMoreWeightedKeys in package laserdisc does not take parameters"
     )
   }
 

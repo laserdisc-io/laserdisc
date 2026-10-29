@@ -21,7 +21,7 @@
 
 package laserdisc
 
-import eu.timepit.refined.types.string.NonEmptyString
+import laserdisc.TestTypes.NonEmptyString
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary.arbitrary
 

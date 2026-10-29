@@ -120,7 +120,6 @@ lazy val core = laserdiscCrossModule("core")
   .settings(
     libraryDependencies ++= Seq(
       "org.scodec"     %%% "scodec-bits"        % V.`scodec-bits`,
-      "eu.timepit"     %%% "refined-scalacheck" % V.refined            % Test,
       "org.scalacheck" %%% "scalacheck"         % V.scalacheck         % Test,
       "org.scalameta"  %%% "munit"              % V.munit              % Test,
       "org.scalameta"  %%% "munit-scalacheck"   % V.`munit-scalacheck` % Test
@@ -131,9 +130,10 @@ lazy val core = laserdiscCrossModule("core")
           Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala3`, "io.github.iltotore" %%% "iron" % V.iron)
         case _ =>
           Seq(
-            "org.scodec"  %%% "scodec-core" % V.`scodec-core_scala2`,
-            "com.chuusai" %%% "shapeless"   % V.shapeless,
-            "eu.timepit"  %%% "refined"     % V.refined
+            "org.scodec"  %%% "scodec-core"        % V.`scodec-core_scala2`,
+            "com.chuusai" %%% "shapeless"          % V.shapeless,
+            "eu.timepit"  %%% "refined"            % V.refined,
+            "eu.timepit"  %%% "refined-scalacheck" % V.refined % Test
           )
       }
     }

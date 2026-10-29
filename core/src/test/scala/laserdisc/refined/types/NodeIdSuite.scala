@@ -26,42 +26,46 @@ import org.scalacheck.Prop.forAll
 
 final class NodeIdSuite extends BaseSpec {
   test("NodeId fails to compile given a non conformant String (length < 40)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""NodeId("0123456789abcdef0123456789abcdef0123456")"""),
       """|error: Predicate failed: "0123456789abcdef0123456789abcdef0123456".matches("[0-9a-f]{40}").
          |NodeId("0123456789abcdef0123456789abcdef0123456")
          |      ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should match [0-9a-f]{40}"
     )
   }
 
   test("NodeId fails to compile given a non conformant String (length > 40)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""NodeId("0123456789abcdef0123456789abcdef012345678")"""),
       """|error: Predicate failed: "0123456789abcdef0123456789abcdef012345678".matches("[0-9a-f]{40}").
          |NodeId("0123456789abcdef0123456789abcdef012345678")
          |      ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should match [0-9a-f]{40}"
     )
   }
 
   test("NodeId fails to compile given a non conformant String (uppercase)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""NodeId("0123456789abcdEf0123456789abcdef01234567")"""),
       """|error: Predicate failed: "0123456789abcdEf0123456789abcdef01234567".matches("[0-9a-f]{40}").
          |NodeId("0123456789abcdEf0123456789abcdef01234567")
          |      ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should match [0-9a-f]{40}"
     )
   }
 
   test("NodeId fails to compile given a non conformant String (invalid chars)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""NodeId("0123456789abcd&f0123456789abcdef01234567&fghijk")"""),
       """|error: Predicate failed: "0123456789abcd&f0123456789abcdef01234567&fghijk".matches("[0-9a-f]{40}").
          |NodeId("0123456789abcd&f0123456789abcdef01234567&fghijk")
          |      ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should match [0-9a-f]{40}"
     )
   }
 

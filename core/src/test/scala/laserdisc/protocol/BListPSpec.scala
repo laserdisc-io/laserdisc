@@ -27,7 +27,7 @@ import org.scalacheck.Prop.forAll
 abstract class BListPSpec extends BaseSpec with BListP {
 
   test("The Blocking List protocol using blpop fails to compile given one key and timeout but missing read instance") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
@@ -43,12 +43,13 @@ abstract class BListPSpec extends BaseSpec with BListP {
          |
          |blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))
          |          ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
     )
   }
 
   test("The Blocking List protocol using brpop fails to compile given one key and timeout but missing read instance") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
@@ -64,7 +65,8 @@ abstract class BListPSpec extends BaseSpec with BListP {
          |
          |brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))
          |          ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
     )
   }
 

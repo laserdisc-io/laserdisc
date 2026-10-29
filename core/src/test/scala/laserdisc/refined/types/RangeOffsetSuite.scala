@@ -26,22 +26,24 @@ import org.scalacheck.Prop.forAll
 
 final class RangeOffsetSuite extends BaseSpec {
   test("RangeOffset fails to compile given out of range Int (< 0)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("RangeOffset(-1)"),
       """|error: Left predicate of (!(-1 < 0) && !(-1 > 536870911)) failed: Predicate (-1 < 0) did not fail.
          |RangeOffset(-1)
          |           ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [0, 536870911]"
     )
   }
 
   test("RangeOffset fails to compile given out of range Int (> 536870911)") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("RangeOffset(536870912)"),
       """|error: Right predicate of (!(536870912 < 0) && !(536870912 > 536870911)) failed: Predicate (536870912 > 536870911) did not fail.
          |RangeOffset(536870912)
          |           ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Message: Should be included in [0, 536870911]"
     )
   }
 

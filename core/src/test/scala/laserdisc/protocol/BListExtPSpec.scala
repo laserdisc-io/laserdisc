@@ -26,7 +26,7 @@ import org.scalacheck.Prop.forAll
 
 final class BListExtPSpec extends BListPSpec {
   test("The Blocking List extended protocol using blpop fails to compile given key but missing read instance") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""blpop[Bar](Key("a"))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
@@ -42,11 +42,12 @@ final class BListExtPSpec extends BListPSpec {
          |
          |blpop[Bar](Key("a"))
          |          ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
     )
   }
   test("The Blocking List extended protocol using blpop fails to compile given key and timeout but missing read instance") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""blpop[Bar](Key("a"), PosInt(1))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
@@ -62,7 +63,8 @@ final class BListExtPSpec extends BListPSpec {
          |
          |blpop[Bar](Key("a"), PosInt(1))
          |          ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
     )
   }
   // BLPOP with no timeout specified
@@ -226,7 +228,7 @@ final class BListExtPSpec extends BListPSpec {
     }
   }
   test("The Blocking List extended protocol using brpop fails to compile given key but missing read instance") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""brpop[Bar](Key("a"))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
@@ -242,11 +244,12 @@ final class BListExtPSpec extends BListPSpec {
          |
          |brpop[Bar](Key("a"))
          |          ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
     )
   }
   test("The Blocking List extended protocol using brpop fails to compile given key and timeout but missing read instance") {
-    assertNoDiff(
+    assertCompileErrors(
       compileErrors("""brpop[Bar](Key("a"), PosInt(1))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
@@ -262,7 +265,8 @@ final class BListExtPSpec extends BListPSpec {
          |
          |brpop[Bar](Key("a"), PosInt(1))
          |          ^
-         |""".stripMargin
+         |""".stripMargin,
+      "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
     )
   }
   // BRPOP with no timeout specified

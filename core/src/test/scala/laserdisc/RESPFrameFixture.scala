@@ -21,7 +21,7 @@
 
 package laserdisc
 
-import eu.timepit.refined.types.string.NonEmptyString
+import laserdisc.TestTypes.NonEmptyString
 import laserdisc.protocol.*
 import org.scalacheck.Gen.chooseNum
 import org.scalacheck.{Arbitrary, Gen}

@@ -22,29 +22,43 @@
 package laserdisc
 package fs2
 
-import munit.FunSuite
+import cats.effect.IO
+import munit.CatsEffectSuite
 
-final class Fs2ProtocolHandlerSpec extends FunSuite {
+import scala.concurrent.duration.*
+
+final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
+  private[this] val num: Protocol.Aux[Long]   = Protocol("NUM", EmptyTuple).as[Num, Long]
+  private[this] val str: Protocol.Aux[String] = Protocol("STR", EmptyTuple).as[Str, String]
+
+  test("The fs2 protocol handler sends requests in order and collects their responses") {
+    val handler =
+      implicitly[RedisHandler.Aux[IO, Protocol.Aux[Long] *: Protocol.Aux[String] *: EmptyTuple, Maybe[Long] *: Maybe[String] *: EmptyTuple]]
+
+    for {
+      queue  <- Queue.unbounded[IO, Request[IO]]
+      fiber  <- handler(queue -> 1.second, num *: str *: EmptyTuple).start
+      first  <- queue.take
+      _      <- first.callback(first.protocol.decode(Num(42L)))
+      second <- queue.take
+      _      <- second.callback(second.protocol.decode(Str("ok")))
+      out    <- fiber.joinWithNever
+    } yield {
+      assertEquals(first.protocol.command -> second.protocol.command, "NUM" -> "STR")
+      assertEquals(out, (Right(42L): Maybe[Long]) *: (Right("ok"): Maybe[String]) *: EmptyTuple)
+    }
+  }
+
+  test("The fs2 protocol handler fails with RequestTimedOut when no response arrives in time") {
+    val handler = implicitly[RedisHandler.Aux[IO, Protocol.Aux[Long] *: EmptyTuple, Maybe[Long] *: EmptyTuple]]
+
+    for {
+      queue <- Queue.unbounded[IO, Request[IO]]
+      out   <- handler(queue -> 50.millis, num *: EmptyTuple).attempt
+    } yield assertEquals(out, Left(RequestTimedOut(num)))
+  }
+
   test("The fs2 protocol handler can be inferred correctly") {
-    import cats.effect.IO
-    import shapeless.ops.hlist.{Mapper, ZipConst}
-
-    implicitly[
-      ZipConst.Aux[
-        Env[IO],
-        Protocol.Aux[OK] *: EmptyTuple,
-        (Protocol.Aux[OK], Env[IO]) *: EmptyTuple
-      ]
-    ]
-
-    implicitly[
-      Mapper.Aux[
-        PromiseMapper.type,
-        (Protocol.Aux[OK], Env[IO]) *: EmptyTuple,
-        IO[Maybe[OK]] *: EmptyTuple
-      ]
-    ]
-
     implicitly[
       RedisHandler.Aux[
         IO,
@@ -63,42 +77,6 @@ final class Fs2ProtocolHandlerSpec extends FunSuite {
     ]
 
     implicitly[
-      Mapper.Aux[
-        PromiseMapper.type,
-        // format: off
-        (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          EmptyTuple,
-        IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          EmptyTuple
-        // format: on
-      ]
-    ]
-
-    implicitly[
-      ZipConst.Aux[
-        Env[IO],
-        // format: off
-        Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
-          EmptyTuple,
-        (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          EmptyTuple
-        // format: on
-      ]
-    ]
-
-    implicitly[
       Handler.Aux[
         IO,
         Env[IO],
@@ -112,60 +90,6 @@ final class Fs2ProtocolHandlerSpec extends FunSuite {
           Maybe[OK] *:
           Maybe[Option[PosInt]] *:
           Maybe[Option[PosInt]] *:
-          EmptyTuple
-        // format: on
-      ]
-    ]
-
-    implicitly[
-      Mapper.Aux[
-        PromiseMapper.type,
-        // format: off
-        (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[OK], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          (Protocol.Aux[Option[PosInt]], Env[IO]) *:
-          EmptyTuple,
-        IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[OK]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          IO[Maybe[Option[PosInt]]] *:
-          IO[Maybe[Option[PosInt]]] *:
           EmptyTuple
         // format: on
       ]

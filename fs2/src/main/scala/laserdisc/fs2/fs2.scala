@@ -21,9 +21,13 @@
 
 package laserdisc
 
-import cats.sequence.Sequencer
-import shapeless.ops.hlist.{Mapper, ZipConst}
+import cats.effect.kernel.{Deferred, Temporal}
+import cats.effect.syntax.temporal.*
+import cats.syntax.flatMap.*
+import cats.syntax.functor.*
+import cats.syntax.monadError.*
 
+import scala.concurrent.TimeoutException
 import scala.concurrent.duration.FiniteDuration
 
 package object fs2 {
@@ -46,21 +50,35 @@ package object fs2 {
     type Aux[F[_], In <: Tuple, LOut0 <: Tuple] = RedisHandler[F, In] { type LOut = LOut0 }
   }
 
-  implicit final def derive[
-      F[_],
-      In <: Tuple,
-      InEnvL <: Tuple,
-      FuncL <: Tuple,
-      LOut0 <: Tuple
-  ](
-      implicit zc: ZipConst.Aux[Env[F], In, InEnvL],
-      ma: Mapper.Aux[PromiseMapper.type, InEnvL, FuncL],
-      sequencer: Sequencer.Aux[F, FuncL, LOut0]
-  ): RedisHandler.Aux[F, In, LOut0] =
-    new RedisHandler[F, In] {
-      override final type LOut = LOut0
-      override final def apply(envF: Env[F], in: In): F[LOut] =
-        sequencer(in.zipConst(envF).map(PromiseMapper))
+  private[this] final def request[F[_]: Temporal, A](protocol: Protocol.Aux[A], env: Env[F]): F[Maybe[A]] = {
+    val (queue, duration) = env
+    Deferred[F, Maybe[A]].flatMap { promise =>
+      val complete: Maybe[A] => F[Unit] =
+        mba => promise.complete(mba).as(())
+
+      queue.offer(Request(protocol, complete)) >>
+        promise.get
+          .timeout(duration)
+          .adaptError { case _: TimeoutException => RequestTimedOut(protocol) }
+    }
+  }
+
+  implicit final def emptyRedisHandler[F[_]](implicit F: cats.Applicative[F]): RedisHandler.Aux[F, EmptyTuple, EmptyTuple] =
+    new RedisHandler[F, EmptyTuple] {
+      override final type LOut = EmptyTuple
+      override final def apply(env: Env[F], in: EmptyTuple): F[EmptyTuple] = F.pure(EmptyTuple)
+    }
+
+  implicit final def consRedisHandler[F[_], A, T <: Tuple, LT <: Tuple](
+      implicit F: Temporal[F],
+      T: RedisHandler.Aux[F, T, LT]
+  ): RedisHandler.Aux[F, Protocol.Aux[A] *: T, Maybe[A] *: LT] =
+    new RedisHandler[F, Protocol.Aux[A] *: T] {
+      override final type LOut = Maybe[A] *: LT
+      override final def apply(env: Env[F], in: Protocol.Aux[A] *: T): F[LOut] =
+        in match {
+          case protocol *: rest => F.map2(request(protocol, env), T(env, rest))(_ *: _)
+        }
     }
 
   implicit final def functorForCats[F[_]](implicit F: cats.Functor[F]): Functor[F] =

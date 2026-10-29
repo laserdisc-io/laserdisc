@@ -13,7 +13,6 @@ val V = new {
   val circe                  = "0.14.17"
   val fs2                    = "3.12.2"
   val jedis                  = "3.2.0"
-  val kittens                = "3.5.0"
   val `log-effect`           = "0.19.9"
   val logback                = "1.6.6"
   val munit                  = "1.3.6"
@@ -181,7 +180,6 @@ lazy val fs2 = laserdiscCrossModule("fs2")
       "io.laserdisc"   %%% "log-effect-fs2"    % V.`log-effect`,
       "org.typelevel"  %%% "cats-core"         % V.cats,
       "org.typelevel"  %%% "cats-effect"       % V.`cats-effect`,
-      "org.typelevel"  %%% "kittens"           % V.kittens,
       "org.scalacheck" %%% "scalacheck"        % V.scalacheck          % Test,
       "org.scalameta"  %%% "munit"             % V.munit               % Test,
       "org.scalameta"  %%% "munit-scalacheck"  % V.`munit-scalacheck`  % Test,

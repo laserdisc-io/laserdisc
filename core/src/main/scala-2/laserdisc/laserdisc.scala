@@ -81,6 +81,7 @@ package object laserdisc {
   final val Protocol   = protocol.Protocol
   final val Read       = protocol.Read
   final val Show       = protocol.Show
+  final val Str        = protocol.Str
   final val RESPDecErr = protocol.RESPDecErr
 
   private[this] final type NoControlChar = Not[ControlChar]

@@ -21,8 +21,6 @@
 
 package laserdisc
 
-import shapeless.DepFn2
-
 import scala.annotation.implicitNotFound
 import scala.concurrent.duration.*
 
@@ -44,14 +42,15 @@ trait ClientBase[F[_], Env] {
 
 trait Client[F[_], Env] extends ClientBase[F, Env] with ClientExt[F, Env]
 
-trait Handler[F[_], Env, In <: Tuple] extends DepFn2[Env, In] {
-  override final type Out = F[LOut]
+trait Handler[F[_], Env, In <: Tuple] {
   type LOut <: Tuple
+
+  def apply(env: Env, in: In): F[LOut]
 }
 
 object Handler {
   @implicitNotFound(
-    """Cannot derive Handler[${F}, ${Env}, ${In}] { type Out = ${LOut0} }
+    """Cannot derive Handler[${F}, ${Env}, ${In}] { type LOut = ${LOut0} }
 
 This could depend on many things but most likely:
   - ${In} is not a Tuple of only laserdisc.Protocol types

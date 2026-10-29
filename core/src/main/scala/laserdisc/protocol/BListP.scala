@@ -24,15 +24,15 @@ package protocol
 
 trait BListBaseP {
   final def blpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Protocol.Aux[Option[KV[A]]] =
-    Protocol("BLPOP", keys.value *: seconds *: EmptyTuple).opt[GenArr].as[KV[A]]
+    Protocol("BLPOP", keys.value *: seconds *: EmptyTuple).asOpt[Arr, KV[A]]
 
   final def brpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Protocol.Aux[Option[KV[A]]] =
-    Protocol("BRPOP", keys.value *: seconds *: EmptyTuple).opt[GenArr].as[KV[A]]
+    Protocol("BRPOP", keys.value *: seconds *: EmptyTuple).asOpt[Arr, KV[A]]
 
   final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Protocol.Aux[Option[A]] =
-    Protocol("BRPOPLPUSH", source *: destination *: 0 *: EmptyTuple).opt[GenBulk].as[A]
+    Protocol("BRPOPLPUSH", source *: destination *: 0 *: EmptyTuple).asOpt[Bulk, A]
   final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key, timeout: PosInt): Protocol.Aux[Option[A]] =
-    Protocol("BRPOPLPUSH", source *: destination *: timeout *: EmptyTuple).opt[GenBulk].as[A]
+    Protocol("BRPOPLPUSH", source *: destination *: timeout *: EmptyTuple).asOpt[Bulk, A]
 }
 
 trait BListP extends BListBaseP with BListExtP

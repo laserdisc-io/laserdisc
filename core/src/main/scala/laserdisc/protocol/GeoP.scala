@@ -208,9 +208,9 @@ trait GeoBaseP {
     Protocol("GEOADD", key *: positions.value.map { case GeoPosition(m, lat, long) => (long -> lat) -> m } *: EmptyTuple).as[Num, NonNegInt]
 
   final def geodist(key: Key, member1: Key, member2: Key): Protocol.Aux[Option[NonNegDouble]] =
-    Protocol("GEODIST", key *: member1 *: member2 *: EmptyTuple).opt[GenBulk].as[NonNegDouble]
+    Protocol("GEODIST", key *: member1 *: member2 *: EmptyTuple).asOpt[Bulk, NonNegDouble]
   final def geodist(key: Key, member1: Key, member2: Key, unit: GeoUnit): Protocol.Aux[Option[NonNegDouble]] =
-    Protocol("GEODIST", key *: member1 *: member2 *: unit *: EmptyTuple).opt[GenBulk].as[NonNegDouble]
+    Protocol("GEODIST", key *: member1 *: member2 *: unit *: EmptyTuple).asOpt[Bulk, NonNegDouble]
 
   final def geohash(key: Key, members: OneOrMoreKeys): Protocol.Aux[Seq[Option[GeoHash]]] =
     Protocol("GEOHASH", key :: members.value).as[Arr, Seq[Option[GeoHash]]]

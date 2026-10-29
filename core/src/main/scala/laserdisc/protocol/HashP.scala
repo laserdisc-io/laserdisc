@@ -28,7 +28,7 @@ trait HashBaseP {
   final def hexists(key: Key, field: Key): Protocol.Aux[Boolean] = Protocol("HEXISTS", key :: field :: Nil).as[Num, Boolean]
 
   final def hget[A: Read[Bulk, _]](key: Key, field: Key): Protocol.Aux[Option[A]] =
-    Protocol("HGET", key :: field :: Nil).opt[GenBulk].as[A]
+    Protocol("HGET", key :: field :: Nil).asOpt[Bulk, A]
 
   final def hgetall[A: Read[Arr, _]](key: Key): Protocol.Aux[A] = Protocol("HGETALL", key).as[Arr, A]
 

@@ -22,17 +22,47 @@
 package laserdisc
 package protocol
 
-import shapeless.{Coproduct, Inl, Inr}
-import shapeless.ops.coproduct.*
-
 import scala.annotation.implicitNotFound
+
+/** Evidence that `A` is one of the non-error [[RESP]] types Redis may reply with.
+  *
+  * Instances exist only for the concrete [[RESP]] cases (and never for [[Err]], which is always handled as a failure), so a [[RESPRead]]
+  * can never be built for a type that Redis could not possibly send back.
+  *
+  * Each instance also knows the "null" [[RESP]] that stands for a missing value of `A`: [[NilArr]] for [[Arr]], [[NullBulk]] for everything
+  * else.
+  */
+@implicitNotFound(
+  """Implicit not found RESPSub[${A}].
+
+${A} must be one of the RESP types Arr, Bulk, NilArr, NullBulk, Num or Str
+  """
+) sealed abstract class RESPSub[A](val nil: RESP) {
+  def unapply(resp: RESP): Option[A]
+}
+
+object RESPSub {
+  @inline final def apply[A](implicit instance: RESPSub[A]): RESPSub[A] = instance
+
+  private[this] final def instance[A](nil: RESP)(pf: PartialFunction[RESP, A]): RESPSub[A] =
+    new RESPSub[A](nil) {
+      override final def unapply(resp: RESP): Option[A] = pf.lift(resp)
+    }
+
+  implicit final val arrRESPSub: RESPSub[Arr]           = instance(NilArr) { case arr: Arr => arr }
+  implicit final val bulkRESPSub: RESPSub[Bulk]         = instance(NullBulk) { case bulk: Bulk => bulk }
+  implicit final val nilArrRESPSub: RESPSub[NilArr]     = instance(NilArr) { case NilArr => NilArr }
+  implicit final val nullBulkRESPSub: RESPSub[NullBulk] = instance(NullBulk) { case NullBulk => NullBulk }
+  implicit final val numRESPSub: RESPSub[Num]           = instance(NullBulk) { case num: Num => num }
+  implicit final val strRESPSub: RESPSub[Str]           = instance(NullBulk) { case str: Str => str }
+}
 
 @implicitNotFound(
   """Implicit not found RESPRead[${A}].
 
 You should not need to define one manually, as one will be derived for you automatically iff:
-- evidence of a Read instance from some coproduct to ${A} can be provided
-- said coproduct is a subset of RESP's coproduct
+- evidence of a Read instance from some RESP type to ${A} can be provided
+- said RESP type is not Err (see RESPSub)
   """
 ) sealed trait RESPRead[A] {
   type Sub
@@ -41,49 +71,39 @@ You should not need to define one manually, as one will be derived for you autom
 }
 
 object RESPRead {
-  import RESP.*
-
   final type Aux[Sub0, A] = RESPRead[A] { type Sub = Sub0 }
   final def apply[Sub, A](implicit instance: Aux[Sub, A]): Aux[Sub, A] = instance
 
-  private[this] implicit val respInject: Inject[RESPCoproduct, RESP] =
-    (resp: RESP) =>
-      resp match {
-        case arr: Arr   => Inl(arr)
-        case bulk: Bulk => Inr(Inl(bulk))
-        case err: Err   => Inr(Inr(Inl(err)))
-        case NilArr     => Inr(Inr(Inr(Inl(NilArr))))
-        case NullBulk   => Inr(Inr(Inr(Inr(Inl(NullBulk)))))
-        case num: Num   => Inr(Inr(Inr(Inr(Inr(Inl(num))))))
-        case str: Str   => Inr(Inr(Inr(Inr(Inr(Inr(Inl(str)))))))
-      }
-
-  sealed abstract class DefaultRESPRead[A <: Coproduct, B, Rest <: Coproduct](R: Read[A, B])(
-      implicit ev0: Basis.Aux[RESPCoproduct, A, Rest],
-      ev1: Selector[Rest, Err]
-  ) extends RESPRead[B] {
-    override final type Sub = A
-    override def read(resp: RESP): Maybe[B] =
-      Coproduct[RESPCoproduct](resp).deembed match {
-        case Right(R(Right(b)))            => Right(b)
-        case Right(R(Left(RESPDecErr(m)))) =>
-          Left(RESPDecErr(s"RESP type(s) of $resp matched but failed to deserialize correctly with error $m")).widenLeft[Throwable]
-        case Left(rest) =>
-          rest
-            .select[Err]
-            .fold(Left(RESPDecErr(s"RESP type(s) did not match: $resp")).widenLeft[Throwable])(Left(_).widenLeft[Throwable])
-        case Right(_) => absurd
-      }
+  private[this] final def mismatch(resp: RESP): Maybe[Nothing] = resp match {
+    case err: Err => Left(err)
+    case other    => Left(RESPDecErr(s"RESP type(s) did not match: $other"))
   }
 
-  final def instance[A <: Coproduct, B, Rest <: Coproduct](R: Read[A, B])(
-      implicit ev0: Basis.Aux[RESPCoproduct, A, Rest],
-      ev1: Selector[Rest, Err]
-  ): RESPRead.Aux[A, B] = new DefaultRESPRead(R) {}
+  private[this] final def readMatched[A, B](R: Read[A, B], resp: RESP, a: A): Maybe[B] = R.read(a) match {
+    case Right(b)            => Right(b)
+    case Left(RESPDecErr(m)) =>
+      Left(RESPDecErr(s"RESP type(s) of $resp matched but failed to deserialize correctly with error $m")).widenLeft[Throwable]
+  }
 
-  implicit final def derive[A <: Coproduct, B, Rest <: Coproduct](
-      implicit R: Read[A, B],
-      basis: Basis.Aux[RESPCoproduct, A, Rest],
-      selector: Selector[Rest, Err]
-  ): RESPRead.Aux[A, B] = new DefaultRESPRead(R) {}
+  final def instance[A, B](R: Read[A, B])(implicit S: RESPSub[A]): RESPRead.Aux[A, B] =
+    new RESPRead[B] {
+      override final type Sub = A
+      override final def read(resp: RESP): Maybe[B] = resp match {
+        case S(a) => readMatched(R, resp, a)
+        case _    => mismatch(resp)
+      }
+    }
+
+  /** Like [[instance]], but the "null" [[RESP]] for `A` (see [[RESPSub]]) is read as `None` */
+  final def nullable[A, B](R: Read[A, B])(implicit S: RESPSub[A]): RESPRead.Aux[A, Option[B]] =
+    new RESPRead[Option[B]] {
+      override final type Sub = A
+      override final def read(resp: RESP): Maybe[Option[B]] = resp match {
+        case S(a)                => readMatched(R, resp, a).map(Some(_))
+        case nil if nil == S.nil => Right(None)
+        case _                   => mismatch(resp)
+      }
+    }
+
+  implicit final def derive[A: RESPSub, B](implicit R: Read[A, B]): RESPRead.Aux[A, B] = instance(R)
 }

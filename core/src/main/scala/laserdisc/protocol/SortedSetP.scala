@@ -137,7 +137,6 @@ object SortedSetP {
 trait SortedSetBaseP {
   import SortedSetP.{Aggregate, Flag, LexRange, ScoreRange}
   import auto.*
-  import shapeless.{:+:, CNil}
 
   private[this] final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
@@ -222,7 +221,7 @@ trait SortedSetBaseP {
       .as[Arr, Seq[(A, Double)]]
 
   final def zrank(key: Key, member: Key): Protocol.Aux[Option[NonNegInt]] =
-    Protocol("ZRANK", key :: member :: Nil).asC[Num :+: NullBulk :+: CNil, Option[NonNegInt]]
+    Protocol("ZRANK", key :: member :: Nil).asOpt[Num, NonNegInt]
 
   final def zrem[A: Show](key: Key, members: OneOrMore[A]): Protocol.Aux[NonNegInt] =
     Protocol("ZREM", key *: members.value *: EmptyTuple).as[Num, NonNegInt]
@@ -262,7 +261,7 @@ trait SortedSetBaseP {
       .as[Arr, Seq[(A, Double)]]
 
   final def zrevrank(key: Key, member: Key): Protocol.Aux[Option[NonNegInt]] =
-    Protocol("ZREVRANK", key *: member *: EmptyTuple).asC[Num :+: NullBulk :+: CNil, Option[NonNegInt]]
+    Protocol("ZREVRANK", key *: member *: EmptyTuple).asOpt[Num, NonNegInt]
 
   final def zscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong): Protocol.Aux[Scan[A]] =
     Protocol("ZSCAN", key *: cursor *: EmptyTuple).as[Arr, Scan[A]]
@@ -274,7 +273,7 @@ trait SortedSetBaseP {
     Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[A]]
 
   final def zscore[A: Show](key: Key, member: A): Protocol.Aux[Option[Double]] =
-    Protocol("ZSCORE", key *: member *: EmptyTuple).opt[GenBulk].as[Double]
+    Protocol("ZSCORE", key *: member *: EmptyTuple).asOpt[Bulk, Double]
 
   final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[NonNegInt] =
     Protocol("ZUNIONSTORE", destinationKey *: keys.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]

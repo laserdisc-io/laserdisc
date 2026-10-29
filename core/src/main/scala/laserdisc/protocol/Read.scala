@@ -22,7 +22,7 @@
 package laserdisc
 package protocol
 
-import shapeless.{:+:, CNil, Coproduct, Inl, Inr, Witness}
+import shapeless.Witness
 import shapeless.labelled.*
 
 import scala.annotation.implicitNotFound
@@ -73,17 +73,16 @@ object Read extends ReadInstances0 {
 
   @inline final def lift2OptionWhen[A, B](cond: A => Boolean)(
       implicit R: Read[A, B]
-  ): Read[A :+: CNil, Option[B]] =
+  ): Read[A, Option[B]] =
     Read.infallible {
-      case Inl(i @ R(Right(b))) if !cond(i) => Some(b)
-      case Inl(_)                           => None
-      case Inr(_)                           => absurd
+      case i @ R(Right(b)) if !cond(i) => Some(b)
+      case _                           => None
     }
 
-  @inline final def numMinusOneIsNone[A: Read[Num, _]]: Read[Num :+: CNil, Option[A]] =
+  @inline final def numMinusOneIsNone[A: Read[Num, _]]: Read[Num, Option[A]] =
     lift2OptionWhen(_.value == -1L)
 
-  @inline final def numZeroIsNone[A: Read[Num, _]]: Read[Num :+: CNil, Option[A]] =
+  @inline final def numZeroIsNone[A: Read[Num, _]]: Read[Num, Option[A]] =
     lift2OptionWhen(_.value == 0L)
 }
 
@@ -91,7 +90,7 @@ trait ReadInstances0 extends ReadInstances1 {
   implicit final def identity[A]: Read[A, A] = Read.instance(_.asRight)
 }
 
-trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
+trait ReadInstances1 extends EitherSyntax {
   import Read.{infallible, instance, instancePF}
 
   implicit final val str2StringRead: Read[Str, String] = infallible(_.value)
@@ -268,25 +267,4 @@ trait ReadInstances1 extends EitherSyntax with ReadInstances2 {
     case Arr(other)                => Left(RESPDecErr(s"Read Error: expected `H *: T` but was $other"))
   }
   implicit final val arr2EmptyTuple: Read[Arr, EmptyTuple] = instancePF("Arr(Seq())") { case Arr(Seq()) => EmptyTuple }
-}
-
-sealed trait ReadInstances2 {
-  implicit final def liftNullBulk2Option[A, B](implicit R: Read[A, B]): Read[A :+: NullBulk :+: CNil, Option[B]] =
-    Read.infallible {
-      case Inl(R(Right(b))) => Some(b)
-      case Inr(_)           => None
-      case Inl(_)           => absurd
-    }
-  implicit final def liftNilArr2Option[A, B](implicit R: Read[A, B]): Read[A :+: NilArr :+: CNil, Option[B]] =
-    Read.infallible {
-      case Inl(R(Right(b))) => Some(b)
-      case Inr(_)           => None
-      case Inl(_)           => absurd
-    }
-  implicit final def liftSimpleToSum[A: <:!<[_, Coproduct], B](implicit R: Read[A, B]): Read[A :+: CNil, B] =
-    Read.instance {
-      case Inl(R(rb)) => rb
-      case Inl(_)     => absurd
-      case Inr(_)     => absurd
-    }
 }

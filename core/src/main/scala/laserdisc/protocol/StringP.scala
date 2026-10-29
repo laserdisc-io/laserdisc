@@ -85,15 +85,13 @@ object StringP {
   }
 
   final class PartiallyAppliedGetSet[A](private val dummy: Boolean) extends AnyVal {
-    import shapeless.{:+:, CNil}
     def apply[B: Show](key: Key, value: B)(implicit ev: Read[Bulk, A]): Protocol.Aux[Option[A]] =
-      Protocol("GETSET", key *: value *: EmptyTuple).asC[Bulk :+: NullBulk :+: CNil, Option[A]]
+      Protocol("GETSET", key *: value *: EmptyTuple).asOpt[Bulk, A]
   }
 }
 
 trait StringBaseP {
   import StringP.{Bit, Bitwise, Expiry, Flag, PartiallyAppliedGetSet}
-  import shapeless.{:+:, CNil}
 
   private[this] final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
 
@@ -130,7 +128,7 @@ trait StringBaseP {
   final def decrby[A: Read[Num, _]](key: Key, decrement: PosLong): Protocol.Aux[A] =
     Protocol("DECRBY", key *: decrement *: EmptyTuple).as[Num, A]
 
-  final def get[A: Read[Bulk, _]](key: Key): Protocol.Aux[Option[A]] = Protocol("GET", key).opt[GenBulk].as[A]
+  final def get[A: Read[Bulk, _]](key: Key): Protocol.Aux[Option[A]] = Protocol("GET", key).asOpt[Bulk, A]
 
   final def getbit(key: Key, offset: PosLong): Protocol.Aux[Bit] = Protocol("GETBIT", key *: offset *: EmptyTuple).as[Num, Bit]
 
@@ -169,9 +167,9 @@ trait StringBaseP {
   final def set[A: Show](key: Key, value: A, expiry: Expiry): Protocol.Aux[OK] =
     Protocol("SET", key *: value *: expiry.unit *: expiry.value *: EmptyTuple).as[Str, OK]
   final def set[A: Show](key: Key, value: A, flag: Flag): Protocol.Aux[Option[OK]] =
-    Protocol("SET", key *: value *: flag *: EmptyTuple).asC[Str :+: NullBulk :+: CNil, Option[OK]]
+    Protocol("SET", key *: value *: flag *: EmptyTuple).asOpt[Str, OK]
   final def set[A: Show](key: Key, value: A, expiry: Expiry, flag: Flag): Protocol.Aux[Option[OK]] =
-    Protocol("SET", key *: value *: flag *: expiry.unit *: expiry.value *: EmptyTuple).asC[Str :+: NullBulk :+: CNil, Option[OK]]
+    Protocol("SET", key *: value *: flag *: expiry.unit *: expiry.value *: EmptyTuple).asOpt[Str, OK]
 
   final def setbit(key: Key, offset: StringLength, bit: Bit): Protocol.Aux[Bit] =
     Protocol("SETBIT", key *: offset *: bit *: EmptyTuple).as[Num, Bit]

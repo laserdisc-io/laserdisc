@@ -208,7 +208,7 @@ trait ServerP {
   object client {
     import Show.{hostShow, portShow}
 
-    val getname: Protocol.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").opt[GenBulk].as[ConnectionName]
+    val getname: Protocol.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").asOpt[Bulk, ConnectionName]
 
     // FIXME other variations of kill
     def kill(host: Host, port: Port): Protocol.Aux[OK] =

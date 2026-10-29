@@ -135,7 +135,7 @@ trait KeyBaseP {
 
   final def del(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]
 
-  final def dump(key: Key): Protocol.Aux[Option[Bulk]] = Protocol("DUMP", key).opt[GenBulk].as[Bulk]
+  final def dump(key: Key): Protocol.Aux[Option[Bulk]] = Protocol("DUMP", key).asOpt[Bulk, Bulk]
 
   final def exists(keys: OneOrMoreKeys): Protocol.Aux[Option[PosInt]] = Protocol("EXISTS", keys.value).using(zeroIsNone)
 
@@ -175,7 +175,7 @@ trait KeyBaseP {
 
   object obj {
     def encoding(key: Key): Protocol.Aux[Option[KeyEncoding]] =
-      Protocol("OBJECT", "ENCODING" :: key.value :: Nil).opt[GenBulk].as[KeyEncoding]
+      Protocol("OBJECT", "ENCODING" :: key.value :: Nil).asOpt[Bulk, KeyEncoding]
 
     def freq(key: Key): Protocol.Aux[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
 
@@ -195,7 +195,7 @@ trait KeyBaseP {
 
   final def pttl(key: Key): Protocol.Aux[KeyTTLResponse] = Protocol("PTTL", key).as[Num, KeyTTLResponse]
 
-  final val randomkey: Protocol.Aux[Option[Key]] = Protocol("RANDOMKEY", EmptyTuple).opt[GenBulk].as[Key]
+  final val randomkey: Protocol.Aux[Option[Key]] = Protocol("RANDOMKEY", EmptyTuple).asOpt[Bulk, Key]
 
   final def rename(key: Key, newKey: Key): Protocol.Aux[OK] = Protocol("RENAME", key :: newKey :: Nil).as[Str, OK]
 

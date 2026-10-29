@@ -22,10 +22,6 @@
 package laserdisc
 package protocol
 
-import shapeless.{:+:, CNil, Coproduct, Generic}
-
-import scala.annotation.nowarn
-
 sealed trait Request {
   def command: String
   def parameters: Seq[GenBulk]
@@ -67,10 +63,6 @@ object Protocol {
     override def decode(resp: RESP): Maybe[B]  = R.read(resp)
   }
 
-  final class PartiallyAppliedOptionalProtocol[L, A](private val underlying: PartiallyAppliedProtocol[L]) extends AnyVal {
-    def as[B](implicit R: RESPRead.Aux[A, Option[B]]): Protocol.Aux[Option[B]] = underlying.asC(R)
-  }
-
   sealed abstract class PartiallyAppliedProtocol[L: RESPParamWrite](
       private[this] final val command: String,
       private[this] final val l: L
@@ -82,26 +74,27 @@ object Protocol {
       * response we eventually will get back can be deserialized into the expected type B.
       *
       * @tparam A
-      *   The sum/co-product type of response(s) expected from Redis
+      *   The [[RESP]] type of the response expected from Redis
       * @tparam B
       *   The type we expect to convert an A into
       *
       * @return
       *   A fully-fledged [[Protocol]] for the provided [[Request]] /[[Response]] pair
       */
-    final def asC[A, B](implicit R: RESPRead.Aux[A, B]): Protocol.Aux[B] =
+    final def as[A, B](implicit R: RESPRead.Aux[A, B]): Protocol.Aux[B] = using(R)
+
+    /** Like [[as]], but Redis may also reply with the "null" counterpart of A ([[NilArr]] for [[Arr]], [[NullBulk]] otherwise), which is
+      * read as `None`
+      */
+    final def asOpt[A: RESPSub, B](implicit R: Read[A, B]): Protocol.Aux[Option[B]] = using(RESPRead.nullable(R))
+
+    final def using[A, B](R: RESPRead.Aux[A, B]): Protocol.Aux[B] =
       new Protocol {
         override final type A = B
         override final val codec: ProtocolCodec[B]  = new RESPProtocolCodec(R)
         override final val command: String          = self.command
         override final val parameters: Seq[GenBulk] = RESPParamWrite[L].write(l)
       }
-
-    final def as[A, B](implicit @nowarn ev: A <:!< Coproduct, R: RESPRead.Aux[A :+: CNil, B]): Protocol.Aux[B] = asC(R)
-
-    final def opt[A](implicit @nowarn ev: A <:!< Coproduct, gen: Generic[A]) = new PartiallyAppliedOptionalProtocol[L, gen.Repr](self)
-
-    final def using[A <: Coproduct, B](R: RESPRead.Aux[A, B]): Protocol.Aux[B] = asC(R)
   }
 
   /** The only way a [[Protocol]] can be instantiated is through this partial application.

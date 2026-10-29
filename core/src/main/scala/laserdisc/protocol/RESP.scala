@@ -33,7 +33,6 @@ import scodec.codecs.{filtered, fixedSizeBytes}
 import scodec.{Attempt, Codec, DecodeResult, Decoder, Err => SErr, SizeBound}
 
 import scala.annotation.tailrec
-import shapeless.Generic
 
 /** [[https://redis.io/topics/protocol Redis Protocol Specification]]
   *
@@ -290,12 +289,6 @@ sealed trait RESPCodecs extends BitVectorSyntax {
 
 final case class RESPDecErr(message: String) extends RuntimeException(message, null, true, false)
 
-sealed trait RESPCoproduct {
-  final val gen = Generic[RESP]
-
-  final type RESPCoproduct = gen.Repr
-}
-
 sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
 
   import BitVectorDecoding.*
@@ -386,4 +379,4 @@ object BitVectorDecoding {
   case object Complete                                                              extends State
 }
 
-object RESP extends RESPCodecs with RESPCoproduct with RESPFunctions
+object RESP extends RESPCodecs with RESPFunctions

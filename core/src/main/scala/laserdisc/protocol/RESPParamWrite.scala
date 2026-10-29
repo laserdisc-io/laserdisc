@@ -22,13 +22,7 @@
 package laserdisc
 package protocol
 
-import shapeless.{LabelledGeneric, Nat, Witness}
-import shapeless.labelled.FieldType
-import shapeless.ops.hlist.Length
-import shapeless.ops.nat.GTEq.>=
-import shapeless.nat._1
-
-import scala.annotation.{implicitNotFound, nowarn}
+import scala.annotation.implicitNotFound
 
 @implicitNotFound(
   """Implicit not found RESPParamWrite[${A}].
@@ -65,13 +59,9 @@ private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteIns
     }
   implicit final def listRESPParamWrite[A](implicit A: RESPParamWrite[A]): RESPParamWrite[List[A]] =
     RESPParamWrite.instance(_.flatMap(A.write))
-  implicit final def taggedRESPParamWrite[K <: Symbol, V](
-      implicit K: Witness.Aux[K],
-      V: RESPParamWrite[V]
-  ): RESPParamWrite[FieldType[K, V]] = RESPParamWrite.instance(Bulk(K.value.name) +: V.write(_))
 }
 
-private[protocol] sealed trait RESPParamWriteInstances1 extends RESPParamWriteInstances2 {
+private[protocol] sealed trait RESPParamWriteInstances1 extends RESPParamWriteProductInstances {
   implicit final val emptyTupleRESPParamWrite: RESPParamWrite[EmptyTuple] = RESPParamWrite.const(Seq.empty)
 
   implicit final def tupleRESPParamWrite[H, T <: Tuple](
@@ -81,14 +71,4 @@ private[protocol] sealed trait RESPParamWriteInstances1 extends RESPParamWriteIn
     RESPParamWrite.instance { case h *: t =>
       H.write(h) ++: T.write(t)
     }
-}
-
-private[protocol] sealed trait RESPParamWriteInstances2 {
-  implicit final def productRESPParamWrite[P <: Product, L <: Tuple, N <: Nat](
-      implicit gen: LabelledGeneric.Aux[P, L],
-      @nowarn ev0: Length.Aux[L, N],
-      @nowarn ev1: N >= _1,
-      @nowarn ev2: LUBConstraint[L, FieldType[?, ?]],
-      rpw: RESPParamWrite[L]
-  ): RESPParamWrite[P] = rpw.contramap(gen.to)
 }

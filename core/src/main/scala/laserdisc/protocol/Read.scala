@@ -22,9 +22,6 @@
 package laserdisc
 package protocol
 
-import shapeless.Witness
-import shapeless.labelled.*
-
 import scala.annotation.implicitNotFound
 
 @implicitNotFound(
@@ -90,7 +87,7 @@ trait ReadInstances0 extends ReadInstances1 {
   implicit final def identity[A]: Read[A, A] = Read.instance(_.asRight)
 }
 
-trait ReadInstances1 extends EitherSyntax {
+trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   import Read.{infallible, instance, instancePF}
 
   implicit final val str2StringRead: Read[Str, String] = infallible(_.value)
@@ -250,14 +247,6 @@ trait ReadInstances1 extends EitherSyntax {
   }
   implicit final val arr2TimeRead: Read[Arr, Time] = instancePF("Arr(Time)") {
     case Arr(Bulk(ToLong(NonNegLong(ts))) +: Bulk(ToLong(NonNegLong(em))) +: Seq()) => Time(ts, em)
-  }
-  implicit final def arr2LabelledTuple[HK <: Symbol, HV, T <: Tuple](
-      implicit HK: Witness.Aux[HK],
-      RHV: Read[Bulk, HV],
-      RT: Read[Arr, T]
-  ): Read[Arr, FieldType[HK, HV] *: T] = instance {
-    case Arr(Bulk(HK.value.`name`) +: RHV(Right(hv)) +: rest) => RT.read(Arr(rest)).map(field[HK](hv) *: _)
-    case Arr(other)                                           => Left(RESPDecErr(s"Read Error: expected `[K, V] *: T` but was $other"))
   }
   implicit final def arr2Tuple[H, T <: Tuple](
       implicit RH: Read[Bulk, H],

@@ -22,8 +22,6 @@
 package laserdisc
 package protocol
 
-import eu.timepit.refined.api.Refined
-
 import scala.annotation.implicitNotFound
 
 @implicitNotFound(
@@ -59,10 +57,10 @@ object Show extends ShowInstances {
 }
 
 private[protocol] sealed trait ShowInstances {
-  private[this] final val refinedDoubleCases: PartialFunction[Refined[Double, ?], String] = {
-    case d if d.value == Double.NegativeInfinity => "-inf"
-    case d if d.value == Double.PositiveInfinity => "+inf"
-    case d                                       => d.value.toString
+  private[this] final def doubleCases(d: Double): String = d match {
+    case Double.NegativeInfinity => "-inf"
+    case Double.PositiveInfinity => "+inf"
+    case d                       => d.toString
   }
 
   implicit final val doubleShow: Show[Double] = Show.unsafeFromToString
@@ -80,10 +78,10 @@ private[protocol] sealed trait ShowInstances {
   implicit final val latitudeShow: Show[Latitude]             = Show.unsafeFromToString
   implicit final val longitudeShow: Show[Longitude]           = Show.unsafeFromToString
   implicit final val nodeIdShow: Show[NodeId]                 = Show.unsafeFromToString
-  implicit final val nonNegDoubleShow: Show[NonNegDouble]     = Show.instance(refinedDoubleCases)
+  implicit final val nonNegDoubleShow: Show[NonNegDouble]     = Show.instance(d => doubleCases(d.value))
   implicit final val nonNegIntShow: Show[NonNegInt]           = Show.unsafeFromToString
   implicit final val nonNegLongShow: Show[NonNegLong]         = Show.unsafeFromToString
-  implicit final val nonZeroDoubleShow: Show[NonZeroDouble]   = Show.instance(refinedDoubleCases)
+  implicit final val nonZeroDoubleShow: Show[NonZeroDouble]   = Show.instance(d => doubleCases(d.value))
   implicit final val nonZeroIntShow: Show[NonZeroInt]         = Show.unsafeFromToString
   implicit final val nonZeroLongShow: Show[NonZeroLong]       = Show.unsafeFromToString
   implicit final val portShow: Show[Port]                     = Show.unsafeFromToString
@@ -92,5 +90,5 @@ private[protocol] sealed trait ShowInstances {
   implicit final val rangeOffsetShow: Show[RangeOffset]       = Show.unsafeFromToString
   implicit final val slotShow: Show[Slot]                     = Show.unsafeFromToString
   implicit final val stringLengthShow: Show[StringLength]     = Show.unsafeFromToString
-  implicit final val validDoubleShow: Show[ValidDouble]       = Show.instance(refinedDoubleCases)
+  implicit final val validDoubleShow: Show[ValidDouble]       = Show.instance(d => doubleCases(d.value))
 }

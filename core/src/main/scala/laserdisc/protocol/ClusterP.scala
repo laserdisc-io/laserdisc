@@ -92,8 +92,8 @@ object ClusterP {
     }
     private final val Ss: Read[Seq[String], Seq[SlotType]] = {
       val R  = raw"(\d+)-(\d+)".r
-      val IS = raw"\[(\d+)-<-(${NodeIdRegexWit.value})\]".r
-      val MS = raw"\[(\d+)->-(${NodeIdRegexWit.value})\]".r
+      val IS = raw"\[(\d+)-<-($NodeIdRegex)\]".r
+      val MS = raw"\[(\d+)->-($NodeIdRegex)\]".r
       Read.instance { case ss =>
         ss.foldRight[RESPDecErr | List[SlotType]](Right(Nil)) {
           case (ToInt(Slot(s)), Right(fgs))                    => Right(SlotType.Single(s) :: fgs)

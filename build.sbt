@@ -2,7 +2,7 @@ import sbtcrossproject.CrossProject
 
 val scala_212 = "2.12.21"
 val scala_213 = "2.13.18"
-val scala_3   = "3.3.7"
+val scala_3   = "3.9.0"
 
 val V = new {
   val cats                   = "2.13.0"
@@ -28,7 +28,7 @@ val V = new {
   val `scodec-core_scala3`   = "2.3.3"
   val scredis                = "2.4.3"
   val shapeless              = "2.3.13"
-  val `shapeless3-deriving`  = "3.5.0"
+  val iron                   = "3.4.1"
   val slf4j                  = "2.0.20"
 }
 
@@ -54,7 +54,7 @@ ThisBuild / startYear                  := Some(2018)
 ThisBuild / developers                 := List(tlGitHubDev("sirocchj", "Julien Sirocchi"), tlGitHubDev("barambani", "Filippo Mariotti"))
 ThisBuild / crossScalaVersions         := Seq(scala_212, scala_213, scala_3)
 ThisBuild / scalaVersion               := scala_213
-ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"), JavaSpec.temurin("17"), JavaSpec.temurin("21"))
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("17"), JavaSpec.temurin("21"))
 
 ThisBuild / githubWorkflowBuildPreamble ++= Seq(
   WorkflowStep.Run(
@@ -96,7 +96,7 @@ def laserdiscCrossModule(path: String) = {
         CrossVersion.partialVersion(scalaVersion.value) match {
           case Some((2, 12)) => Seq("-P:kind-projector:underscore-placeholders")
           case Some((2, 13)) => Seq("-Wconf:cat=unused-nowarn:s", "-P:kind-projector:underscore-placeholders")
-          case _             => Seq("-Ykind-projector:underscores")
+          case _             => Seq("-Xkind-projector:underscores")
         }
       },
       scalacOptions --= {
@@ -119,7 +119,6 @@ lazy val laserdisc = tlCrossRootProject
 lazy val core = laserdiscCrossModule("core")
   .settings(
     libraryDependencies ++= Seq(
-      "eu.timepit"     %%% "refined"            % V.refined,
       "org.scodec"     %%% "scodec-bits"        % V.`scodec-bits`,
       "eu.timepit"     %%% "refined-scalacheck" % V.refined            % Test,
       "org.scalacheck" %%% "scalacheck"         % V.scalacheck         % Test,
@@ -129,9 +128,13 @@ lazy val core = laserdiscCrossModule("core")
     libraryDependencies ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((3, _)) =>
-          Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala3`, "org.typelevel" %%% "shapeless3-deriving" % V.`shapeless3-deriving`)
+          Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala3`, "io.github.iltotore" %%% "iron" % V.iron)
         case _ =>
-          Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala2`, "com.chuusai" %%% "shapeless" % V.shapeless)
+          Seq(
+            "org.scodec"  %%% "scodec-core" % V.`scodec-core_scala2`,
+            "com.chuusai" %%% "shapeless"   % V.shapeless,
+            "eu.timepit"  %%% "refined"     % V.refined
+          )
       }
     }
   )
@@ -163,7 +166,7 @@ lazy val laws = laserdiscCrossModule("laws")
     libraryDependencies ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((3, _)) =>
-          Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala3`, "org.typelevel" %%% "shapeless3-deriving" % V.`shapeless3-deriving`)
+          Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala3`)
         case _ =>
           Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala2`, "com.chuusai" %%% "shapeless" % V.shapeless)
       }

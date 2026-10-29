@@ -216,6 +216,8 @@ package object laserdisc {
   final val OK: OK             = RefType.applyRefM[OK]("OK")
   final val PONG: PONG         = RefType.applyRefM[PONG]("PONG")
 
+  private[laserdisc] final val NodeIdRegex: String = NodeIdRegexWit.value
+
   private[laserdisc] final val COMMA_CH = ','
   private[laserdisc] final val LF_CH    = '\n'
   private[laserdisc] final val SPACE_CH = ' '

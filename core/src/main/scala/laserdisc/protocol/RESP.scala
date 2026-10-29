@@ -25,8 +25,6 @@ package protocol
 import java.nio.charset.StandardCharsets.UTF_8
 import java.{lang => j}
 
-import scodec.Decoder.decodeCollect
-import scodec.Encoder.encodeSeq
 import scodec.Err.{General, MatchingDiscriminatorNotFound}
 import scodec.bits.{BitVector, _}
 import scodec.codecs.{filtered, fixedSizeBytes}
@@ -203,7 +201,7 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   private[this] final val bulkCodec: Codec[GenBulk] = new Codec[GenBulk] {
     private[this] final val nullBulkBits = minusOne ++ crlf
     private[this] final val decoder      = crlfTerminatedLongCodec.flatMap {
-      case -1                => Decoder.point(NullBulk)
+      case -1                => Decoder.liftAttempt(Attempt.successful(NullBulk))
       case size if size >= 0 => fixedSizeBytes(size + crlfBytesSize, crlfTerminatedCodec(utf8Codec, size)).map(Bulk.apply)
       case negSize           => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
     }
@@ -229,10 +227,10 @@ sealed trait RESPCodecs extends BitVectorSyntax {
       if (v.size == expectedSize) Attempt.successful(v)
       else Attempt.failure(SErr(s"Insufficient number of elements: decoded ${v.size} instead of $expectedSize"))
     private[this] final val decoder = crlfTerminatedLongCodec.flatMap {
-      case -1               => Decoder.point(NilArr)
-      case 0                => Decoder.point(Arr(List.empty))
+      case -1               => Decoder.liftAttempt(Attempt.successful(NilArr))
+      case 0                => Decoder.liftAttempt(Attempt.successful(Arr(List.empty)))
       case size if size > 0 =>
-        Decoder(decodeCollect[List, RESP](respCodec, Some(size.toInt))(_)).narrow[List[RESP]](checkSize(_, size), identity).map(Arr.apply)
+        Decoder(ScodecCompat.decodeList(respCodec, Some(size.toInt))(_)).emap(checkSize(_, size)).map(Arr.apply)
       case negSize => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
     }
     private[this] final def failDec(negSize: Long)          = General(s"failed to decode array of size $negSize", List("size"))
@@ -245,7 +243,10 @@ sealed trait RESPCodecs extends BitVectorSyntax {
         case NilArr              => Attempt.successful(nilArrBits)
         case Arr(v) if v.isEmpty => Attempt.successful(emptyArrBits)
         case Arr(v)              =>
-          crlfTerminatedLongCodec.encode(v.size.toLong).mapErr(failEnc(arr, _)).flatMap(size => encodeSeq(respCodec)(v).map(size ++ _))
+          crlfTerminatedLongCodec
+            .encode(v.size.toLong)
+            .mapErr(failEnc(arr, _))
+            .flatMap(size => ScodecCompat.encodeList(respCodec)(v).map(size ++ _))
       }
     override final def decode(bits: BitVector): Attempt[DecodeResult[GenArr]] = decoder.decode(bits)
   }

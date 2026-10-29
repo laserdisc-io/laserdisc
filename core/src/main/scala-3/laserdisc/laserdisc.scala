@@ -23,7 +23,7 @@ package laserdisc
 
 import java.{lang => j}
 
-import io.github.iltotore.iron.{:|, RefinedSubtype, RuntimeConstraint, refineEither, refineUnsafe}
+import io.github.iltotore.iron.{:|, Constraint, RuntimeConstraint, refineEither, refineUnsafe}
 import io.github.iltotore.iron.constraint.all.*
 
 import scala.annotation.{implicitNotFound, nowarn}
@@ -43,15 +43,36 @@ final type ReadArrToSeq[A] = Read[Arr, Seq[A]]
 private final type NoControlChar = Not[ControlChar]
 private final type NoWhitespace  = Not[WhitespaceChar]
 
-/** Refined-style operations (as found in Scala 2's refined `RefinedTypeOps`) on top of iron's [[RefinedSubtype]], so that shared code can
-  * create and deconstruct refined values the same way regardless of the Scala version.
+/** A refined newtype `T` (a subtype of `A`), checked by iron's constraint `C`, with the same operations as Scala 2's refined
+  * `RefinedTypeOps`: compile-time checked `apply` for literals, `from`, `unsafeFrom`, `unapply` and `.value`, which (as with refined) gives
+  * back the base type `A`, so that type class instances for `A` keep working on it.
   */
-trait RefinedTypeOps[A, C](using RuntimeConstraint[A, C]) extends RefinedSubtype[A, C] {
-  final def from(a: A): Either[String, T] = either(a)
-  final def unsafeFrom(a: A): T           = applyUnsafe(a)
+trait RefinedTypeOps[A, C](using C: RuntimeConstraint[A, C]) {
+  opaque type T <: A = A :| C
+
+  inline def apply(inline a: A)(using inline constraint: Constraint[A, C]): T = io.github.iltotore.iron.autoRefine[A, C](a)
+
+  final def from(a: A): Either[String, T] = if (C.test(a)) Right(a.asInstanceOf[T]) else Left(C.message)
+  final def unsafeFrom(a: A): T           = from(a).fold(e => throw new IllegalArgumentException(e), identity)
+  final def unapply(a: A): Option[T]      = from(a).toOption
+
+  extension (t: T) inline def value: A = t
+
+  given RefinedTypeOps.Mirror[T] with {
+    override type BaseType       = A
+    override type ConstraintType = C
+  }
+}
+object RefinedTypeOps {
+
+  /** Links a refined newtype to its base type and constraint, used by `auto.autoRefine` */
+  trait Mirror[T] {
+    type BaseType
+    type ConstraintType
+  }
 }
 
-/** Refined-style operations for refined collections, which are plain iron types rather than [[RefinedSubtype]] s */
+/** Refined-style operations for refined collections, which are plain iron types rather than [[RefinedTypeOps]] newtypes */
 sealed abstract class RefinedCollectionOps[A, C](using C: RuntimeConstraint[A, C]) {
   final def from(a: A): Either[String, A :| C] = if (C.test(a)) Right(a.asInstanceOf[A :| C]) else Left(C.message)
   final def unsafeFrom(a: A): A :| C           = from(a).fold(e => throw new IllegalArgumentException(e), identity)
@@ -60,32 +81,34 @@ sealed abstract class RefinedCollectionOps[A, C](using C: RuntimeConstraint[A, C
 
 extension [A, C](a: A :| C) inline def value: A = a
 
-/** Scala 2 witnesses (refined's `W`) expose their literal as `.value`: literal constants (e.g. [[PortMinValueWit]]) do the same here */
-extension [A <: Singleton & (String | Int | Long | Double)](wit: A) inline def value: A = wit
+/** A literal witness, as Scala 2's refined `W` (a shapeless `Witness`): `.value` is the literal, `.T` its literal type */
+final class Witness[A <: Singleton] private[laserdisc] (val value: A) {
+  type T = A
+}
 
 // Witnesses
-final val AllNICsEqWit                = "0.0.0.0"
-final val DbIndexMaxValueWit          = 15
-final val GeoHashRegexWit             = "[a-z0-9]{11}"
-final val GlobPatternRegexWit         = "(\\[?[\\w\\*\\?]+\\]?)+" // TODO good enough but needs regex' TLC
-final val IPv4RegexWit                = "(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}"
-final val LatitudeMinValueWit         = -85.05112878d
-final val LatitudeMaxValueWit         = 85.05112878d
-final val LongitudeMinValueWit        = -180.0d
-final val LongitudeMaxValueWit        = 180.0d
-final val LoopbackEqWit               = "127.0.0.1"
-final val NodeIdRegexWit              = "[0-9a-f]{40}"
-final val NOKEYEqWit                  = "NOKEY"
-final val OKEqWit                     = "OK"
-final val PONGEqWit                   = "PONG"
-final val PortMinValueWit             = 1024
-final val PortMaxValueWit             = 49151
-final val RangeOffsetMaxValueWit      = 536870911
-final val Rfc1123HostnameMaxLengthWit = 255
+final val AllNICsEqWit                = new Witness("0.0.0.0")
+final val DbIndexMaxValueWit          = new Witness(15)
+final val GeoHashRegexWit             = new Witness("[a-z0-9]{11}")
+final val GlobPatternRegexWit         = new Witness("(\\[?[\\w\\*\\?]+\\]?)+") // TODO good enough but needs regex' TLC
+final val IPv4RegexWit                = new Witness("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
+final val LatitudeMinValueWit         = new Witness(-85.05112878d)
+final val LatitudeMaxValueWit         = new Witness(85.05112878d)
+final val LongitudeMinValueWit        = new Witness(-180.0d)
+final val LongitudeMaxValueWit        = new Witness(180.0d)
+final val LoopbackEqWit               = new Witness("127.0.0.1")
+final val NodeIdRegexWit              = new Witness("[0-9a-f]{40}")
+final val NOKEYEqWit                  = new Witness("NOKEY")
+final val OKEqWit                     = new Witness("OK")
+final val PONGEqWit                   = new Witness("PONG")
+final val PortMinValueWit             = new Witness(1024)
+final val PortMaxValueWit             = new Witness(49151)
+final val RangeOffsetMaxValueWit      = new Witness(536870911)
+final val Rfc1123HostnameMaxLengthWit = new Witness(255)
 final val Rfc1123HostnameRegexWit     =
-  "(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*"
-final val SlotMaxValueWit         = 16383
-final val StringLengthMaxValueWit = 4294967295L
+  new Witness("(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*")
+final val SlotMaxValueWit         = new Witness(16383)
+final val StringLengthMaxValueWit = new Witness(4294967295L)
 
 // Refinements
 private final type IPv4Ref    = Match["^(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)){3}$"]
@@ -97,31 +120,31 @@ private final type Rfc2544Ref     = IPv4Ref & (Match["^198\\.18\\..*"] | Match["
 private final type ValidDoubleRef = NonNaN
 
 final type ConnectionNameRef = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
-final type DbIndexRef        = Interval.Closed[0, DbIndexMaxValueWit.type]
-final type GeoHashRef        = Match[GeoHashRegexWit.type]
-final type GlobPatternRef    = Match[GlobPatternRegexWit.type]
-final type HostRef           = StrictEqual[AllNICsEqWit.type] | StrictEqual[LoopbackEqWit.type] |
-  (Not[IPv4Ref] & MaxLength[Rfc1123HostnameMaxLengthWit.type] & Match[Rfc1123HostnameRegexWit.type]) | Rfc1918Ref | Rfc5737Ref |
-  Rfc3927Ref | Rfc2544Ref
+final type DbIndexRef        = Interval.Closed[0, DbIndexMaxValueWit.T]
+final type GeoHashRef        = Match[GeoHashRegexWit.T]
+final type GlobPatternRef    = Match[GlobPatternRegexWit.T]
+final type HostRef           = StrictEqual[AllNICsEqWit.T] | StrictEqual[LoopbackEqWit.T] |
+  (Not[IPv4Ref] & MaxLength[Rfc1123HostnameMaxLengthWit.T] & Match[Rfc1123HostnameRegexWit.T]) | Rfc1918Ref | Rfc5737Ref | Rfc3927Ref |
+  Rfc2544Ref
 final type IndexRef         = Pure
 final type KeyRef           = MinLength[1] & ForAll[NoControlChar]
-final type LatitudeRef      = Interval.Closed[LatitudeMinValueWit.type, LatitudeMaxValueWit.type]
-final type LongitudeRef     = Interval.Closed[LongitudeMinValueWit.type, LongitudeMaxValueWit.type]
-final type NodeIdRef        = Match[NodeIdRegexWit.type]
-final type NOKEYRef         = StrictEqual[NOKEYEqWit.type]
+final type LatitudeRef      = Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
+final type LongitudeRef     = Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
+final type NodeIdRef        = Match[NodeIdRegexWit.T]
+final type NOKEYRef         = StrictEqual[NOKEYEqWit.T]
 final type NonNegRef        = Positive0
 final type NonNegDoubleRef  = ValidDoubleRef & Positive0
 final type NonZeroDoubleRef = ValidDoubleRef & Not[StrictEqual[0.0d]]
 final type NonZeroIntRef    = Not[StrictEqual[0]]
 final type NonZeroLongRef   = Not[StrictEqual[0L]]
-final type OKRef            = StrictEqual[OKEqWit.type]
+final type OKRef            = StrictEqual[OKEqWit.T]
 final type OneOrMoreRef     = MinLength[1]
-final type PONGRef          = StrictEqual[PONGEqWit.type]
-final type PortRef          = Interval.Closed[PortMinValueWit.type, PortMaxValueWit.type]
+final type PONGRef          = StrictEqual[PONGEqWit.T]
+final type PortRef          = Interval.Closed[PortMinValueWit.T, PortMaxValueWit.T]
 final type PosRef           = Positive
-final type RangeOffsetRef   = Interval.Closed[0, RangeOffsetMaxValueWit.type]
-final type SlotRef          = Interval.Closed[0, SlotMaxValueWit.type]
-final type StringLengthRef  = Interval.Closed[0L, StringLengthMaxValueWit.type]
+final type RangeOffsetRef   = Interval.Closed[0, RangeOffsetMaxValueWit.T]
+final type SlotRef          = Interval.Closed[0, SlotMaxValueWit.T]
+final type StringLengthRef  = Interval.Closed[0L, StringLengthMaxValueWit.T]
 final type TwoOrMoreRef     = MinLength[2]
 
 // New types
@@ -193,12 +216,12 @@ object TwoOrMoreKeys         extends RefinedCollectionOps[List[Key], TwoOrMoreRe
 object TwoOrMoreWeightedKeys extends RefinedCollectionOps[List[(Key, ValidDouble)], TwoOrMoreRef]
 object ValidDouble           extends RefinedTypeOps[Double, ValidDoubleRef]
 
-final val LoopbackHost: Host = Host(LoopbackEqWit)
+final val LoopbackHost: Host = Host.unsafeFrom(LoopbackEqWit.value)
 final val NOKEY: NOKEY       = NOKEYType("NOKEY")
 final val OK: OK             = OKType("OK")
 final val PONG: PONG         = PONGType("PONG")
 
-private[laserdisc] final val NodeIdRegex: String = NodeIdRegexWit
+private[laserdisc] final val NodeIdRegex: String = NodeIdRegexWit.value
 
 private[laserdisc] final val COMMA_CH = ','
 private[laserdisc] final val LF_CH    = '\n'

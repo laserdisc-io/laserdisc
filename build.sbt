@@ -192,10 +192,10 @@ lazy val fs2 = laserdiscCrossModule("fs2")
   .jvmSettings(
     libraryDependencies ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, major)) if major >= 13 =>
-          Seq("org.scala-lang.modules" %%% "scala-parallel-collections" % V.`parallel-collections` % Test)
-        case _ =>
+        case Some((2, 12)) =>
           Seq.empty
+        case _ =>
+          Seq("org.scala-lang.modules" %%% "scala-parallel-collections" % V.`parallel-collections` % Test)
       }
     }
   )

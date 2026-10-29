@@ -22,8 +22,6 @@
 package laserdisc
 
 trait ClientExt[F[_], Env] { this: Client[F, Env] =>
-  import shapeless.ops.hlist.Tupler
-
   import scala.concurrent.duration.FiniteDuration
 
   //format: off
@@ -34,16 +32,16 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: EmptyTuple, (Maybe[A1], Maybe[A2])]
+  ): F[(Maybe[A1], Maybe[A2])] = F.map(send(protocolA1 *: protocolA2 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2]
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: EmptyTuple, (Maybe[A1], Maybe[A2])]
+  ): F[(Maybe[A1], Maybe[A2])] = F.map(send(protocolA1 *: protocolA2 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3](
     protocolA1: Protocol.Aux[A1],
@@ -53,8 +51,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -62,8 +60,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4](
     protocolA1: Protocol.Aux[A1],
@@ -74,8 +72,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -84,8 +82,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5](
     protocolA1: Protocol.Aux[A1],
@@ -97,8 +95,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -108,8 +106,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6](
     protocolA1: Protocol.Aux[A1],
@@ -122,8 +120,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -134,8 +132,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7](
     protocolA1: Protocol.Aux[A1],
@@ -149,8 +147,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -162,8 +160,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8](
     protocolA1: Protocol.Aux[A1],
@@ -178,8 +176,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -192,8 +190,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9](
     protocolA1: Protocol.Aux[A1],
@@ -209,8 +207,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -224,8 +222,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10](
     protocolA1: Protocol.Aux[A1],
@@ -242,8 +240,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -258,8 +256,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11](
     protocolA1: Protocol.Aux[A1],
@@ -277,8 +275,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -294,8 +292,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12](
     protocolA1: Protocol.Aux[A1],
@@ -314,8 +312,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -332,8 +330,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13](
     protocolA1: Protocol.Aux[A1],
@@ -353,8 +351,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -372,8 +370,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14](
     protocolA1: Protocol.Aux[A1],
@@ -394,8 +392,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -414,8 +412,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15](
     protocolA1: Protocol.Aux[A1],
@@ -437,8 +435,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -458,8 +456,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16](
     protocolA1: Protocol.Aux[A1],
@@ -482,8 +480,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -504,8 +502,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17](
     protocolA1: Protocol.Aux[A1],
@@ -529,8 +527,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -552,8 +550,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18](
     protocolA1: Protocol.Aux[A1],
@@ -578,8 +576,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: Protocol.Aux[A18] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -602,8 +600,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: Protocol.Aux[A18] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19](
     protocolA1: Protocol.Aux[A1],
@@ -629,8 +627,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: Protocol.Aux[A18] *: Protocol.Aux[A19] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -654,8 +652,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: Protocol.Aux[A18] *: Protocol.Aux[A19] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20](
     protocolA1: Protocol.Aux[A1],
@@ -682,8 +680,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: Protocol.Aux[A18] *: Protocol.Aux[A19] *: Protocol.Aux[A20] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -708,8 +706,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: Protocol.Aux[A18] *: Protocol.Aux[A19] *: Protocol.Aux[A20] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21](
     protocolA1: Protocol.Aux[A1],
@@ -737,8 +735,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: Protocol.Aux[A18] *: Protocol.Aux[A19] *: Protocol.Aux[A20] *: Protocol.Aux[A21] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: protocolA21 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20], Maybe[A21])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20], Maybe[A21])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: protocolA21 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -764,8 +762,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: Protocol.Aux[A18] *: Protocol.Aux[A19] *: Protocol.Aux[A20] *: Protocol.Aux[A21] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: protocolA21 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20], Maybe[A21])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20], Maybe[A21])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: protocolA21 *: EmptyTuple, defaultTimeout))(ev1(_))
 
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22](
     protocolA1: Protocol.Aux[A1],
@@ -794,8 +792,8 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: Protocol.Aux[A18] *: Protocol.Aux[A19] *: Protocol.Aux[A20] *: Protocol.Aux[A21] *: Protocol.Aux[A22] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: Maybe[A22] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: Maybe[A22] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: protocolA21 *: protocolA22 *: EmptyTuple, timeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: Maybe[A22] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20], Maybe[A21], Maybe[A22])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20], Maybe[A21], Maybe[A22])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: protocolA21 *: protocolA22 *: EmptyTuple, timeout))(ev1(_))
   final def send[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22](
     protocolA1: Protocol.Aux[A1],
     protocolA2: Protocol.Aux[A2],
@@ -822,7 +820,7 @@ trait ClientExt[F[_], Env] { this: Client[F, Env] =>
   )(
     implicit F: Functor[F],
     ev0: Handler.Aux[F, Env, Protocol.Aux[A1] *: Protocol.Aux[A2] *: Protocol.Aux[A3] *: Protocol.Aux[A4] *: Protocol.Aux[A5] *: Protocol.Aux[A6] *: Protocol.Aux[A7] *: Protocol.Aux[A8] *: Protocol.Aux[A9] *: Protocol.Aux[A10] *: Protocol.Aux[A11] *: Protocol.Aux[A12] *: Protocol.Aux[A13] *: Protocol.Aux[A14] *: Protocol.Aux[A15] *: Protocol.Aux[A16] *: Protocol.Aux[A17] *: Protocol.Aux[A18] *: Protocol.Aux[A19] *: Protocol.Aux[A20] *: Protocol.Aux[A21] *: Protocol.Aux[A22] *: EmptyTuple, Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: Maybe[A22] *: EmptyTuple],
-    ev1: Tupler[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: Maybe[A22] *: EmptyTuple]
-  ): F[ev1.Out] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: protocolA21 *: protocolA22 *: EmptyTuple, defaultTimeout))(_.tupled)
+    ev1: Tupled[Maybe[A1] *: Maybe[A2] *: Maybe[A3] *: Maybe[A4] *: Maybe[A5] *: Maybe[A6] *: Maybe[A7] *: Maybe[A8] *: Maybe[A9] *: Maybe[A10] *: Maybe[A11] *: Maybe[A12] *: Maybe[A13] *: Maybe[A14] *: Maybe[A15] *: Maybe[A16] *: Maybe[A17] *: Maybe[A18] *: Maybe[A19] *: Maybe[A20] *: Maybe[A21] *: Maybe[A22] *: EmptyTuple, (Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20], Maybe[A21], Maybe[A22])]
+  ): F[(Maybe[A1], Maybe[A2], Maybe[A3], Maybe[A4], Maybe[A5], Maybe[A6], Maybe[A7], Maybe[A8], Maybe[A9], Maybe[A10], Maybe[A11], Maybe[A12], Maybe[A13], Maybe[A14], Maybe[A15], Maybe[A16], Maybe[A17], Maybe[A18], Maybe[A19], Maybe[A20], Maybe[A21], Maybe[A22])] = F.map(send(protocolA1 *: protocolA2 *: protocolA3 *: protocolA4 *: protocolA5 *: protocolA6 *: protocolA7 *: protocolA8 *: protocolA9 *: protocolA10 *: protocolA11 *: protocolA12 *: protocolA13 *: protocolA14 *: protocolA15 *: protocolA16 *: protocolA17 *: protocolA18 *: protocolA19 *: protocolA20 *: protocolA21 *: protocolA22 *: EmptyTuple, defaultTimeout))(ev1(_))
   //format: on
 }

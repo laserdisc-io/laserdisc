@@ -43,6 +43,9 @@ package object laserdisc {
   type *:[+A, +B <: Tuple] = shapeless.::[A, B]
   @inline final val *: = shapeless.::
 
+  @implicitNotFound("Cannot prove that ${L} can be converted to the tuple ${T}")
+  type Tupled[L <: Tuple, T] = shapeless.ops.hlist.Tupler.Aux[L, T]
+
   implicit final class TupleOps[T <: Tuple](val t: T) extends AnyVal {
     @inline def *:[H](h: H): H *: T = shapeless.::(h, t)
   }

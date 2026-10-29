@@ -199,6 +199,9 @@ private[laserdisc] object ToDouble {
     catch { case _: NumberFormatException => None }
 }
 
+@implicitNotFound("Cannot prove that ${L} can be converted to the tuple ${T}")
+type Tupled[L <: Tuple, T] = L =:= T
+
 @implicitNotFound("${A} must not be a subtype of ${B}")
 private[laserdisc] type LUBConstraint[L <: Tuple, A] = Tuple.Union[L] <:< A
 

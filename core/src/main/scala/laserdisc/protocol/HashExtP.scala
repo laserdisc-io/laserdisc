@@ -23,8 +23,6 @@ package laserdisc
 package protocol
 
 trait HashExtP { this: HashBaseP =>
-  import shapeless.ops.hlist.Tupler
-
   //format: off
   //HDEL
   final def hdel(key: Key, field1: Key): Protocol.Aux[NonNegInt] =
@@ -77,104 +75,104 @@ trait HashExtP { this: HashBaseP =>
     hmget[A1 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: Nil)).map(_.head)
   final def hmget[A1, A2](key: Key, field1: Key, field2: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: EmptyTuple, (A1, A2)]
+      ev1: Tupled[A1 *: A2 *: EmptyTuple, (A1, A2)]
   ): Protocol.Aux[(A1, A2)] =
-    hmget[A1 *: A2 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3](key: Key, field1: Key, field2: Key, field3: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: EmptyTuple, (A1, A2, A3)]
+      ev1: Tupled[A1 *: A2 *: A3 *: EmptyTuple, (A1, A2, A3)]
   ): Protocol.Aux[(A1, A2, A3)] =
-    hmget[A1 *: A2 *: A3 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4](key: Key, field1: Key, field2: Key, field3: Key, field4: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: EmptyTuple, (A1, A2, A3, A4)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: EmptyTuple, (A1, A2, A3, A4)]
   ): Protocol.Aux[(A1, A2, A3, A4)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: EmptyTuple, (A1, A2, A3, A4, A5)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: EmptyTuple, (A1, A2, A3, A4, A5)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: EmptyTuple, (A1, A2, A3, A4, A5, A6)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: EmptyTuple, (A1, A2, A3, A4, A5, A6)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key, field17: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key, field17: Key, field18: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key, field17: Key, field18: Key, field19: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: field19 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: field19 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key, field17: Key, field18: Key, field19: Key, field20: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: field19 :: field20 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: field19 :: field20 :: Nil)).map(ev1(_))
   final def hmget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21](key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key, field17: Key, field18: Key, field19: Key, field20: Key, field21: Key)(
       implicit ev0: Read[Arr, (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: EmptyTuple)],
-      ev1: Tupler.Aux[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21)]
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21)]
   ): Protocol.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21)] =
-    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: field19 :: field20 :: field21 :: Nil)).map(_.tupled)
+    hmget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: EmptyTuple](key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: field19 :: field20 :: field21 :: Nil)).map(ev1(_))
 
   //HMSET
   final def hmset[A1: Show](key: Key, field1: Key, value1: A1): Protocol.Aux[OK] =

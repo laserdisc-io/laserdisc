@@ -158,17 +158,17 @@ final type Key                   = Key.T
 final type Latitude              = Latitude.T
 final type Longitude             = Longitude.T
 final type NodeId                = NodeId.T
-final type NOKEY                 = NOKEYType.T
+final type NOKEY                 = String :| NOKEYRef
 final type NonNegDouble          = NonNegDouble.T
 final type NonNegInt             = NonNegInt.T
 final type NonNegLong            = NonNegLong.T
 final type NonZeroDouble         = NonZeroDouble.T
 final type NonZeroInt            = NonZeroInt.T
 final type NonZeroLong           = NonZeroLong.T
-final type OK                    = OKType.T
+final type OK                    = String :| OKRef
 final type OneOrMore[A]          = List[A] :| OneOrMoreRef
 final type OneOrMoreKeys         = OneOrMore[Key]
-final type PONG                  = PONGType.T
+final type PONG                  = String :| PONGRef
 final type Port                  = Port.T
 final type PosInt                = PosInt.T
 final type PosLong               = PosLong.T
@@ -196,16 +196,13 @@ object Key                   extends RefinedTypeOps[String, KeyRef]
 object Latitude              extends RefinedTypeOps[Double, LatitudeRef]
 object Longitude             extends RefinedTypeOps[Double, LongitudeRef]
 object NodeId                extends RefinedTypeOps[String, NodeIdRef]
-object NOKEYType             extends RefinedTypeOps[String, NOKEYRef]
 object NonNegInt             extends RefinedTypeOps[Int, NonNegRef]
 object NonNegLong            extends RefinedTypeOps[Long, NonNegRef]
 object NonNegDouble          extends RefinedTypeOps[Double, NonNegDoubleRef]
 object NonZeroDouble         extends RefinedTypeOps[Double, NonZeroDoubleRef]
 object NonZeroInt            extends RefinedTypeOps[Int, NonZeroIntRef]
 object NonZeroLong           extends RefinedTypeOps[Long, NonZeroLongRef]
-object OKType                extends RefinedTypeOps[String, OKRef]
 object OneOrMoreKeys         extends RefinedCollectionOps[List[Key], OneOrMoreRef]
-object PONGType              extends RefinedTypeOps[String, PONGRef]
 object Port                  extends RefinedTypeOps[Int, PortRef]
 object PosInt                extends RefinedTypeOps[Int, PosRef]
 object PosLong               extends RefinedTypeOps[Long, PosRef]
@@ -217,9 +214,9 @@ object TwoOrMoreWeightedKeys extends RefinedCollectionOps[List[(Key, ValidDouble
 object ValidDouble           extends RefinedTypeOps[Double, ValidDoubleRef]
 
 final val LoopbackHost: Host = Host.unsafeFrom(LoopbackEqWit.value)
-final val NOKEY: NOKEY       = NOKEYType("NOKEY")
-final val OK: OK             = OKType("OK")
-final val PONG: PONG         = PONGType("PONG")
+final val NOKEY: NOKEY       = io.github.iltotore.iron.autoRefine[String, NOKEYRef]("NOKEY")
+final val OK: OK             = io.github.iltotore.iron.autoRefine[String, OKRef]("OK")
+final val PONG: PONG         = io.github.iltotore.iron.autoRefine[String, PONGRef]("PONG")
 
 private[laserdisc] final val NodeIdRegex: String = NodeIdRegexWit.value
 

@@ -21,12 +21,12 @@
 
 package laserdisc
 
+import io.github.iltotore.iron.:|
 import io.github.iltotore.iron.constraint.all.{MinLength, StrictEqual}
 
 object TestTypes {
-  object EmptyStringType extends RefinedTypeOps[String, StrictEqual[""]]
-  final type EmptyString = EmptyStringType.T
-  final val EmptyString: EmptyString = EmptyStringType("")
+  final type EmptyString = String :| StrictEqual[""]
+  final val EmptyString: EmptyString = io.github.iltotore.iron.autoRefine[String, StrictEqual[""]]("")
 
   object NonEmptyString extends RefinedTypeOps[String, MinLength[1]]
   final type NonEmptyString = NonEmptyString.T

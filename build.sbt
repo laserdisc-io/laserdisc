@@ -43,7 +43,6 @@ val V = new {
 // https://github.com/scala/bug/issues/9218
 // and for other sporadic compiler crashes
 Global / concurrentRestrictions += Tags.limit(Tags.Compile, 1)
-Global / excludeLintKeys += scalaJSLinkerConfig
 
 ThisBuild / tlBaseVersion              := "0.8"
 ThisBuild / tlCiReleaseBranches        := Seq("master")
@@ -54,32 +53,36 @@ ThisBuild / startYear                  := Some(2018)
 ThisBuild / developers                 := List(tlGitHubDev("sirocchj", "Julien Sirocchi"), tlGitHubDev("barambani", "Filippo Mariotti"))
 ThisBuild / crossScalaVersions         := Seq(scala_212, scala_213, scala_3)
 ThisBuild / scalaVersion               := scala_213
+ThisBuild / tlJdkRelease               := Some(17)
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("17"), JavaSpec.temurin("21"))
 
-ThisBuild / githubWorkflowBuildPreamble ++= Seq(
-  WorkflowStep.Run(
-    commands = List("docker run -p 6379:6379 -d redis:alpine"),
-    name = Some("Start up Redis")
-  ),
-  WorkflowStep.Run(
-    commands = List("docker run -p 6380:6379 -d eqalpha/keydb"),
-    name = Some("Start up KeyDb")
-  ),
-  WorkflowStep.Run(
-    commands = List("docker run -p 6381:6379 -e ALLOW_EMPTY_PASSWORD=yes -d bitnami/valkey:latest"),
-    name = Some("Start up Valkey")
-  )
+ThisBuild / coverageFailOnMinimum    := false
+ThisBuild / coverageHighlighting     := true
+ThisBuild / coverageMinimumStmtTotal := 60
+
+val startUpRedisServers = List(
+  WorkflowStep.Run(commands = List("docker run -p 6379:6379 -d redis:alpine"), name = Some("Start up Redis")),
+  WorkflowStep.Run(commands = List("docker run -p 6380:6379 -d eqalpha/keydb"), name = Some("Start up KeyDb")),
+  WorkflowStep.Run(commands = List("docker run -p 6381:6379 -d valkey/valkey:alpine"), name = Some("Start up Valkey"))
+)
+
+ThisBuild / githubWorkflowBuildPreamble ++= startUpRedisServers
+ThisBuild / githubWorkflowAddedJobs += WorkflowJob(
+  id = "coverage",
+  name = "Check coverage",
+  scalas = List(scala_213),
+  javas = List(githubWorkflowJavaVersions.value.head),
+  steps = githubWorkflowJobSetup.value.toList ++ startUpRedisServers :+
+    WorkflowStep.Sbt(
+      List("coverage", "core/test", "laws/test", "fs2/test", "circe/test", "cli/test", "laserdiscJVM/coverageAggregate"),
+      name = Some("Run tests with coverage")
+    )
 )
 ThisBuild / mergifyLabelPaths    := Map.empty
 ThisBuild / mergifyStewardConfig := Some(MergifyStewardConfig(action = MergifyAction.Merge(Some("squash"))))
 
 lazy val commonSettings = Seq(
-  coverageEnabled          := false,
-  coverageFailOnMinimum    := false,
-  coverageHighlighting     := true,
-  coverageMinimumStmtTotal := 60,
-  headerEndYear            := Some(2026),
-  scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
+  headerEndYear := Some(2026)
 )
 
 // fs2 (and cli, which depends on it) aren't on Scala Native yet: log-effect isn't published for it (laserdisc-io/log-effect#780)
@@ -97,23 +100,16 @@ def laserdiscCrossModule(
     .settings(commonSettings)
     .settings(
       name := s"laserdisc-$namePartial",
-      scalacOptions ++= {
-        CrossVersion.partialVersion(scalaVersion.value) match {
-          case Some((2, 12)) => Seq("-P:kind-projector:underscore-placeholders")
-          case Some((2, 13)) => Seq("-Wconf:cat=unused-nowarn:s", "-P:kind-projector:underscore-placeholders")
-          case _             => Seq("-Xkind-projector:underscores")
-        }
-      },
-      scalacOptions --= {
-        CrossVersion.partialVersion(scalaVersion.value) match {
-          case Some((3, _)) => Seq("-Ykind-projector")
-          case _            => Seq.empty
-        }
-      }
+      // sbt-typelevel enables kind-projector with * placeholders: switch it to _ placeholders
+      scalacOptions ++= (if (tlIsScala3.value) Seq("-Xkind-projector:underscores") else Seq("-P:kind-projector:underscore-placeholders")),
+      scalacOptions --= (if (tlIsScala3.value) Seq("-Xkind-projector") else Seq.empty),
+      scalacOptions ++= (if (scalaBinaryVersion.value == "2.13") Seq("-Wconf:cat=unused-nowarn:s") else Seq.empty)
     )
     .jvmSettings(
-      coverageEnabled := true,
-      Test / fork     := true
+      Test / fork := true
+    )
+    .jsSettings(
+      scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
     )
 }
 
@@ -130,17 +126,15 @@ lazy val core = laserdiscCrossModule("core", CrossType.Full, Seq(JVMPlatform, JS
       "org.scalameta"  %%% "munit-scalacheck"   % V.`munit-scalacheck` % Test
     ),
     libraryDependencies ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((3, _)) =>
-          Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala3`, "io.github.iltotore" %%% "iron" % V.iron)
-        case _ =>
-          Seq(
-            "org.scodec"  %%% "scodec-core"        % V.`scodec-core_scala2`,
-            "com.chuusai" %%% "shapeless"          % V.shapeless,
-            "eu.timepit"  %%% "refined"            % V.refined,
-            "eu.timepit"  %%% "refined-scalacheck" % V.refined % Test
-          )
-      }
+      if (tlIsScala3.value)
+        Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala3`, "io.github.iltotore" %%% "iron" % V.iron)
+      else
+        Seq(
+          "org.scodec"  %%% "scodec-core"        % V.`scodec-core_scala2`,
+          "com.chuusai" %%% "shapeless"          % V.shapeless,
+          "eu.timepit"  %%% "refined"            % V.refined,
+          "eu.timepit"  %%% "refined-scalacheck" % V.refined % Test
+        )
     }
   )
   .jvmSettings(
@@ -157,25 +151,14 @@ lazy val laws = laserdiscCrossModule("laws", platforms = Seq(JVMPlatform, JSPlat
   .enablePlugins(NoPublishPlugin)
   .settings(
     libraryDependencies ++= Seq(
-      "eu.timepit"     %%% "refined"            % V.refined,
-      "org.scodec"     %%% "scodec-bits"        % V.`scodec-bits`,
-      "org.typelevel"  %%% "cats-core"          % V.cats,
-      "org.typelevel"  %%% "cats-laws"          % V.cats,
-      "eu.timepit"     %%% "refined-scalacheck" % V.refined            % Test,
-      "org.scalacheck" %%% "scalacheck"         % V.scalacheck         % Test,
-      "org.scalameta"  %%% "munit"              % V.munit              % Test,
-      "org.scalameta"  %%% "munit-scalacheck"   % V.`munit-scalacheck` % Test,
-      "org.typelevel"  %%% "discipline-core"    % V.`cats-discipline`  % Test,
-      "org.typelevel"  %%% "discipline-munit"   % V.`discipline-munit` % Test
-    ),
-    libraryDependencies ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((3, _)) =>
-          Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala3`)
-        case _ =>
-          Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala2`, "com.chuusai" %%% "shapeless" % V.shapeless)
-      }
-    }
+      "org.typelevel"  %%% "cats-core"        % V.cats,
+      "org.typelevel"  %%% "cats-laws"        % V.cats,
+      "org.scalacheck" %%% "scalacheck"       % V.scalacheck         % Test,
+      "org.scalameta"  %%% "munit"            % V.munit              % Test,
+      "org.scalameta"  %%% "munit-scalacheck" % V.`munit-scalacheck` % Test,
+      "org.typelevel"  %%% "discipline-core"  % V.`cats-discipline`  % Test,
+      "org.typelevel"  %%% "discipline-munit" % V.`discipline-munit` % Test
+    )
   )
 
 lazy val fs2 = laserdiscCrossModule("fs2", CrossType.Full)
@@ -196,12 +179,8 @@ lazy val fs2 = laserdiscCrossModule("fs2", CrossType.Full)
   )
   .jvmSettings(
     libraryDependencies ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, 12)) =>
-          Seq.empty
-        case _ =>
-          Seq("org.scala-lang.modules" %%% "scala-parallel-collections" % V.`parallel-collections` % Test)
-      }
+      if (scalaBinaryVersion.value == "2.12") Seq.empty
+      else Seq("org.scala-lang.modules" %%% "scala-parallel-collections" % V.`parallel-collections` % Test)
     }
   )
 

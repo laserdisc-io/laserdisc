@@ -59,7 +59,7 @@ final class ConnectionNameSuite extends BaseSpec {
 
   property("ConnectionName refines correctly provided non literal cases of non empty strings with no spaces") {
     forAll(connectionNameGen) { s =>
-      ConnectionName.from(s) onRight (_.value == s)
+      ConnectionName.from(s).onRight(_.value == s)
     }
   }
 }

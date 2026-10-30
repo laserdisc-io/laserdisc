@@ -133,7 +133,6 @@ object SortedSetP {
 
 trait SortedSetBaseP {
   import SortedSetP.{Aggregate, Flag, LexRange, ScoreRange}
-  import auto.*
 
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
@@ -145,14 +144,14 @@ trait SortedSetBaseP {
   }
 
   final def zadd[A: Show](key: Key, scoredMembers: OneOrMore[(A, ValidDouble)]): Protocol.Aux[NonNegInt] =
-    Protocol("ZADD", key *: scoredMembers.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
+    Protocol("ZADD", key *: scoredMembers.value.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
   final def zadd[A: Show](key: Key, flag: Flag, scoredMembers: OneOrMore[(A, ValidDouble)]): Protocol.Aux[NonNegInt] =
-    Protocol("ZADD", key *: flag *: scoredMembers.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
+    Protocol("ZADD", key *: flag *: scoredMembers.value.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
 
   final def zaddch[A: Show](key: Key, scoredMembers: OneOrMore[(A, ValidDouble)]): Protocol.Aux[NonNegInt] =
-    Protocol("ZADD", key *: "CH" *: scoredMembers.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
+    Protocol("ZADD", key *: "CH" *: scoredMembers.value.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
   final def zaddch[A: Show](key: Key, flag: Flag, scoredMembers: OneOrMore[(A, ValidDouble)]): Protocol.Aux[NonNegInt] =
-    Protocol("ZADD", key *: flag *: "CH" *: scoredMembers.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
+    Protocol("ZADD", key *: flag *: "CH" *: scoredMembers.value.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
 
   final def zaddincr[A: Show](key: Key, member: A, increment: NonZeroDouble): Protocol.Aux[Double] =
     Protocol("ZADD", key *: increment *: member *: EmptyTuple).as[Bulk, Double]
@@ -173,18 +172,18 @@ trait SortedSetBaseP {
     Protocol("ZINCRBY", key *: increment *: member *: EmptyTuple).as[Bulk, Double]
 
   final def zinterstore(keys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[NonNegInt] =
-    Protocol("ZINTERSTORE", destinationKey *: keys.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
+    Protocol("ZINTERSTORE", destinationKey *: keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
 
   final def zinterstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key): Protocol.Aux[NonNegInt] = {
-    val (keys, weights) = weightedKeys.unzip
+    val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTERSTORE", destinationKey *: keys.length *: keys *: "WEIGHTS" *: weights *: EmptyTuple).as[Num, NonNegInt]
   }
 
   final def zinterstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] =
-    Protocol("ZINTERSTORE", destinationKey *: keys.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Num, NonNegInt]
+    Protocol("ZINTERSTORE", destinationKey *: keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Num, NonNegInt]
 
   final def zinterstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] = {
-    val (keys, weights) = weightedKeys.unzip
+    val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTERSTORE", destinationKey *: keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: EmptyTuple)
       .as[Num, NonNegInt]
   }
@@ -273,18 +272,18 @@ trait SortedSetBaseP {
     Protocol("ZSCORE", key *: member *: EmptyTuple).asOpt[Bulk, Double]
 
   final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[NonNegInt] =
-    Protocol("ZUNIONSTORE", destinationKey *: keys.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
+    Protocol("ZUNIONSTORE", destinationKey *: keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
 
   final def zunionstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key): Protocol.Aux[NonNegInt] = {
-    val (keys, weights) = weightedKeys.unzip
+    val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNIONSTORE", destinationKey *: keys.length *: keys *: "WEIGHTS" *: weights *: EmptyTuple).as[Num, NonNegInt]
   }
 
   final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] =
-    Protocol("ZUNIONSTORE", destinationKey *: keys.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Num, NonNegInt]
+    Protocol("ZUNIONSTORE", destinationKey *: keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Num, NonNegInt]
 
   final def zunionstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key, aggregate: Aggregate): Protocol.Aux[NonNegInt] = {
-    val (keys, weights) = weightedKeys.unzip
+    val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNIONSTORE", destinationKey *: keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: EmptyTuple)
       .as[Num, NonNegInt]
   }

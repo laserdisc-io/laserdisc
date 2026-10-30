@@ -27,7 +27,7 @@ import munit.FunSuite
 
 final class CirceSpecJs extends FunSuite with EitherTestSyntax {
   test("handling an invalid json fails to decode") {
-    Read[Bulk, Bar].read(Bulk("{")) onLeft { e =>
+    Read[Bulk, Bar].read(Bulk("{")).onLeft { e =>
       assert(e.message.startsWith("ParsingFailure: SyntaxError:"))
     }
   }

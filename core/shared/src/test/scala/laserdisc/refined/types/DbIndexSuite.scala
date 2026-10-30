@@ -59,7 +59,7 @@ final class DbIndexSuite extends BaseSpec {
 
   property("DbIndex refines correctly provided non literal cases of in range Ints") {
     forAll(dbIndexGen) { i =>
-      DbIndex.from(i) onRight (_.value == i)
+      DbIndex.from(i).onRight(_.value == i)
     }
   }
 }

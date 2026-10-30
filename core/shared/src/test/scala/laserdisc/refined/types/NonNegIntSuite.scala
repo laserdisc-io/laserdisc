@@ -48,7 +48,7 @@ final class NonNegIntSuite extends BaseSpec {
 
   property("NonNegInt refines correctly provided non literal cases of in range Ints (i > 0)") {
     forAll(nonNegIntGen) { i =>
-      NonNegInt.from(i) onRight (_.value == i)
+      NonNegInt.from(i).onRight(_.value == i)
     }
   }
 }

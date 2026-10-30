@@ -114,7 +114,7 @@ final class RESPCodecsSpec extends BaseSpec {
   property("A RESP codec handling unknown protocol type fails with correct error message") {
     forAll { (c: Char) =>
       assertLeftEquals(
-        s"$c".RESP leftMap (_.messageWithContext),
+        s"$c".RESP.leftMap(_.messageWithContext),
         s"unidentified RESP type (Hex: ${c.toHex})"
       )
     }
@@ -158,7 +158,7 @@ final class RESPCodecsSpec extends BaseSpec {
 
   property("A RESP codec handling bulk strings fails with correct error message when decoding size < -1") {
     assertLeftEquals(
-      s"$$-2${CRLF}bla$CRLF".RESP leftMap (_.messageWithContext),
+      s"$$-2${CRLF}bla$CRLF".RESP.leftMap(_.messageWithContext),
       "size: failed to decode bulk-string of size -2"
     )
   }
@@ -187,7 +187,7 @@ final class RESPCodecsSpec extends BaseSpec {
 
   property("A RESP codec handling arrays fails with correct error message when decoding size < -1") {
     assertLeftEquals(
-      s"*-2${CRLF}bla$CRLF".RESP leftMap (_.messageWithContext),
+      s"*-2${CRLF}bla$CRLF".RESP.leftMap(_.messageWithContext),
       "size: failed to decode array of size -2"
     )
   }

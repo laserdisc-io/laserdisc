@@ -81,7 +81,7 @@ final class NodeIdSuite extends BaseSpec {
 
   property("NodeId refines correctly provided non literal cases of conformant Strings") {
     forAll(nodeIdGen) { i =>
-      NodeId.from(i) onRight (_.value == i)
+      NodeId.from(i).onRight(_.value == i)
     }
   }
 }

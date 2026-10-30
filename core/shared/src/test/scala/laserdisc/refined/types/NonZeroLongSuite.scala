@@ -38,7 +38,7 @@ final class NonZeroLongSuite extends BaseSpec {
 
   property("NonZeroLong refines correctly provided non literal cases of valid Longs (l != 0L)") {
     forAll(nonZeroLongGen) { l =>
-      NonZeroLong.from(l) onRight (_.value == l)
+      NonZeroLong.from(l).onRight(_.value == l)
     }
   }
 }

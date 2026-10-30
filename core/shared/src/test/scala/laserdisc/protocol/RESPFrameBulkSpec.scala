@@ -155,7 +155,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
     val inputVector = BitVector(
       "$18\r\nTest bulk string 1\r\n$18\r\nTest bulk string 2\r\n$18\r\nTest bulk string 3\r\n$18\r\nTest bulk string 4\r\n$18\r\nTest bulk".getBytes
     )
-    EmptyFrame.append(inputVector) onRightAll {
+    EmptyFrame.append(inputVector).onRightAll {
       case r @ MoreThanOneFrame(_, _) =>
         assertEquals(
           r.complete,
@@ -270,7 +270,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
     val inputVector   = BitVector(
       "tring 1 11\r\n$17\r\nTest bulk string2\r\n$20\r\nTest bulk string 3 1\r\n$19\r\nTest bulk string 40\r\n$18\r\nTest bulk".getBytes
     )
-    nonEmptyFrame.append(inputVector) onRightAll {
+    nonEmptyFrame.append(inputVector).onRightAll {
       case r @ MoreThanOneFrame(_, _) =>
         assertEquals(
           r.complete,

@@ -53,7 +53,7 @@ final class OneOrMoreKeysSuite extends BaseSpec {
 
   property("OneOrMoreKeys refines correctly provided non literal cases of non empty Lists (length > 0)") {
     forAll(keyLists.filter(_.nonEmpty)) { ks =>
-      OneOrMoreKeys.from(ks) onRight (_.value == ks)
+      OneOrMoreKeys.from(ks).onRight(_.value == ks)
     }
   }
 }

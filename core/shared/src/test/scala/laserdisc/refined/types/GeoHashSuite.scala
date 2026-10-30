@@ -81,7 +81,7 @@ final class GeoHashSuite extends BaseSpec {
 
   property("GeoHash refines correctly provided non literal cases of conformant Strings") {
     forAll(geoHashGen) { s =>
-      GeoHash.from(s) onRight (_.value == s)
+      GeoHash.from(s).onRight(_.value == s)
     }
   }
 }

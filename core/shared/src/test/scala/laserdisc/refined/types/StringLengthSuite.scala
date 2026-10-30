@@ -63,7 +63,7 @@ final class StringLengthSuite extends BaseSpec {
 
   property("StringLength refines correctly provided non literal cases of in range Longs (0L <= l <= 4294967295L)") {
     forAll(stringLengthGen) { l =>
-      StringLength.from(l) onRight (_.value == l)
+      StringLength.from(l).onRight(_.value == l)
     }
   }
 }

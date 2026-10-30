@@ -40,17 +40,17 @@ abstract class LaserdiscFs2Suite(p: Port) extends FunSuite {
     config = IORuntimeConfig()
   )
 
-  private var cleanUp: IO[Unit]               = _
-  protected final var client: RedisClient[IO] = _
+  private var cleanUp: IO[Unit]               = null
+  protected final var client: RedisClient[IO] = null
 
   override final def beforeAll(): Unit = {
-    val (cl, cu) = RedisClient[IO].to("127.0.0.1", p).allocated.unsafeRunSync()(runtime)
+    val (cl, cu) = RedisClient[IO].to("127.0.0.1", p).allocated.unsafeRunSync()(using runtime)
     cleanUp = cu
     client = cl
   }
 
   override final def afterAll(): Unit =
-    cleanUp.unsafeRunSync()(runtime)
+    cleanUp.unsafeRunSync()(using runtime)
 
   protected def assertAllEqual[A](as: List[A], a: A): Unit =
     as.foreach(assertEquals(_, a))

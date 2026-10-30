@@ -27,6 +27,6 @@ import munit.FunSuite
 
 final class CirceSpecJvmNative extends FunSuite with EitherTestSyntax {
   test("handling an invalid json fails to decode") {
-    Read[Bulk, Bar].read(Bulk("{")) onLeft (e => assertEquals(e.message, "ParsingFailure: exhausted input"))
+    Read[Bulk, Bar].read(Bulk("{")).onLeft(e => assertEquals(e.message, "ParsingFailure: exhausted input"))
   }
 }

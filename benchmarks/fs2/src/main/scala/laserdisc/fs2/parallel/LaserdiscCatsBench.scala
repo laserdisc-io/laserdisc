@@ -40,7 +40,7 @@ class LaserdiscCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad1(setUp: LaserdiscCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case1
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -49,7 +49,7 @@ class LaserdiscCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad2(setUp: LaserdiscCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case2
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -58,7 +58,7 @@ class LaserdiscCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad3(setUp: LaserdiscCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case3
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -67,7 +67,7 @@ class LaserdiscCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad4(setUp: LaserdiscCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case4
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -76,7 +76,7 @@ class LaserdiscCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad5(setUp: LaserdiscCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case5
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -85,7 +85,7 @@ class LaserdiscCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad6(setUp: LaserdiscCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case6
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -98,12 +98,12 @@ object SetUpLaserdiscCats {
     implicit val logWriter: LogWriter[IO] =
       SyncLogWriter.consoleLogUpToLevel(LogLevels.Error)
 
-    var runtime: IORuntime = _
+    var runtime: IORuntime = null
 
     private final val resource = RedisClient[IO].to("localhost", 6379)
 
-    private[fs2] var testCases: TestCasesLaserdisc[IO] = _
-    private[fs2] var clientCleanUp: IO[Unit]           = _
+    private[fs2] var testCases: TestCasesLaserdisc[IO] = null
+    private[fs2] var clientCleanUp: IO[Unit]           = null
 
     @Setup(Level.Trial)
     def setup(): Unit = {
@@ -113,12 +113,12 @@ object SetUpLaserdiscCats {
           testCases = TestCasesLaserdisc(rc)
           clientCleanUp = cu
         }
-        .unsafeRunSync()(runtime)
+        .unsafeRunSync()(using runtime)
     }
 
     @TearDown(Level.Trial)
     def tearDown(): Unit = {
-      clientCleanUp.unsafeRunSync()(runtime)
+      clientCleanUp.unsafeRunSync()(using runtime)
       runtime.shutdown()
     }
   }

@@ -37,10 +37,10 @@ object SetUpLaserdiscCatsRespByte {
 
   @State(Scope.Benchmark)
   class LaserdiscState {
-    var runtime: IORuntime = _
+    var runtime: IORuntime = null
 
-    var client: RedisClient[IO]         = _
-    private var clientCleanUp: IO[Unit] = _
+    var client: RedisClient[IO]         = null
+    private var clientCleanUp: IO[Unit] = null
 
     @Setup
     def setup(): Unit = {
@@ -52,12 +52,12 @@ object SetUpLaserdiscCatsRespByte {
           client = rc
           clientCleanUp = cu
         }
-        .unsafeRunSync()(runtime)
+        .unsafeRunSync()(using runtime)
     }
 
     @TearDown
     def tearDown(): Unit = {
-      clientCleanUp.unsafeRunSync()(runtime)
+      clientCleanUp.unsafeRunSync()(using runtime)
       runtime.shutdown()
     }
   }
@@ -65,9 +65,9 @@ object SetUpLaserdiscCatsRespByte {
 
 @State(Scope.Benchmark)
 class JedisState {
-  var jedisPool: JedisPool = _
+  var jedisPool: JedisPool = null
 
-  var runtime: IORuntime = _
+  var runtime: IORuntime = null
 
   @Setup
   def setup(): Unit = {
@@ -111,7 +111,7 @@ class RedisClientBench {
           k => IO(jedisClient.get(k))
         )
       }
-      .unsafeRunSync()(jedisState.runtime)
+      .unsafeRunSync()(using jedisState.runtime)
 
   @Benchmark
   @OperationsPerInvocation(100)
@@ -123,7 +123,7 @@ class RedisClientBench {
       numberOfItems,
       (k, v) => client.send(set(k, v)),
       k => client.send(get(k))
-    ).unsafeRunSync()(laserdiscState.runtime)
+    ).unsafeRunSync()(using laserdiscState.runtime)
   }
 }
 

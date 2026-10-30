@@ -48,7 +48,7 @@ final class NonNegLongSuite extends BaseSpec {
 
   property("NonNegLong refines correctly provided non literal cases of in range Longs (l > 0L)") {
     forAll(nonNegLongGen) { l =>
-      NonNegLong.from(l) onRight (_.value == l)
+      NonNegLong.from(l).onRight(_.value == l)
     }
   }
 }

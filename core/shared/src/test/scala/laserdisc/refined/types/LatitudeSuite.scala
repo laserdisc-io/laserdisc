@@ -63,7 +63,7 @@ final class LatitudeSuite extends BaseSpec {
 
   property("Latitude refines correctly provided non literal cases of in range Doubles (-85.05112878D <= d <= 85.05112878D)") {
     forAll(latitudeGen) { l =>
-      Latitude.from(l) onRight (_.value == l)
+      Latitude.from(l).onRight(_.value == l)
     }
   }
 }

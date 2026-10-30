@@ -41,7 +41,7 @@ class LaserdiscCatsRespInBitVectorOutBench() {
   @OperationsPerInvocation(48)
   def parallelLoad1(setUp: LaserdiscCatsRespBitVectorSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case1
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -50,7 +50,7 @@ class LaserdiscCatsRespInBitVectorOutBench() {
   @OperationsPerInvocation(48)
   def parallelLoad2(setUp: LaserdiscCatsRespBitVectorSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case2
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -63,19 +63,19 @@ object SetUpLaserdiscCatsRespBitVector {
     implicit val logWriter: LogWriter[IO] =
       SyncLogWriter.consoleLogUpToLevel(LogLevels.Error)
 
-    var runtime: IORuntime = _
+    var runtime: IORuntime = null
     private val channel    = RedisAddress("localhost", 6379).toSocketAddress[IO].map { address =>
       RespInBitVectorOutChannel[IO](address, receiveBufferSizeBytes = 8 * 1024 * 1024)
     }
 
-    private[fs2] var testCases: TestCasesLaserdiscRespBitVector[IO] = _
+    private[fs2] var testCases: TestCasesLaserdiscRespBitVector[IO] = null
 
     @Setup(Level.Trial)
     def setup(): Unit = {
       runtime = createNewRuntime()
       channel
         .map(ch => testCases = TestCasesLaserdiscRespBitVector(ch))
-        .unsafeRunSync()(runtime)
+        .unsafeRunSync()(using runtime)
     }
 
     @TearDown

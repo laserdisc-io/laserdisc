@@ -63,7 +63,7 @@ final class RangeOffsetSuite extends BaseSpec {
 
   property("RangeOffset refines correctly provided non literal cases of in range Ints (0 <= i <= 536870911)") {
     forAll(rangeOffsetGen) { i =>
-      RangeOffset.from(i) onRight (_.value == i)
+      RangeOffset.from(i).onRight(_.value == i)
     }
   }
 }

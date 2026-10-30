@@ -167,7 +167,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     forAll(infoGen) { info =>
       val protocol = clusterinfo
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("INFO")))
-      protocol.decode(Bulk(info)) onRight (result => info.forall { case (k, v) => result.selectDynamic(k).fold(_ => false, _ == v) })
+      protocol.decode(Bulk(info)).onRight(result => info.forall { case (k, v) => result.selectDynamic(k).fold(_ => false, _ == v) })
     }
   }
 
@@ -253,7 +253,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     forAll(nodesGen filter nodesIsValid) { ns =>
       val protocol = nodes
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("NODES")))
-      protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
+      protocol.decode(Bulk(ns)).onRightAll(validateNodes(ns))
     }
   }
 
@@ -273,7 +273,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     forAll(nodeIdArb.arbitrary, nodesGen filter nodesIsValid) { (n, ns) =>
       val protocol = replicas(n)
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("REPLICAS"), Bulk(n)))
-      protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
+      protocol.decode(Bulk(ns)).onRightAll(validateNodes(ns))
     }
   }
 
@@ -333,7 +333,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     forAll(nodeIdArb.arbitrary, nodesGen filter nodesIsValid) { (n, ns) =>
       val protocol = slaves(n)
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SLAVES"), Bulk(n)))
-      protocol.decode(Bulk(ns)) onRightAll validateNodes(ns)
+      protocol.decode(Bulk(ns)).onRightAll(validateNodes(ns))
     }
   }
 

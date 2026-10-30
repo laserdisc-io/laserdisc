@@ -73,21 +73,21 @@ object SetUpScredis {
   @State(Scope.Benchmark)
   class ScredisSetUp {
 
-    var runtime: IORuntime = _
+    var runtime: IORuntime = null
 
-    private[fs2] var client: Redis               = _
-    private[fs2] var testCases: TestCasesScredis = _
+    private[fs2] var client: Redis               = null
+    private[fs2] var testCases: TestCasesScredis = null
 
     @Setup(Level.Trial)
     def setup(): Unit = {
       runtime = createNewRuntime()
       client = Redis(host = "localhost", port = 6379)
-      testCases = TestCasesScredis(client)(runtime.compute)
+      testCases = TestCasesScredis(client)(using runtime.compute)
     }
 
     @TearDown(Level.Trial)
     def tearDown(): Unit = {
-      (IO.fromFuture(IO(client.quit())) >> IO.unit).unsafeRunSync()(runtime)
+      (IO.fromFuture(IO(client.quit())) >> IO.unit).unsafeRunSync()(using runtime)
       runtime.shutdown()
     }
   }

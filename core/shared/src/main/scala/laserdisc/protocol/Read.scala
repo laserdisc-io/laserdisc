@@ -42,7 +42,7 @@ Note 2: make sure to inspect the combinators as you may be able to leverage some
 
   final def map[C](f: B => C): Read[A, C] = Read.instance(read(_).map(f))
 
-  final def contramap[C](f: C => A): Read[C, B] = Read.instance(read _ compose f)
+  final def contramap[C](f: C => A): Read[C, B] = Read.instance(c => read(f(c)))
 
   final def flatMap[C](f: B => Read[A, C]): Read[A, C] = Read.instance(a => read(a).flatMap(f(_).read(a)))
 

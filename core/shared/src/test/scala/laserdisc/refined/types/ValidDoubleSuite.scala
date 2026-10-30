@@ -46,7 +46,7 @@ final class ValidDoubleSuite extends BaseSpec {
 
   property("ValidDouble refines correctly provided non literal cases of valid Doubles (d != Double.NaN)") {
     forAll(doubles.filter(validDoubleIsValid)) { d =>
-      ValidDouble.from(d) onRight (_.value == d)
+      ValidDouble.from(d).onRight(_.value == d)
     }
   }
 }

@@ -36,7 +36,7 @@ implicit final val myShow: Show[${A}] = new Show[${A}] {
 ) trait Show[A] {
   def show(a: A): String
 
-  final def contramap[B](f: B => A): Show[B] = Show.instance(show _ compose f)
+  final def contramap[B](f: B => A): Show[B] = Show.instance(b => show(f(b)))
 }
 
 object Show extends ShowInstances {

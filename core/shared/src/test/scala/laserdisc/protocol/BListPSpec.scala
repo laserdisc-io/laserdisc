@@ -74,7 +74,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
     forAll { (ks: OneOrMoreKeys, t: NonNegInt, i: Int) =>
       val protocol = blpop[Int](ks, t)
       assertEquals(protocol.encode, Arr((Bulk("BLPOP") :: ks.value.map(Bulk(_))) :+ Bulk(t)))
-      protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))) onRight (_ contains KV(ks.value.head, i))
+      protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))).onRight(_ contains KV(ks.value.head, i))
     }
   }
 
@@ -82,7 +82,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
     forAll { (ks: OneOrMoreKeys, t: NonNegInt, i: Int) =>
       val protocol = blpop[Foo](ks, t)
       assertEquals(protocol.encode, Arr((Bulk("BLPOP") :: ks.value.map(Bulk(_))) :+ Bulk(t)))
-      protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))) onRight (_ contains KV(ks.value.head, Foo(i)))
+      protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))).onRight(_ contains KV(ks.value.head, Foo(i)))
     }
   }
 
@@ -90,7 +90,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
     forAll { (ks: OneOrMoreKeys, t: NonNegInt, i: Int) =>
       val protocol = brpop[Int](ks, t)
       assertEquals(protocol.encode, Arr((Bulk("BRPOP") :: ks.value.map(Bulk(_))) :+ Bulk(t)))
-      protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))) onRight (_ contains KV(ks.value.head, i))
+      protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))).onRight(_ contains KV(ks.value.head, i))
     }
   }
 
@@ -98,7 +98,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
     forAll { (ks: OneOrMoreKeys, t: NonNegInt, i: Int) =>
       val protocol = brpop[Foo](ks, t)
       assertEquals(protocol.encode, Arr((Bulk("BRPOP") :: ks.value.map(Bulk(_))) :+ Bulk(t)))
-      protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))) onRight (_ contains KV(ks.value.head, Foo(i)))
+      protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))).onRight(_ contains KV(ks.value.head, Foo(i)))
     }
   }
 
@@ -106,7 +106,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
     forAll { (s: Key, d: Key, i: Int) =>
       val protocol = brpoplpush[Int](s, d)
       assertEquals(protocol.encode, Arr(Bulk("BRPOPLPUSH"), Bulk(s), Bulk(d), Bulk(0)))
-      protocol.decode(Bulk(i)) onRight (_ contains i)
+      protocol.decode(Bulk(i)).onRight(_ contains i)
     }
   }
 
@@ -116,7 +116,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
     forAll { (s: Key, d: Key, i: Int) =>
       val protocol = brpoplpush[Foo](s, d)
       assertEquals(protocol.encode, Arr(Bulk("BRPOPLPUSH"), Bulk(s), Bulk(d), Bulk(0)))
-      protocol.decode(Bulk(i)) onRight (_ contains Foo(i))
+      protocol.decode(Bulk(i)).onRight(_ contains Foo(i))
     }
   }
 
@@ -124,7 +124,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
     forAll { (s: Key, d: Key, pi: PosInt, i: Int) =>
       val protocol = brpoplpush[Int](s, d, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOPLPUSH"), Bulk(s), Bulk(d), Bulk(pi)))
-      protocol.decode(Bulk(i)) onRight (_ contains i)
+      protocol.decode(Bulk(i)).onRight(_ contains i)
     }
   }
 
@@ -134,7 +134,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
     forAll { (s: Key, d: Key, pi: PosInt, i: Int) =>
       val protocol = brpoplpush[Foo](s, d, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOPLPUSH"), Bulk(s), Bulk(d), Bulk(pi)))
-      protocol.decode(Bulk(i)) onRight (_ contains Foo(i))
+      protocol.decode(Bulk(i)).onRight(_ contains Foo(i))
     }
   }
 }

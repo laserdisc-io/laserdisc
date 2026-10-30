@@ -58,7 +58,7 @@ final class ReadmeExampleSpec extends CatsEffectSuite {
           }
       }
 
-    redisTest(logWriter).map { _ =>
+    redisTest(using logWriter).map { _ =>
       assert(logged.contains("Starting connection"))
       assert(logged.contains("Connected to server localhost:6379"))
       assert(logged.contains("sending Arr(Bulk(SET),Bulk(a),Bulk(23))"))

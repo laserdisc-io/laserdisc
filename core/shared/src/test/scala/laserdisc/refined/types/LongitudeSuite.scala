@@ -63,7 +63,7 @@ final class LongitudeSuite extends BaseSpec {
 
   property("Longitude refines correctly provided non literal cases of in range Doubles (-180.0D <= d <= 180.0D)") {
     forAll(longitudeGen) { l =>
-      Longitude.from(l) onRight (_.value == l)
+      Longitude.from(l).onRight(_.value == l)
     }
   }
 }

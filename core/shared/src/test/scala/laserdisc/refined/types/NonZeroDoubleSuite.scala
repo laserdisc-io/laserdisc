@@ -49,7 +49,7 @@ final class NonZeroDoubleSuite extends BaseSpec {
 
   property("NonZeroDouble refines correctly provided non literal cases of valid Doubles (d != 0.0D)") {
     forAll(nonZeroDoubleGen) { d =>
-      NonZeroDouble.from(d) onRight (_.value == d)
+      NonZeroDouble.from(d).onRight(_.value == d)
     }
   }
 }

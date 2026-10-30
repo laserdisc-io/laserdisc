@@ -59,7 +59,7 @@ final class NonNegDoubleSuite extends BaseSpec {
 
   property("NonNegDouble refines correctly provided non literal cases of in range Doubles (d >= 0.0D)") {
     forAll(nonNegDoubleGen) { d =>
-      NonNegDouble.from(d) onRight (_.value == d)
+      NonNegDouble.from(d).onRight(_.value == d)
     }
   }
 }

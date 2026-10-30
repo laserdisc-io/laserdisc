@@ -68,7 +68,7 @@ final class TwoOrMoreWeightedKeysSuite extends BaseSpec {
 
   property("TwoOrMoreWeightedKeys refines correctly provided non literal cases of Lists of length > 1") {
     forAll(wightedKeyLists.filter(_.size > 1)) { ks =>
-      TwoOrMoreWeightedKeys.from(ks) onRight (_.value == ks)
+      TwoOrMoreWeightedKeys.from(ks).onRight(_.value == ks)
     }
   }
 }

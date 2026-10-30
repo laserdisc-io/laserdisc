@@ -40,7 +40,7 @@ class LaserdiscCatsRespInAndOutBench() {
   @OperationsPerInvocation(48)
   def parallelLoad1(setUp: LaserdiscCatsRespSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case1
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -49,7 +49,7 @@ class LaserdiscCatsRespInAndOutBench() {
   @OperationsPerInvocation(48)
   def parallelLoad2(setUp: LaserdiscCatsRespSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case2
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -62,19 +62,19 @@ object SetUpLaserdiscCatsResp {
     implicit val logWriter: LogWriter[IO] =
       SyncLogWriter.consoleLogUpToLevel(LogLevels.Error)
 
-    var runtime: IORuntime = _
+    var runtime: IORuntime = null
     private val channel    = RedisAddress("localhost", 6379).toSocketAddress[IO].map { address =>
       RedisChannel[IO](address, receiveBufferSizeBytes = 8 * 1024 * 1024)
     }
 
-    private[fs2] var testCases: TestCasesLaserdiscResp[IO] = _
+    private[fs2] var testCases: TestCasesLaserdiscResp[IO] = null
 
     @Setup(Level.Trial)
     def setup(): Unit = {
       runtime = createNewRuntime()
       channel
         .map(ch => testCases = TestCasesLaserdiscResp(ch))
-        .unsafeRunSync()(runtime)
+        .unsafeRunSync()(using runtime)
     }
 
     @TearDown

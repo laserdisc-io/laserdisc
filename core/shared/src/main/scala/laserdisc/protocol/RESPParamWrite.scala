@@ -35,7 +35,7 @@ Normally you would not need to define one manually, as one will be derived for y
 ) trait RESPParamWrite[A] {
   def write(a: A): Seq[GenBulk]
 
-  final def contramap[B](f: B => A): RESPParamWrite[B] = RESPParamWrite.instance(write _ compose f)
+  final def contramap[B](f: B => A): RESPParamWrite[B] = RESPParamWrite.instance(b => write(f(b)))
 }
 
 object RESPParamWrite extends RESPParamWriteInstances {

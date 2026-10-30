@@ -39,7 +39,7 @@ class RedisForCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad1(setUp: RedisForCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case1
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -48,7 +48,7 @@ class RedisForCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad2(setUp: RedisForCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case2
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -57,7 +57,7 @@ class RedisForCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad3(setUp: RedisForCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case3
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -66,7 +66,7 @@ class RedisForCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad4(setUp: RedisForCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case4
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -75,7 +75,7 @@ class RedisForCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad5(setUp: RedisForCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case5
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -84,7 +84,7 @@ class RedisForCatsBench() {
   @OperationsPerInvocation(48)
   def parallelLoad6(setUp: RedisForCatsSetUp, bh: Blackhole): Unit = {
     val run = setUp.testCases.case6
-    val res = run.unsafeRunSync()(setUp.runtime)
+    val res = run.unsafeRunSync()(using setUp.runtime)
 
     bh.consume(res)
   }
@@ -96,12 +96,12 @@ object SetUpRedisForCats {
   class RedisForCatsSetUp {
     import Log.Stdout.*
 
-    var runtime: IORuntime = _
+    var runtime: IORuntime = null
 
     private final val resource = Redis[IO].utf8("redis://localhost")
 
-    private[fs2] var testCases: RedisForCatsTestCases[IO] = _
-    private[fs2] var clientCleanUp: IO[Unit]              = _
+    private[fs2] var testCases: RedisForCatsTestCases[IO] = null
+    private[fs2] var clientCleanUp: IO[Unit]              = null
 
     @Setup(Level.Trial)
     def setup(): Unit = {
@@ -111,12 +111,12 @@ object SetUpRedisForCats {
           testCases = RedisForCatsTestCases(rc)
           clientCleanUp = cu
         }
-        .unsafeRunSync()(runtime)
+        .unsafeRunSync()(using runtime)
     }
 
     @TearDown(Level.Trial)
     def tearDown(): Unit = {
-      clientCleanUp.unsafeRunSync()(runtime)
+      clientCleanUp.unsafeRunSync()(using runtime)
       runtime.shutdown()
     }
   }

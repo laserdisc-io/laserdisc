@@ -60,7 +60,7 @@ final class GlobPatternSuite extends BaseSpec {
 
   property("GlobPattern refines correctly provided non literal cases of conformant Strings") {
     forAll(globPatternGen) { s =>
-      GlobPattern.from(s) onRight (_.value == s)
+      GlobPattern.from(s).onRight(_.value == s)
     }
   }
 }

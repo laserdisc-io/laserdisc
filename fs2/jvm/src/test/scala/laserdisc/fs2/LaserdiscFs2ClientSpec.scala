@@ -43,7 +43,7 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
   private def preset(cl: RedisClient[IO], payload: String): IO[Unit] =
     cl.send(set(key, payload)).flatMap(_ => async.unit)
 
-  private def run[A]: IO[A] => A = _.unsafeRunSync()(runtime)
+  private def run[A]: IO[A] => A = _.unsafeRunSync()(using runtime)
 
   private val async = Async[IO]
 

@@ -31,7 +31,7 @@ final class OneOrMoreSuite extends BaseSpec {
 
   property("OneOrMore refines correctly provided non literal cases of non empty Lists (length > 0)") {
     forAll(intLists.filter(_.nonEmpty)) { l =>
-      OneOrMore.from(l) onRight (_.value == l)
+      OneOrMore.from(l).onRight(_.value == l)
     }
   }
 }

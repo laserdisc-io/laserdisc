@@ -53,7 +53,7 @@ object CatsIoTestRunner {
       }
     }
 
-    println(s"Avg send/s: ${task.unsafeRunSync()(fixedFixedRuntime) * 24.0 / runFor.toMinutes / 60}")
+    println(s"Avg send/s: ${task.unsafeRunSync()(using fixedFixedRuntime) * 24.0 / runFor.toMinutes / 60}")
     sys.exit()
   }
 }

@@ -81,8 +81,8 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
     arbA.arbitrary.flatMap(a => arbB.arbitrary.map(a -> _))
 
   private final def strGen(lc: Gen[List[Char]]): Gen[String]               = lc.map(_.mkString)
-  private final def strOfNGen(n: Int, fs: (Int, Gen[Char])*): Gen[String]  = listOfN(n, frequency(fs: _*)).map(_.mkString)
-  private final def strOfNSameFreqGen(n: Int, gs: Gen[Char]*): Gen[String] = strOfNGen(n, gs.map(1 -> _): _*)
+  private final def strOfNGen(n: Int, fs: (Int, Gen[Char])*): Gen[String]  = listOfN(n, frequency(fs*)).map(_.mkString)
+  private final def strOfNSameFreqGen(n: Int, gs: Gen[Char]*): Gen[String] = strOfNGen(n, gs.map(1 -> _)*)
 
   final val connectionNameIsValid: String => Boolean                          = ConnectionName.from(_).isRight
   final val dbIndexIsValid: Int => Boolean                                    = DbIndex.from(_).isRight

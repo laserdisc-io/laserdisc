@@ -26,8 +26,6 @@ package testcases
 
 import java.util.UUID
 
-import laserdisc.auto.*
-
 private[fs2] trait TestValues {
   private def generateList(n: Int): OneOrMore[String] =
     OneOrMore.unsafeFrom((1 to n).map(_ => UUID.randomUUID().toString).toList)
@@ -76,23 +74,23 @@ private[fs2] trait TestValues {
   private[fs2] val longMulti7 = generateMulti(20)
   private[fs2] val longMulti8 = generateMulti(10)
 
-  private[fs2] val longMulti1Map = longMulti1.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val longMulti2Map = longMulti2.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val longMulti3Map = longMulti3.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val longMulti4Map = longMulti4.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val longMulti5Map = longMulti5.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val longMulti6Map = longMulti6.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val longMulti7Map = longMulti7.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val longMulti8Map = longMulti8.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val longMulti1Map = longMulti1.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val longMulti2Map = longMulti2.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val longMulti3Map = longMulti3.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val longMulti4Map = longMulti4.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val longMulti5Map = longMulti5.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val longMulti6Map = longMulti6.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val longMulti7Map = longMulti7.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val longMulti8Map = longMulti8.value.map { case (k, v) => k.value -> v }.toMap
 
-  private[fs2] val longMulti1MapStr = longMulti1.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val longMulti2MapStr = longMulti2.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val longMulti3MapStr = longMulti3.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val longMulti4MapStr = longMulti4.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val longMulti5MapStr = longMulti5.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val longMulti6MapStr = longMulti6.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val longMulti7MapStr = longMulti7.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val longMulti8MapStr = longMulti8.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val longMulti1MapStr = longMulti1.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val longMulti2MapStr = longMulti2.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val longMulti3MapStr = longMulti3.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val longMulti4MapStr = longMulti4.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val longMulti5MapStr = longMulti5.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val longMulti6MapStr = longMulti6.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val longMulti7MapStr = longMulti7.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val longMulti8MapStr = longMulti8.value.map { case (k, v) => k.value -> v.toString }.toMap
 
   private[fs2] val shortNel1 = generateList(5)
   private[fs2] val shortNel2 = generateList(4)
@@ -130,21 +128,21 @@ private[fs2] trait TestValues {
   private[fs2] val shortMulti7 = generateMulti(3)
   private[fs2] val shortMulti8 = generateMulti(4)
 
-  private[fs2] val shortMulti1Map = shortMulti1.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val shortMulti2Map = shortMulti2.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val shortMulti3Map = shortMulti3.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val shortMulti4Map = shortMulti4.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val shortMulti5Map = shortMulti5.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val shortMulti6Map = shortMulti6.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val shortMulti7Map = shortMulti7.map { case (k, v) => k.value -> v }.toMap
-  private[fs2] val shortMulti8Map = shortMulti8.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val shortMulti1Map = shortMulti1.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val shortMulti2Map = shortMulti2.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val shortMulti3Map = shortMulti3.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val shortMulti4Map = shortMulti4.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val shortMulti5Map = shortMulti5.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val shortMulti6Map = shortMulti6.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val shortMulti7Map = shortMulti7.value.map { case (k, v) => k.value -> v }.toMap
+  private[fs2] val shortMulti8Map = shortMulti8.value.map { case (k, v) => k.value -> v }.toMap
 
-  private[fs2] val shortMulti1MapStr = shortMulti1.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val shortMulti2MapStr = shortMulti2.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val shortMulti3MapStr = shortMulti3.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val shortMulti4MapStr = shortMulti4.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val shortMulti5MapStr = shortMulti5.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val shortMulti6MapStr = shortMulti6.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val shortMulti7MapStr = shortMulti7.map { case (k, v) => k.value -> v.toString }.toMap
-  private[fs2] val shortMulti8MapStr = shortMulti8.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val shortMulti1MapStr = shortMulti1.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val shortMulti2MapStr = shortMulti2.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val shortMulti3MapStr = shortMulti3.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val shortMulti4MapStr = shortMulti4.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val shortMulti5MapStr = shortMulti5.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val shortMulti6MapStr = shortMulti6.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val shortMulti7MapStr = shortMulti7.value.map { case (k, v) => k.value -> v.toString }.toMap
+  private[fs2] val shortMulti8MapStr = shortMulti8.value.map { case (k, v) => k.value -> v.toString }.toMap
 }

@@ -38,7 +38,7 @@ final class NonZeroIntSuite extends BaseSpec {
 
   property("NonZeroInt refines correctly provided non literal cases of valid Ints (i != 0)") {
     forAll(nonZeroIntGen) { i =>
-      NonZeroInt.from(i) onRight (_.value == i)
+      NonZeroInt.from(i).onRight(_.value == i)
     }
   }
 }

@@ -29,12 +29,11 @@ import scala.annotation.implicitNotFound
 
 Try writing your own, for example:
 
-implicit final val myRead: Read[${A}, ${B}] = new Read[${A}, ${B}] {
-  override final def read(a: ${A}): Option[${B}] = ???
+implicit final val myRead: Read[${A}, ${B}] = Read.instance { (a: ${A}) =>
+  ??? // Right(b) when a can be read as ${B}, Left(RESPDecErr(...)) when it can't
 }
 
-Note 1: you can use the factory method Read.instance instead of creating it manually as shown above
-Note 2: make sure to inspect the combinators as you may be able to leverage some other Read instance
+You may also be able to build it from an existing Read with map, contramap or flatMap.
 """
 ) trait Read[A, B] { self =>
 

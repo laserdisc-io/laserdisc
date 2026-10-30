@@ -34,12 +34,11 @@ abstract class BListPSpec extends BaseSpec with BListP {
          |
          |Try writing your own, for example:
          |
-         |implicit final val myRead: Read[laserdisc.protocol.Bulk, laserdisc.Bar] = new Read[laserdisc.protocol.Bulk, laserdisc.Bar] {
-         |  override final def read(a: laserdisc.protocol.Bulk): Option[laserdisc.Bar] = ???
+         |implicit final val myRead: Read[laserdisc.protocol.Bulk, laserdisc.Bar] = Read.instance { (a: laserdisc.protocol.Bulk) =>
+         |  ??? // Right(b) when a can be read as laserdisc.Bar, Left(RESPDecErr(...)) when it can't
          |}
          |
-         |Note 1: you can use the factory method Read.instance instead of creating it manually as shown above
-         |Note 2: make sure to inspect the combinators as you may be able to leverage some other Read instance
+         |You may also be able to build it from an existing Read with map, contramap or flatMap.
          |
          |blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))
          |          ^
@@ -56,12 +55,11 @@ abstract class BListPSpec extends BaseSpec with BListP {
          |
          |Try writing your own, for example:
          |
-         |implicit final val myRead: Read[laserdisc.protocol.Bulk, laserdisc.Bar] = new Read[laserdisc.protocol.Bulk, laserdisc.Bar] {
-         |  override final def read(a: laserdisc.protocol.Bulk): Option[laserdisc.Bar] = ???
+         |implicit final val myRead: Read[laserdisc.protocol.Bulk, laserdisc.Bar] = Read.instance { (a: laserdisc.protocol.Bulk) =>
+         |  ??? // Right(b) when a can be read as laserdisc.Bar, Left(RESPDecErr(...)) when it can't
          |}
          |
-         |Note 1: you can use the factory method Read.instance instead of creating it manually as shown above
-         |Note 2: make sure to inspect the combinators as you may be able to leverage some other Read instance
+         |You may also be able to build it from an existing Read with map, contramap or flatMap.
          |
          |brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))
          |          ^

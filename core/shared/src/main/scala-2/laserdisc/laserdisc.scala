@@ -104,8 +104,8 @@ package object laserdisc {
   final val NOKEYEqWit                  = W("NOKEY")
   final val OKEqWit                     = W("OK")
   final val PONGEqWit                   = W("PONG")
-  final val PortMinValueWit             = W(1024)
-  final val PortMaxValueWit             = W(49151)
+  final val PortMinValueWit             = W(1)
+  final val PortMaxValueWit             = W(65535)
   final val RangeOffsetMaxValueWit      = W(536870911)
   final val Rfc1123HostnameMaxLengthWit = W(255)
   final val Rfc1123HostnameRegexWit     = W(

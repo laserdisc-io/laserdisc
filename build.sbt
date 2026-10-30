@@ -1,3 +1,4 @@
+import laika.helium.config.{HeliumIcon, IconLink}
 import sbtcrossproject.{CrossProject, Platform}
 
 val scala_212 = "2.12.21"
@@ -78,6 +79,8 @@ ThisBuild / githubWorkflowAddedJobs += WorkflowJob(
       name = Some("Run tests with coverage")
     )
 )
+ThisBuild / tlSitePublishBranch := Some("master")
+
 ThisBuild / mergifyLabelPaths    := Map.empty
 ThisBuild / mergifyStewardConfig := Some(MergifyStewardConfig(action = MergifyAction.Merge(Some("squash"))))
 
@@ -230,5 +233,17 @@ lazy val `fs2-bench` = project
       "org.slf4j"               % "slf4j-api"               % V.slf4j,
       "redis.clients"           % "jedis"                   % V.jedis,
       "org.scala-lang.modules" %% "scala-collection-compat" % V.`collection-compat`
+    )
+  )
+
+lazy val docs = project
+  .in(file("site"))
+  .enablePlugins(TypelevelSitePlugin)
+  .dependsOn(core.jvm, fs2.jvm, circe.jvm)
+  .settings(
+    // mdoc on Scala 2 trips over refined's class files (see the comment on concurrentRestrictions), Scala 3 doesn't use refined
+    tlSiteGenerate := List(WorkflowStep.Sbt(List(s"++$scala_3", "docs/tlSite"), name = Some("Generate site"))),
+    tlSiteHelium   := tlSiteHelium.value.site.topNavigationBar(
+      homeLink = IconLink.external("https://github.com/laserdisc-io/laserdisc", HeliumIcon.home)
     )
   )

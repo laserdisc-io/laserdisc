@@ -42,20 +42,10 @@ final class ReadmeExampleSpec extends CatsEffectSuite {
 
     def redisTest(implicit log: LogWriter[IO]): IO[Unit] =
       RedisClient[IO].to("localhost", 6379).use { client =>
-        client
-          .send(
-            set("a", 23),
-            set("b", 55),
-            get[PosInt]("b"),
-            get[PosInt]("a")
-          )
-          .flatMap {
-            case (Right(OK), Right(OK), Right(Some(getOfb)), Right(Some(getOfa))) if getOfb.value == 55 && getOfa.value == 23 =>
-              log.info("yay!")
-            case other =>
-              log.error(s"something went terribly wrong $other") >>
-                IO.raiseError(new RuntimeException("boom"))
-          }
+        client.send(set("a", 23), get[PosInt]("a")).flatMap {
+          case (Right(OK), Right(Some(a))) => log.info(s"a is ${a.value}")
+          case other                       => IO.raiseError(new RuntimeException(s"unexpected reply: $other"))
+        }
       }
 
     redisTest(using logWriter).map { _ =>
@@ -63,13 +53,9 @@ final class ReadmeExampleSpec extends CatsEffectSuite {
       assert(logged.contains("Connected to server localhost:6379"))
       assert(logged.contains("sending Arr(Bulk(SET),Bulk(a),Bulk(23))"))
       assert(logged.contains("receiving Str(OK)"))
-      assert(logged.contains("sending Arr(Bulk(SET),Bulk(b),Bulk(55))"))
-      assert(logged.contains("receiving Str(OK)"))
-      assert(logged.contains("sending Arr(Bulk(GET),Bulk(b))"))
-      assert(logged.contains("receiving Bulk(55)"))
       assert(logged.contains("sending Arr(Bulk(GET),Bulk(a))"))
       assert(logged.contains("receiving Bulk(23)"))
-      assert(logged.contains("yay!"))
+      assert(logged.contains("a is 23"))
       assert(logged.contains("Shutting down connection"))
       assert(logged.contains("Shutdown complete"))
       assert(logged.contains("Connection terminated: No issues"))

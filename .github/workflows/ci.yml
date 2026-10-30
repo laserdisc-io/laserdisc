@@ -331,8 +331,61 @@ jobs:
       - name: Submit Dependencies
         uses: scalacenter/sbt-dependency-submission@v2
         with:
-          modules-ignore: fs2-bench_2.12 fs2-bench_2.13 fs2-bench_3 laserdiscjvm_2.12 laserdiscjvm_2.13 laserdiscjvm_3 laserdiscnative_2.12 laserdiscnative_2.13 laserdiscnative_3 laserdisc-laws_2.12 laserdisc-laws_2.13 laserdisc-laws_3 laserdisc-laws_native0.5_2.12 laserdisc-laws_native0.5_2.13 laserdisc-laws_native0.5_3 core-bench_2.12 core-bench_2.13 core-bench_3 laserdisc-laws_sjs1_2.12 laserdisc-laws_sjs1_2.13 laserdisc-laws_sjs1_3 laserdiscjs_2.12 laserdiscjs_2.13 laserdiscjs_3
+          modules-ignore: fs2-bench_2.12 fs2-bench_2.13 fs2-bench_3 laserdiscjvm_2.12 laserdiscjvm_2.13 laserdiscjvm_3 laserdiscnative_2.12 laserdiscnative_2.13 laserdiscnative_3 docs_2.12 docs_2.13 docs_3 laserdisc-laws_2.12 laserdisc-laws_2.13 laserdisc-laws_3 laserdisc-laws_native0.5_2.12 laserdisc-laws_native0.5_2.13 laserdisc-laws_native0.5_3 core-bench_2.12 core-bench_2.13 core-bench_3 laserdisc-laws_sjs1_2.12 laserdisc-laws_sjs1_2.13 laserdisc-laws_sjs1_3 laserdiscjs_2.12 laserdiscjs_2.13 laserdiscjs_3
           configs-ignore: test scala-tool scala-doc-tool test-internal
+
+  site:
+    name: Generate Site
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        java: [temurin@17]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout current branch (full)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Setup Java (temurin@17)
+        id: setup-java-temurin-17
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Generate site
+        run: sbt ++3.9.0 docs/tlSite
+
+      - name: Publish site
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        uses: peaceiris/actions-gh-pages@v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site/target/docs/site
+          keep_files: true
 
   coverage:
     name: Check coverage

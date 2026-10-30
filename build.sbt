@@ -120,10 +120,10 @@ lazy val laserdisc = tlCrossRootProject
 lazy val core = laserdiscCrossModule("core", CrossType.Full, Seq(JVMPlatform, JSPlatform, NativePlatform))
   .settings(
     libraryDependencies ++= Seq(
-      "org.scodec"     %%% "scodec-bits"        % V.`scodec-bits`,
-      "org.scalacheck" %%% "scalacheck"         % V.scalacheck         % Test,
-      "org.scalameta"  %%% "munit"              % V.munit              % Test,
-      "org.scalameta"  %%% "munit-scalacheck"   % V.`munit-scalacheck` % Test
+      "org.scodec"     %%% "scodec-bits"      % V.`scodec-bits`,
+      "org.scalacheck" %%% "scalacheck"       % V.scalacheck         % Test,
+      "org.scalameta"  %%% "munit"            % V.munit              % Test,
+      "org.scalameta"  %%% "munit-scalacheck" % V.`munit-scalacheck` % Test
     ),
     libraryDependencies ++= {
       if (tlIsScala3.value)

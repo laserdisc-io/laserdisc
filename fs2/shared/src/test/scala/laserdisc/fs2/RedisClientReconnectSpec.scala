@@ -79,4 +79,22 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
       }
     }
   }
+
+  test("the client reconnects when the server stops replying") {
+    val silentAtFirst = FakeRedisServer { (n, commands) =>
+      if (n == 1) commands.drain ++ Stream.never[IO] else commands.as(bulk("back"))
+    }
+
+    silentAtFirst.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        for {
+          first <- client.send(get[String]("k"), 1.second).attempt
+          later <- untilReplied(client.send(get[String]("k"), 1.second))
+        } yield {
+          assert(first.left.exists(_.isInstanceOf[RequestTimedOut[?]]), s"expected a timeout, got $first")
+          assertEquals(later, Some("back"))
+        }
+      }
+    }
+  }
 }

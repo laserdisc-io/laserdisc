@@ -58,7 +58,7 @@ package object fs2 {
           Deferred[F, Unit].flatMap { claim =>
             val giveUp = claim.complete(()).void
 
-            queue.offer(Batch(requests.map(_._1), claim)) >>
+            queue.offer(Batch(requests.map(_._1), claim, duration)) >>
               replies
                 .timeout(duration)
                 .onCancel(giveUp)

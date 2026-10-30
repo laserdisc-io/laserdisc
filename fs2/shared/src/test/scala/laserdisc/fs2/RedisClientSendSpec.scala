@@ -47,4 +47,22 @@ final class RedisClientSendSpec extends CatsEffectSuite {
       }
     }
   }
+
+  test("commands still waiting to be sent fail when the client is closed") {
+    // a connection that never takes commands off the queue
+    val neverSends = RedisClient.impl.connection[IO]((_, _) => _ => Stream.never[IO], Seq(address(Port.unsafeFrom(6379))))
+
+    neverSends.flatMap(RedisClient.impl.mkClient[IO]).allocated.flatMap { case (client, close) =>
+      for {
+        waiting <- client.send(get[String]("k"), 30.seconds).start
+        _       <- IO.sleep(200.millis)
+        _       <- close
+        out     <- waiting.joinWithNever.timeout(2.seconds)
+        after   <- client.send(get[String]("k"), 1.second).attempt
+      } yield {
+        assertEquals(out, Left(ClientTerminated))
+        assertEquals(after, Left(ClientTerminated))
+      }
+    }
+  }
 }

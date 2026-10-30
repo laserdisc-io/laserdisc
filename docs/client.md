@@ -23,6 +23,10 @@ away, and the client reconnects. While it can't reach the server, it tries again
 every 3 seconds, and commands sent in the meantime fail with
 `ServerUnavailable`.
 
+The client also reconnects when the server stops replying: once a reply is late
+by more than its `send`'s timeout, the client drops the connection and opens a
+new one.
+
 ## Several servers
 
 `RedisClient[IO].toNodes` takes a set of addresses. The client uses one server

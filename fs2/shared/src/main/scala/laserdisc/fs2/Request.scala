@@ -24,6 +24,8 @@ package fs2
 
 import cats.effect.kernel.Deferred
 
+import scala.concurrent.duration.FiniteDuration
+
 sealed trait Request[F[_]] {
   type A
   def protocol: Protocol.Aux[A]
@@ -44,4 +46,4 @@ object Request {
 
 // the requests of one send, which go to the server together and in order. claim is completed by whoever comes
 // first: the connection, when it sends them, or the caller, when it stops waiting for the replies
-final case class Batch[F[_]](requests: Vector[Request[F]], claim: Deferred[F, Unit])
+final case class Batch[F[_]](requests: Vector[Request[F]], claim: Deferred[F, Unit], timeout: FiniteDuration)

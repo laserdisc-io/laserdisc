@@ -24,9 +24,10 @@ package fs2
 
 final case class ServerTerminatedConnection(redisAddress: RedisAddress)
     extends RuntimeException(s"Server $redisAddress terminated client connection", null, true, false)
-object ServerUnavailable        extends RuntimeException("No server available", null, true, false)
-object ClientTerminated         extends RuntimeException("Client terminated connection", null, true, false)
-object ClientNotStartedProperly extends RuntimeException("Client trying to publish to a connection not yet established", null, true, false)
+final case class ServerNotResponding(redisAddress: RedisAddress)
+    extends RuntimeException(s"Server $redisAddress stopped replying", null, true, false)
+object ServerUnavailable                       extends RuntimeException("No server available", null, true, false)
+object ClientTerminated                        extends RuntimeException("Client terminated connection", null, true, false)
 final case class NoInFlightRequest(resp: RESP) extends RuntimeException(s"Got unsolicited message from server: $resp", null, true, false)
 final case class InvalidSocketAddress(host: Host, port: Port)
     extends RuntimeException(s"SocketAddress creation failed. Invalid Host or Port: ${host.value}, ${port.value}", null, true, false)

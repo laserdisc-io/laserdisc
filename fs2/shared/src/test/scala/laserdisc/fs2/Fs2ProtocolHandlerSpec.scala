@@ -23,6 +23,7 @@ package laserdisc
 package fs2
 
 import cats.effect.IO
+import cats.syntax.foldable.*
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
@@ -31,31 +32,49 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
   private val num: Protocol.Aux[Long]   = Protocol("NUM", EmptyTuple).as[Num, Long]
   private val str: Protocol.Aux[String] = Protocol("STR", EmptyTuple).as[Str, String]
 
-  test("The fs2 protocol handler sends requests in order and collects their responses") {
+  test("The fs2 protocol handler queues the requests of a send together, in order, and collects their responses") {
     val handler =
       implicitly[RedisHandler.Aux[IO, Protocol.Aux[Long] *: Protocol.Aux[String] *: EmptyTuple, Maybe[Long] *: Maybe[String] *: EmptyTuple]]
 
     for {
-      queue  <- Queue.unbounded[IO, Request[IO]]
-      fiber  <- handler(queue -> 1.second, num *: str *: EmptyTuple).start
-      first  <- queue.take
-      _      <- first.callback(first.protocol.decode(Num(42L)))
-      second <- queue.take
-      _      <- second.callback(second.protocol.decode(Str("ok")))
-      out    <- fiber.joinWithNever
+      queue <- Queue.unbounded[IO, Batch[IO]]
+      fiber <- handler(queue -> 1.second, num *: str *: EmptyTuple).start
+      batch <- queue.take
+      _     <- batch.requests.traverse_(r => r.callback(r.protocol.decode(if (r.protocol.command == "NUM") Num(42L) else Str("ok"))))
+      out   <- fiber.joinWithNever
     } yield {
-      assertEquals(first.protocol.command -> second.protocol.command, "NUM" -> "STR")
+      assertEquals(batch.requests.map(_.protocol.command), Vector("NUM", "STR"))
       assertEquals(out, (Right(42L): Maybe[Long]) *: (Right("ok"): Maybe[String]) *: EmptyTuple)
     }
   }
 
-  test("The fs2 protocol handler fails with RequestTimedOut when no response arrives in time") {
+  test("The fs2 protocol handler fails with RequestTimedOut and withdraws the requests when no response arrives in time") {
     val handler = implicitly[RedisHandler.Aux[IO, Protocol.Aux[Long] *: EmptyTuple, Maybe[Long] *: EmptyTuple]]
 
     for {
-      queue <- Queue.unbounded[IO, Request[IO]]
-      out   <- handler(queue -> 50.millis, num *: EmptyTuple).attempt
-    } yield assertEquals(out, Left(RequestTimedOut(num)))
+      queue     <- Queue.unbounded[IO, Batch[IO]]
+      out       <- handler(queue -> 50.millis, num *: EmptyTuple).attempt
+      batch     <- queue.take
+      canBeSent <- batch.claim.complete(())
+    } yield {
+      assertEquals(out, Left(RequestTimedOut(num)))
+      assert(!canBeSent, "a batch given up on should not be sent")
+    }
+  }
+
+  test("The fs2 protocol handler names the first request without a response when it times out") {
+    val handler =
+      implicitly[RedisHandler.Aux[IO, Protocol.Aux[Long] *: Protocol.Aux[String] *: EmptyTuple, Maybe[Long] *: Maybe[String] *: EmptyTuple]]
+
+    for {
+      queue <- Queue.unbounded[IO, Batch[IO]]
+      fiber <- handler(queue -> 200.millis, num *: str *: EmptyTuple).attempt.start
+      batch <- queue.take
+      _     <- batch.claim.complete(())
+      first = batch.requests.head
+      _   <- first.callback(first.protocol.decode(Num(42L)))
+      out <- fiber.joinWithNever
+    } yield assertEquals(out, Left(RequestTimedOut(str)))
   }
 
   test("The fs2 protocol handler can be inferred correctly") {

@@ -64,7 +64,7 @@ object SetUpLaserdiscCatsResp {
 
     var runtime: IORuntime = null
     private val channel    = RedisAddress("localhost", 6379).toSocketAddress[IO].map { address =>
-      RedisChannel[IO](address, receiveBufferSizeBytes = 8 * 1024 * 1024)
+      RedisChannel[IO](address, receiveBufferSizeBytes = 8 * 1024 * 1024, onConnected = IO.unit)
     }
 
     private[fs2] var testCases: TestCasesLaserdiscResp[IO] = null

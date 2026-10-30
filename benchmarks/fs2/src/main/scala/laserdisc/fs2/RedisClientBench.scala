@@ -125,6 +125,18 @@ class RedisClientBench {
       k => client.send(get(k))
     ).unsafeRunSync()(using laserdiscState.runtime)
   }
+
+  @Benchmark
+  @OperationsPerInvocation(100)
+  def laserdiscWriteAndReadInOneSend100(laserdiscState: LaserdiscState): Int = {
+    val client = laserdiscState.client
+    val key    = Key.unsafeFrom(s"test-key:$numberOfItems")
+    List
+      .fill(numberOfItems)(client.send(set(key, numberOfItems), get[Int](key)))
+      .sequence
+      .map(_.size)
+      .unsafeRunSync()(using laserdiscState.runtime)
+  }
 }
 
 object RedisClientBench {

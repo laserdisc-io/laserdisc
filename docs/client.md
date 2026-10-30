@@ -66,8 +66,8 @@ type you asked for, so one failed command doesn't affect the others.
 
 ## Timeouts
 
-Commands time out after 20 seconds. To choose another timeout, pass it after the
-commands:
+A `send` times out if its replies haven't all arrived within 20 seconds. To
+choose another timeout, pass it after the commands:
 
 ```scala mdoc:compile-only
 import cats.effect.IO
@@ -82,7 +82,9 @@ def quickGet(client: RedisClient[IO]): IO[Maybe[Option[String]]] =
   client.send(get[String]("a"), 2.seconds)
 ```
 
-When a command times out, the whole `send` fails with `RequestTimedOut`.
+When it times out, the whole `send` fails with `RequestTimedOut`, which names
+the first command still without a reply. Commands that were still waiting to be
+sent aren't sent at all.
 
 ## Logging
 

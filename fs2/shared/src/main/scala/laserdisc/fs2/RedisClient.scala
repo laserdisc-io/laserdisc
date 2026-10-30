@@ -22,6 +22,7 @@
 package laserdisc
 package fs2
 
+import _root_.fs2.Chunk
 import cats.effect.kernel.{Deferred, Ref, Temporal}
 import cats.effect.syntax.all.*
 import cats.effect.{Async, Concurrent, Fiber, Resource}
@@ -69,7 +70,7 @@ object RedisClient {
       def send[In <: Tuple, Out <: Tuple](
           in: In,
           timeout: FiniteDuration
-      )(implicit handler: RedisHandler.Aux[F, In, Out]): F[Out]
+      )(implicit handler: Handler.Aux[F, Env[F], In, Out]): F[Out]
     }
 
     sealed trait Publisher[F[_]] {
@@ -78,14 +79,14 @@ object RedisClient {
       def publish[In <: Tuple, Out <: Tuple](
           in: In,
           timeout: FiniteDuration
-      )(implicit handler: RedisHandler.Aux[F, In, Out]): F[Out]
+      )(implicit handler: Handler.Aux[F, Env[F], In, Out]): F[Out]
     }
 
     def mkClient[F[_]: Concurrent](establishedConn: Connection[F]): Resource[F, RedisClient[F]] =
       Resource.make(mkPublisher(establishedConn).flatMap(publ => publ.start.map(_ => publ)))(_.shutdown).map { publisher =>
         new RedisClient[F] {
           override final def send[In <: Tuple, Out <: Tuple](in: In, timeout: FiniteDuration)(
-              implicit handler: RedisHandler.Aux[F, In, Out]
+              implicit handler: Handler.Aux[F, Env[F], In, Out]
           ): F[Out] = publisher.publish(in, timeout)
         }
       }
@@ -95,12 +96,15 @@ object RedisClient {
         addresses: Seq[RedisAddress]
     )(implicit logSelector: LogSelector[F]): Resource[F, Connection[F]] =
       Resource.eval(Deferred[F, Either[Throwable, Unit]]).flatMap { termSignal =>
-        Resource.eval(Queue.bounded[F, Request[F]](1024)).flatMap { queue =>
+        Resource.eval(Queue.bounded[F, Batch[F]](1024)).flatMap { queue =>
           Resource.eval((Ref.of[F, Vector[Request[F]]](Vector.empty), Ref.of[F, Int](0)).tupled).flatMap { case (inFlight, nextIndex) =>
-            val log                            = logSelector.log
-            def push(req: Request[F]): F[RESP] =
-              inFlight
-                .modify(in => (in :+ req) -> req.protocol.encode)
+            val log = logSelector.log
+            // a batch the caller gave up on while it was queued isn't sent
+            def push(batch: Batch[F]): F[Chunk[RESP]] =
+              batch.claim.complete(()).flatMap {
+                case true  => inFlight.modify(in => (in ++ batch.requests) -> Chunk.from(batch.requests.map(_.protocol.encode)))
+                case false => Chunk.empty[RESP].pure[F]
+              }
 
             def pop: F[Option[Request[F]]] =
               inFlight
@@ -121,6 +125,7 @@ object RedisClient {
               Stream
                 .fromQueueUnterminated(queue, limit = 8 * 1024)
                 .evalMap(push)
+                .unchunks
                 .through(redisNetChannel(address, onConnected))
                 .evalMap { resp =>
                   pop.flatMap {
@@ -134,7 +139,7 @@ object RedisClient {
               log.errorS("Server unavailable for publishing") >>
                 Stream
                   .fromQueueUnterminated(queue)
-                  .evalMap(_.callback(Left(ServerUnavailable)))
+                  .evalMap(_.requests.traverse_(_.callback(Left(ServerUnavailable))))
                   .drain
                   .interruptAfter(3.seconds) // FIXME magic number
 
@@ -176,7 +181,7 @@ object RedisClient {
               override final def send[In <: Tuple, Out <: Tuple](
                   in: In,
                   timeout: FiniteDuration
-              )(implicit handler: RedisHandler.Aux[F, In, Out]): F[Out] =
+              )(implicit handler: Handler.Aux[F, Env[F], In, Out]): F[Out] =
                 handler(queue -> timeout, in)
             }
 
@@ -218,7 +223,7 @@ object RedisClient {
             state.set(State.ShutDownState)
 
           def publish[In <: Tuple, Out <: Tuple](in: In, timeout: FiniteDuration)(
-              implicit ev: RedisHandler.Aux[F, In, Out]
+              implicit ev: Handler.Aux[F, Env[F], In, Out]
           ): F[Out] = {
             import State.*
             state.get.flatMap {

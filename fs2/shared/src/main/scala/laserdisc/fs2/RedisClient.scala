@@ -24,7 +24,7 @@ package fs2
 
 import cats.effect.kernel.{Deferred, Ref, Temporal}
 import cats.effect.syntax.all.*
-import cats.effect.{Async, Concurrent, Fiber, Resource, Sync}
+import cats.effect.{Async, Concurrent, Fiber, Resource}
 import cats.syntax.all.*
 import log.effect.fs2.LogSelector
 import log.effect.fs2.syntax.*
@@ -49,14 +49,14 @@ object RedisClient {
         addresses: Set[RedisAddress],
         receiveBufferSizeBytes: Int = 8 * 1024 * 1024
     ): Resource[F, RedisClient[F]] = {
-      def redisChannel(address: RedisAddress): Pipe[F, RESP, RESP] =
+      def redisChannel(address: RedisAddress, onConnected: F[Unit]): Pipe[F, RESP, RESP] =
         stream =>
           Stream.eval(address.toSocketAddress).flatMap { address =>
-            stream.through(RedisChannel(address, receiveBufferSizeBytes))
+            stream.through(RedisChannel(address, receiveBufferSizeBytes, onConnected))
           }
 
       val establishedConnection: Resource[F, impl.Connection[F]] =
-        impl.connection(redisChannel, impl.currentServer(addresses.toSeq))
+        impl.connection(redisChannel, addresses.toSeq)
 
       establishedConnection.flatMap(conn => impl.mkClient(conn))
     }
@@ -90,16 +90,13 @@ object RedisClient {
         }
       }
 
-    def currentServer[F[_]: Sync](addresses: Seq[RedisAddress]): F[Option[RedisAddress]] =
-      Stream.emits(addresses).covary[F].compile.last // FIXME yeah, well...
-
     def connection[F[_]: Temporal](
-        redisNetChannel: RedisAddress => Pipe[F, RESP, RESP],
-        leader: F[Option[RedisAddress]]
+        redisNetChannel: (RedisAddress, F[Unit]) => Pipe[F, RESP, RESP],
+        addresses: Seq[RedisAddress]
     )(implicit logSelector: LogSelector[F]): Resource[F, Connection[F]] =
       Resource.eval(Deferred[F, Either[Throwable, Unit]]).flatMap { termSignal =>
         Resource.eval(Queue.bounded[F, Request[F]](1024)).flatMap { queue =>
-          Resource.eval(Ref.of[F, Vector[Request[F]]](Vector.empty)).flatMap { inFlight =>
+          Resource.eval((Ref.of[F, Vector[Request[F]]](Vector.empty), Ref.of[F, Int](0)).tupled).flatMap { case (inFlight, nextIndex) =>
             val log                            = logSelector.log
             def push(req: Request[F]): F[RESP] =
               inFlight
@@ -112,11 +109,19 @@ object RedisClient {
                   else inFl                    -> None
                 }
 
-            def serverAvailable(address: RedisAddress): Stream[F, Unit] =
-              log.infoS(s"Connected to server $address") >> Stream
+            // the requests sent on a connection that's gone will never get a reply
+            def failInFlight(error: Throwable): F[Unit] =
+              inFlight.getAndSet(Vector.empty).flatMap(_.traverse_(_.callback(Left(error))))
+
+            // the addresses are tried in turn, starting from the first
+            val nextAddress: F[RedisAddress] =
+              nextIndex.getAndUpdate(i => (i + 1) % addresses.size).map(addresses(_))
+
+            def serverAvailable(address: RedisAddress, onConnected: F[Unit]): Stream[F, Unit] =
+              Stream
                 .fromQueueUnterminated(queue, limit = 8 * 1024)
                 .evalMap(push)
-                .through(redisNetChannel(address))
+                .through(redisNetChannel(address, onConnected))
                 .evalMap { resp =>
                   pop.flatMap {
                     case Some(Request(protocol, cb)) => cb(protocol.decode(resp))
@@ -125,55 +130,33 @@ object RedisClient {
                   }
                 } ++ Stream.raiseError(ServerTerminatedConnection(address))
 
-            val serverStream: Stream[F, Option[RedisAddress]] =
-              Stream.eval(leader)
-
-            def serverUnavailable: Stream[F, RedisAddress] =
+            val serverUnavailable: Stream[F, Unit] =
               log.errorS("Server unavailable for publishing") >>
-                Stream.eval(Signal[F, Option[RedisAddress]](None)).flatMap { serverSignal =>
-                  val cancelIncoming = Stream.fromQueueUnterminated(queue).evalMap(_.callback(Left(ServerUnavailable))).drain
-                  val queryLeader    = (Stream.awakeEvery[F](3.seconds) >> serverStream) // FIXME magic number
-                    .evalMap(maybeAddress => serverSignal.update(_ => maybeAddress))
-                    .drain
+                Stream
+                  .fromQueueUnterminated(queue)
+                  .evalMap(_.callback(Left(ServerUnavailable)))
+                  .drain
+                  .interruptAfter(3.seconds) // FIXME magic number
 
-                  cancelIncoming
-                    .mergeHaltBoth(queryLeader)
-                    .covaryOutput[RedisAddress]
-                    .interruptWhen(serverSignal.map(_.nonEmpty)) ++ serverSignal.discrete.head.flatMap {
-                    case None          => serverUnavailable // impossible
-                    case Some(address) => log.debugS(s"Publisher got address: $address") >> Stream.emit(address)
-                  }
-                }
+            // failures counts the addresses that couldn't be reached since the last connection
+            def runner(failures: Int): Stream[F, Unit] =
+              if (failures >= addresses.size) serverUnavailable ++ runner(0)
+              else
+                Stream.eval((nextAddress, Ref.of[F, Boolean](false)).tupled).flatMap { case (address, connected) =>
+                  val onConnected = connected.set(true) >> log.info(s"Connected to server $address")
 
-            def runner(knownServer: Stream[F, Option[RedisAddress]], lastFailedServer: Option[RedisAddress] = None): Stream[F, Unit] =
-              knownServer.flatMap {
-                case None =>
-                  serverUnavailable.flatMap(address => runner(Stream.emit(Some(address))))
-
-                case Some(address) =>
-                  lastFailedServer match {
-                    case Some(failedAddress) if address === failedAddress =>
-                      // this indicates that cluster sill thinks the address is same as the one that failed us, for that reason
-                      // we have to suspend execution for while and retry in FiniteDuration
-                      log.warnS(s"New server is same like the old one ($address): currently unavailable") >>
-                        serverUnavailable.flatMap(address => runner(Stream.emit(Some(address))))
-
-                    case _ =>
-                      // connection with address will always fail with error.
-                      // TODO so when that happens, all open requests are completed
-                      // and runner is rerun to switch likely to serverUnavailable.
-                      // as the last action runner is restarted
-                      serverAvailable(address) handleErrorWith { failure =>
-                        log.errorS(s"Failure of publishing connection to $address", failure) >>
-                          runner(serverStream, Some(address))
+                  serverAvailable(address, onConnected).handleErrorWith { failure =>
+                    log.errorS(s"Failure of publishing connection to $address", failure) >>
+                      Stream.eval(failInFlight(failure) >> connected.get).flatMap { wasConnected =>
+                        runner(if (wasConnected) 1 else failures + 1)
                       }
                   }
-              }
+                }
 
             val newConnection: Connection[F] = new Connection[F] {
               override final def run: F[Fiber[F, Throwable, Unit]] =
                 log.debug("Starting connection") >>
-                  runner(serverStream)
+                  runner(0)
                     .interruptWhen(termSignal)
                     .compile
                     .drain
@@ -181,7 +164,7 @@ object RedisClient {
                     .flatMap { r =>
                       log.info(
                         s"Connection terminated: ${r.fold(err => err.getMessage, _ => "No issues")}"
-                      )
+                      ) >> failInFlight(ClientTerminated)
                     }
                     .start
 

@@ -39,10 +39,11 @@ object RedisChannel {
 
   private[fs2] final def apply[F[_]: Network: LogSelector: Concurrent](
       address: SocketAddress[Host],
-      receiveBufferSizeBytes: Int
+      receiveBufferSizeBytes: Int,
+      onConnected: F[Unit]
   ): Pipe[F, RESP, RESP] =
     stream =>
-      Stream.resource(connectedSocket(address, receiveBufferSizeBytes)).flatMap { socket =>
+      Stream.resource(connectedSocket(address, receiveBufferSizeBytes)).evalTap(_ => onConnected).flatMap { socket =>
         val send    = stream.through(impl.send(socket.write))
         val receive = socket.reads.through(impl.receiveResp)
 
@@ -58,7 +59,7 @@ object RedisChannel {
   ): Resource[F, Socket[F]] =
     Network[F].connect(address, PlatformDependent.socketOptions(receiveBufferSizeBytes))
 
-  private object impl {
+  private[fs2] object impl {
     def send[F[_]: MonadThrow](socketWrite: Chunk[Byte] => F[Unit])(
         implicit logSelector: LogSelector[F]
     ): Pipe[F, RESP, Unit] =

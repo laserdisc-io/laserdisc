@@ -18,8 +18,30 @@ import laserdisc.fs2.*
 val client: Resource[IO, RedisClient[IO]] = RedisClient[IO].to("localhost", 6379)
 ```
 
-If the connection drops, the client tries to reconnect every 3 seconds.
-Commands sent while it's disconnected fail with `ServerUnavailable`.
+If the connection drops, commands still waiting for a reply get a `Left` right
+away, and the client reconnects. While it can't reach the server, it tries again
+every 3 seconds, and commands sent in the meantime fail with
+`ServerUnavailable`.
+
+## Several servers
+
+`RedisClient[IO].toNodes` takes a set of addresses. The client uses one server
+at a time. If it can't reach that server, or the connection drops, it moves on
+to the next one:
+
+```scala mdoc:compile-only
+import cats.effect.{IO, Resource}
+
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val client: Resource[IO, RedisClient[IO]] =
+  RedisClient[IO].toNodes(Set(RedisAddress("redis-1", 6379), RedisAddress("redis-2", 6379)))
+```
+
+When none of the servers can be reached, it waits 3 seconds before trying them
+all again.
 
 ## Sending commands
 

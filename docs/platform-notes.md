@@ -21,9 +21,9 @@ Native.
 `laserdisc-fs2` works on the JVM and Scala.js. On Scala.js it runs on Node.js,
 not in browsers, because it needs network sockets.
 
-On Node.js, a burst of a few hundred commands sent at the same time can stall
-the connection. Those commands time out, and the client then reconnects on its
-own.
+On Node.js 26, the connection can stop receiving replies when several arrive
+at once. The commands waiting for those replies time out, and the client then
+reconnects on its own. Node.js 25 and earlier aren't affected.
 
 `laserdisc-fs2` isn't available on Scala Native yet, because one of its
 dependencies isn't published for it.

@@ -31,7 +31,7 @@ import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
 
-// JVM only: on Node, fs2 socket reads can stall under this load
+// JVM only: on Node.js 26, fs2 socket reads can stall when several replies arrive at once
 final class RedisClientConcurrentSendSpec extends CatsEffectSuite {
 
   override val munitIOTimeout: Duration = 60.seconds

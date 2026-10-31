@@ -259,13 +259,13 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
   property("The Cluster protocol using readonly roundtrips successfully using val") {
     val protocol = readonly
-    assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("READONLY")))
+    assertEquals(protocol.encode, Arr(Bulk("READONLY")))
     assertEquals(protocol.decode(Str(OK.value)), OK)
   }
 
   property("The Cluster protocol using readwrite roundtrips successfully using val") {
     val protocol = readwrite
-    assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("READWRITE")))
+    assertEquals(protocol.encode, Arr(Bulk("READWRITE")))
     assertEquals(protocol.decode(Str(OK.value)), OK)
   }
 

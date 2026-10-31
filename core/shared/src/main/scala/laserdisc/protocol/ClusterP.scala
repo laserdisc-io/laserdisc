@@ -364,9 +364,9 @@ trait ClusterP {
 
   final val nodes: Single.Aux[ClusterNodes] = Protocol("CLUSTER", "NODES").as[Bulk, ClusterNodes]
 
-  final val readonly: Single.Aux[OK] = Protocol("CLUSTER", "READONLY").as[Str, OK]
+  final val readonly: Single.Aux[OK] = Protocol("READONLY", EmptyTuple).as[Str, OK]
 
-  final val readwrite: Single.Aux[OK] = Protocol("CLUSTER", "READWRITE").as[Str, OK]
+  final val readwrite: Single.Aux[OK] = Protocol("READWRITE", EmptyTuple).as[Str, OK]
 
   final def replicas(nodeId: NodeId): Single.Aux[ClusterNodes] =
     Protocol("CLUSTER", "REPLICAS" *: nodeId *: EmptyTuple).as[Bulk, ClusterNodes]

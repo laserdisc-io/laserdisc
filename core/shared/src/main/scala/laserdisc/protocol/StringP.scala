@@ -50,29 +50,23 @@ object StringP {
     }
   }
 
-  sealed trait Expiry { def value: PosLong; def unit: Expiry.Unit }
-  object Expiry       {
-    sealed trait Unit
-    object Unit {
-      case object milliseconds extends Unit
-      case object seconds      extends Unit
+  /** EX, PX, EXAT, PXAT and KEEPTTL, for SET */
+  sealed trait SetExpiry { def params: List[String] }
 
-      implicit val expiryUnitShow: Show[Unit] = Show.instance {
-        case `milliseconds` => "PX"
-        case `seconds`      => "EX"
-      }
-    }
+  /** EX, PX, EXAT, PXAT and PERSIST, for GETEX */
+  sealed trait GetExpiry { def params: List[String] }
 
-    def millis(v: PosLong): Expiry =
-      new Expiry {
-        override final val value: PosLong = v
-        override final val unit: Unit     = Unit.milliseconds
-      }
-    def seconds(v: PosLong): Expiry =
-      new Expiry {
-        override final val value: PosLong = v
-        override final val unit: Unit     = Unit.seconds
-      }
+  sealed trait Expiry extends SetExpiry with GetExpiry
+  object Expiry {
+    private final class At(override final val params: List[String]) extends Expiry
+
+    def seconds(v: PosLong): Expiry   = new At(List("EX", Show[PosLong].show(v)))
+    def millis(v: PosLong): Expiry    = new At(List("PX", Show[PosLong].show(v)))
+    def atSeconds(v: PosLong): Expiry = new At(List("EXAT", Show[PosLong].show(v)))
+    def atMillis(v: PosLong): Expiry  = new At(List("PXAT", Show[PosLong].show(v)))
+
+    final val keepTtl: SetExpiry = new SetExpiry { override final val params: List[String] = List("KEEPTTL") }
+    final val persist: GetExpiry = new GetExpiry { override final val params: List[String] = List("PERSIST") }
   }
 
   sealed trait Flag
@@ -86,14 +80,53 @@ object StringP {
     }
   }
 
-  final class PartiallyAppliedGetSet[A](private val dummy: Boolean) extends AnyVal {
-    def apply[B: Show](key: Key, value: B)(implicit ev: Read[Bulk, A]): Single.Aux[Option[A]] =
-      Protocol("GETSET", key *: value *: EmptyTuple).asOpt[Bulk, A]
+  /** IFEQ, which Valkey and Redis added separately from IFNE, IFDEQ and IFDNE */
+  final class IfEq private (val params: List[String])
+  object IfEq {
+    def apply[A: Show](a: A): IfEq = new IfEq(List("IFEQ", Show[A].show(a)))
+  }
+
+  sealed trait Compare { def params: List[String] }
+  object Compare       {
+    private final class Of(override final val params: List[String]) extends Compare
+
+    def ifNe[A: Show](a: A): Compare   = new Of(List("IFNE", Show[A].show(a)))
+    def ifDeq(digest: String): Compare = new Of(List("IFDEQ", digest))
+    def ifDne(digest: String): Compare = new Of(List("IFDNE", digest))
   }
 }
 
-trait StringBaseP {
-  import StringP.{Bit, Bitwise, Expiry, Flag, PartiallyAppliedGetSet}
+trait StringBaseP extends Features {
+  import StringP.{Bit, Bitwise, Compare, Expiry, Flag, GetExpiry, IfEq, SetExpiry}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "APPEND",
+      "BITCOUNT",
+      "BITOP: AND NOT OR XOR",
+      "BITPOS",
+      "DECR",
+      "DECRBY",
+      "GET",
+      "GETBIT",
+      "GETDEL",
+      "GETEX: EX EXAT PERSIST PX PXAT",
+      "GETRANGE",
+      "GETSET",
+      "INCR",
+      "INCRBY",
+      "INCRBYFLOAT",
+      "MGET",
+      "MSET",
+      "MSETNX",
+      "PSETEX",
+      "SET: EX EXAT GET KEEPTTL NX PX PXAT XX",
+      "SETBIT",
+      "SETEX",
+      "SETNX",
+      "SETRANGE",
+      "STRLEN"
+    )
 
   private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
 
@@ -102,6 +135,9 @@ trait StringBaseP {
     final val bitwise = Bitwise
     final val expiry  = Expiry
     final val flag    = Flag
+    final val compare = Compare
+
+    final def ifEq[A: Show](a: A): IfEq = IfEq(a)
   }
 
   final def append[A: Show](key: Key, value: A): Single.Aux[NonNegInt] = Protocol("APPEND", key *: value *: EmptyTuple).as[Num, NonNegInt]
@@ -137,7 +173,14 @@ trait StringBaseP {
   final def getrange[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single.Aux[A] =
     Protocol("GETRANGE", key *: start *: end *: EmptyTuple).as[Bulk, A]
 
-  final def getset[A]: PartiallyAppliedGetSet[A] = new PartiallyAppliedGetSet[A](false)
+  final def getdel[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("GETDEL", key).asOpt[Bulk, A]
+
+  final def getex[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]                    = Protocol("GETEX", key).asOpt[Bulk, A]
+  final def getex[A: Read[Bulk, _]](key: Key, expiry: GetExpiry): Single.Aux[Option[A]] =
+    Protocol("GETEX", key *: expiry.params *: EmptyTuple).asOpt[Bulk, A]
+
+  final def getset[A: Read[Bulk, _]](key: Key, value: Value): Single.Aux[Option[A]] =
+    Protocol("GETSET", key *: value.shown *: EmptyTuple).asOpt[Bulk, A]
 
   final def incr[A: Read[Num, _]](key: Key): Single.Aux[A] = Protocol("INCR", key).as[Num, A]
 
@@ -165,13 +208,19 @@ trait StringBaseP {
   final def psetex[A: Show](key: Key, milliseconds: PosLong, value: A): Single.Aux[OK] =
     Protocol("PSETEX", key *: milliseconds *: value *: EmptyTuple).as[Str, OK]
 
-  final def set[A: Show](key: Key, value: A): Single.Aux[OK]                 = Protocol("SET", key *: value *: EmptyTuple).as[Str, OK]
-  final def set[A: Show](key: Key, value: A, expiry: Expiry): Single.Aux[OK] =
-    Protocol("SET", key *: value *: expiry.unit *: expiry.value *: EmptyTuple).as[Str, OK]
+  final def set[A: Show](key: Key, value: A): Single.Aux[OK]                    = Protocol("SET", key *: value *: EmptyTuple).as[Str, OK]
+  final def set[A: Show](key: Key, value: A, expiry: SetExpiry): Single.Aux[OK] =
+    Protocol("SET", key *: value *: expiry.params *: EmptyTuple).as[Str, OK]
   final def set[A: Show](key: Key, value: A, flag: Flag): Single.Aux[Option[OK]] =
     Protocol("SET", key *: value *: flag *: EmptyTuple).asOpt[Str, OK]
-  final def set[A: Show](key: Key, value: A, expiry: Expiry, flag: Flag): Single.Aux[Option[OK]] =
-    Protocol("SET", key *: value *: flag *: expiry.unit *: expiry.value *: EmptyTuple).asOpt[Str, OK]
+  final def set[A: Show](key: Key, value: A, expiry: SetExpiry, flag: Flag): Single.Aux[Option[OK]] =
+    Protocol("SET", key *: value *: flag *: expiry.params *: EmptyTuple).asOpt[Str, OK]
+
+  /** SET with GET, which replies with the previous value */
+  final def setget[A: Read[Bulk, _]](key: Key, value: Value): Single.Aux[Option[A]] =
+    Protocol("SET", key *: value.shown *: "GET" *: EmptyTuple).asOpt[Bulk, A]
+  final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry): Single.Aux[Option[A]] =
+    Protocol("SET", key *: value.shown *: "GET" *: expiry.params *: EmptyTuple).asOpt[Bulk, A]
 
   final def setbit(key: Key, offset: StringLength, bit: Bit): Single.Aux[Bit] =
     Protocol("SETBIT", key *: offset *: bit *: EmptyTuple).as[Num, Bit]
@@ -187,4 +236,40 @@ trait StringBaseP {
   final def strlen(key: Key): Single.Aux[NonNegInt] = Protocol("STRLEN", key *: EmptyTuple).as[Num, NonNegInt]
 }
 
-trait StringP extends StringBaseP with StringExtP
+/** Redis 7.0 allowed NX and XX with GET */
+trait StringSetGetFlagP extends Features {
+  import StringP.{Flag, SetExpiry}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SET: GET NX XX")
+
+  final def setget[A: Read[Bulk, _]](key: Key, value: Value, flag: Flag): Single.Aux[Option[A]] =
+    Protocol("SET", key *: value.shown *: flag *: "GET" *: EmptyTuple).asOpt[Bulk, A]
+  final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry, flag: Flag): Single.Aux[Option[A]] =
+    Protocol("SET", key *: value.shown *: flag *: "GET" *: expiry.params *: EmptyTuple).asOpt[Bulk, A]
+}
+
+/** SET with IFEQ: Valkey 8.1, Redis 8.4 */
+trait StringSetIfEqP extends Features {
+  import StringP.{IfEq, SetExpiry}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SET: IFEQ")
+
+  final def set[A: Show](key: Key, value: A, ifEq: IfEq): Single.Aux[Option[OK]] =
+    Protocol("SET", key *: value *: ifEq.params *: EmptyTuple).asOpt[Str, OK]
+  final def set[A: Show](key: Key, value: A, expiry: SetExpiry, ifEq: IfEq): Single.Aux[Option[OK]] =
+    Protocol("SET", key *: value *: ifEq.params *: expiry.params *: EmptyTuple).asOpt[Str, OK]
+}
+
+/** SET with IFNE, IFDEQ and IFDNE: Redis 8.4 */
+trait StringSetCompareP extends Features {
+  import StringP.{Compare, SetExpiry}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SET: IFDEQ IFDNE IFNE")
+
+  final def set[A: Show](key: Key, value: A, compare: Compare): Single.Aux[Option[OK]] =
+    Protocol("SET", key *: value *: compare.params *: EmptyTuple).asOpt[Str, OK]
+  final def set[A: Show](key: Key, value: A, expiry: SetExpiry, compare: Compare): Single.Aux[Option[OK]] =
+    Protocol("SET", key *: value *: compare.params *: expiry.params *: EmptyTuple).asOpt[Str, OK]
+}
+
+trait StringP extends StringBaseP with StringExtP with StringSetGetFlagP with StringSetIfEqP with StringSetCompareP

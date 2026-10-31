@@ -60,7 +60,7 @@ object KeyP {
       override final val param: String = "IDLETIME"
     }
     final case class Frequency(override final val seconds: NonNegInt) extends RestoreEviction {
-      override final val param: String = "FREQUENCY"
+      override final val param: String = "FREQ"
     }
   }
 

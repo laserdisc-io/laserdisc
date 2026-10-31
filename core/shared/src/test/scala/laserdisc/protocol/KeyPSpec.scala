@@ -309,6 +309,19 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
     }
   }
 
+  property("The Key protocol using restore sends IDLETIME and FREQ for the eviction") {
+    forAll { (k: Key, nnl: NonNegLong, nni: NonNegInt) =>
+      assertEquals(
+        restore(k, nnl, Bulk("v"), KeyIdleTimeEviction(nni)).encode,
+        Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk("v"), Bulk("IDLETIME"), Bulk(nni))
+      )
+      assertEquals(
+        restore(k, nnl, Bulk("v"), KeyFrequencyEviction(nni)).encode,
+        Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk("v"), Bulk("FREQ"), Bulk(nni))
+      )
+    }
+  }
+
   property("The Key protocol using restore roundtrips successfully given key, ttl, serialized value, mode and eviction") {
     forAll { (k: Key, nnl: NonNegLong, s: String, m: KeyRestoreMode, e: KeyRestoreEviction) =>
       val protocol = restore(k, nnl, Bulk(s), m, e)

@@ -48,6 +48,29 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  test("a multi gets the results of its commands, and the commands around it get their own replies") {
+    // answers GET key with key, and keeps the keys of the GETs between MULTI and EXEC to answer EXEC with
+    val transactional =
+      FakeRedisServer { (_, commands) =>
+        commands
+          .mapAccumulate(Option.empty[List[String]]) {
+            case (None, Arr(Bulk("MULTI") :: Nil))      => Some(Nil)                    -> "+OK\r\n"
+            case (Some(keys), Arr(Bulk("EXEC") :: Nil)) => None                         -> s"*${keys.size}\r\n${keys.map(bulk).mkString}"
+            case (Some(keys), command)                  => Some(keys :+ keyOf(command)) -> "+QUEUED\r\n"
+            case (None, command)                        => None                         -> bulk(keyOf(command))
+          }
+          .map(_._2)
+      }
+
+    transactional.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        client
+          .send(get[String]("a"), multi(get[String]("b"), get[String]("c")), get[String]("d"), 2.seconds)
+          .assertEquals((Right(Some("a")), Right(Some((Right(Some("b")), Right(Some("c"))))), Right(Some("d"))))
+      }
+    }
+  }
+
   test("commands still waiting to be sent fail when the client is closed") {
     // a connection that never takes commands off the queue
     val neverSends = RedisClient.impl.connection[IO]((_, _) => _ => Stream.never[IO], Seq(address(Port.unsafeFrom(6379))))

@@ -22,6 +22,8 @@
 package laserdisc
 package protocol
 
+import Protocol.Single
+
 import scala.annotation.nowarn
 
 @nowarn("msg=Unused import")
@@ -336,55 +338,55 @@ trait ClusterP {
 
   import clustertypes.*
 
-  final def addslots(slots: OneOrMore[Slot]): Protocol.Aux[OK] = Protocol("CLUSTER", "ADDSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
+  final def addslots(slots: OneOrMore[Slot]): Single.Aux[OK] = Protocol("CLUSTER", "ADDSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
 
-  final val clusterinfo: Protocol.Aux[ClusterInfo] = Protocol("CLUSTER", "INFO").as[Bulk, ClusterInfo]
+  final val clusterinfo: Single.Aux[ClusterInfo] = Protocol("CLUSTER", "INFO").as[Bulk, ClusterInfo]
 
-  final def countfailurereports(nodeId: NodeId): Protocol.Aux[NonNegInt] =
+  final def countfailurereports(nodeId: NodeId): Single.Aux[NonNegInt] =
     Protocol("CLUSTER", "COUNT-FAILURE-REPORTS" *: nodeId *: EmptyTuple).as[Num, NonNegInt]
 
-  final def countkeysinslot(slot: Slot): Protocol.Aux[NonNegInt] =
+  final def countkeysinslot(slot: Slot): Single.Aux[NonNegInt] =
     Protocol("CLUSTER", "COUNTKEYSINSLOT" *: slot *: EmptyTuple).as[Num, NonNegInt]
 
-  final def delslots(slots: OneOrMore[Slot]): Protocol.Aux[OK] = Protocol("CLUSTER", "DELSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
+  final def delslots(slots: OneOrMore[Slot]): Single.Aux[OK] = Protocol("CLUSTER", "DELSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
 
-  final val failover: Protocol.Aux[OK]                            = Protocol("CLUSTER", "FAILOVER").as[Str, OK]
-  final def failover(mode: ClusterFailoverMode): Protocol.Aux[OK] = Protocol("CLUSTER", "FAILOVER" *: mode *: EmptyTuple).as[Str, OK]
+  final val failover: Single.Aux[OK]                            = Protocol("CLUSTER", "FAILOVER").as[Str, OK]
+  final def failover(mode: ClusterFailoverMode): Single.Aux[OK] = Protocol("CLUSTER", "FAILOVER" *: mode *: EmptyTuple).as[Str, OK]
 
-  final def forget(nodeId: NodeId): Protocol.Aux[OK] = Protocol("CLUSTER", "FORGET" *: nodeId *: EmptyTuple).as[Str, OK]
+  final def forget(nodeId: NodeId): Single.Aux[OK] = Protocol("CLUSTER", "FORGET" *: nodeId *: EmptyTuple).as[Str, OK]
 
-  final def getkeysinslot(slot: Slot, count: PosInt): Protocol.Aux[Seq[Key]] =
+  final def getkeysinslot(slot: Slot, count: PosInt): Single.Aux[Seq[Key]] =
     Protocol("CLUSTER", "GETKEYSINSLOT" *: slot *: count *: EmptyTuple).as[Arr, Seq[Key]]
 
-  final def keyslot(key: Key): Protocol.Aux[Slot] = Protocol("CLUSTER", "KEYSLOT" *: key *: EmptyTuple).as[Num, Slot]
+  final def keyslot(key: Key): Single.Aux[Slot] = Protocol("CLUSTER", "KEYSLOT" *: key *: EmptyTuple).as[Num, Slot]
 
-  final def meet(host: Host, port: Port): Protocol.Aux[OK] = Protocol("CLUSTER", "MEET" *: host *: port *: EmptyTuple).as[Str, OK]
+  final def meet(host: Host, port: Port): Single.Aux[OK] = Protocol("CLUSTER", "MEET" *: host *: port *: EmptyTuple).as[Str, OK]
 
-  final val nodes: Protocol.Aux[ClusterNodes] = Protocol("CLUSTER", "NODES").as[Bulk, ClusterNodes]
+  final val nodes: Single.Aux[ClusterNodes] = Protocol("CLUSTER", "NODES").as[Bulk, ClusterNodes]
 
-  final val readonly: Protocol.Aux[OK] = Protocol("CLUSTER", "READONLY").as[Str, OK]
+  final val readonly: Single.Aux[OK] = Protocol("CLUSTER", "READONLY").as[Str, OK]
 
-  final val readwrite: Protocol.Aux[OK] = Protocol("CLUSTER", "READWRITE").as[Str, OK]
+  final val readwrite: Single.Aux[OK] = Protocol("CLUSTER", "READWRITE").as[Str, OK]
 
-  final def replicas(nodeId: NodeId): Protocol.Aux[ClusterNodes] =
+  final def replicas(nodeId: NodeId): Single.Aux[ClusterNodes] =
     Protocol("CLUSTER", "REPLICAS" *: nodeId *: EmptyTuple).as[Bulk, ClusterNodes]
 
-  final def replicate(nodeId: NodeId): Protocol.Aux[OK] = Protocol("CLUSTER", "REPLICATE" *: nodeId *: EmptyTuple).as[Str, OK]
+  final def replicate(nodeId: NodeId): Single.Aux[OK] = Protocol("CLUSTER", "REPLICATE" *: nodeId *: EmptyTuple).as[Str, OK]
 
-  final def reset(mode: ClusterResetMode): Protocol.Aux[OK] = Protocol("CLUSTER", "RESET" *: mode *: EmptyTuple).as[Str, OK]
-  final val reset: Protocol.Aux[OK]                         = reset(ClusterResetMode.soft)
+  final def reset(mode: ClusterResetMode): Single.Aux[OK] = Protocol("CLUSTER", "RESET" *: mode *: EmptyTuple).as[Str, OK]
+  final val reset: Single.Aux[OK]                         = reset(ClusterResetMode.soft)
 
-  final val saveconfig: Protocol.Aux[OK] = Protocol("CLUSTER", "SAVECONFIG").as[Str, OK]
+  final val saveconfig: Single.Aux[OK] = Protocol("CLUSTER", "SAVECONFIG").as[Str, OK]
 
-  final def setconfigepoch(configEpoch: NonNegInt): Protocol.Aux[OK] =
+  final def setconfigepoch(configEpoch: NonNegInt): Single.Aux[OK] =
     Protocol("CLUSTER", "SET-CONFIG-EPOCH" *: configEpoch *: EmptyTuple).as[Str, OK]
 
-  final def setslot(slot: Slot): Protocol.Aux[OK] = Protocol("CLUSTER", "SETSLOT" *: slot *: "STABLE" *: EmptyTuple).as[Str, OK]
-  final def setslot(slot: Slot, mode: ClusterSetSlotMode, node: NodeId): Protocol.Aux[OK] =
+  final def setslot(slot: Slot): Single.Aux[OK] = Protocol("CLUSTER", "SETSLOT" *: slot *: "STABLE" *: EmptyTuple).as[Str, OK]
+  final def setslot(slot: Slot, mode: ClusterSetSlotMode, node: NodeId): Single.Aux[OK] =
     Protocol("CLUSTER", "SETSLOT" *: slot *: mode *: node *: EmptyTuple).as[Str, OK]
 
-  final def slaves(nodeId: NodeId): Protocol.Aux[ClusterNodes] =
+  final def slaves(nodeId: NodeId): Single.Aux[ClusterNodes] =
     Protocol("CLUSTER", "SLAVES" *: nodeId *: EmptyTuple).as[Bulk, ClusterNodes]
 
-  final val slots: Protocol.Aux[ClusterSlots] = Protocol("CLUSTER", "SLOTS").as[Arr, ClusterSlots]
+  final val slots: Single.Aux[ClusterSlots] = Protocol("CLUSTER", "SLOTS").as[Arr, ClusterSlots]
 }

@@ -199,4 +199,49 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
     assertEquals(responses.size, requestsInSequence * requestsInParallel)
     assertAllEqual(responses, bulk)
   }
+
+  test(s"an fs2 $dest client runs the commands of a multi and returns their results") {
+    val k: Key = "multi-key"
+    val out    = run(client.send(multi(set(k, "1"), incr[Long](k), get[String](k))))
+
+    assertEquals(out, Right(Some((Right(OK), Right(2L), Right(Some("2"))))))
+  }
+
+  test(s"an fs2 $dest client returns None for a multi when a watched key changes") {
+    val k: Key = "multi-watched-key"
+
+    val out = run(
+      RedisClient[IO].to("127.0.0.1", p).use { other =>
+        for {
+          _   <- client.send(watch(OneOrMoreKeys.unsafeFrom(List(k))))
+          _   <- other.send(set(k, "changed"))
+          out <- client.send(multi(set(k, "mine")))
+          now <- client.send(get[String](k))
+        } yield out -> now
+      }
+    )
+
+    assertEquals(out, Right(None) -> Right(Some("changed")))
+  }
+
+  test(s"an fs2 $dest client returns the reason when a command of a multi is rejected") {
+    val k: Key = "multi-rejected-key"
+    val bad    = Protocol("NOSUCHCOMMAND", EmptyTuple).as[Str, OK]
+
+    run(client.send(multi(set(k, "1"), bad), get[String](k))) match {
+      case (Left(Err(message)), unchanged) =>
+        assert(message.contains("NOSUCHCOMMAND") || message.contains("nosuchcommand"), message)
+        assertEquals(unchanged, Right(None))
+      case other => fail(s"expected the rejection, got $other")
+    }
+  }
+
+  test(s"an fs2 $dest client returns each command's own failure inside a multi") {
+    val k: Key = "multi-failing-key"
+
+    run(client.send(multi(set(k, "not a number"), incr[Long](k)))) match {
+      case Right(Some((Right(OK), Left(_: Err)))) => ()
+      case other                                  => fail(s"expected OK and a failed incr, got $other")
+    }
+  }
 }

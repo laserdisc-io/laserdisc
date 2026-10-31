@@ -22,12 +22,14 @@
 package laserdisc
 package protocol
 
+import Protocol.Single
+
 trait HyperLogLogBaseP {
-  final def pfadd(key: Key, elements: OneOrMoreKeys): Protocol.Aux[Boolean] = Protocol("PFADD", key :: elements.value).as[Num, Boolean]
+  final def pfadd(key: Key, elements: OneOrMoreKeys): Single.Aux[Boolean] = Protocol("PFADD", key :: elements.value).as[Num, Boolean]
 
-  final def pfcount(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("PFCOUNT", keys.value).as[Num, NonNegInt]
+  final def pfcount(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("PFCOUNT", keys.value).as[Num, NonNegInt]
 
-  final def pfmerge(sourceKeys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[OK] =
+  final def pfmerge(sourceKeys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[OK] =
     Protocol("PFMERGE", destinationKey :: sourceKeys.value).as[Str, OK]
 }
 

@@ -22,6 +22,8 @@
 package laserdisc
 package protocol
 
+import Protocol.Single
+
 object KeyP {
   sealed trait Encoding
   object Encoding {
@@ -133,23 +135,23 @@ trait KeyBaseP {
     case Str(other)    => Left(RESPDecErr(s"Unexpected string for Read[Str, Option[KeyType]]. Was $other"))
   }
 
-  final def del(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]
+  final def del(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]
 
-  final def dump(key: Key): Protocol.Aux[Option[Bulk]] = Protocol("DUMP", key).asOpt[Bulk, Bulk]
+  final def dump(key: Key): Single.Aux[Option[Bulk]] = Protocol("DUMP", key).asOpt[Bulk, Bulk]
 
-  final def exists(keys: OneOrMoreKeys): Protocol.Aux[Option[PosInt]] = Protocol("EXISTS", keys.value).using(zeroIsNone)
+  final def exists(keys: OneOrMoreKeys): Single.Aux[Option[PosInt]] = Protocol("EXISTS", keys.value).using(zeroIsNone)
 
   // TODO check if we must support deletions via timeout < 0
-  final def expire(key: Key, seconds: NonNegInt): Protocol.Aux[Boolean] = Protocol("EXPIRE", key *: seconds *: EmptyTuple).as[Num, Boolean]
+  final def expire(key: Key, seconds: NonNegInt): Single.Aux[Boolean] = Protocol("EXPIRE", key *: seconds *: EmptyTuple).as[Num, Boolean]
 
-  final def expireat(key: Key, seconds: NonNegInt): Protocol.Aux[Boolean] =
+  final def expireat(key: Key, seconds: NonNegInt): Single.Aux[Boolean] =
     Protocol("EXPIREAT", key *: seconds *: EmptyTuple).as[Num, Boolean]
 
-  final def keys(pattern: GlobPattern): Protocol.Aux[Seq[Key]] = Protocol("KEYS", pattern *: EmptyTuple).as[Arr, Seq[Key]]
+  final def keys(pattern: GlobPattern): Single.Aux[Seq[Key]] = Protocol("KEYS", pattern *: EmptyTuple).as[Arr, Seq[Key]]
 
-  final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Protocol.Aux[Either[NOKEY, OK]] =
+  final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: EmptyTuple).as[Str, Either[NOKEY, OK]]
-  final def migrate(keys: TwoOrMoreKeys, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Protocol.Aux[Either[NOKEY, OK]] =
+  final def migrate(keys: TwoOrMoreKeys, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: "KEYS" *: keys.value *: EmptyTuple).as[Str, Either[NOKEY, OK]]
   final def migrate(
       key: Key,
@@ -158,7 +160,7 @@ trait KeyBaseP {
       dbIndex: DbIndex,
       timeout: NonNegInt,
       mode: KeyMigrateMode
-  ): Protocol.Aux[Either[NOKEY, OK]] =
+  ): Single.Aux[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: mode.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
   final def migrate(
       keys: TwoOrMoreKeys,
@@ -167,45 +169,45 @@ trait KeyBaseP {
       dbIndex: DbIndex,
       timeout: NonNegInt,
       mode: KeyMigrateMode
-  ): Protocol.Aux[Either[NOKEY, OK]] =
+  ): Single.Aux[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: mode.params *: "KEYS" *: keys.value *: EmptyTuple)
       .as[Str, Either[NOKEY, OK]]
 
-  final def move(key: Key, db: DbIndex): Protocol.Aux[Boolean] = Protocol("MOVE", key *: db *: EmptyTuple).as[Num, Boolean]
+  final def move(key: Key, db: DbIndex): Single.Aux[Boolean] = Protocol("MOVE", key *: db *: EmptyTuple).as[Num, Boolean]
 
   object obj {
-    def encoding(key: Key): Protocol.Aux[Option[KeyEncoding]] =
+    def encoding(key: Key): Single.Aux[Option[KeyEncoding]] =
       Protocol("OBJECT", "ENCODING" :: key.value :: Nil).asOpt[Bulk, KeyEncoding]
 
-    def freq(key: Key): Protocol.Aux[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
+    def freq(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
 
-    def idletime(key: Key): Protocol.Aux[NonNegInt] = Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).as[Num, NonNegInt]
+    def idletime(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).as[Num, NonNegInt]
 
-    def refcount(key: Key): Protocol.Aux[NonNegInt] = Protocol("OBJECT", "REFCOUNT" :: key.value :: Nil).as[Num, NonNegInt]
+    def refcount(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "REFCOUNT" :: key.value :: Nil).as[Num, NonNegInt]
   }
 
-  final def persist(key: Key): Protocol.Aux[Boolean] = Protocol("PERSIST", key).as[Num, Boolean]
+  final def persist(key: Key): Single.Aux[Boolean] = Protocol("PERSIST", key).as[Num, Boolean]
 
   // TODO check if we must support deletions via timeout < 0
-  final def pexpire(key: Key, milliseconds: NonNegLong): Protocol.Aux[Boolean] =
+  final def pexpire(key: Key, milliseconds: NonNegLong): Single.Aux[Boolean] =
     Protocol("PEXPIRE", key *: milliseconds *: EmptyTuple).as[Num, Boolean]
 
-  final def pexpireat(key: Key, millisecondsTimestamp: NonNegLong): Protocol.Aux[Boolean] =
+  final def pexpireat(key: Key, millisecondsTimestamp: NonNegLong): Single.Aux[Boolean] =
     Protocol("PEXPIREAT", key *: millisecondsTimestamp *: EmptyTuple).as[Num, Boolean]
 
-  final def pttl(key: Key): Protocol.Aux[KeyTTLResponse] = Protocol("PTTL", key).as[Num, KeyTTLResponse]
+  final def pttl(key: Key): Single.Aux[KeyTTLResponse] = Protocol("PTTL", key).as[Num, KeyTTLResponse]
 
-  final val randomkey: Protocol.Aux[Option[Key]] = Protocol("RANDOMKEY", EmptyTuple).asOpt[Bulk, Key]
+  final val randomkey: Single.Aux[Option[Key]] = Protocol("RANDOMKEY", EmptyTuple).asOpt[Bulk, Key]
 
-  final def rename(key: Key, newKey: Key): Protocol.Aux[OK] = Protocol("RENAME", key :: newKey :: Nil).as[Str, OK]
+  final def rename(key: Key, newKey: Key): Single.Aux[OK] = Protocol("RENAME", key :: newKey :: Nil).as[Str, OK]
 
-  final def renamenx(key: Key, newKey: Key): Protocol.Aux[Boolean] = Protocol("RENAMENX", key :: newKey :: Nil).as[Num, Boolean]
+  final def renamenx(key: Key, newKey: Key): Single.Aux[Boolean] = Protocol("RENAMENX", key :: newKey :: Nil).as[Num, Boolean]
 
-  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk): Protocol.Aux[OK] =
+  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk): Single.Aux[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: EmptyTuple).as[Str, OK]
-  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, mode: KeyRestoreMode): Protocol.Aux[OK] =
+  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, mode: KeyRestoreMode): Single.Aux[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: EmptyTuple).as[Str, OK]
-  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, eviction: KeyRestoreEviction): Protocol.Aux[OK] =
+  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, eviction: KeyRestoreEviction): Single.Aux[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: eviction.param *: eviction.seconds *: EmptyTuple).as[Str, OK]
   final def restore(
       key: Key,
@@ -213,38 +215,38 @@ trait KeyBaseP {
       serializedValue: Bulk,
       mode: KeyRestoreMode,
       eviction: KeyRestoreEviction
-  ): Protocol.Aux[OK] =
+  ): Single.Aux[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: eviction.param *: eviction.seconds *: EmptyTuple).as[Str, OK]
 
-  final def scan(cursor: NonNegLong): Protocol.Aux[Scan[Key]]                       = Protocol("SCAN", cursor).as[Arr, Scan[Key]]
-  final def scan(cursor: NonNegLong, pattern: GlobPattern): Protocol.Aux[Scan[Key]] =
+  final def scan(cursor: NonNegLong): Single.Aux[Scan[Key]]                       = Protocol("SCAN", cursor).as[Arr, Scan[Key]]
+  final def scan(cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[Key]] =
     Protocol("SCAN", cursor *: "MATCH" *: pattern *: EmptyTuple).as[Arr, Scan[Key]]
-  final def scan(cursor: NonNegLong, count: PosInt): Protocol.Aux[Scan[Key]] =
+  final def scan(cursor: NonNegLong, count: PosInt): Single.Aux[Scan[Key]] =
     Protocol("SCAN", cursor *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[Key]]
-  final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Protocol.Aux[Scan[Key]] =
+  final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[Key]] =
     Protocol("SCAN", cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[Key]]
 
   // FIXME sort has many more combinations
-  final def sort[A: Read[Bulk, _]](key: Key): Protocol.Aux[Seq[A]]                       = Protocol("SORT", key).as[Arr, Seq[A]]
-  final def sort[A: Read[Bulk, _]](key: Key, pattern: GlobPattern): Protocol.Aux[Seq[A]] =
+  final def sort[A: Read[Bulk, _]](key: Key): Single.Aux[Seq[A]]                       = Protocol("SORT", key).as[Arr, Seq[A]]
+  final def sort[A: Read[Bulk, _]](key: Key, pattern: GlobPattern): Single.Aux[Seq[A]] =
     Protocol("SORT", key *: "BY" *: pattern *: EmptyTuple).as[Arr, Seq[A]]
-  final def sort[A: Read[Bulk, _]](key: Key, offset: NonNegLong, count: PosLong): Protocol.Aux[Seq[A]] =
+  final def sort[A: Read[Bulk, _]](key: Key, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
     Protocol("SORT", key *: "LIMIT" *: offset *: count *: EmptyTuple).as[Arr, Seq[A]]
-  final def sort[A: Read[Bulk, _]](key: Key, direction: Direction): Protocol.Aux[Seq[A]] =
+  final def sort[A: Read[Bulk, _]](key: Key, direction: Direction): Single.Aux[Seq[A]] =
     Protocol("SORT", key *: direction *: EmptyTuple).as[Arr, Seq[A]]
-  final def sort(key: Key, destination: Key): Protocol.Aux[NonNegInt] =
+  final def sort(key: Key, destination: Key): Single.Aux[NonNegInt] =
     Protocol("SORT", key.value :: "STORE" :: destination.value :: Nil).as[Num, NonNegInt]
 
-  final def touch(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("TOUCH", keys.value).as[Num, NonNegInt]
+  final def touch(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("TOUCH", keys.value).as[Num, NonNegInt]
 
-  final def ttl(key: Key): Protocol.Aux[KeyTTLResponse] = Protocol("TTL", key).as[Num, KeyTTLResponse]
+  final def ttl(key: Key): Single.Aux[KeyTTLResponse] = Protocol("TTL", key).as[Num, KeyTTLResponse]
 
-  final def typeof(key: Key): Protocol.Aux[Option[KeyType]] = Protocol("TYPE", key).as[Str, Option[KeyType]]
+  final def typeof(key: Key): Single.Aux[Option[KeyType]] = Protocol("TYPE", key).as[Str, Option[KeyType]]
 
-  final def unlink(keys: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("UNLINK", keys.value).as[Num, NonNegInt]
+  final def unlink(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("UNLINK", keys.value).as[Num, NonNegInt]
 
-  final def wait(replicas: PosInt): Protocol.Aux[PosInt]                   = Protocol("WAIT", replicas *: 0 *: EmptyTuple).as[Num, PosInt]
-  final def wait(replicas: PosInt, timeout: PosLong): Protocol.Aux[PosInt] =
+  final def wait(replicas: PosInt): Single.Aux[PosInt]                   = Protocol("WAIT", replicas *: 0 *: EmptyTuple).as[Num, PosInt]
+  final def wait(replicas: PosInt, timeout: PosLong): Single.Aux[PosInt] =
     Protocol("WAIT", replicas *: timeout *: EmptyTuple).as[Num, PosInt]
 }
 

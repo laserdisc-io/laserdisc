@@ -22,9 +22,11 @@
 package laserdisc
 package protocol
 
+import Protocol.Single
+
 trait PublishP {
   // TODO work out all pub/sub system properly
 
-  final def publish[A: Show](channel: Key, value: A): Protocol.Aux[NonNegInt] =
+  final def publish[A: Show](channel: Key, value: A): Single.Aux[NonNegInt] =
     Protocol("PUBLISH", channel *: value *: EmptyTuple).as[Num, NonNegInt]
 }

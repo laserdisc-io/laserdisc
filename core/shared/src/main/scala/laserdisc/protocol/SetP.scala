@@ -22,56 +22,58 @@
 package laserdisc
 package protocol
 
+import Protocol.Single
+
 trait SetBaseP {
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  final def sadd[A: Show](key: Key, members: OneOrMore[A]): Protocol.Aux[NonNegInt] =
+  final def sadd[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[NonNegInt] =
     Protocol("SADD", key *: members.value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def scard(key: Key): Protocol.Aux[Option[PosInt]] = Protocol("SCARD", key).using(zeroIsNone)
+  final def scard(key: Key): Single.Aux[Option[PosInt]] = Protocol("SCARD", key).using(zeroIsNone)
 
-  final def sdiff[A: ReadArrToSeq](keys: TwoOrMoreKeys): Protocol.Aux[Seq[A]] = Protocol("SDIFF", keys.value).as[Arr, Seq[A]]
+  final def sdiff[A: ReadArrToSeq](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] = Protocol("SDIFF", keys.value).as[Arr, Seq[A]]
 
-  final def sdiffstore(keys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[NonNegInt] =
+  final def sdiffstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
     Protocol("SDIFFSTORE", destinationKey :: keys.value).as[Num, NonNegInt]
 
-  final def sinter[A: ReadArrToSeq](keys: TwoOrMoreKeys): Protocol.Aux[Seq[A]] = Protocol("SINTER", keys.value).as[Arr, Seq[A]]
+  final def sinter[A: ReadArrToSeq](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] = Protocol("SINTER", keys.value).as[Arr, Seq[A]]
 
-  final def sinterstore(keys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[NonNegInt] =
+  final def sinterstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
     Protocol("SINTERSTORE", destinationKey :: keys.value).as[Num, NonNegInt]
 
-  final def sismember[A: Show](key: Key, member: A): Protocol.Aux[Boolean] =
+  final def sismember[A: Show](key: Key, member: A): Single.Aux[Boolean] =
     Protocol("SISMEMBER", key *: member *: EmptyTuple).as[Num, Boolean]
 
-  final def smembers[A: Read[Bulk, _]](key: Key): Protocol.Aux[Seq[A]] = Protocol("SMEMBERS", key).as[Arr, Seq[A]]
+  final def smembers[A: Read[Bulk, _]](key: Key): Single.Aux[Seq[A]] = Protocol("SMEMBERS", key).as[Arr, Seq[A]]
 
-  final def smove[A: Show](source: Key, destination: Key, member: A): Protocol.Aux[Boolean] =
+  final def smove[A: Show](source: Key, destination: Key, member: A): Single.Aux[Boolean] =
     Protocol("SMOVE", source *: destination *: member *: EmptyTuple).as[Num, Boolean]
 
-  final def spop[A: Read[Bulk, _]](key: Key): Protocol.Aux[Option[A]]             = Protocol("SPOP", key).asOpt[Bulk, A]
-  final def spop[A: Read[Bulk, _]](key: Key, count: PosInt): Protocol.Aux[Seq[A]] =
+  final def spop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]             = Protocol("SPOP", key).asOpt[Bulk, A]
+  final def spop[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Seq[A]] =
     Protocol("SPOP", key *: count *: EmptyTuple).as[Arr, Seq[A]]
 
-  final def srandmember[A: Read[Bulk, _]](key: Key): Protocol.Aux[Option[A]] =
+  final def srandmember[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] =
     Protocol("SRANDMEMBER", key).asOpt[Bulk, A]
-  final def srandmembers[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Protocol.Aux[Seq[A]] =
+  final def srandmembers[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[A]] =
     Protocol("SRANDMEMBER", key *: count *: EmptyTuple).as[Arr, Seq[A]]
 
-  final def srem[A: Show](key: Key, members: OneOrMore[A]): Protocol.Aux[NonNegInt] =
+  final def srem[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[NonNegInt] =
     Protocol("SREM", key *: members.value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong): Protocol.Aux[Scan[A]] =
+  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong): Single.Aux[Scan[A]] =
     Protocol("SSCAN", key *: cursor *: EmptyTuple).as[Arr, Scan[A]]
-  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern): Protocol.Aux[Scan[A]] =
+  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[A]] =
     Protocol("SSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[Arr, Scan[A]]
-  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, count: PosInt): Protocol.Aux[Scan[A]] =
+  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[A]] =
     Protocol("SSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[A]]
-  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Protocol.Aux[Scan[A]] =
+  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[A]] =
     Protocol("SSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[A]]
 
-  final def sunion[A: ReadArrToSeq](keys: TwoOrMoreKeys): Protocol.Aux[Seq[A]] = Protocol("SUNION", keys.value).as[Arr, Seq[A]]
+  final def sunion[A: ReadArrToSeq](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] = Protocol("SUNION", keys.value).as[Arr, Seq[A]]
 
-  final def sunionstore(keys: TwoOrMoreKeys, destinationKey: Key): Protocol.Aux[NonNegInt] =
+  final def sunionstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
     Protocol("SUNIONSTORE", destinationKey :: keys.value).as[Num, NonNegInt]
 }
 

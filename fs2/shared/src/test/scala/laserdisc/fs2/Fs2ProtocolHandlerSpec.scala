@@ -40,10 +40,10 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
       queue <- Queue.unbounded[IO, Batch[IO]]
       fiber <- handler(queue -> 1.second, num *: str *: EmptyTuple).start
       batch <- queue.take
-      _     <- batch.requests.traverse_(r => r.callback(r.protocol.decode(if (r.protocol.command == "NUM") Num(42L) else Str("ok"))))
+      _     <- batch.requests.traverse_(r => r.callback(r.protocol.decodeReplies(Seq(if (r.protocol eq num) Num(42L) else Str("ok")))))
       out   <- fiber.joinWithNever
     } yield {
-      assertEquals(batch.requests.map(_.protocol.command), Vector("NUM", "STR"))
+      assertEquals(batch.requests.map(_.protocol.frames), Vector(Seq(Arr(Bulk("NUM"))), Seq(Arr(Bulk("STR")))))
       assertEquals(out, (Right(42L): Maybe[Long]) *: (Right("ok"): Maybe[String]) *: EmptyTuple)
     }
   }
@@ -72,7 +72,7 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
       batch <- queue.take
       _     <- batch.claim.complete(())
       first = batch.requests.head
-      _   <- first.callback(first.protocol.decode(Num(42L)))
+      _   <- first.callback(first.protocol.decodeReplies(Seq(Num(42L))))
       out <- fiber.joinWithNever
     } yield assertEquals(out, Left(RequestTimedOut(str)))
   }

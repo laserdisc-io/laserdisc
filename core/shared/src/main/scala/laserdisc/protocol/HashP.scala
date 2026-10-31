@@ -22,50 +22,52 @@
 package laserdisc
 package protocol
 
+import Protocol.Single
+
 trait HashBaseP {
-  final def hdel(key: Key, fields: OneOrMoreKeys): Protocol.Aux[NonNegInt] = Protocol("HDEL", key :: fields.value).as[Num, NonNegInt]
+  final def hdel(key: Key, fields: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("HDEL", key :: fields.value).as[Num, NonNegInt]
 
-  final def hexists(key: Key, field: Key): Protocol.Aux[Boolean] = Protocol("HEXISTS", key :: field :: Nil).as[Num, Boolean]
+  final def hexists(key: Key, field: Key): Single.Aux[Boolean] = Protocol("HEXISTS", key :: field :: Nil).as[Num, Boolean]
 
-  final def hget[A: Read[Bulk, _]](key: Key, field: Key): Protocol.Aux[Option[A]] =
+  final def hget[A: Read[Bulk, _]](key: Key, field: Key): Single.Aux[Option[A]] =
     Protocol("HGET", key :: field :: Nil).asOpt[Bulk, A]
 
-  final def hgetall[A: Read[Arr, _]](key: Key): Protocol.Aux[A] = Protocol("HGETALL", key).as[Arr, A]
+  final def hgetall[A: Read[Arr, _]](key: Key): Single.Aux[A] = Protocol("HGETALL", key).as[Arr, A]
 
-  final def hincrby(key: Key, field: Key, increment: NonZeroLong): Protocol.Aux[Long] =
+  final def hincrby(key: Key, field: Key, increment: NonZeroLong): Single.Aux[Long] =
     Protocol("HINCRBY", key *: field *: increment *: EmptyTuple).as[Num, Long]
-  final def hincrby(key: Key, field: Key, increment: NonZeroDouble): Protocol.Aux[Double] =
+  final def hincrby(key: Key, field: Key, increment: NonZeroDouble): Single.Aux[Double] =
     Protocol("HINCRBYFLOAT", key *: field *: increment *: EmptyTuple).as[Bulk, Double]
 
-  final def hkeys(key: Key): Protocol.Aux[Seq[Key]] = Protocol("HKEYS", key).as[Arr, Seq[Key]]
+  final def hkeys(key: Key): Single.Aux[Seq[Key]] = Protocol("HKEYS", key).as[Arr, Seq[Key]]
 
-  final def hlen(key: Key): Protocol.Aux[NonNegInt] = Protocol("HLEN", key).as[Num, NonNegInt]
+  final def hlen(key: Key): Single.Aux[NonNegInt] = Protocol("HLEN", key).as[Num, NonNegInt]
 
-  final def hmget[L <: Tuple: Read[Arr, _]](key: Key, fields: OneOrMoreKeys): Protocol.Aux[L] =
+  final def hmget[L <: Tuple: Read[Arr, _]](key: Key, fields: OneOrMoreKeys): Single.Aux[L] =
     Protocol("HMGET", key :: fields.value).as[Arr, L]
 
-  final def hmset[L <: NonEmptyTuple: RESPParamWrite: LUBConstraint[_, (Key, ?)]](key: Key, l: L): Protocol.Aux[OK] =
+  final def hmset[L <: NonEmptyTuple: RESPParamWrite: LUBConstraint[_, (Key, ?)]](key: Key, l: L): Single.Aux[OK] =
     Protocol("HMSET", key *: l).as[Str, OK]
-  final def hmset[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](key: Key, product: P): Protocol.Aux[OK] =
+  final def hmset[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](key: Key, product: P): Single.Aux[OK] =
     Protocol("HMSET", key *: product *: EmptyTuple).as[Str, OK]
 
-  final def hscan(key: Key, cursor: NonNegLong): Protocol.Aux[ScanKV] = Protocol("HSCAN", key *: cursor *: EmptyTuple).as[Arr, ScanKV]
-  final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern): Protocol.Aux[ScanKV] =
+  final def hscan(key: Key, cursor: NonNegLong): Single.Aux[ScanKV] = Protocol("HSCAN", key *: cursor *: EmptyTuple).as[Arr, ScanKV]
+  final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[ScanKV] =
     Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[Arr, ScanKV]
-  final def hscan(key: Key, cursor: NonNegLong, count: PosInt): Protocol.Aux[ScanKV] =
+  final def hscan(key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[ScanKV] =
     Protocol("HSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[Arr, ScanKV]
-  final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Protocol.Aux[ScanKV] =
+  final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[ScanKV] =
     Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, ScanKV]
 
-  final def hset[A: Show](key: Key, field: Key, value: A): Protocol.Aux[Boolean] =
+  final def hset[A: Show](key: Key, field: Key, value: A): Single.Aux[Boolean] =
     Protocol("HSET", key *: field *: value *: EmptyTuple).as[Num, Boolean]
 
-  final def hsetnx[A: Show](key: Key, field: Key, value: A): Protocol.Aux[Boolean] =
+  final def hsetnx[A: Show](key: Key, field: Key, value: A): Single.Aux[Boolean] =
     Protocol("HSETNX", key *: field *: value *: EmptyTuple).as[Num, Boolean]
 
-  final def hstrlen(key: Key, field: Key): Protocol.Aux[NonNegInt] = Protocol("HSTRLEN", key :: field :: Nil).as[Num, NonNegInt]
+  final def hstrlen(key: Key, field: Key): Single.Aux[NonNegInt] = Protocol("HSTRLEN", key :: field :: Nil).as[Num, NonNegInt]
 
-  final def hvals[L <: Tuple: Read[Arr, _]](key: Key): Protocol.Aux[L] = Protocol("HVALS", key).as[Arr, L]
+  final def hvals[L <: Tuple: Read[Arr, _]](key: Key): Single.Aux[L] = Protocol("HVALS", key).as[Arr, L]
 }
 
 trait HashP extends HashBaseP with HashExtP

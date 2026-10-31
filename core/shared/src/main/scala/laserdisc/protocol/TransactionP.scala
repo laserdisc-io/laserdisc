@@ -22,10 +22,17 @@
 package laserdisc
 package protocol
 
-trait TransactionP {
-  // TODO: discard? exec/multi?
+import Protocol.{Multi, Single}
 
-  final val unwatch: Protocol.Aux[OK] = Protocol("UNWATCH", EmptyTuple).as[Str, OK]
+trait TransactionBaseP {
 
-  final def watch(keys: OneOrMoreKeys): Protocol.Aux[OK] = Protocol("WATCH", keys.value).as[Str, OK]
+  /** Runs `protocol` as a transaction (see [[Protocol.multi]]): the result is `None` when nothing ran because a watched key changed */
+  final def multi[A](protocol: Single.Aux[A]): Multi.Aux[Option[Maybe[A]]] =
+    Protocol.multi(protocol *: EmptyTuple).map(_.map(_.head))
+
+  final val unwatch: Single.Aux[OK] = Protocol("UNWATCH", EmptyTuple).as[Str, OK]
+
+  final def watch(keys: OneOrMoreKeys): Single.Aux[OK] = Protocol("WATCH", keys.value).as[Str, OK]
 }
+
+trait TransactionP extends TransactionBaseP with TransactionExtP

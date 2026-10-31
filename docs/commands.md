@@ -66,6 +66,43 @@ the value at `a` as a `PosInt`; `get[String]("a")` reads it as a `String`.
 If the reply can't be read as that type, the result is an error rather than a
 wrong value. If the key doesn't exist, `get` gives `None`.
 
+## Transactions
+
+`multi` runs several commands as a transaction: Redis runs them one after the
+other, with no command from anyone else in between. You send it like any other
+command:
+
+```scala mdoc:compile-only
+import cats.effect.IO
+
+import laserdisc.*
+import laserdisc.all.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+def setAndIncrement(client: RedisClient[IO]): IO[Maybe[Option[(Maybe[OK], Maybe[Long])]]] =
+  client.send(multi(set("a", 1), incr[Long]("a")))
+```
+
+The result is:
+
+- `Right(Some(...))` with one result per command. Redis runs every command even
+  if one of them fails, and doesn't undo the ones before it, so each result is a
+  `Maybe` of its own.
+- `Right(None)` when nothing ran because a watched key changed (see below).
+- `Left` when Redis refuses one of the commands, for example one it doesn't
+  know. Nothing runs, and the error says why.
+
+To make a transaction depend on values you read first, send `watch` with
+their keys before reading them. If anyone changes one of those keys before
+the transaction runs, nothing runs and you get `None`, so you can read the
+values again and retry.
+
+A watch belongs to the connection, and a client sends everything over one
+connection. Other commands sent through the same client between your `watch`
+and your `multi` can cancel the watch, so give code that uses `watch` a client
+of its own.
+
 ## Your own types
 
 To store values of your own types, give LaserDisc a `Show` to write them and a

@@ -22,6 +22,8 @@
 package laserdisc
 package protocol
 
+import Protocol.Single
+
 object ListP {
   sealed trait Position
   object Position {
@@ -47,42 +49,42 @@ trait ListBaseP {
   private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[PosInt])
   private final val zeroIsNone     = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  final def lindex[A: Read[Bulk, _]](key: Key, index: Index): Protocol.Aux[Option[A]] =
+  final def lindex[A: Read[Bulk, _]](key: Key, index: Index): Single.Aux[Option[A]] =
     Protocol("LINDEX", key *: index *: EmptyTuple).asOpt[Bulk, A]
 
-  final def linsert[A: Show](key: Key, position: ListPosition, pivot: A, value: A): Protocol.Aux[Option[PosInt]] =
+  final def linsert[A: Show](key: Key, position: ListPosition, pivot: A, value: A): Single.Aux[Option[PosInt]] =
     Protocol("LINSERT", key *: position *: pivot *: value *: EmptyTuple).using(minusOneIsNone)
 
-  final def llen(key: Key): Protocol.Aux[NonNegInt] = Protocol("LLEN", key).as[Num, NonNegInt]
+  final def llen(key: Key): Single.Aux[NonNegInt] = Protocol("LLEN", key).as[Num, NonNegInt]
 
-  final def lpop[A: Read[Bulk, _]](key: Key): Protocol.Aux[Option[A]] = Protocol("LPOP", key).asOpt[Bulk, A]
+  final def lpop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("LPOP", key).asOpt[Bulk, A]
 
-  final def lpush[A: Show](key: Key, values: OneOrMore[A]): Protocol.Aux[PosInt] =
+  final def lpush[A: Show](key: Key, values: OneOrMore[A]): Single.Aux[PosInt] =
     Protocol("LPUSH", key *: values.value *: EmptyTuple).as[Num, PosInt]
 
-  final def lpushx[A: Show](key: Key, value: A): Protocol.Aux[Option[PosInt]] =
+  final def lpushx[A: Show](key: Key, value: A): Single.Aux[Option[PosInt]] =
     Protocol("LPUSHX", key *: value *: EmptyTuple).using(zeroIsNone)
 
-  final def lrange[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Protocol.Aux[Seq[A]] =
+  final def lrange[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single.Aux[Seq[A]] =
     Protocol("LRANGE", key *: start *: end *: EmptyTuple).as[Arr, Seq[A]]
 
-  final def lrem[A: Show](key: Key, count: Index, value: A): Protocol.Aux[NonNegInt] =
+  final def lrem[A: Show](key: Key, count: Index, value: A): Single.Aux[NonNegInt] =
     Protocol("LREM", key *: count *: value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def lset[A: Show](key: Key, index: Index, value: A): Protocol.Aux[OK] =
+  final def lset[A: Show](key: Key, index: Index, value: A): Single.Aux[OK] =
     Protocol("LSET", key *: index *: value *: EmptyTuple).as[Str, OK]
 
-  final def ltrim(key: Key, start: Index, stop: Index): Protocol.Aux[OK] = Protocol("LTRIM", key *: start *: stop *: EmptyTuple).as[Str, OK]
+  final def ltrim(key: Key, start: Index, stop: Index): Single.Aux[OK] = Protocol("LTRIM", key *: start *: stop *: EmptyTuple).as[Str, OK]
 
-  final def rpop[A: Read[Bulk, _]](key: Key): Protocol.Aux[Option[A]] = Protocol("RPOP", key).asOpt[Bulk, A]
+  final def rpop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("RPOP", key).asOpt[Bulk, A]
 
-  final def rpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Protocol.Aux[Option[A]] =
+  final def rpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Single.Aux[Option[A]] =
     Protocol("RPOPLPUSH", source :: destination :: Nil).asOpt[Bulk, A]
 
-  final def rpush[A: Show](key: Key, values: OneOrMore[A]): Protocol.Aux[PosInt] =
+  final def rpush[A: Show](key: Key, values: OneOrMore[A]): Single.Aux[PosInt] =
     Protocol("RPUSH", key *: values.value *: EmptyTuple).as[Num, PosInt]
 
-  final def rpushx[A: Show](key: Key, value: A): Protocol.Aux[Option[PosInt]] =
+  final def rpushx[A: Show](key: Key, value: A): Single.Aux[Option[PosInt]] =
     Protocol("RPUSHX", key *: value *: EmptyTuple).using(zeroIsNone)
 }
 

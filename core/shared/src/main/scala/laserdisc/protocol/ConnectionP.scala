@@ -22,22 +22,24 @@
 package laserdisc
 package protocol
 
+import Protocol.Single
+
 trait ConnectionP {
   private implicit final val pongRead: Read[Str, PONG] = Read.instance {
     case Str(pong) if pong == PONG.value => Right(PONG)
     case Str(other)                      => Left(RESPDecErr(s"Wrong PONG encoding: was $other"))
   }
 
-  final def auth(password: Key): Protocol.Aux[OK] = Protocol("AUTH", password).as[Str, OK]
+  final def auth(password: Key): Single.Aux[OK] = Protocol("AUTH", password).as[Str, OK]
 
-  final def echo[A: Show: Read[Bulk, _]](message: A): Protocol.Aux[A] = Protocol("ECHO", message).as[Bulk, A]
+  final def echo[A: Show: Read[Bulk, _]](message: A): Single.Aux[A] = Protocol("ECHO", message).as[Bulk, A]
 
-  final val ping: Protocol.Aux[PONG]                                  = Protocol("PING", EmptyTuple).as[Str, PONG]
-  final def ping[A: Show: Read[Bulk, _]](message: A): Protocol.Aux[A] = Protocol("PING", message).as[Bulk, A]
+  final val ping: Single.Aux[PONG]                                  = Protocol("PING", EmptyTuple).as[Str, PONG]
+  final def ping[A: Show: Read[Bulk, _]](message: A): Single.Aux[A] = Protocol("PING", message).as[Bulk, A]
 
-  final val quit: Protocol.Aux[OK] = Protocol("QUIT", EmptyTuple).as[Str, OK]
+  final val quit: Single.Aux[OK] = Protocol("QUIT", EmptyTuple).as[Str, OK]
 
-  final def select(index: DbIndex): Protocol.Aux[OK] = Protocol("SELECT", index).as[Str, OK]
+  final def select(index: DbIndex): Single.Aux[OK] = Protocol("SELECT", index).as[Str, OK]
 
-  final def swapdb(index1: DbIndex, index2: DbIndex): Protocol.Aux[OK] = Protocol("SWAPDB", index1 :: index2 :: Nil).as[Str, OK]
+  final def swapdb(index1: DbIndex, index2: DbIndex): Single.Aux[OK] = Protocol("SWAPDB", index1 :: index2 :: Nil).as[Str, OK]
 }

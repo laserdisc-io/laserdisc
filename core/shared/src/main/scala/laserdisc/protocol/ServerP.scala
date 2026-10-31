@@ -22,6 +22,8 @@
 package laserdisc
 package protocol
 
+import Protocol.Single
+
 import scala.annotation.nowarn
 
 @nowarn("msg=Unused import")
@@ -201,68 +203,68 @@ trait ServerP {
     final val flag = ShutdownFlag
   }
 
-  final val bgrewriteaof: Protocol.Aux[OK] = Protocol("BGREWRITEAOF", EmptyTuple).as[Str, OK]
+  final val bgrewriteaof: Single.Aux[OK] = Protocol("BGREWRITEAOF", EmptyTuple).as[Str, OK]
 
-  final val bgsave: Protocol.Aux[OK] = Protocol("BGSAVE", EmptyTuple).as[Str, OK]
+  final val bgsave: Single.Aux[OK] = Protocol("BGSAVE", EmptyTuple).as[Str, OK]
 
   object client {
     import Show.{hostShow, portShow}
 
-    val getname: Protocol.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").asOpt[Bulk, ConnectionName]
+    val getname: Single.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").asOpt[Bulk, ConnectionName]
 
     // FIXME other variations of kill
-    def kill(host: Host, port: Port): Protocol.Aux[OK] =
+    def kill(host: Host, port: Port): Single.Aux[OK] =
       Protocol("CLIENT", "KILL" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Str, OK]
 
-    val list: Protocol.Aux[ConnectedClients] = Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
+    val list: Single.Aux[ConnectedClients] = Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
 
-    def pause(milliseconds: PosLong): Protocol.Aux[OK] = Protocol("CLIENT", "PAUSE" *: milliseconds *: EmptyTuple).as[Str, OK]
+    def pause(milliseconds: PosLong): Single.Aux[OK] = Protocol("CLIENT", "PAUSE" *: milliseconds *: EmptyTuple).as[Str, OK]
 
-    def setname(connectionName: ConnectionName): Protocol.Aux[OK] = Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[Str, OK]
+    def setname(connectionName: ConnectionName): Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[Str, OK]
 
-    val unsetname: Protocol.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
+    val unsetname: Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
   }
 
   // TODO command?
 
   object config {
-    def get(parameter: GlobPattern): Protocol.Aux[Configuration] =
+    def get(parameter: GlobPattern): Single.Aux[Configuration] =
       Protocol("CONFIG", "GET" :: parameter.value :: Nil).as[Arr, Configuration]
 
-    val resetstat: Protocol.Aux[OK] = Protocol("CONFIG", "RESETSTAT").as[Str, OK]
+    val resetstat: Single.Aux[OK] = Protocol("CONFIG", "RESETSTAT").as[Str, OK]
 
-    val rewrite: Protocol.Aux[OK] = Protocol("CONFIG", "REWRITE").as[Str, OK]
+    val rewrite: Single.Aux[OK] = Protocol("CONFIG", "REWRITE").as[Str, OK]
 
-    def set[A: Show](parameter: Key, value: A): Protocol.Aux[OK] = Protocol("CONFIG", "SET" *: parameter *: value *: EmptyTuple).as[Str, OK]
+    def set[A: Show](parameter: Key, value: A): Single.Aux[OK] = Protocol("CONFIG", "SET" *: parameter *: value *: EmptyTuple).as[Str, OK]
   }
 
-  final val dbsize: Protocol.Aux[NonNegLong] = Protocol("DBSIZE", EmptyTuple).as[Num, NonNegLong]
+  final val dbsize: Single.Aux[NonNegLong] = Protocol("DBSIZE", EmptyTuple).as[Num, NonNegLong]
 
-  final val flushall: Protocol.Aux[OK] = Protocol("FLUSHALL", EmptyTuple).as[Str, OK]
+  final val flushall: Single.Aux[OK] = Protocol("FLUSHALL", EmptyTuple).as[Str, OK]
 
-  final val flushallasync: Protocol.Aux[OK] = Protocol("FLUSHALL", "ASYNC").as[Str, OK]
+  final val flushallasync: Single.Aux[OK] = Protocol("FLUSHALL", "ASYNC").as[Str, OK]
 
-  final val flushdb: Protocol.Aux[OK] = Protocol("FLUSHDB", EmptyTuple).as[Str, OK]
+  final val flushdb: Single.Aux[OK] = Protocol("FLUSHDB", EmptyTuple).as[Str, OK]
 
-  final val flushdbasync: Protocol.Aux[OK] = Protocol("FLUSHDB", "ASYNC").as[Str, OK]
+  final val flushdbasync: Single.Aux[OK] = Protocol("FLUSHDB", "ASYNC").as[Str, OK]
 
-  final val info: Protocol.Aux[Info]                       = info(servers.info.default)
-  final def info(section: InfoSection): Protocol.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
+  final val info: Single.Aux[Info]                       = info(servers.info.default)
+  final def info(section: InfoSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
 
-  final val lastsave: Protocol.Aux[NonNegLong] = Protocol("LASTSAVE", EmptyTuple).as[Num, NonNegLong]
+  final val lastsave: Single.Aux[NonNegLong] = Protocol("LASTSAVE", EmptyTuple).as[Num, NonNegLong]
 
-  final val role: Protocol.Aux[Role] = Protocol("ROLE", EmptyTuple).as[Arr, Role]
+  final val role: Single.Aux[Role] = Protocol("ROLE", EmptyTuple).as[Arr, Role]
 
-  final val save: Protocol.Aux[OK] = Protocol("SAVE", EmptyTuple).as[Str, OK]
+  final val save: Single.Aux[OK] = Protocol("SAVE", EmptyTuple).as[Str, OK]
 
-  final val shutdown: Protocol.Aux[OK]                     = Protocol("SHUTDOWN", EmptyTuple).as[Str, OK]
-  final def shutdown(flag: ShutdownFlag): Protocol.Aux[OK] = Protocol("SHUTDOWN", flag).as[Str, OK]
+  final val shutdown: Single.Aux[OK]                     = Protocol("SHUTDOWN", EmptyTuple).as[Str, OK]
+  final def shutdown(flag: ShutdownFlag): Single.Aux[OK] = Protocol("SHUTDOWN", flag).as[Str, OK]
 
-  final def slaveof(host: Host, port: Port): Protocol.Aux[OK] = Protocol("SLAVEOF", host *: port *: EmptyTuple).as[Str, OK]
+  final def slaveof(host: Host, port: Port): Single.Aux[OK] = Protocol("SLAVEOF", host *: port *: EmptyTuple).as[Str, OK]
 
-  final val slaveofnoone: Protocol.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
+  final val slaveofnoone: Single.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
   // TODO slowlog? sync?
 
-  final val time: Protocol.Aux[Time] = Protocol("TIME", EmptyTuple).as[Arr, Time]
+  final val time: Single.Aux[Time] = Protocol("TIME", EmptyTuple).as[Arr, Time]
 }

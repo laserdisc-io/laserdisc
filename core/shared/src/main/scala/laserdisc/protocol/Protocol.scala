@@ -22,45 +22,70 @@
 package laserdisc
 package protocol
 
-sealed trait Request {
-  def command: String
-  def parameters: Seq[GenBulk]
-}
+/** Something that can be sent to Redis: a [[Protocol.Single]] command, or a [[Protocol.Multi]] transaction */
+sealed trait Protocol {
 
-sealed trait Response { type A }
+  /** The type of the reply */
+  type A
 
-sealed trait ProtocolCodec[A] extends Any {
-  def encode(protocol: Protocol): RESP
-  def decode(resp: RESP): Maybe[A]
-}
+  /** What is sent to Redis, which replies to each one */
+  private[laserdisc] def frames: Seq[RESP]
 
-sealed trait Protocol extends Request with Response { self =>
-  def codec: ProtocolCodec[A]
+  /** Reads the replies to [[frames]], one for each */
+  private[laserdisc] def decodeReplies(replies: Seq[RESP]): Maybe[A]
 
-  final def encode: RESP                 = codec.encode(this)
-  final def decode(resp: RESP): Maybe[A] = codec.decode(resp)
-
-  final def map[B](f: A => B): Protocol.Aux[B] =
-    new Protocol {
-      override type A = B
-      override def codec: ProtocolCodec[B] =
-        new ProtocolCodec[B] {
-          override def encode(protocol: Protocol): RESP = self.codec.encode(protocol)
-          override def decode(resp: RESP): Maybe[B]     = self.codec.decode(resp).map(f(_))
-        }
-      override def command: String          = self.command
-      override def parameters: Seq[GenBulk] = self.parameters
-    }
-
-  override final def toString: String = s"Protocol($command)"
+  def map[B](f: A => B): Protocol.Aux[B]
 }
 
 object Protocol {
   final type Aux[A0] = Protocol { type A = A0 }
 
-  final class RESPProtocolCodec[A, B](val R: RESPRead.Aux[A, B]) extends AnyVal with ProtocolCodec[B] {
-    override def encode(value: Protocol): RESP = Arr(Bulk(value.command), value.parameters*)
-    override def decode(resp: RESP): Maybe[B]  = R.read(resp)
+  /** A single Redis command */
+  sealed trait Single extends Protocol { self =>
+    def command: String
+    def parameters: Seq[GenBulk]
+    def decode(resp: RESP): Maybe[A]
+
+    final def encode: RESP = Arr(Bulk(command), parameters*)
+
+    override private[laserdisc] final def frames: Seq[RESP]                           = Seq(encode)
+    override private[laserdisc] final def decodeReplies(replies: Seq[RESP]): Maybe[A] = decode(replies.head)
+
+    override final def map[B](f: A => B): Single.Aux[B] =
+      new Single {
+        override type A = B
+        override def command: String              = self.command
+        override def parameters: Seq[GenBulk]     = self.parameters
+        override def decode(resp: RESP): Maybe[B] = self.decode(resp).map(f(_))
+      }
+
+    override final def toString: String = s"Protocol($command)"
+  }
+
+  object Single {
+    final type Aux[A0] = Single { type A = A0 }
+  }
+
+  /** A transaction: MULTI, then its [[Single]] commands, then EXEC. Redis replies QUEUED to each command, and EXEC's reply holds their
+    * results
+    */
+  sealed trait Multi extends Protocol { self =>
+    def protocols: List[Single]
+
+    override final def map[B](f: A => B): Multi.Aux[B] =
+      new Multi {
+        override type A = B
+        override def protocols: List[Single] = self.protocols
+
+        override private[laserdisc] def frames: Seq[RESP]                           = self.frames
+        override private[laserdisc] def decodeReplies(replies: Seq[RESP]): Maybe[B] = self.decodeReplies(replies).map(f(_))
+      }
+
+    override final def toString: String = s"Protocol(MULTI ${protocols.map(_.command).mkString(" ")} EXEC)"
+  }
+
+  object Multi {
+    final type Aux[A0] = Multi { type A = A0 }
   }
 
   sealed abstract class PartiallyAppliedProtocol[L: RESPParamWrite](
@@ -79,25 +104,77 @@ object Protocol {
       *   The type we expect to convert an A into
       *
       * @return
-      *   A fully-fledged [[Protocol]] for the provided [[Request]] /[[Response]] pair
+      *   A [[Single]] command, sending this command and parameters and reading the reply as a B
       */
-    final def as[A, B](implicit R: RESPRead.Aux[A, B]): Protocol.Aux[B] = using(R)
+    final def as[A, B](implicit R: RESPRead.Aux[A, B]): Single.Aux[B] = using(R)
 
     /** Like [[as]], but Redis may also reply with the "null" counterpart of A ([[NilArr]] for [[Arr]], [[NullBulk]] otherwise), which is
       * read as `None`
       */
-    final def asOpt[A: RESPSub, B](implicit R: Read[A, B]): Protocol.Aux[Option[B]] = using(RESPRead.nullable(R))
+    final def asOpt[A: RESPSub, B](implicit R: Read[A, B]): Single.Aux[Option[B]] = using(RESPRead.nullable(R))
 
-    final def using[A, B](R: RESPRead.Aux[A, B]): Protocol.Aux[B] =
-      new Protocol {
+    final def using[A, B](R: RESPRead.Aux[A, B]): Single.Aux[B] =
+      new Single {
         override final type A = B
-        override final val codec: ProtocolCodec[B]  = new RESPProtocolCodec(R)
-        override final val command: String          = self.command
-        override final val parameters: Seq[GenBulk] = RESPParamWrite[L].write(l)
+        override final val command: String              = self.command
+        override final val parameters: Seq[GenBulk]     = RESPParamWrite[L].write(l)
+        override final def decode(resp: RESP): Maybe[B] = R.read(resp)
       }
   }
 
-  /** The only way a [[Protocol]] can be instantiated is through this partial application.
+  /** Reads the results of a tuple of [[Single]] commands, one for each, into a tuple of the same size */
+  sealed trait MultiResults[In <: Tuple] {
+    type Out <: Tuple
+
+    def protocols(in: In): List[Single]
+    def read(in: In, results: List[RESP]): Out
+  }
+
+  object MultiResults {
+    final type Aux[In <: Tuple, Out0 <: Tuple] = MultiResults[In] { type Out = Out0 }
+
+    implicit final val emptyMultiResults: MultiResults.Aux[EmptyTuple, EmptyTuple] =
+      new MultiResults[EmptyTuple] {
+        override final type Out = EmptyTuple
+        override final def protocols(in: EmptyTuple): List[Single]               = Nil
+        override final def read(in: EmptyTuple, results: List[RESP]): EmptyTuple = EmptyTuple
+      }
+
+    implicit final def consMultiResults[A, T <: Tuple, TOut <: Tuple](
+        implicit T: MultiResults.Aux[T, TOut]
+    ): MultiResults.Aux[Single.Aux[A] *: T, Maybe[A] *: TOut] =
+      new MultiResults[Single.Aux[A] *: T] {
+        override final type Out = Maybe[A] *: TOut
+        override final def protocols(in: Single.Aux[A] *: T): List[Single] =
+          in match { case protocol *: rest => protocol :: T.protocols(rest) }
+        override final def read(in: Single.Aux[A] *: T, results: List[RESP]): Maybe[A] *: TOut =
+          in match { case protocol *: rest => protocol.decode(results.head) *: T.read(rest, results.tail) }
+      }
+  }
+
+  /** The way to create a [[Multi]] transaction for the commands in `in`. EXEC's reply is "null" when a WATCHed key changed and nothing ran,
+    * which is read as `None`, otherwise it holds one result per command.
+    */
+  final def multi[In <: Tuple, Out <: Tuple](in: In)(implicit M: MultiResults.Aux[In, Out]): Multi.Aux[Option[Out]] =
+    new Multi {
+      override final type A = Option[Out]
+      override final val protocols: List[Single] = M.protocols(in)
+
+      private def decodeExec(resp: RESP): Maybe[Option[Out]] = resp match {
+        case Arr(results) if results.size == protocols.size => Right(Some(M.read(in, results)))
+        case NilArr                                         => Right(None)
+        case err: Err                                       => Left(err)
+        case other => Left(RESPDecErr(s"Expected the results of ${protocols.size} commands but got: $other"))
+      }
+
+      override private[laserdisc] final val frames: Seq[RESP] = (Arr(Bulk("MULTI")) :: protocols.map(_.encode)) :+ Arr(Bulk("EXEC"))
+
+      // when Redis rejects a command, EXEC fails without saying why: the rejection is more useful
+      override private[laserdisc] final def decodeReplies(replies: Seq[RESP]): Maybe[Option[Out]] =
+        replies.init.collectFirst { case err: Err => err }.fold(decodeExec(replies.last))(Left(_))
+    }
+
+  /** The way to create a [[Single]] command, through this partial application (see [[multi]] for a transaction).
     *
     * This apply method requires the caller to provide the type of request parameters L this [[Protocol]] expects to deal with when encoding
     * the request parameters into a [[RESP]] [[GenArr]] instance to send to Redis.

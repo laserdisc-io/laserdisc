@@ -22,16 +22,18 @@
 package laserdisc
 package protocol
 
+import Protocol.Single
+
 trait BListBaseP {
-  final def blpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Protocol.Aux[Option[KV[A]]] =
+  final def blpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[A]]] =
     Protocol("BLPOP", keys.value *: seconds *: EmptyTuple).asOpt[Arr, KV[A]]
 
-  final def brpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Protocol.Aux[Option[KV[A]]] =
+  final def brpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[A]]] =
     Protocol("BRPOP", keys.value *: seconds *: EmptyTuple).asOpt[Arr, KV[A]]
 
-  final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Protocol.Aux[Option[A]] =
+  final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Single.Aux[Option[A]] =
     Protocol("BRPOPLPUSH", source *: destination *: 0 *: EmptyTuple).asOpt[Bulk, A]
-  final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key, timeout: PosInt): Protocol.Aux[Option[A]] =
+  final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key, timeout: PosInt): Single.Aux[Option[A]] =
     Protocol("BRPOPLPUSH", source *: destination *: timeout *: EmptyTuple).asOpt[Bulk, A]
 }
 

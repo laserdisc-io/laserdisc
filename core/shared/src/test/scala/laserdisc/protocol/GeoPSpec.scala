@@ -936,4 +936,95 @@ abstract class GeoPSpec extends BaseSpec with GeoP {
       assertEquals(protocol.decode(listToArr(res)), res)
     }
   }
+
+  property("The Geo protocol using geoadd and geoaddch send NX, XX and CH before the positions") {
+    forAll { (k: Key, ps: OneOrMore[GeoPosition], n: NonNegInt) =>
+      val positions = ps.value.flatMap(geoPositionToBulkList)
+      assertEquals(geoadd(k, GeoFlag.nx, ps).encode, Arr(Bulk("GEOADD") :: Bulk(k) :: Bulk("NX") :: positions))
+      assertEquals(geoaddch(k, ps).encode, Arr(Bulk("GEOADD") :: Bulk(k) :: Bulk("CH") :: positions))
+      assertEquals(geoaddch(k, GeoFlag.xx, ps).encode, Arr(Bulk("GEOADD") :: Bulk(k) :: Bulk("XX") :: Bulk("CH") :: positions))
+      assertEquals(geoaddch(k, GeoFlag.xx, ps).decode(Num(n.value.toLong)), n)
+    }
+  }
+
+  property("The Geo protocol using geosearch roundtrips successfully given key, a radius around a member, direction and count") {
+    forAll { (k: Key, m: Key, r: NonNegDouble, u: GeoUnit, d: Direction, c: PosInt, ms: List[Key]) =>
+      val protocol = geosearch(k, GeoArea.radius(GeoCenter.member(m), r, u), d, GeoCount.any(c))
+      assertEquals(
+        protocol.encode,
+        Arr(
+          Bulk("GEOSEARCH"),
+          Bulk(k),
+          Bulk("FROMMEMBER"),
+          Bulk(m),
+          Bulk("BYRADIUS"),
+          Bulk(r),
+          Bulk(u),
+          Bulk(d),
+          Bulk("COUNT"),
+          Bulk(c),
+          Bulk("ANY")
+        )
+      )
+      assertEquals(protocol.decode(Arr(ms.map(Bulk(_)))), ms)
+    }
+  }
+
+  property("The Geo protocol using geosearch roundtrips successfully given key, a box around coordinates and radius mode") {
+    forAll { (k: Key, co: GeoCoordinates, w: NonNegDouble, h: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[?])) =>
+      val (rm, res)   = rmAndRes
+      implicit val ev = rm.r
+      val protocol    = geosearch(k, GeoArea.box(GeoCenter.coordinates(co), w, h, u), rm)
+      assertEquals(
+        protocol.encode,
+        Arr(
+          List(
+            Bulk("GEOSEARCH"),
+            Bulk(k),
+            Bulk("FROMLONLAT"),
+            Bulk(co.longitude),
+            Bulk(co.latitude),
+            Bulk("BYBOX"),
+            Bulk(w),
+            Bulk(h),
+            Bulk(u)
+          ) :::
+            rm.params.map(Bulk(_))
+        )
+      )
+      assertEquals(protocol.decode(listToArr(res)), res)
+    }
+  }
+
+  property("The Geo protocol using geosearchstore roundtrips successfully given source, destination, area, count and STOREDIST") {
+    forAll { (s: Key, d: Key, m: Key, r: NonNegDouble, u: GeoUnit, c: PosInt, n: NonNegInt) =>
+      val protocol = geosearchstore(s, d, GeoArea.radius(GeoCenter.member(m), r, u), GeoCount.closest(c), GeoStoreDistances)
+      assertEquals(
+        protocol.encode,
+        Arr(
+          Bulk("GEOSEARCHSTORE"),
+          Bulk(d),
+          Bulk(s),
+          Bulk("FROMMEMBER"),
+          Bulk(m),
+          Bulk("BYRADIUS"),
+          Bulk(r),
+          Bulk(u),
+          Bulk("COUNT"),
+          Bulk(c),
+          Bulk("STOREDIST")
+        )
+      )
+      assertEquals(protocol.decode(Num(n.value.toLong)), n)
+    }
+  }
+
+  property("The Geo protocol using geosearch roundtrips successfully given key and polygon") {
+    forAll { (k: Key, a: GeoCoordinates, b: GeoCoordinates, c: GeoCoordinates, more: List[GeoCoordinates], ms: List[Key]) =>
+      val protocol = geosearch(k, GeoPolygon(a, b, c, more*))
+      val vertices = (a :: b :: c :: more).flatMap(v => List(Bulk(v.longitude), Bulk(v.latitude)))
+      assertEquals(protocol.encode, Arr(Bulk("GEOSEARCH") :: Bulk(k) :: Bulk("BYPOLYGON") :: Bulk(3 + more.size) :: vertices))
+      assertEquals(protocol.decode(Arr(ms.map(Bulk(_)))), ms)
+    }
+  }
 }

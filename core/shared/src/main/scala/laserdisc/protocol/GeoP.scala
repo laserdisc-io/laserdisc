@@ -106,6 +106,70 @@ object GeoP {
     }
   }
 
+  /** NX and XX, for GEOADD */
+  sealed trait Flag
+  object Flag {
+    object nx extends Flag
+    object xx extends Flag
+
+    implicit val flagShow: Show[Flag] = Show.instance {
+      case `nx` => "NX"
+      case `xx` => "XX"
+    }
+  }
+
+  /** FROMMEMBER and FROMLONLAT, for GEOSEARCH and GEOSEARCHSTORE */
+  sealed trait Center { def params: List[String] }
+  object Center       {
+    private final class Of(override final val params: List[String]) extends Center
+
+    def member(member: Key): Center                   = new Of(List("FROMMEMBER", member.value))
+    def coordinates(coordinates: Coordinates): Center =
+      new Of(List("FROMLONLAT", Show[Longitude].show(coordinates.longitude), Show[Latitude].show(coordinates.latitude)))
+  }
+
+  /** BYRADIUS and BYBOX around a center, for GEOSEARCH and GEOSEARCHSTORE */
+  sealed trait Area { def params: List[String] }
+  object Area       {
+    private final class Of(override final val params: List[String]) extends Area
+
+    def radius(center: Center, radius: NonNegDouble, unit: Unit): Area =
+      new Of(center.params ++ List("BYRADIUS", Show[NonNegDouble].show(radius), Show[Unit].show(unit)))
+    def box(center: Center, width: NonNegDouble, height: NonNegDouble, unit: Unit): Area =
+      new Of(center.params ++ List("BYBOX", Show[NonNegDouble].show(width), Show[NonNegDouble].show(height), Show[Unit].show(unit)))
+  }
+
+  /** BYPOLYGON, for GEOSEARCH and GEOSEARCHSTORE: Valkey 9.0 */
+  final class Polygon private (val params: List[String])
+  object Polygon {
+    def apply(first: Coordinates, second: Coordinates, third: Coordinates, more: Coordinates*): Polygon = {
+      val vertices = first :: second :: third :: more.toList
+      new Polygon(
+        "BYPOLYGON" :: vertices.length.toString :: vertices.flatMap(c =>
+          List(Show[Longitude].show(c.longitude), Show[Latitude].show(c.latitude))
+        )
+      )
+    }
+  }
+
+  /** COUNT, with or without ANY, for GEOSEARCH and GEOSEARCHSTORE */
+  sealed trait Count { def params: List[String] }
+  object Count       {
+    private final class Of(override final val params: List[String]) extends Count
+
+    /** The closest `count` matches */
+    def closest(count: PosInt): Count = new Of(List("COUNT", Show[PosInt].show(count)))
+
+    /** The first `count` matches found, which may not be the closest */
+    def any(count: PosInt): Count = new Of(List("COUNT", Show[PosInt].show(count), "ANY"))
+  }
+
+  /** STOREDIST, for GEOSEARCHSTORE: stores the distances instead of the geohashes */
+  sealed trait StoreDistances
+  object StoreDistances extends StoreDistances {
+    implicit val storeDistancesShow: Show[StoreDistances] = Show.const("STOREDIST")
+  }
+
   sealed trait Unit
   object Unit {
     case object meters     extends Unit
@@ -176,17 +240,25 @@ object GeoP {
 trait GeoBaseP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
-      "GEOADD",
+      "GEOADD: CH NX XX",
       "GEODIST: FT KM M MI",
       "GEOHASH",
       "GEOPOS",
       "GEORADIUS: ASC COUNT DESC FT KM M MI STORE STOREDIST WITHCOORD WITHDIST WITHHASH",
       "GEORADIUSBYMEMBER: ASC COUNT DESC FT KM M MI STORE STOREDIST WITHCOORD WITHDIST WITHHASH",
       "GEORADIUSBYMEMBER_RO: ASC COUNT DESC FT KM M MI WITHCOORD WITHDIST WITHHASH",
-      "GEORADIUS_RO: ASC COUNT DESC FT KM M MI WITHCOORD WITHDIST WITHHASH"
+      "GEORADIUS_RO: ASC COUNT DESC FT KM M MI WITHCOORD WITHDIST WITHHASH",
+      "GEOSEARCH: ANY ASC BYBOX BYRADIUS COUNT DESC FROMLONLAT FROMMEMBER FT KM M MI WITHCOORD WITHDIST WITHHASH",
+      "GEOSEARCHSTORE: ANY ASC BYBOX BYRADIUS COUNT DESC FROMLONLAT FROMMEMBER FT KM M MI STOREDIST"
     )
 
   object geotypes {
+    final type GeoArea                = GeoP.Area
+    final type GeoCenter              = GeoP.Center
+    final type GeoCount               = GeoP.Count
+    final type GeoFlag                = GeoP.Flag
+    final type GeoPolygon             = GeoP.Polygon
+    final type GeoStoreDistances      = GeoP.StoreDistances
     final type GeoCoordinates         = GeoP.Coordinates
     final type GeoKeyAndCoord         = GeoP.KeyAndCoordinates
     final type GeoKeyAndDist          = GeoP.KeyAndDistance
@@ -200,6 +272,12 @@ trait GeoBaseP extends Features {
     final type GeoStoreMode           = GeoP.StoreMode
     final type GeoUnit                = GeoP.Unit
 
+    final val GeoArea                = GeoP.Area
+    final val GeoCenter              = GeoP.Center
+    final val GeoCount               = GeoP.Count
+    final val GeoFlag                = GeoP.Flag
+    final val GeoPolygon             = GeoP.Polygon
+    final val GeoStoreDistances      = GeoP.StoreDistances
     final val GeoCoordinates         = GeoP.Coordinates
     final val GeoKeyAndCoord         = GeoP.KeyAndCoordinates
     final val GeoKeyAndDist          = GeoP.KeyAndDistance
@@ -218,8 +296,19 @@ trait GeoBaseP extends Features {
 
   import geotypes.*
 
+  private final def lonLatMember(positions: OneOrMore[GeoPosition]) =
+    positions.value.map { case GeoPosition(m, lat, long) => (long -> lat) -> m }
+
   final def geoadd(key: Key, positions: OneOrMore[GeoPosition]): Single.Aux[NonNegInt] =
-    Protocol("GEOADD", key *: positions.value.map { case GeoPosition(m, lat, long) => (long -> lat) -> m } *: EmptyTuple).as[Num, NonNegInt]
+    Protocol("GEOADD", key *: lonLatMember(positions) *: EmptyTuple).as[Num, NonNegInt]
+  final def geoadd(key: Key, flag: GeoFlag, positions: OneOrMore[GeoPosition]): Single.Aux[NonNegInt] =
+    Protocol("GEOADD", key *: flag *: lonLatMember(positions) *: EmptyTuple).as[Num, NonNegInt]
+
+  /** GEOADD with CH, which replies with the number of positions added or changed */
+  final def geoaddch(key: Key, positions: OneOrMore[GeoPosition]): Single.Aux[NonNegInt] =
+    Protocol("GEOADD", key *: "CH" *: lonLatMember(positions) *: EmptyTuple).as[Num, NonNegInt]
+  final def geoaddch(key: Key, flag: GeoFlag, positions: OneOrMore[GeoPosition]): Single.Aux[NonNegInt] =
+    Protocol("GEOADD", key *: flag *: "CH" *: lonLatMember(positions) *: EmptyTuple).as[Num, NonNegInt]
 
   final def geodist(key: Key, member1: Key, member2: Key): Single.Aux[Option[NonNegDouble]] =
     Protocol("GEODIST", key *: member1 *: member2 *: EmptyTuple).asOpt[Bulk, NonNegDouble]
@@ -381,6 +470,66 @@ trait GeoBaseP extends Features {
     Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: "COUNT" *: limit *: sort *: store.params *: EmptyTuple)
       .as[Num, NonNegInt]
 
+  final def geosearch(key: Key, area: GeoArea): Single.Aux[Seq[Key]] =
+    Protocol("GEOSEARCH", key *: area.params *: EmptyTuple).as[Arr, Seq[Key]]
+  final def geosearch(key: Key, area: GeoArea, sort: Direction): Single.Aux[Seq[Key]] =
+    Protocol("GEOSEARCH", key *: area.params *: sort *: EmptyTuple).as[Arr, Seq[Key]]
+  final def geosearch(key: Key, area: GeoArea, count: GeoCount): Single.Aux[Seq[Key]] =
+    Protocol("GEOSEARCH", key *: area.params *: count.params *: EmptyTuple).as[Arr, Seq[Key]]
+  final def geosearch(key: Key, area: GeoArea, sort: Direction, count: GeoCount): Single.Aux[Seq[Key]] =
+    Protocol("GEOSEARCH", key *: area.params *: sort *: count.params *: EmptyTuple).as[Arr, Seq[Key]]
+  final def geosearch(key: Key, area: GeoArea, mode: GeoRadiusMode)(implicit ev: Read[Arr, mode.Res]): Single.Aux[Seq[mode.Res]] =
+    Protocol("GEOSEARCH", key *: area.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+  final def geosearch(key: Key, area: GeoArea, sort: Direction, mode: GeoRadiusMode)(
+      implicit ev: Read[Arr, mode.Res]
+  ): Single.Aux[Seq[mode.Res]] =
+    Protocol("GEOSEARCH", key *: area.params *: sort *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+  final def geosearch(key: Key, area: GeoArea, count: GeoCount, mode: GeoRadiusMode)(
+      implicit ev: Read[Arr, mode.Res]
+  ): Single.Aux[Seq[mode.Res]] =
+    Protocol("GEOSEARCH", key *: area.params *: count.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+  final def geosearch(key: Key, area: GeoArea, sort: Direction, count: GeoCount, mode: GeoRadiusMode)(
+      implicit ev: Read[Arr, mode.Res]
+  ): Single.Aux[Seq[mode.Res]] =
+    Protocol("GEOSEARCH", key *: area.params *: sort *: count.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+
+  final def geosearchstore(source: Key, destination: Key, area: GeoArea): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: area.params *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(source: Key, destination: Key, area: GeoArea, sort: Direction): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: area.params *: sort *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(source: Key, destination: Key, area: GeoArea, count: GeoCount): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: area.params *: count.params *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(source: Key, destination: Key, area: GeoArea, sort: Direction, count: GeoCount): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: area.params *: sort *: count.params *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(source: Key, destination: Key, area: GeoArea, distances: GeoStoreDistances): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: area.params *: distances *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(
+      source: Key,
+      destination: Key,
+      area: GeoArea,
+      sort: Direction,
+      distances: GeoStoreDistances
+  ): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: area.params *: sort *: distances *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(
+      source: Key,
+      destination: Key,
+      area: GeoArea,
+      count: GeoCount,
+      distances: GeoStoreDistances
+  ): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: area.params *: count.params *: distances *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(
+      source: Key,
+      destination: Key,
+      area: GeoArea,
+      sort: Direction,
+      count: GeoCount,
+      distances: GeoStoreDistances
+  ): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: area.params *: sort *: count.params *: distances *: EmptyTuple)
+      .as[Num, NonNegInt]
+
   object ro {
     final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit): Single.Aux[Seq[Key]] =
       Protocol("GEORADIUS_RO", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: EmptyTuple).as[Arr, Seq[Key]]
@@ -475,4 +624,71 @@ trait GeoBaseP extends Features {
   }
 }
 
-trait GeoP extends GeoBaseP with GeoExtP
+/** GEOSEARCH and GEOSEARCHSTORE with BYPOLYGON: Valkey 9.0 */
+trait GeoSearchPolygonP extends Features { this: GeoBaseP =>
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("GEOSEARCH: BYPOLYGON", "GEOSEARCHSTORE: BYPOLYGON")
+
+  import geotypes.*
+
+  final def geosearch(key: Key, polygon: GeoPolygon): Single.Aux[Seq[Key]] =
+    Protocol("GEOSEARCH", key *: polygon.params *: EmptyTuple).as[Arr, Seq[Key]]
+  final def geosearch(key: Key, polygon: GeoPolygon, sort: Direction): Single.Aux[Seq[Key]] =
+    Protocol("GEOSEARCH", key *: polygon.params *: sort *: EmptyTuple).as[Arr, Seq[Key]]
+  final def geosearch(key: Key, polygon: GeoPolygon, count: GeoCount): Single.Aux[Seq[Key]] =
+    Protocol("GEOSEARCH", key *: polygon.params *: count.params *: EmptyTuple).as[Arr, Seq[Key]]
+  final def geosearch(key: Key, polygon: GeoPolygon, sort: Direction, count: GeoCount): Single.Aux[Seq[Key]] =
+    Protocol("GEOSEARCH", key *: polygon.params *: sort *: count.params *: EmptyTuple).as[Arr, Seq[Key]]
+  final def geosearch(key: Key, polygon: GeoPolygon, mode: GeoRadiusMode)(implicit ev: Read[Arr, mode.Res]): Single.Aux[Seq[mode.Res]] =
+    Protocol("GEOSEARCH", key *: polygon.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+  final def geosearch(key: Key, polygon: GeoPolygon, sort: Direction, mode: GeoRadiusMode)(
+      implicit ev: Read[Arr, mode.Res]
+  ): Single.Aux[Seq[mode.Res]] =
+    Protocol("GEOSEARCH", key *: polygon.params *: sort *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+  final def geosearch(key: Key, polygon: GeoPolygon, count: GeoCount, mode: GeoRadiusMode)(
+      implicit ev: Read[Arr, mode.Res]
+  ): Single.Aux[Seq[mode.Res]] =
+    Protocol("GEOSEARCH", key *: polygon.params *: count.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+  final def geosearch(key: Key, polygon: GeoPolygon, sort: Direction, count: GeoCount, mode: GeoRadiusMode)(
+      implicit ev: Read[Arr, mode.Res]
+  ): Single.Aux[Seq[mode.Res]] =
+    Protocol("GEOSEARCH", key *: polygon.params *: sort *: count.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+
+  final def geosearchstore(source: Key, destination: Key, polygon: GeoPolygon): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: polygon.params *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(source: Key, destination: Key, polygon: GeoPolygon, sort: Direction): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: polygon.params *: sort *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(source: Key, destination: Key, polygon: GeoPolygon, count: GeoCount): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: polygon.params *: count.params *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(source: Key, destination: Key, polygon: GeoPolygon, sort: Direction, count: GeoCount): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: polygon.params *: sort *: count.params *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(source: Key, destination: Key, polygon: GeoPolygon, distances: GeoStoreDistances): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: polygon.params *: distances *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(
+      source: Key,
+      destination: Key,
+      polygon: GeoPolygon,
+      sort: Direction,
+      distances: GeoStoreDistances
+  ): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: polygon.params *: sort *: distances *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(
+      source: Key,
+      destination: Key,
+      polygon: GeoPolygon,
+      count: GeoCount,
+      distances: GeoStoreDistances
+  ): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: polygon.params *: count.params *: distances *: EmptyTuple).as[Num, NonNegInt]
+  final def geosearchstore(
+      source: Key,
+      destination: Key,
+      polygon: GeoPolygon,
+      sort: Direction,
+      count: GeoCount,
+      distances: GeoStoreDistances
+  ): Single.Aux[NonNegInt] =
+    Protocol("GEOSEARCHSTORE", destination *: source *: polygon.params *: sort *: count.params *: distances *: EmptyTuple)
+      .as[Num, NonNegInt]
+}
+
+trait GeoP extends GeoBaseP with GeoExtP with GeoSearchPolygonP

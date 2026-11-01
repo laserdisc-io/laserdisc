@@ -27,7 +27,8 @@ import protocol.*
 trait Base6_2
     extends ClusterP
     with ConnectionP
-    with GeoP
+    with GeoBaseP
+    with GeoExtP
     with HashP
     with HyperLogLogP
     with KeyP
@@ -71,7 +72,7 @@ trait Redis8_10 extends Redis8_8 with ListMoveManyP with SetDiffCardP with SetUn
 trait Valkey7_2 extends Redis7_2
 trait Valkey8_0 extends Valkey7_2 with SortedSetScanNoScoresP
 trait Valkey8_1 extends Valkey8_0 with StringSetIfEqP
-trait Valkey9_0 extends Valkey8_1
+trait Valkey9_0 extends Valkey8_1 with GeoSearchPolygonP
 trait Valkey9_1 extends Valkey9_0
 
 object redis_6_2  extends Redis6_2

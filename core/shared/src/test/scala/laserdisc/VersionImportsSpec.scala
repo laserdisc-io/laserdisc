@@ -268,4 +268,36 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(sdiffcard(ks, 2).frames, frame("SDIFFCARD", "2", "a", "b", "LIMIT", "2"))
     assertEquals(sunioncard(ks, sets.approx).frames, frame("SUNIONCARD", "2", "a", "b", "APPROX"))
   }
+
+  test("redis_6_2 has GEOSEARCH and GEOADD with NX, but not BYPOLYGON") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+    import geotypes.*
+
+    val area = GeoArea.radius(GeoCenter.member("m"), 10.5, GeoUnit.kilometers)
+    assertEquals(
+      geosearch("a", area, GeoCount.any(2)).frames,
+      frame("GEOSEARCH", "a", "FROMMEMBER", "m", "BYRADIUS", "10.5", "km", "COUNT", "2", "ANY")
+    )
+    assertEquals(
+      geosearchstore("a", "b", area, GeoStoreDistances).frames,
+      frame("GEOSEARCHSTORE", "b", "a", "FROMMEMBER", "m", "BYRADIUS", "10.5", "km", "STOREDIST")
+    )
+    assert(
+      compileErrors("""geosearch("a", GeoPolygon(GeoCoordinates(1.0, 1.0), GeoCoordinates(1.0, 2.0), GeoCoordinates(2.0, 2.0)))""").nonEmpty
+    )
+  }
+
+  test("valkey_9_0 has GEOSEARCH with BYPOLYGON") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_9_0.*
+    import geotypes.*
+
+    val triangle = GeoPolygon(GeoCoordinates(1.5, 1.5), GeoCoordinates(1.5, 2.5), GeoCoordinates(2.5, 2.5))
+    assertEquals(geosearch("a", triangle).frames, frame("GEOSEARCH", "a", "BYPOLYGON", "3", "1.5", "1.5", "2.5", "1.5", "2.5", "2.5"))
+    assertEquals(
+      geosearchstore("a", "b", triangle, Direction.asc).frames,
+      frame("GEOSEARCHSTORE", "b", "a", "BYPOLYGON", "3", "1.5", "1.5", "2.5", "1.5", "2.5", "2.5", "ASC")
+    )
+  }
 }

@@ -74,6 +74,8 @@ abstract class KeyClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
     assert(send(copy("k:l", "k:c", KeyReplace)))
     assertEquals(send(typeof("k:c")), Some(KeyType.list))
     assert(send(scan(0L, 1000, KeyType.list)).values.exists(_.contains(Key("k:c"))))
+    assert(send(scan(0L, "k:*", 1000)).values.exists(_.contains(Key("k:c"))))
+    assertEquals(send(keys("k:[lc]")).toSet, Set(Key("k:l"), Key("k:c")))
 
     assertEquals(send(sort[Int]("k:l", KeySort.desc)), Seq(3, 2, 1))
     assertEquals(

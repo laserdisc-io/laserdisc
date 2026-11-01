@@ -87,10 +87,16 @@ final class Witness[A <: Singleton] private[laserdisc] (val value: A) {
 }
 
 // Witnesses
-final val AllNICsEqWit                = new Witness("0.0.0.0")
-final val DbIndexMaxValueWit          = new Witness(15)
-final val GeoHashRegexWit             = new Witness("[a-z0-9]{11}")
-final val GlobPatternRegexWit         = new Witness("(\\[?[\\w\\*\\?]+\\]?)+") // TODO good enough but needs regex' TLC
+final val AllNICsEqWit       = new Witness("0.0.0.0")
+final val DbIndexMaxValueWit = new Witness(15)
+final val GeoHashRegexWit    = new Witness("[a-z0-9]{11}")
+
+/** A Redis glob: `*`, `?`, `[abc]`, `[a-z]`, `[^abc]`, `\x` for the character x itself, or any other character but a control character. A
+  * `]` outside of a class, and a `^` first in a class, are written `\]` and `\^`
+  */
+final val GlobPatternRegexWit = new Witness(
+  """[^\x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
+)
 final val IPv4RegexWit                = new Witness("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
 final val LatitudeMinValueWit         = new Witness(-85.05112878d)
 final val LatitudeMaxValueWit         = new Witness(85.05112878d)

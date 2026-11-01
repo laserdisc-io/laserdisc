@@ -90,10 +90,16 @@ package object laserdisc {
   private final type NoWhitespace  = Not[Whitespace]
 
   // Witnesses
-  final val AllNICsEqWit                = W("0.0.0.0")
-  final val DbIndexMaxValueWit          = W(15)
-  final val GeoHashRegexWit             = W("[a-z0-9]{11}")
-  final val GlobPatternRegexWit         = W("(\\[?[\\w\\*\\?]+\\]?)+") // TODO good enough but needs regex' TLC
+  final val AllNICsEqWit       = W("0.0.0.0")
+  final val DbIndexMaxValueWit = W(15)
+  final val GeoHashRegexWit    = W("[a-z0-9]{11}")
+
+  /** A Redis glob: `*`, `?`, `[abc]`, `[a-z]`, `[^abc]`, `\x` for the character x itself, or any other character but a control character. A
+    * `]` outside of a class, and a `^` first in a class, are written `\]` and `\^`
+    */
+  final val GlobPatternRegexWit = W(
+    """[^\x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
+  )
   final val IPv4RegexWit                = W("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
   final val LatitudeMinValueWit         = W(-85.05112878d)
   final val LatitudeMaxValueWit         = W(85.05112878d)

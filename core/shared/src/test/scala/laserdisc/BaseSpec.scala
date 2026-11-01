@@ -60,8 +60,11 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   private final val noSpaceUtf8BMPCharGen: Gen[Char] = utf8BMPCharGen.suchThat(_ != spaceChar)
 
   private final val globGen: Gen[String] = {
-    val basicGlob = nonEmptyListOf(frequency(1 -> const('*'), 1 -> const('?'), 1 -> alphaNumChar)).map(_.mkString)
-    Gen.oneOf(0, 1).flatMap(f => if (f == 0) basicGlob else basicGlob.map(g => s"[$g]"))
+    val escaped   = Gen.oneOf("\\*", "\\?", "\\[", "\\]", "\\\\", "\\^")
+    val plain     = alphaNumChar.map(_.toString)
+    val basicGlob = nonEmptyListOf(frequency(1 -> const("*"), 1 -> const("?"), 1 -> const(":"), 1 -> const("-"), 1 -> escaped, 4 -> plain))
+    val classBody = nonEmptyListOf(frequency(1 -> const("-"), 1 -> escaped, 4 -> plain)).map(_.mkString)
+    frequency(3 -> basicGlob.map(_.mkString), 1 -> classBody.map(c => s"[$c]"), 1 -> classBody.map(c => s"[^$c]"))
   }
   private final val allNICsGen: Gen[String] = const(AllNICsEqWit.value)
   private final val lbGen: Gen[String]      = const(LoopbackEqWit.value)
@@ -114,8 +117,9 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   final val dbIndexGen: Gen[Int]         = chooseNum(0, DbIndexMaxValueWit.value).filter(dbIndexIsValid) :| "db index"
   final val directionGen: Gen[Direction] = Gen.oneOf(Direction.asc, Direction.desc) :| "direction"
   final val geoHashGen: Gen[String]      = strOfNGen(11, 1 -> numChar, 9 -> alphaLowerChar).filter(geoHashIsValid) :| "geo hash"
-  final val globPatternGen: Gen[String]  = nonEmptyListOf(globGen).map(_.mkString).filter(globPatternIsValid) :| "glob pattern"
-  final val hostGen: Gen[Host]           = {
+  final val globPatternGen: Gen[String]  =
+    Gen.resize(20, nonEmptyListOf(globGen)).map(_.mkString).filter(globPatternIsValid) :| "glob pattern"
+  final val hostGen: Gen[Host] = {
     val hosts = 7 -> Gen
       .oneOf(allNICsGen, lbGen, rfc1123Gen, rfc1918Gen, rfc5737Gen, rfc3927Gen, rfc2544Gen)
       .filter(hostIsValid)

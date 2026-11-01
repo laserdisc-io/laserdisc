@@ -332,4 +332,60 @@ final class VersionImportsSpec extends BaseSpec {
 
     assertEquals(waitaof(0, 1, 100L).frames, frame("WAITAOF", "0", "1", "100"))
   }
+
+  test("redis_7_2 has HRANDFIELD and HSET with several fields, but no field expiry or HSCAN with NOVALUES") {
+    import laserdisc.auto.*
+    import laserdisc.redis_7_2.*
+
+    val fs = OneOrMoreKeys.unsafeFrom(List(Key("f")))
+    assertEquals(hrandfields("a", 2).frames, frame("HRANDFIELD", "a", "2"))
+    assertEquals(hset("a", OneOrMore.unsafeFrom(List(Key("f") -> 1))).frames, frame("HSET", "a", "f", "1"))
+    assert(compileErrors("""httl("a", fs)""").nonEmpty)
+    assert(compileErrors("""hscannovalues("a", 0L)""").nonEmpty)
+  }
+
+  test("redis_7_4 has field expiry and HSCAN with NOVALUES, but not HGETEX, HSETEX or HGETDEL") {
+    import laserdisc.auto.*
+    import laserdisc.redis_7_4.*
+    import hashtypes.*
+
+    val fs = OneOrMoreKeys.unsafeFrom(List(Key("f")))
+    assertEquals(hexpire("a", 10L, HashExpireCondition.nx, fs).frames, frame("HEXPIRE", "a", "10", "NX", "FIELDS", "1", "f"))
+    assertEquals(hscannovalues("a", 0L).frames, frame("HSCAN", "a", "0", "NOVALUES"))
+    assert(compileErrors("""hgetex[Int]("a", fs)""").nonEmpty)
+    assert(compileErrors("""hgetdel[Int]("a", fs)""").nonEmpty)
+  }
+
+  test("valkey_9_0 has HGETEX and HSETEX, but not HGETDEL or HSETEX with NX") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_9_0.*
+    import hashtypes.*
+
+    val fs  = OneOrMoreKeys.unsafeFrom(List(Key("f")))
+    val fvs = OneOrMore.unsafeFrom(List(Key("f") -> 1))
+    assertEquals(hgetex[Int]("a", strings.expiry.persist, fs).frames, frame("HGETEX", "a", "PERSIST", "FIELDS", "1", "f"))
+    assertEquals(hsetex("a", HashFieldsCondition.fxx, fvs).frames, frame("HSETEX", "a", "FXX", "FIELDS", "1", "f", "1"))
+    assert(compileErrors("""hgetdel[Int]("a", fs)""").nonEmpty)
+    assert(compileErrors("""hsetex("a", HashKeyCondition.nx, fvs)""").nonEmpty)
+  }
+
+  test("valkey_9_1 has HGETDEL and HSETEX with NX, and redis_8_10 has HGETDEL but not HSETEX with NX") {
+    import laserdisc.auto.*
+
+    val fs  = OneOrMoreKeys.unsafeFrom(List(Key("f")))
+    val fvs = OneOrMore.unsafeFrom(List(Key("f") -> 1))
+
+    {
+      import laserdisc.valkey_9_1.*
+      import hashtypes.*
+      assertEquals(hgetdel[Int]("a", fs).frames, frame("HGETDEL", "a", "FIELDS", "1", "f"))
+      assertEquals(hsetex("a", HashKeyCondition.nx, fvs).frames, frame("HSETEX", "a", "NX", "FIELDS", "1", "f", "1"))
+    }
+    {
+      import laserdisc.redis_8_10.*
+      import hashtypes.*
+      assertEquals(hgetdel[Int]("a", fs).frames, frame("HGETDEL", "a", "FIELDS", "1", "f"))
+      assert(compileErrors("""hsetex("a", HashKeyCondition.nx, fvs)""").nonEmpty)
+    }
+  }
 }

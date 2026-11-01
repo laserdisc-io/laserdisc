@@ -29,7 +29,8 @@ trait Base6_2
     with ConnectionP
     with GeoBaseP
     with GeoExtP
-    with HashP
+    with HashBaseP
+    with HashExtP
     with HyperLogLogP
     with KeyBaseP
     with KeyExtP
@@ -67,8 +68,8 @@ trait Redis7_0
   override lazy val blocking: Blocking7_0 = new Blocking7_0 {}
 }
 trait Redis7_2  extends Redis7_0 with KeyWaitAofP with SortedSetRankWithScoreP
-trait Redis7_4  extends Redis7_2
-trait Redis8_0  extends Redis7_4
+trait Redis7_4  extends Redis7_2 with HashScanNoValuesP with HashFieldExpiryP
+trait Redis8_0  extends Redis7_4 with HashGetSetExpiryP with HashGetDelP
 trait Redis8_2  extends Redis8_0
 trait Redis8_4  extends Redis8_2 with StringSetIfEqP with StringSetCompareP
 trait Redis8_6  extends Redis8_4
@@ -79,10 +80,10 @@ trait Redis8_10 extends Redis8_8 with ListMoveManyP with SetDiffCardP with SetUn
 
 /** Valkey started from Redis 7.2 */
 trait Valkey7_2 extends Redis7_2
-trait Valkey8_0 extends Valkey7_2 with SortedSetScanNoScoresP
+trait Valkey8_0 extends Valkey7_2 with HashScanNoValuesP with SortedSetScanNoScoresP
 trait Valkey8_1 extends Valkey8_0 with StringSetIfEqP
-trait Valkey9_0 extends Valkey8_1 with GeoSearchPolygonP
-trait Valkey9_1 extends Valkey9_0
+trait Valkey9_0 extends Valkey8_1 with GeoSearchPolygonP with HashFieldExpiryP with HashGetSetExpiryP
+trait Valkey9_1 extends Valkey9_0 with HashGetDelP with HashSetExKeyConditionP
 
 object redis_6_2  extends Redis6_2
 object redis_7_0  extends Redis7_0

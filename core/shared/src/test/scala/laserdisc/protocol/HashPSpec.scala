@@ -272,4 +272,77 @@ abstract class HashPSpec extends BaseSpec with HashP {
       assertEquals(protocol.decode(Arr(Bulk(i), Bulk(s))), i *: s *: EmptyTuple)
     }
   }
+
+  private def fields(fs: OneOrMoreKeys): List[Bulk] = Bulk("FIELDS") :: Bulk(fs.value.size) :: fs.value.map(Bulk(_))
+
+  property("The Hash protocol using hset with several fields replies how many were added") {
+    forAll { (k: Key, fvs: OneOrMore[(Key, Int)], nni: NonNegInt) =>
+      val protocol = hset(k, fvs)
+      assertEquals(protocol.encode, Arr(Bulk("HSET") :: Bulk(k) :: fvs.value.flatMap { case (f, v) => List(Bulk(f), Bulk(v)) }))
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+    }
+  }
+
+  property("The Hash protocol using hrandfieldswithvalues reads fields and values") {
+    forAll { (k: Key, c: NonZeroInt, fvs: List[(Key, Int)]) =>
+      val protocol = hrandfieldswithvalues[Int](k, c)
+      assertEquals(protocol.encode, Arr(Bulk("HRANDFIELD"), Bulk(k), Bulk(c), Bulk("WITHVALUES")))
+      assertEquals(protocol.decode(Arr(fvs.flatMap { case (f, v) => List(Bulk(f), Bulk(v)) })), fvs)
+      assertEquals(hrandfield(k).decode(NullBulk), None)
+    }
+  }
+
+  property("The Hash protocol using hexpire with a condition reads what it did to each field") {
+    import hashtypes.*
+    forAll { (k: Key, s: NonNegLong, fs: OneOrMoreKeys) =>
+      val protocol = hexpire(k, s, HashExpireCondition.gt, fs)
+      assertEquals(protocol.encode, Arr(Bulk("HEXPIRE") :: Bulk(k) :: Bulk(s) :: Bulk("GT") :: fields(fs)))
+      assertEquals(
+        protocol.decode(Arr(Num(-2L), Num(0L), Num(1L), Num(2L))),
+        Seq(HashNoField, HashFieldNotSet, HashFieldSet, HashFieldDeleted)
+      )
+    }
+  }
+
+  property("The Hash protocol using httl, hpexpiretime and hpersist read each field's reply") {
+    import hashtypes.*
+    forAll { (k: Key, fs: OneOrMoreKeys, n: NonNegLong) =>
+      assertEquals(httl(k, fs).encode, Arr(Bulk("HTTL") :: Bulk(k) :: fields(fs)))
+      assertEquals(httl(k, fs).decode(Arr(Num(-2L), Num(-1L), Num(n.value))), Seq(HashNoField, HashNoExpire, HashFieldExpireAfter(n)))
+      assertEquals(hpexpiretime(k, fs).decode(Arr(Num(-1L), Num(n.value))), Seq(HashNoExpire, HashFieldExpireAt(n)))
+      assertEquals(hpersist(k, fs).decode(Arr(Num(-2L), Num(-1L), Num(1L))), Seq(HashNoField, HashNoExpire, HashFieldPersisted))
+    }
+  }
+
+  property("The Hash protocol using hgetex and hgetdel read a value or None for each field") {
+    forAll { (k: Key, fs: OneOrMoreKeys, s: PosLong, ovs: List[Option[Int]]) =>
+      val protocol = hgetex[Int](k, StringP.Expiry.seconds(s), fs)
+      assertEquals(protocol.encode, Arr(Bulk("HGETEX") :: Bulk(k) :: Bulk("EX") :: Bulk(s) :: fields(fs)))
+      assertEquals(protocol.decode(Arr(ovs.map(_.fold(NullBulk: GenBulk)(Bulk(_))))), ovs)
+      assertEquals(hgetdel[Int](k, fs).encode, Arr(Bulk("HGETDEL") :: Bulk(k) :: fields(fs)))
+    }
+  }
+
+  property("The Hash protocol using hsetex sends the key condition, fields condition and expiry before the fields") {
+    import hashtypes.*
+    forAll { (k: Key, fvs: OneOrMore[(Key, Int)], b: Boolean) =>
+      val protocol = hsetex(k, HashKeyCondition.xx, HashFieldsCondition.fnx, StringP.Expiry.keepTtl, fvs)
+      assertEquals(
+        protocol.encode,
+        Arr(
+          List(Bulk("HSETEX"), Bulk(k), Bulk("XX"), Bulk("FNX"), Bulk("KEEPTTL"), Bulk("FIELDS"), Bulk(fvs.value.size)) :::
+            fvs.value.flatMap { case (f, v) => List(Bulk(f), Bulk(v)) }
+        )
+      )
+      assertEquals(protocol.decode(Num(if (b) 1L else 0L)), b)
+    }
+  }
+
+  property("The Hash protocol using hscannovalues reads only fields") {
+    forAll { (k: Key, c: NonNegLong, fs: List[Key]) =>
+      val protocol = hscannovalues(k, c)
+      assertEquals(protocol.encode, Arr(Bulk("HSCAN"), Bulk(k), Bulk(c), Bulk("NOVALUES")))
+      assertEquals(protocol.decode(Arr(Bulk(0L), Arr(fs.map(Bulk(_))))), Scan(NonNegLong(0L), Some(fs)))
+    }
+  }
 }

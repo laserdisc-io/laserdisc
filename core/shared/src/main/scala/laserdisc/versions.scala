@@ -31,7 +31,8 @@ trait Base6_2
     with HashP
     with HyperLogLogP
     with KeyP
-    with ListP
+    with ListBaseP
+    with ListExtP
     with PublishP
     with ServerP
     with SetP
@@ -46,11 +47,12 @@ trait Base6_2
 }
 
 /** The blocking commands, under `blocking` */
-trait Blocking6_2 extends BListP with BSortedSetBaseP
-trait Blocking7_0 extends Blocking6_2 with BSortedSetMPopP
+trait Blocking6_2  extends BListBaseP with BListExtP with BSortedSetBaseP
+trait Blocking7_0  extends Blocking6_2 with BListMPopP with BSortedSetMPopP
+trait Blocking8_10 extends Blocking7_0 with BListMoveManyP
 
 trait Redis6_2 extends Base6_2
-trait Redis7_0 extends Redis6_2 with StringSetGetFlagP with SortedSetInterCardP with SortedSetMPopP {
+trait Redis7_0 extends Redis6_2 with StringSetGetFlagP with ListMPopP with SortedSetInterCardP with SortedSetMPopP {
   override lazy val blocking: Blocking7_0 = new Blocking7_0 {}
 }
 trait Redis7_2  extends Redis7_0 with SortedSetRankWithScoreP
@@ -60,7 +62,9 @@ trait Redis8_2  extends Redis8_0
 trait Redis8_4  extends Redis8_2 with StringSetIfEqP with StringSetCompareP
 trait Redis8_6  extends Redis8_4
 trait Redis8_8  extends Redis8_6 with SortedSetAggregateCountP
-trait Redis8_10 extends Redis8_8
+trait Redis8_10 extends Redis8_8 with ListMoveManyP {
+  override lazy val blocking: Blocking8_10 = new Blocking8_10 {}
+}
 
 /** Valkey started from Redis 7.2 */
 trait Valkey7_2 extends Redis7_2

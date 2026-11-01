@@ -135,4 +135,31 @@ abstract class BListPSpec extends BaseSpec with BListP {
       protocol.decode(Bulk(i)).onRight(_ contains Foo(i))
     }
   }
+
+  property("The Blocking List protocol using blmove sends the timeout last") {
+    forAll { (s: Key, d: Key, t: NonNegInt, os: Option[String]) =>
+      val protocol = blmove[String](s, d, ListP.Side.right, ListP.Side.left, t)
+      assertEquals(protocol.encode, Arr(Bulk("BLMOVE"), Bulk(s), Bulk(d), Bulk("RIGHT"), Bulk("LEFT"), Bulk(t)))
+      assertEquals(protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))), os)
+    }
+  }
+
+  property("The Blocking List protocol using blmpop sends the timeout first") {
+    forAll { (ks: OneOrMoreKeys, t: NonNegInt, okv: Option[KV[List[String]]]) =>
+      val protocol = blmpop[String](ks, ListP.Side.left, t)
+      assertEquals(protocol.encode, Arr(Bulk("BLMPOP") :: Bulk(t) :: Bulk(ks.value.size) :: ks.value.map(Bulk(_)) ::: List(Bulk("LEFT"))))
+      val reply = okv.fold(NilArr: GenArr) { case KV(k, vs) => Arr(Bulk(k), Arr(vs.map(Bulk(_)))) }
+      assertEquals(protocol.decode(reply), okv)
+    }
+  }
+
+  property("The Blocking List protocol using blmovem sends the timeout before the amount") {
+    forAll { (s: Key, d: Key, c: PosInt, t: NonNegInt) =>
+      val protocol = blmovem[String](s, d, ListP.Side.left, ListP.Side.left, ListP.Amount.upTo(c), ListP.Order.oneByOne, t)
+      assertEquals(
+        protocol.encode,
+        Arr(Bulk("BLMOVEM"), Bulk(s), Bulk(d), Bulk("LEFT"), Bulk("LEFT"), Bulk(t), Bulk("COUNT"), Bulk(c), Bulk("OBO"))
+      )
+    }
+  }
 }

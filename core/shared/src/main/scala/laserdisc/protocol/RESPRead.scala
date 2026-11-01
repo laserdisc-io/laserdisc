@@ -105,6 +105,19 @@ object RESPRead {
       }
     }
 
+  /** Like [[nullable]] for [[Arr]], but [[NullBulk]] is read as `None` too, for replies Redis changed from one to the other (e.g. LPOP with
+    * a count, before Redis 7.0)
+    */
+  final def nullableArr[B](R: Read[Arr, B]): RESPRead.Aux[Arr, Option[B]] =
+    new RESPRead[Option[B]] {
+      override final type Sub = Arr
+      override final def read(resp: RESP): Maybe[Option[B]] = resp match {
+        case arr: Arr          => readMatched(R, resp, arr).map(Some(_))
+        case NilArr | NullBulk => Right(None)
+        case _                 => mismatch(resp)
+      }
+    }
+
   implicit final def derive[A: RESPSub, B](implicit R: Read[A, B]): RESPRead.Aux[A, B] = instance(R)
 
   /** Reads whatever Redis replies with as is ([[Err]] still being a failure), for commands without a dedicated [[Protocol]] (e.g. the CLI)

@@ -196,6 +196,9 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
 
   final val succeed: Unit = assert(cond = true)
 
+  /** The reply of a command that answers with a number, or with NullBulk when there's none (e.g. LPOS or ZRANK) */
+  protected final def numOrNull[A](o: Option[A])(f: A => Long): RESP = o.fold[RESP](NullBulk)(a => Num(f(a)))
+
   /** Compile errors are worded differently by refined/shapeless (Scala 2) and iron/dotty (Scala 3): on Scala 2 the exact `scala2` text is
     * checked, on Scala 3 only that compilation fails with an error containing `scala3`.
     */

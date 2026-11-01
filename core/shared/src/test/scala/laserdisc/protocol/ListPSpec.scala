@@ -31,6 +31,9 @@ abstract class ListPSpec extends BaseSpec with ListP {
   private implicit final val positionArb: Arbitrary[ListPosition] = Arbitrary {
     Gen.oneOf(ListPosition.after, ListPosition.before)
   }
+  private implicit final val sideArb: Arbitrary[ListSide] = Arbitrary(Gen.oneOf(ListSide.left, ListSide.right))
+
+  private def side(s: ListSide): String = if (s == ListSide.left) "LEFT" else "RIGHT"
 
   property("The List protocol using lindex roundtrips successfully given key and index") {
     forAll { (k: Key, i: Index, oi: Option[Int]) =>
@@ -141,6 +144,70 @@ abstract class ListPSpec extends BaseSpec with ListP {
       val protocol = rpushx(k, i)
       assertEquals(protocol.encode, Arr(Bulk("RPUSHX"), Bulk(k), Bulk(i)))
       assertEquals(protocol.decode(Num(opi.fold(0L)(_.value.toLong))), opi)
+    }
+  }
+
+  property("The List protocol using lmove roundtrips successfully given source, destination and sides") {
+    forAll { (s: Key, d: Key, from: ListSide, to: ListSide, os: Option[String]) =>
+      val protocol = lmove[String](s, d, from, to)
+      assertEquals(protocol.encode, Arr(Bulk("LMOVE"), Bulk(s), Bulk(d), Bulk(side(from)), Bulk(side(to))))
+      assertEquals(protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))), os)
+    }
+  }
+
+  property("The List protocol using lpop with a count reads the values, or None when the key doesn't exist") {
+    forAll { (k: Key, c: PosInt, oss: Option[List[String]]) =>
+      val protocol = lpop[String](k, c)
+      assertEquals(protocol.encode, Arr(Bulk("LPOP"), Bulk(k), Bulk(c)))
+      assertEquals(protocol.decode(oss.fold(NilArr: GenArr)(ss => Arr(ss.map(Bulk(_))))), oss)
+      assertEquals(protocol.decode(NullBulk), None)
+    }
+  }
+
+  property("The List protocol using lpos reads the position, or None") {
+    forAll { (k: Key, e: String, r: NonZeroInt, l: PosInt, oi: Option[NonNegInt]) =>
+      val protocol = lpos(k, e, ListSearch.rankAndMaxLen(r, l))
+      assertEquals(protocol.encode, Arr(Bulk("LPOS"), Bulk(k), Bulk(e), Bulk("RANK"), Bulk(r), Bulk("MAXLEN"), Bulk(l)))
+      assertEquals(protocol.decode(numOrNull(oi)(_.value.toLong)), oi)
+    }
+  }
+
+  property("The List protocol using lpos with a count reads every position") {
+    forAll { (k: Key, e: String, c: NonNegInt, is: List[NonNegInt]) =>
+      val protocol = lpos(k, e, c)
+      assertEquals(protocol.encode, Arr(Bulk("LPOS"), Bulk(k), Bulk(e), Bulk("COUNT"), Bulk(c)))
+      assertEquals(protocol.decode(Arr(is.map(i => Num(i.value.toLong)))), is)
+    }
+  }
+
+  property("The List protocol using rpushx roundtrips successfully given key and values") {
+    forAll { (k: Key, is: OneOrMore[Int], opi: Option[PosInt]) =>
+      val protocol = rpushx(k, is)
+      assertEquals(protocol.encode, Arr(Bulk("RPUSHX") :: Bulk(k) :: is.value.map(Bulk(_))))
+      assertEquals(protocol.decode(Num(opi.fold(0L)(_.value.toLong))), opi)
+    }
+  }
+
+  property("The List protocol using lmpop reads the key and its values, or None") {
+    forAll { (ks: OneOrMoreKeys, c: PosInt, okv: Option[KV[List[String]]]) =>
+      val protocol = lmpop[String](ks, ListSide.right, c)
+      assertEquals(
+        protocol.encode,
+        Arr(Bulk("LMPOP") :: Bulk(ks.value.size) :: ks.value.map(Bulk(_)) ::: List(Bulk("RIGHT"), Bulk("COUNT"), Bulk(c)))
+      )
+      val reply = okv.fold(NilArr: GenArr) { case KV(k, vs) => Arr(Bulk(k), Arr(vs.map(Bulk(_)))) }
+      assertEquals(protocol.decode(reply), okv)
+    }
+  }
+
+  property("The List protocol using lmovem sends the amount and order, and reads the values moved, or None") {
+    forAll { (s: Key, d: Key, c: PosInt, oss: Option[List[String]]) =>
+      val protocol = lmovem[String](s, d, ListSide.left, ListSide.right, ListAmount.exactly(c), ListOrder.asBlock)
+      assertEquals(
+        protocol.encode,
+        Arr(Bulk("LMOVEM"), Bulk(s), Bulk(d), Bulk("LEFT"), Bulk("RIGHT"), Bulk("EXACTLY"), Bulk(c), Bulk("BULK"))
+      )
+      assertEquals(protocol.decode(oss.fold(NilArr: GenArr)(ss => Arr(ss.map(Bulk(_))))), oss)
     }
   }
 }

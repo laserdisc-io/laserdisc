@@ -194,4 +194,51 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(blocking.bzmpop[String](a, sortedsets.pop.min, 0).frames, frame("BZMPOP", "0", "1", "a", "MIN"))
     assertEquals(blocking.blpop[String](a, 0).frames, frame("BLPOP", "a", "0"))
   }
+
+  test("redis_6_2 has LMOVE, LPOS and BLMOVE, but not LMPOP, BLMPOP or LMOVEM") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+    import listtypes.*
+
+    assertEquals(lmove[String]("a", "b", ListSide.left, ListSide.right).frames, frame("LMOVE", "a", "b", "LEFT", "RIGHT"))
+    assertEquals(lpos("a", "x", 2, ListSearch.rank(-1)).frames, frame("LPOS", "a", "x", "COUNT", "2", "RANK", "-1"))
+    assertEquals(
+      blocking.blmove[String]("a", "b", ListSide.right, ListSide.left, 1).frames,
+      frame("BLMOVE", "a", "b", "RIGHT", "LEFT", "1")
+    )
+    assert(compileErrors("""lmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), ListSide.left)""").nonEmpty)
+    assert(compileErrors("""blocking.blmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), ListSide.left, 1)""").nonEmpty)
+    assert(compileErrors("""lmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock)""").nonEmpty)
+  }
+
+  test("valkey_9_1 has LMPOP and BLMPOP, but not LMOVEM or BLMOVEM") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_9_1.*
+    import listtypes.*
+
+    val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    assertEquals(lmpop[String](a, ListSide.left, 2).frames, frame("LMPOP", "1", "a", "LEFT", "COUNT", "2"))
+    assertEquals(blocking.blmpop[String](a, ListSide.right, 3).frames, frame("BLMPOP", "3", "1", "a", "RIGHT"))
+    assert(compileErrors("""lmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock)""").nonEmpty)
+    assert(
+      compileErrors(
+        """blocking.blmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock, 1)"""
+      ).nonEmpty
+    )
+  }
+
+  test("redis_8_10 has LMOVEM and BLMOVEM") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_10.*
+    import listtypes.*
+
+    assertEquals(
+      lmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.oneByOne).frames,
+      frame("LMOVEM", "a", "b", "LEFT", "LEFT", "COUNT", "2", "OBO")
+    )
+    assertEquals(
+      blocking.blmovem[String]("a", "b", ListSide.left, ListSide.right, ListAmount.exactly(2), ListOrder.asBlock, 1).frames,
+      frame("BLMOVEM", "a", "b", "LEFT", "RIGHT", "1", "EXACTLY", "2", "BULK")
+    )
+  }
 }

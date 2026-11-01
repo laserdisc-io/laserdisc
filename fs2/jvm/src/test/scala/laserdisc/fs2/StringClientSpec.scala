@@ -28,6 +28,28 @@ import laserdisc.protocol.StringP.{LcsMatch, LcsRange}
 final class RedisStringClientSpec extends StringClientSpec(6379, "redis") {
   test("a redis client compares strings and counts bits with the commands of Redis 8.10")(lcsAndBits(redis_8_10))
 
+  test("a redis client deletes on a match, sets several keys with an expiry and increments within bounds with the commands of Redis 8.10") {
+    import laserdisc.redis_8_10.*
+    import laserdisc.protocol.StringP.Incremented
+
+    send(del("s:a", "s:b", "s:n", "s:f"))
+    send(set("s:a", "hello"))
+    val hash = send(digest("s:a")).getOrElse(fail("expected a digest"))
+    assertEquals(send(digest("s:none")), None)
+    assert(!send(delex("s:a", strings.compare.ifNe("hello"))))
+    assert(send(delex("s:a", strings.compare.ifDeq(hash))))
+    assert(!send(delex("s:a")))
+
+    assert(send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1, Key("s:b") -> 2)), strings.flag.nx, strings.expiry.seconds(100L))))
+    assert(!send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1)), strings.flag.nx)))
+
+    assertEquals(send(increx("s:n")), Incremented(1L, 1L))
+    assertEquals(send(increx("s:n", 5L, strings.increx.int.expiry(strings.expiry.seconds(100L)))), Incremented(6L, 5L))
+    assertEquals(send(increx("s:n", 5L, strings.increx.int.upperBound(7L))), Incremented(6L, 0L))
+    assertEquals(send(increx("s:n", 5L, strings.increx.int.upperBound(7L).saturate)), Incremented(7L, 1L))
+    assertEquals(send(increx("s:f", 1.5, strings.increx.float.lowerBound(0.0))), Incremented(1.5, 1.5))
+  }
+
   test("a redis client combines bits with DIFF, DIFF1, ANDOR and ONE with the commands of Redis 8.10") {
     import laserdisc.redis_8_10.*
 
@@ -55,6 +77,17 @@ final class KeyDbStringClientSpec extends StringClientSpec(6380, "keyDb")
 
 final class ValkeyStringClientSpec extends StringClientSpec(6381, "valkey") {
   test("a valkey client compares strings and counts bits with the commands of Valkey 9.1")(lcsAndBits(valkey_9_1))
+
+  test("a valkey client deletes on a match and sets several keys with an expiry with the commands of Valkey 9.1") {
+    import laserdisc.valkey_9_1.*
+
+    send(del("s:a", "s:b"))
+    send(set("s:a", "hello"))
+    assert(!send(delifeq("s:a", "nope")))
+    assert(send(delifeq("s:a", "hello")))
+    assert(send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1, Key("s:b") -> 2)), strings.flag.nx, strings.expiry.millis(100000L))))
+    assert(send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 3)), strings.flag.xx, strings.expiry.keepTtl)))
+  }
 }
 
 abstract class StringClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {

@@ -115,6 +115,33 @@ object StringP {
     def overflow(overflow: Overflow): BitField                                = none.overflow(overflow)
   }
 
+  /** The options of INCREX, for whole numbers (`int`) or decimal numbers (`float`): bounds the result must stay within, whether to stop at
+    * a bound instead of refusing the increment (SATURATE), and an expiry, which can be set only when the key has none yet (ENX)
+    */
+  final class IncrExOptions[A] private (val params: List[String]) {
+    def lowerBound(a: A)(implicit A: Show[A]): IncrExOptions[A] = new IncrExOptions(params ++ List("LBOUND", A.show(a)))
+    def upperBound(a: A)(implicit A: Show[A]): IncrExOptions[A] = new IncrExOptions(params ++ List("UBOUND", A.show(a)))
+    def saturate: IncrExOptions[A]                              = new IncrExOptions(params :+ "SATURATE")
+    def expiry(expiry: GetExpiry): IncrExOptions[A]             = new IncrExOptions(params ++ expiry.params)
+
+    /** Sets the expiry only if the key has none yet */
+    def expiryIfNone(expiry: Expiry): IncrExOptions[A] = new IncrExOptions(params ++ expiry.params :+ "ENX")
+  }
+  object IncrExOptions {
+    final val int: IncrExOptions[Long]          = new IncrExOptions[Long](Nil)
+    final val float: IncrExOptions[ValidDouble] = new IncrExOptions[ValidDouble](Nil)
+  }
+
+  /** The reply of INCREX: the value now, and the increment that was applied, which is 0 when a bound refused it */
+  final case class Incremented[A](value: A, increment: A)
+
+  private[protocol] final val incrementedLong: Read[Arr, Incremented[Long]] = Read.instancePF("Arr(Num, Num)") {
+    case Arr(Num(value) +: Num(increment) +: Seq()) => Incremented(value, increment)
+  }
+  private[protocol] final val incrementedDouble: Read[Arr, Incremented[Double]] = Read.instancePF("Arr(Bulk(Double), Bulk(Double))") {
+    case Arr(Read.bulk2DoubleRead(Right(value)) +: Read.bulk2DoubleRead(Right(increment)) +: Seq()) => Incremented(value, increment)
+  }
+
   /** Where a match is, in each of the two strings LCS compares */
   final case class LcsRange(start: NonNegInt, end: NonNegInt)
   final case class LcsMatch(first: LcsRange, second: LcsRange, length: NonNegInt)
@@ -200,7 +227,7 @@ object StringP {
 }
 
 trait StringBaseP extends Features {
-  import StringP.{Bit, BitField, BitUnit, Bitwise, Compare, Expiry, Flag, GetExpiry, IfEq, SetExpiry}
+  import StringP.{Bit, BitField, BitUnit, Bitwise, Compare, Expiry, Flag, GetExpiry, IfEq, IncrExOptions, SetExpiry}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -242,6 +269,7 @@ trait StringBaseP extends Features {
     final val bitwise  = Bitwise
     final val expiry   = Expiry
     final val flag     = Flag
+    final val increx   = IncrExOptions
     final val compare  = Compare
 
     final def ifEq[A: Show](a: A): IfEq = IfEq(a)
@@ -428,6 +456,68 @@ trait StringBitopExtendedP extends Features {
     Protocol("BITOP", bitwise *: destinationKey *: keys.value *: EmptyTuple).as[Num, NonNegInt]
 }
 
+/** DIGEST and DELEX: Redis 8.4 */
+trait StringDigestAndDelExP extends Features {
+  import StringP.{Compare, IfEq}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("DELEX: IFDEQ IFDNE IFEQ IFNE", "DIGEST")
+
+  /** A hash of the value at the key, which IFDEQ and IFDNE compare against */
+  final def digest(key: Key): Single.Aux[Option[String]] = Protocol("DIGEST", key).asOpt[Bulk, String]
+
+  /** Deletes the key, like DEL with one key, and replies whether it did */
+  final def delex(key: Key): Single.Aux[Boolean]                   = Protocol("DELEX", key).as[Num, Boolean]
+  final def delex(key: Key, ifEq: IfEq): Single.Aux[Boolean]       = Protocol("DELEX", key *: ifEq.params *: EmptyTuple).as[Num, Boolean]
+  final def delex(key: Key, compare: Compare): Single.Aux[Boolean] = Protocol("DELEX", key *: compare.params *: EmptyTuple).as[Num, Boolean]
+}
+
+/** DELIFEQ: Valkey 9.0 */
+trait StringDelIfEqP extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("DELIFEQ")
+
+  /** Deletes the key only if its value is `value`, and replies whether it did */
+  final def delifeq[A: Show](key: Key, value: A): Single.Aux[Boolean] = Protocol("DELIFEQ", key *: value *: EmptyTuple).as[Num, Boolean]
+}
+
+/** MSETEX: Redis 8.4, Valkey 9.1 */
+trait StringMSetExP extends Features {
+  import StringP.{Flag, SetExpiry}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("MSETEX: EX EXAT KEEPTTL NX PX PXAT XX")
+
+  /** Sets every key, or none of them when NX or XX doesn't hold for all of them, and replies whether it did */
+  final def msetex[A: Show](values: OneOrMore[(Key, A)]): Single.Aux[Boolean] =
+    Protocol("MSETEX", values.value.length *: values.value *: EmptyTuple).as[Num, Boolean]
+  final def msetex[A: Show](values: OneOrMore[(Key, A)], flag: Flag): Single.Aux[Boolean] =
+    Protocol("MSETEX", values.value.length *: values.value *: flag *: EmptyTuple).as[Num, Boolean]
+  final def msetex[A: Show](values: OneOrMore[(Key, A)], expiry: SetExpiry): Single.Aux[Boolean] =
+    Protocol("MSETEX", values.value.length *: values.value *: expiry.params *: EmptyTuple).as[Num, Boolean]
+  final def msetex[A: Show](values: OneOrMore[(Key, A)], flag: Flag, expiry: SetExpiry): Single.Aux[Boolean] =
+    Protocol("MSETEX", values.value.length *: values.value *: flag *: expiry.params *: EmptyTuple).as[Num, Boolean]
+}
+
+/** INCREX: Redis 8.8 */
+trait StringIncrExP extends Features {
+  import StringP.{IncrExOptions, Incremented}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("INCREX: BYFLOAT BYINT ENX EX EXAT LBOUND PERSIST PX PXAT SATURATE UBOUND")
+
+  private final val longs   = RESPRead.instance(StringP.incrementedLong)
+  private final val doubles = RESPRead.instance(StringP.incrementedDouble)
+
+  /** Adds 1, starting from 0 when the key doesn't exist */
+  final def increx(key: Key): Single.Aux[Incremented[Long]]                  = Protocol("INCREX", key).using(longs)
+  final def increx(key: Key, increment: Long): Single.Aux[Incremented[Long]] =
+    Protocol("INCREX", key *: "BYINT" *: increment *: EmptyTuple).using(longs)
+  final def increx(key: Key, increment: Long, options: IncrExOptions[Long]): Single.Aux[Incremented[Long]] =
+    Protocol("INCREX", key *: "BYINT" *: increment *: options.params *: EmptyTuple).using(longs)
+  final def increx(key: Key, increment: ValidDouble): Single.Aux[Incremented[Double]] =
+    Protocol("INCREX", key *: "BYFLOAT" *: increment *: EmptyTuple).using(doubles)
+  final def increx(key: Key, increment: ValidDouble, options: IncrExOptions[ValidDouble]): Single.Aux[Incremented[Double]] =
+    Protocol("INCREX", key *: "BYFLOAT" *: increment *: options.params *: EmptyTuple).using(doubles)
+}
+
 trait StringP
     extends StringBaseP
     with StringExtP
@@ -437,3 +527,7 @@ trait StringP
     with StringBitUnitP
     with StringLcsP
     with StringBitopExtendedP
+    with StringDigestAndDelExP
+    with StringDelIfEqP
+    with StringMSetExP
+    with StringIncrExP

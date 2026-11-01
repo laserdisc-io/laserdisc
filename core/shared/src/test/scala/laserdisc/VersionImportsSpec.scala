@@ -419,4 +419,46 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(bitop(strings.bitwise.andor, ks, "c").frames, frame("BITOP", "ANDOR", "c", "a", "b"))
     assertEquals(bitop(strings.bitwise.and, ks, "c").frames, frame("BITOP", "AND", "c", "a", "b"))
   }
+
+  test("redis_8_4 has DIGEST, DELEX and MSETEX, but not INCREX or DELIFEQ") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_4.*
+
+    assertEquals(delex("a", strings.compare.ifDeq("abc")).frames, frame("DELEX", "a", "IFDEQ", "abc"))
+    assertEquals(digest("a").frames, frame("DIGEST", "a"))
+    assertEquals(
+      msetex(OneOrMore.unsafeFrom(List(Key("a") -> 1)), strings.expiry.keepTtl).frames,
+      frame("MSETEX", "1", "a", "1", "KEEPTTL")
+    )
+    assert(compileErrors("""increx("a")""").nonEmpty)
+    assert(compileErrors("""delifeq("a", 1)""").nonEmpty)
+  }
+
+  test("redis_8_8 has INCREX, and its expiry can't be KEEPTTL or ENX with PERSIST") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_8.*
+
+    assertEquals(increx("a", 2L, strings.increx.int.expiry(strings.expiry.persist)).frames, frame("INCREX", "a", "BYINT", "2", "PERSIST"))
+    assert(compileErrors("""strings.increx.int.expiry(strings.expiry.keepTtl)""").nonEmpty)
+    assert(compileErrors("""strings.increx.int.expiryIfNone(strings.expiry.persist)""").nonEmpty)
+    assert(compileErrors("""increx("a", 2L, strings.increx.float)""").nonEmpty)
+  }
+
+  test("valkey_9_0 has DELIFEQ, but not MSETEX, DELEX or DIGEST, and valkey_9_1 has MSETEX") {
+    import laserdisc.auto.*
+
+    val kvs = OneOrMore.unsafeFrom(List(Key("a") -> 1))
+
+    {
+      import laserdisc.valkey_9_0.*
+      assertEquals(delifeq("a", 1).frames, frame("DELIFEQ", "a", "1"))
+      assert(compileErrors("""msetex(kvs)""").nonEmpty)
+      assert(compileErrors("""delex("a")""").nonEmpty)
+      assert(compileErrors("""digest("a")""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(msetex(kvs, strings.flag.xx).frames, frame("MSETEX", "1", "a", "1", "XX"))
+    }
+  }
 }

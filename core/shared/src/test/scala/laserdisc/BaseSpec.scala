@@ -89,6 +89,8 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
 
   final val connectionNameIsValid: String => Boolean                          = ConnectionName.from(_).isRight
   final val dbIndexIsValid: Int => Boolean                                    = DbIndex.from(_).isRight
+  final val signedBitWidthIsValid: Int => Boolean                             = SignedBitWidth.from(_).isRight
+  final val unsignedBitWidthIsValid: Int => Boolean                           = UnsignedBitWidth.from(_).isRight
   final val geoHashIsValid: String => Boolean                                 = GeoHash.from(_).isRight
   final val globPatternIsValid: String => Boolean                             = GlobPattern.from(_).isRight
   final val hostIsValid: String => Boolean                                    = Host.from(_).isRight
@@ -114,7 +116,10 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
 
   final val connectionNameGen: Gen[String] =
     strGen(nonEmptyListOf(noSpaceUtf8BMPCharGen)).filter(connectionNameIsValid) :| "connection name"
-  final val dbIndexGen: Gen[Int]         = chooseNum(0, DbIndexMaxValueWit.value).filter(dbIndexIsValid) :| "db index"
+  final val dbIndexGen: Gen[Int]        = chooseNum(0, DbIndexMaxValueWit.value).filter(dbIndexIsValid) :| "db index"
+  final val signedBitWidthGen: Gen[Int] = chooseNum(1, SignedBitWidthMaxValueWit.value).filter(signedBitWidthIsValid) :| "signed bit width"
+  final val unsignedBitWidthGen: Gen[Int] =
+    chooseNum(1, UnsignedBitWidthMaxValueWit.value).filter(unsignedBitWidthIsValid) :| "unsigned bit width"
   final val directionGen: Gen[Direction] = Gen.oneOf(Direction.asc, Direction.desc) :| "direction"
   final val geoHashGen: Gen[String]      = strOfNGen(11, 1 -> numChar, 9 -> alphaLowerChar).filter(geoHashIsValid) :| "geo hash"
   final val globPatternGen: Gen[String]  =
@@ -175,9 +180,11 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   implicit final val twoOrMoreWeightedKeysArb: Arbitrary[TwoOrMoreWeightedKeys] = Arbitrary(
     twoOrMore(zip(keyArb, validDoubleArb)).map(TwoOrMoreWeightedKeys.unsafeFrom)
   )
-  implicit final val dbIndexArb: Arbitrary[DbIndex]                                     = Arbitrary(dbIndexGen.map(DbIndex.unsafeFrom))
-  implicit final val latitudeArb: Arbitrary[Latitude]                                   = Arbitrary(latitudeGen.map(Latitude.unsafeFrom))
-  implicit final val longitudeArb: Arbitrary[Longitude]                                 = Arbitrary(longitudeGen.map(Longitude.unsafeFrom))
+  implicit final val dbIndexArb: Arbitrary[DbIndex]                   = Arbitrary(dbIndexGen.map(DbIndex.unsafeFrom))
+  implicit final val signedBitWidthArb: Arbitrary[SignedBitWidth]     = Arbitrary(signedBitWidthGen.map(SignedBitWidth.unsafeFrom))
+  implicit final val unsignedBitWidthArb: Arbitrary[UnsignedBitWidth] = Arbitrary(unsignedBitWidthGen.map(UnsignedBitWidth.unsafeFrom))
+  implicit final val latitudeArb: Arbitrary[Latitude]                 = Arbitrary(latitudeGen.map(Latitude.unsafeFrom))
+  implicit final val longitudeArb: Arbitrary[Longitude]               = Arbitrary(longitudeGen.map(Longitude.unsafeFrom))
   implicit final def oneOrMoreArb[A](implicit A: Arbitrary[A]): Arbitrary[OneOrMore[A]] =
     Arbitrary(nonEmptyListOf(A.arbitrary).map(OneOrMore.unsafeFrom))
   implicit final val portArb: Arbitrary[Port]                 = Arbitrary(portGen)

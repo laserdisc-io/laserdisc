@@ -117,8 +117,10 @@ package object laserdisc {
   final val Rfc1123HostnameRegexWit     = W(
     "(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*"
   )
-  final val SlotMaxValueWit         = W(16383)
-  final val StringLengthMaxValueWit = W(4294967295L)
+  final val SignedBitWidthMaxValueWit   = W(64)
+  final val SlotMaxValueWit             = W(16383)
+  final val StringLengthMaxValueWit     = W(4294967295L)
+  final val UnsignedBitWidthMaxValueWit = W(63)
 
   // Refinements
   final type ConnectionNameRef = OneOrMoreRef And Forall[NoWhitespace And NoControlChar]
@@ -128,27 +130,29 @@ package object laserdisc {
   final type HostRef           = Equal[AllNICsEqWit.T] Or Equal[LoopbackEqWit.T] Or
     (Not[IPv4] And MaxSize[Rfc1123HostnameMaxLengthWit.T] And MatchesRegex[Rfc1123HostnameRegexWit.T]) Or Rfc1918PrivateSpec Or
     Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec
-  final type IndexRef         = True
-  final type KeyRef           = OneOrMoreRef And Forall[NoControlChar]
-  final type LatitudeRef      = Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
-  final type LongitudeRef     = Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
-  final type NodeIdRef        = MatchesRegex[NodeIdRegexWit.T]
-  final type NOKEYRef         = Equal[NOKEYEqWit.T]
-  final type NonNegRef        = NonNegative
-  final type NonNegDoubleRef  = ValidDoubleRef And NonNegRef
-  final type NonZeroDoubleRef = ValidDoubleRef And Not[Equal[W.`0.0D`.T]]
-  final type NonZeroIntRef    = Not[Equal[W.`0`.T]]
-  final type NonZeroLongRef   = Not[Equal[W.`0L`.T]]
-  final type OKRef            = Equal[OKEqWit.T]
-  final type OneOrMoreRef     = NonEmpty
-  final type PONGRef          = Equal[PONGEqWit.T]
-  final type PortRef          = Interval.Closed[PortMinValueWit.T, PortMaxValueWit.T]
-  final type PosRef           = Positive
-  final type RangeOffsetRef   = Interval.Closed[W.`0`.T, RangeOffsetMaxValueWit.T]
-  final type SlotRef          = Interval.Closed[W.`0`.T, SlotMaxValueWit.T]
-  final type StringLengthRef  = Interval.Closed[W.`0L`.T, StringLengthMaxValueWit.T]
-  final type TwoOrMoreRef     = MinSize[W.`2`.T]
-  final type ValidDoubleRef   = NonNaN
+  final type IndexRef            = True
+  final type KeyRef              = OneOrMoreRef And Forall[NoControlChar]
+  final type LatitudeRef         = Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
+  final type LongitudeRef        = Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
+  final type NodeIdRef           = MatchesRegex[NodeIdRegexWit.T]
+  final type NOKEYRef            = Equal[NOKEYEqWit.T]
+  final type NonNegRef           = NonNegative
+  final type NonNegDoubleRef     = ValidDoubleRef And NonNegRef
+  final type NonZeroDoubleRef    = ValidDoubleRef And Not[Equal[W.`0.0D`.T]]
+  final type NonZeroIntRef       = Not[Equal[W.`0`.T]]
+  final type NonZeroLongRef      = Not[Equal[W.`0L`.T]]
+  final type OKRef               = Equal[OKEqWit.T]
+  final type OneOrMoreRef        = NonEmpty
+  final type PONGRef             = Equal[PONGEqWit.T]
+  final type PortRef             = Interval.Closed[PortMinValueWit.T, PortMaxValueWit.T]
+  final type PosRef              = Positive
+  final type RangeOffsetRef      = Interval.Closed[W.`0`.T, RangeOffsetMaxValueWit.T]
+  final type SignedBitWidthRef   = Interval.Closed[W.`1`.T, SignedBitWidthMaxValueWit.T]
+  final type SlotRef             = Interval.Closed[W.`0`.T, SlotMaxValueWit.T]
+  final type StringLengthRef     = Interval.Closed[W.`0L`.T, StringLengthMaxValueWit.T]
+  final type UnsignedBitWidthRef = Interval.Closed[W.`1`.T, UnsignedBitWidthMaxValueWit.T]
+  final type TwoOrMoreRef        = MinSize[W.`2`.T]
+  final type ValidDoubleRef      = NonNaN
 
   // New types
   final type ConnectionName        = String Refined ConnectionNameRef
@@ -176,10 +180,12 @@ package object laserdisc {
   final type PosInt                = Int Refined PosRef
   final type PosLong               = Long Refined PosRef
   final type RangeOffset           = Int Refined RangeOffsetRef
+  final type SignedBitWidth        = Int Refined SignedBitWidthRef
   final type Slot                  = Int Refined SlotRef
   final type StringLength          = Long Refined StringLengthRef
   final type TwoOrMoreKeys         = List[Key] Refined TwoOrMoreRef
   final type TwoOrMoreWeightedKeys = List[(Key, ValidDouble)] Refined TwoOrMoreRef
+  final type UnsignedBitWidth      = Int Refined UnsignedBitWidthRef
   final type ValidDouble           = Double Refined ValidDoubleRef
 
   // New types' ops
@@ -210,10 +216,12 @@ package object laserdisc {
   object PosInt                extends RefinedTypeOps.Numeric[PosInt, Int]
   object PosLong               extends RefinedTypeOps.Numeric[PosLong, Long]
   object RangeOffset           extends RefinedTypeOps.Numeric[RangeOffset, Int]
+  object SignedBitWidth        extends RefinedTypeOps.Numeric[SignedBitWidth, Int]
   object Slot                  extends RefinedTypeOps.Numeric[Slot, Int]
   object StringLength          extends RefinedTypeOps.Numeric[StringLength, Long]
   object TwoOrMoreKeys         extends RefinedTypeOps[TwoOrMoreKeys, List[Key]]
   object TwoOrMoreWeightedKeys extends RefinedTypeOps[TwoOrMoreWeightedKeys, List[(Key, ValidDouble)]]
+  object UnsignedBitWidth      extends RefinedTypeOps.Numeric[UnsignedBitWidth, Int]
   object ValidDouble           extends RefinedTypeOps.Numeric[ValidDouble, Double]
 
   final val LoopbackHost: Host = Host.unsafeFrom(LoopbackEqWit.value)

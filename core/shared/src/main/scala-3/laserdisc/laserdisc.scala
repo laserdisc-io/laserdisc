@@ -113,8 +113,10 @@ final val RangeOffsetMaxValueWit      = new Witness(536870911)
 final val Rfc1123HostnameMaxLengthWit = new Witness(255)
 final val Rfc1123HostnameRegexWit     =
   new Witness("(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*")
-final val SlotMaxValueWit         = new Witness(16383)
-final val StringLengthMaxValueWit = new Witness(4294967295L)
+final val SignedBitWidthMaxValueWit   = new Witness(64)
+final val SlotMaxValueWit             = new Witness(16383)
+final val StringLengthMaxValueWit     = new Witness(4294967295L)
+final val UnsignedBitWidthMaxValueWit = new Witness(63)
 
 // Refinements
 private final type IPv4Ref    = Match["^(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)){3}$"]
@@ -132,26 +134,28 @@ final type GlobPatternRef    = Match[GlobPatternRegexWit.T]
 final type HostRef           = StrictEqual[AllNICsEqWit.T] | StrictEqual[LoopbackEqWit.T] |
   (Not[IPv4Ref] & MaxLength[Rfc1123HostnameMaxLengthWit.T] & Match[Rfc1123HostnameRegexWit.T]) | Rfc1918Ref | Rfc5737Ref | Rfc3927Ref |
   Rfc2544Ref
-final type IndexRef         = Pure
-final type KeyRef           = MinLength[1] & ForAll[NoControlChar]
-final type LatitudeRef      = Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
-final type LongitudeRef     = Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
-final type NodeIdRef        = Match[NodeIdRegexWit.T]
-final type NOKEYRef         = StrictEqual[NOKEYEqWit.T]
-final type NonNegRef        = Positive0
-final type NonNegDoubleRef  = ValidDoubleRef & Positive0
-final type NonZeroDoubleRef = ValidDoubleRef & Not[StrictEqual[0.0d]]
-final type NonZeroIntRef    = Not[StrictEqual[0]]
-final type NonZeroLongRef   = Not[StrictEqual[0L]]
-final type OKRef            = StrictEqual[OKEqWit.T]
-final type OneOrMoreRef     = MinLength[1]
-final type PONGRef          = StrictEqual[PONGEqWit.T]
-final type PortRef          = Interval.Closed[PortMinValueWit.T, PortMaxValueWit.T]
-final type PosRef           = Positive
-final type RangeOffsetRef   = Interval.Closed[0, RangeOffsetMaxValueWit.T]
-final type SlotRef          = Interval.Closed[0, SlotMaxValueWit.T]
-final type StringLengthRef  = Interval.Closed[0L, StringLengthMaxValueWit.T]
-final type TwoOrMoreRef     = MinLength[2]
+final type IndexRef            = Pure
+final type KeyRef              = MinLength[1] & ForAll[NoControlChar]
+final type LatitudeRef         = Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
+final type LongitudeRef        = Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
+final type NodeIdRef           = Match[NodeIdRegexWit.T]
+final type NOKEYRef            = StrictEqual[NOKEYEqWit.T]
+final type NonNegRef           = Positive0
+final type NonNegDoubleRef     = ValidDoubleRef & Positive0
+final type NonZeroDoubleRef    = ValidDoubleRef & Not[StrictEqual[0.0d]]
+final type NonZeroIntRef       = Not[StrictEqual[0]]
+final type NonZeroLongRef      = Not[StrictEqual[0L]]
+final type OKRef               = StrictEqual[OKEqWit.T]
+final type OneOrMoreRef        = MinLength[1]
+final type PONGRef             = StrictEqual[PONGEqWit.T]
+final type PortRef             = Interval.Closed[PortMinValueWit.T, PortMaxValueWit.T]
+final type PosRef              = Positive
+final type RangeOffsetRef      = Interval.Closed[0, RangeOffsetMaxValueWit.T]
+final type SignedBitWidthRef   = Interval.Closed[1, SignedBitWidthMaxValueWit.T]
+final type SlotRef             = Interval.Closed[0, SlotMaxValueWit.T]
+final type StringLengthRef     = Interval.Closed[0L, StringLengthMaxValueWit.T]
+final type UnsignedBitWidthRef = Interval.Closed[1, UnsignedBitWidthMaxValueWit.T]
+final type TwoOrMoreRef        = MinLength[2]
 
 // New types
 final type ConnectionName        = ConnectionName.T
@@ -179,8 +183,10 @@ final type Port                  = Port.T
 final type PosInt                = PosInt.T
 final type PosLong               = PosLong.T
 final type RangeOffset           = RangeOffset.T
+final type SignedBitWidth        = SignedBitWidth.T
 final type Slot                  = Slot.T
 final type StringLength          = StringLength.T
+final type UnsignedBitWidth      = UnsignedBitWidth.T
 final type TwoOrMoreKeys         = List[Key] :| TwoOrMoreRef
 final type TwoOrMoreWeightedKeys = List[(Key, ValidDouble)] :| TwoOrMoreRef
 final type ValidDouble           = ValidDouble.T
@@ -213,8 +219,10 @@ object Port                  extends RefinedTypeOps[Int, PortRef]
 object PosInt                extends RefinedTypeOps[Int, PosRef]
 object PosLong               extends RefinedTypeOps[Long, PosRef]
 object RangeOffset           extends RefinedTypeOps[Int, RangeOffsetRef]
+object SignedBitWidth        extends RefinedTypeOps[Int, SignedBitWidthRef]
 object Slot                  extends RefinedTypeOps[Int, SlotRef]
 object StringLength          extends RefinedTypeOps[Long, StringLengthRef]
+object UnsignedBitWidth      extends RefinedTypeOps[Int, UnsignedBitWidthRef]
 object TwoOrMoreKeys         extends RefinedCollectionOps[List[Key], TwoOrMoreRef]
 object TwoOrMoreWeightedKeys extends RefinedCollectionOps[List[(Key, ValidDouble)], TwoOrMoreRef]
 object ValidDouble           extends RefinedTypeOps[Double, ValidDoubleRef]

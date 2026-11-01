@@ -59,6 +59,8 @@ trait Redis6_2 extends Base6_2
 trait Redis7_0
     extends Redis6_2
     with StringSetGetFlagP
+    with StringBitUnitP
+    with StringLcsP
     with KeyExpireConditionP
     with KeySortReadOnlyP
     with ListMPopP
@@ -70,7 +72,7 @@ trait Redis7_0
 trait Redis7_2  extends Redis7_0 with KeyWaitAofP with SortedSetRankWithScoreP
 trait Redis7_4  extends Redis7_2 with HashScanNoValuesP with HashFieldExpiryP
 trait Redis8_0  extends Redis7_4 with HashGetSetExpiryP with HashGetDelP
-trait Redis8_2  extends Redis8_0
+trait Redis8_2  extends Redis8_0 with StringBitopExtendedP
 trait Redis8_4  extends Redis8_2 with StringSetIfEqP with StringSetCompareP
 trait Redis8_6  extends Redis8_4
 trait Redis8_8  extends Redis8_6 with SortedSetAggregateCountP

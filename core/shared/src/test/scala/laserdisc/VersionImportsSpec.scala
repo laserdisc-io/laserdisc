@@ -388,4 +388,35 @@ final class VersionImportsSpec extends BaseSpec {
       assert(compileErrors("""hsetex("a", HashKeyCondition.nx, fvs)""").nonEmpty)
     }
   }
+
+  test("redis_6_2 has BITFIELD and BITFIELD_RO, but not LCS, BITCOUNT with BIT or BITOP with DIFF") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+
+    val bf = strings.bitfield
+    assertEquals(bitfield("a", bf.incrBy(bf.u(8), bf.field(1L), 5L)).frames, frame("BITFIELD", "a", "INCRBY", "u8", "#1", "5"))
+    assertEquals(bitfieldro("a", OneOrMore.unsafeFrom(List(bf.i(64) -> bf.bit(0L)))).frames, frame("BITFIELD_RO", "a", "GET", "i64", "0"))
+    assert(compileErrors("""bf.u(64)""").nonEmpty)
+    assert(compileErrors("""lcs[String]("a", "b")""").nonEmpty)
+    assert(compileErrors("""bitcount("a", 0L, 7L, strings.bitUnit.bit)""").nonEmpty)
+    assert(compileErrors("""bitop(strings.bitwise.diff, TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), "c")""").nonEmpty)
+  }
+
+  test("valkey_9_1 has LCS and BITCOUNT with BIT, but not BITOP with DIFF") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_9_1.*
+
+    assertEquals(lcslen("a", "b").frames, frame("LCS", "a", "b", "LEN"))
+    assertEquals(bitcount("a", 0L, 7L, strings.bitUnit.bit).frames, frame("BITCOUNT", "a", "0", "7", "BIT"))
+    assert(compileErrors("""bitop(strings.bitwise.diff, TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), "c")""").nonEmpty)
+  }
+
+  test("redis_8_2 has BITOP with DIFF, DIFF1, ANDOR and ONE") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_2.*
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
+    assertEquals(bitop(strings.bitwise.andor, ks, "c").frames, frame("BITOP", "ANDOR", "c", "a", "b"))
+    assertEquals(bitop(strings.bitwise.and, ks, "c").frames, frame("BITOP", "AND", "c", "a", "b"))
+  }
 }

@@ -43,10 +43,113 @@ object StringP {
     case object or  extends Bitwise
     case object xor extends Bitwise
 
+    final val diff: ExtendedBitwise  = new ExtendedBitwise("DIFF")
+    final val diff1: ExtendedBitwise = new ExtendedBitwise("DIFF1")
+    final val andor: ExtendedBitwise = new ExtendedBitwise("ANDOR")
+    final val one: ExtendedBitwise   = new ExtendedBitwise("ONE")
+
     implicit val bitwiseShow: Show[Bitwise] = Show.instance {
       case `and` => "AND"
       case `or`  => "OR"
       case `xor` => "XOR"
+    }
+  }
+
+  /** DIFF, DIFF1, ANDOR and ONE, for BITOP: Redis 8.2 */
+  final class ExtendedBitwise private[StringP] (private[StringP] val name: String)
+  object ExtendedBitwise {
+    implicit val extendedBitwiseShow: Show[ExtendedBitwise] = Show.instance(_.name)
+  }
+
+  /** BYTE and BIT, for BITCOUNT and BITPOS: whether start and end count bytes or bits */
+  sealed trait BitUnit
+  object BitUnit {
+    object byte extends BitUnit
+    object bit  extends BitUnit
+
+    implicit val bitUnitShow: Show[BitUnit] = Show.instance {
+      case `byte` => "BYTE"
+      case `bit`  => "BIT"
+    }
+  }
+
+  /** The steps of a BITFIELD, in order: GET, SET and INCRBY read and write numbers of the given type at the given offset, and OVERFLOW sets
+    * what the SET and INCRBY after it do when the number doesn't fit
+    */
+  final class BitField private (val params: List[String]) {
+    import BitField.*
+
+    def get(encoding: Encoding, offset: Offset): BitField              = new BitField(params ++ List("GET", encoding.param, offset.param))
+    def set(encoding: Encoding, offset: Offset, value: Long): BitField =
+      new BitField(params ++ List("SET", encoding.param, offset.param, value.toString))
+    def incrBy(encoding: Encoding, offset: Offset, increment: Long): BitField =
+      new BitField(params ++ List("INCRBY", encoding.param, offset.param, increment.toString))
+    def overflow(overflow: Overflow): BitField = new BitField(params ++ List("OVERFLOW", overflow.param))
+  }
+  object BitField {
+
+    /** A signed (`i`) or unsigned (`u`) number of the given width in bits */
+    final class Encoding private[BitField] (private[protocol] val param: String)
+
+    /** Where a number starts: at a bit, or at the n-th number of the same width */
+    final class Offset private[BitField] (private[protocol] val param: String)
+
+    /** WRAP, SAT and FAIL: wrap around, stay at the smallest or largest number, or do nothing and reply nil */
+    final class Overflow private[BitField] (private[protocol] val param: String)
+
+    def i(bits: SignedBitWidth): Encoding   = new Encoding(s"i${bits.value}")
+    def u(bits: UnsignedBitWidth): Encoding = new Encoding(s"u${bits.value}")
+
+    def bit(offset: NonNegLong): Offset  = new Offset(offset.value.toString)
+    def field(index: NonNegLong): Offset = new Offset(s"#${index.value}")
+
+    final val wrap: Overflow = new Overflow("WRAP")
+    final val sat: Overflow  = new Overflow("SAT")
+    final val fail: Overflow = new Overflow("FAIL")
+
+    private final val none = new BitField(Nil)
+
+    def get(encoding: Encoding, offset: Offset): BitField                     = none.get(encoding, offset)
+    def set(encoding: Encoding, offset: Offset, value: Long): BitField        = none.set(encoding, offset, value)
+    def incrBy(encoding: Encoding, offset: Offset, increment: Long): BitField = none.incrBy(encoding, offset, increment)
+    def overflow(overflow: Overflow): BitField                                = none.overflow(overflow)
+  }
+
+  /** Where a match is, in each of the two strings LCS compares */
+  final case class LcsRange(start: NonNegInt, end: NonNegInt)
+  final case class LcsMatch(first: LcsRange, second: LcsRange, length: NonNegInt)
+  final case class LcsMatches(matches: Seq[LcsMatch], length: NonNegInt)
+
+  private[protocol] final val bitFieldResults: Read[Arr, Seq[Option[Long]]] = Read.instance { case Arr(vector) =>
+    vector
+      .foldRight[Either[RESPDecErr, List[Option[Long]]]](Right(Nil)) {
+        case (Num(l), Right(ls))   => Right(Some(l) :: ls)
+        case (NullBulk, Right(ls)) => Right(None :: ls)
+        case (other, Right(_))     => Left(RESPDecErr(s"Read[Arr, Seq[Option[Long]]] error: unexpected $other"))
+        case (_, left)             => left
+      }
+  }
+
+  private[protocol] final val lcsMatches: Read[Arr, LcsMatches] = {
+    val nonNegInt                           = Read.num2NonNegIntRead
+    def range(resp: RESP): Option[LcsRange] = resp match {
+      case Arr(nonNegInt(Right(start)) +: nonNegInt(Right(end)) +: Seq()) => Some(LcsRange(start, end))
+      case _                                                              => None
+    }
+    def lcsMatch(resp: RESP): Option[LcsMatch] = resp match {
+      case Arr(first +: second +: nonNegInt(Right(length)) +: Seq()) =>
+        for {
+          f <- range(first)
+          s <- range(second)
+        } yield LcsMatch(f, s, length)
+      case _ => None
+    }
+    Read.instance {
+      case Arr(Bulk("matches") +: Arr(matches) +: Bulk("len") +: nonNegInt(Right(length)) +: Seq()) =>
+        val read = matches.map(lcsMatch)
+        if (read.forall(_.isDefined)) Right(LcsMatches(read.flatten, length))
+        else Left(RESPDecErr(s"Unexpected LCS matches. Was $matches"))
+      case other => Left(RESPDecErr(s"Unexpected LCS IDX reply. Was $other"))
     }
   }
 
@@ -97,12 +200,14 @@ object StringP {
 }
 
 trait StringBaseP extends Features {
-  import StringP.{Bit, Bitwise, Compare, Expiry, Flag, GetExpiry, IfEq, SetExpiry}
+  import StringP.{Bit, BitField, BitUnit, Bitwise, Compare, Expiry, Flag, GetExpiry, IfEq, SetExpiry}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "APPEND",
       "BITCOUNT",
+      "BITFIELD: FAIL GET INCRBY OVERFLOW SAT SET WRAP",
+      "BITFIELD_RO: GET",
       "BITOP: AND NOT OR XOR",
       "BITPOS",
       "DECR",
@@ -131,11 +236,13 @@ trait StringBaseP extends Features {
   private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
 
   object strings {
-    final val bit     = Bit
-    final val bitwise = Bitwise
-    final val expiry  = Expiry
-    final val flag    = Flag
-    final val compare = Compare
+    final val bit      = Bit
+    final val bitfield = BitField
+    final val bitUnit  = BitUnit
+    final val bitwise  = Bitwise
+    final val expiry   = Expiry
+    final val flag     = Flag
+    final val compare  = Compare
 
     final def ifEq[A: Show](a: A): IfEq = IfEq(a)
   }
@@ -146,7 +253,12 @@ trait StringBaseP extends Features {
   final def bitcount(key: Key, start: Index, end: Index): Single.Aux[NonNegInt] =
     Protocol("BITCOUNT", key *: start *: end *: EmptyTuple).as[Num, NonNegInt]
 
-  // FIXME add BITFIELD
+  final def bitfield(key: Key, steps: BitField): Single.Aux[Seq[Option[Long]]] =
+    Protocol("BITFIELD", key *: steps.params *: EmptyTuple).using(RESPRead.instance(StringP.bitFieldResults))
+
+  final def bitfieldro(key: Key, gets: OneOrMore[(BitField.Encoding, BitField.Offset)]): Single.Aux[Seq[Long]] =
+    Protocol("BITFIELD_RO", key *: gets.value.flatMap { case (e, o) => List("GET", e.param, o.param) } *: EmptyTuple)
+      .using(RESPRead.instance(Read.arrOfNum2Seq[Long]))
 
   final def bitop(bitwise: Bitwise, keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
     Protocol("BITOP", bitwise *: destinationKey *: keys.value *: EmptyTuple).as[Num, NonNegInt]
@@ -272,4 +384,56 @@ trait StringSetCompareP extends Features {
     Protocol("SET", key *: value *: compare.params *: expiry.params *: EmptyTuple).asOpt[Str, OK]
 }
 
-trait StringP extends StringBaseP with StringExtP with StringSetGetFlagP with StringSetIfEqP with StringSetCompareP
+/** BITCOUNT and BITPOS with BYTE or BIT: Redis 7.0 */
+trait StringBitUnitP extends Features {
+  import StringP.{Bit, BitUnit}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("BITCOUNT: BIT BYTE", "BITPOS: BIT BYTE")
+
+  final def bitcount(key: Key, start: Index, end: Index, unit: BitUnit): Single.Aux[NonNegInt] =
+    Protocol("BITCOUNT", key *: start *: end *: unit *: EmptyTuple).as[Num, NonNegInt]
+
+  final def bitpos(key: Key, bit: Bit, start: Index, end: Index, unit: BitUnit): Single.Aux[Option[NonNegInt]] =
+    Protocol("BITPOS", key *: bit *: start *: end *: unit *: EmptyTuple).using(RESPRead.instance(Read.numMinusOneIsNone[NonNegInt]))
+}
+
+/** LCS: Redis 7.0 */
+trait StringLcsP extends Features {
+  import StringP.LcsMatches
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("LCS: IDX LEN MINMATCHLEN WITHMATCHLEN")
+
+  /** The longest common substring of the values at the two keys */
+  final def lcs[A: Read[Bulk, _]](key1: Key, key2: Key): Single.Aux[A] = Protocol("LCS", key1 :: key2 :: Nil).as[Bulk, A]
+
+  /** The length of the longest common substring of the values at the two keys */
+  final def lcslen(key1: Key, key2: Key): Single.Aux[NonNegInt] =
+    Protocol("LCS", key1.value :: key2.value :: "LEN" :: Nil).as[Num, NonNegInt]
+
+  /** Where the matches are in each value, with their lengths */
+  final def lcsidx(key1: Key, key2: Key): Single.Aux[LcsMatches] =
+    Protocol("LCS", key1.value :: key2.value :: "IDX" :: "WITHMATCHLEN" :: Nil).using(RESPRead.instance(StringP.lcsMatches))
+  final def lcsidx(key1: Key, key2: Key, minMatchLength: PosInt): Single.Aux[LcsMatches] =
+    Protocol("LCS", key1 *: key2 *: "IDX" *: "MINMATCHLEN" *: minMatchLength *: "WITHMATCHLEN" *: EmptyTuple)
+      .using(RESPRead.instance(StringP.lcsMatches))
+}
+
+/** BITOP with DIFF, DIFF1, ANDOR and ONE: Redis 8.2 */
+trait StringBitopExtendedP extends Features {
+  import StringP.ExtendedBitwise
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("BITOP: ANDOR DIFF DIFF1 ONE")
+
+  final def bitop(bitwise: ExtendedBitwise, keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
+    Protocol("BITOP", bitwise *: destinationKey *: keys.value *: EmptyTuple).as[Num, NonNegInt]
+}
+
+trait StringP
+    extends StringBaseP
+    with StringExtP
+    with StringSetGetFlagP
+    with StringSetIfEqP
+    with StringSetCompareP
+    with StringBitUnitP
+    with StringLcsP
+    with StringBitopExtendedP

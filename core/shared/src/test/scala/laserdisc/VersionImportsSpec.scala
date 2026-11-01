@@ -123,4 +123,75 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(set("a", 2).frames, frame("SET", "a", "2"))
     assert(compileErrors("""set("a", 2, strings.ifEq(1))""").nonEmpty)
   }
+
+  test("redis_6_2 has ZADD with GT and LT and BZPOPMIN, but not ZINTERCARD, ZMPOP or BZMPOP") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+
+    assertEquals(zadd("a", sortedsets.flag.xxGt, "m", 1.5).frames, frame("ZADD", "a", "XX", "GT", "1.5", "m"))
+    assertEquals(blocking.bzpopmin[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 1).frames, frame("BZPOPMIN", "a", "1"))
+    assert(compileErrors("""zintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))))""").nonEmpty)
+    assert(compileErrors("""zmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsets.pop.min)""").nonEmpty)
+    assert(compileErrors("""blocking.bzmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsets.pop.min, 1)""").nonEmpty)
+  }
+
+  test("redis_7_0 has ZINTERCARD, ZMPOP and BZMPOP, but not ZRANK with WITHSCORE") {
+    import laserdisc.auto.*
+    import laserdisc.redis_7_0.*
+
+    val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    assertEquals(zintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), 5).frames, frame("ZINTERCARD", "2", "a", "b", "LIMIT", "5"))
+    assertEquals(zmpop[String](a, sortedsets.pop.min).frames, frame("ZMPOP", "1", "a", "MIN"))
+    assertEquals(blocking.bzmpop[String](a, sortedsets.pop.max, 2, 1).frames, frame("BZMPOP", "1", "1", "a", "MAX", "COUNT", "2"))
+    assertEquals(blocking.bzpopmin[String](a, 1).frames, frame("BZPOPMIN", "a", "1"))
+    assert(compileErrors("""zrankwithscore("a", "m")""").nonEmpty)
+  }
+
+  test("only Redis 8.8 and later have AGGREGATE COUNT") {
+    import laserdisc.auto.*
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
+
+    {
+      import laserdisc.redis_8_8.*
+      assertEquals(zunionstore(ks, "c", sortedsets.aggregate.count).frames, frame("ZUNIONSTORE", "c", "2", "a", "b", "AGGREGATE", "COUNT"))
+      assertEquals(zunion[String](ks, sortedsets.aggregate.max).frames, frame("ZUNION", "2", "a", "b", "AGGREGATE", "MAX"))
+    }
+    {
+      import laserdisc.redis_8_6.*
+      assert(compileErrors("""zinter[String](ks, sortedsets.aggregate.count)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assert(compileErrors("""zinter[String](ks, sortedsets.aggregate.count)""").nonEmpty)
+    }
+  }
+
+  test("only Valkey 8.0 and later have ZSCAN with NOSCORES") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.valkey_8_0.*
+      assertEquals(zscannoscores[String]("a", 0L, 10).frames, frame("ZSCAN", "a", "0", "COUNT", "10", "NOSCORES"))
+    }
+    {
+      import laserdisc.valkey_7_2.*
+      assert(compileErrors("""zscannoscores[String]("a", 0L)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assert(compileErrors("""zscannoscores[String]("a", 0L)""").nonEmpty)
+    }
+  }
+
+  test("all has every sorted set command, with the blocking ones under blocking") {
+    import laserdisc.all.*
+    import laserdisc.auto.*
+
+    val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    assertEquals(zscannoscores[String]("a", 0L).frames, frame("ZSCAN", "a", "0", "NOSCORES"))
+    assertEquals(zrevrankwithscore("a", "m").frames, frame("ZREVRANK", "a", "m", "WITHSCORE"))
+    assertEquals(blocking.bzmpop[String](a, sortedsets.pop.min, 0).frames, frame("BZMPOP", "0", "1", "a", "MIN"))
+    assertEquals(blocking.blpop[String](a, 0).frames, frame("BLPOP", "a", "0"))
+  }
 }

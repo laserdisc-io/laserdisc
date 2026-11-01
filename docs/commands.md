@@ -23,7 +23,7 @@ instead, use its object:
 | Hashes | `laserdisc.families.hashmaps.*` |
 | Lists | `laserdisc.families.lists.*`, and `laserdisc.families.lists.blocking.*` for blocking commands |
 | Sets | `laserdisc.families.sets.*` |
-| Sorted sets | `laserdisc.families.sortedsets.*` |
+| Sorted sets | `laserdisc.families.sortedsets.*`, and `laserdisc.families.sortedsets.blocking.*` for blocking commands |
 | Geospatial | `laserdisc.families.geo.*` |
 | HyperLogLog | `laserdisc.families.hyperloglog.*` |
 | Publish | `laserdisc.families.publish.*` |

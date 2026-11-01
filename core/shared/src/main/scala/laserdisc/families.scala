@@ -30,10 +30,10 @@ object geo         extends GeoP
 object hashmaps    extends HashP
 object hyperloglog extends HyperLogLogP
 object keys        extends KeyP
-object lists       extends ListP { object blocking extends BListP }
+object lists       extends ListP      { object blocking extends BListP      }
 object publish     extends PublishP
 object server      extends ServerP
 object sets        extends SetP
-object sortedsets  extends SortedSetP
+object sortedsets  extends SortedSetP { object blocking extends BSortedSetP }
 object strings     extends StringP
 object transaction extends TransactionP

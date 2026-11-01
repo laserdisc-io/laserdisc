@@ -37,5 +37,5 @@ object all
     with SortedSetP
     with StringP
     with TransactionP {
-  object blocking extends BListP
+  object blocking extends BListP with BSortedSetP
 }

@@ -241,4 +241,31 @@ final class VersionImportsSpec extends BaseSpec {
       frame("BLMOVEM", "a", "b", "LEFT", "RIGHT", "1", "EXACTLY", "2", "BULK")
     )
   }
+
+  test("redis_6_2 has SMISMEMBER, but not SINTERCARD") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+
+    assertEquals(smismember("a", OneOrMore.unsafeFrom(List("x", "y"))).frames, frame("SMISMEMBER", "a", "x", "y"))
+    assert(compileErrors("""sintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))))""").nonEmpty)
+  }
+
+  test("valkey_9_1 has SINTERCARD, but not SDIFFCARD or SUNIONCARD") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_9_1.*
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
+    assertEquals(sintercard(ks, 3).frames, frame("SINTERCARD", "2", "a", "b", "LIMIT", "3"))
+    assert(compileErrors("""sdiffcard(ks)""").nonEmpty)
+    assert(compileErrors("""sunioncard(ks, sets.approx)""").nonEmpty)
+  }
+
+  test("redis_8_10 has SDIFFCARD and SUNIONCARD") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_10.*
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
+    assertEquals(sdiffcard(ks, 2).frames, frame("SDIFFCARD", "2", "a", "b", "LIMIT", "2"))
+    assertEquals(sunioncard(ks, sets.approx).frames, frame("SUNIONCARD", "2", "a", "b", "APPROX"))
+  }
 }

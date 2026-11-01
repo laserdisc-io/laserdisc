@@ -145,6 +145,21 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
       }
       .map(_._1)
   }
+
+  /** For arrays of numbers (e.g. LPOS with a count, or SMISMEMBER). Not implicit, as it would clash with [[arrOfBulk2Seq]] for types that
+    * can be read from both
+    */
+  final def arrOfNum2Seq[A](implicit R: Read[Num, A]): Read[Arr, Seq[A]] = instance { case Arr(vector) =>
+    vector
+      .foldRight[Either[RESPDecErr, (List[A], Int)]](Right(Nil -> 0)) {
+        case (R(Right(a)), Right((as0, asl))) => Right((a :: as0) -> (asl + 1))
+        case (R(Left(e)), Right((_, asl)))    => Left(RESPDecErr(s"Read[Arr(Num), Seq[A]] error at element ${asl + 1}: ${e.message}"))
+        case (other, Right((_, asl)))         =>
+          Left(RESPDecErr(s"Read[Arr(Num), Seq[A]] error at element ${asl + 1}: Unexpected for Num. Was $other"))
+        case (_, left) => left
+      }
+      .map(_._1)
+  }
   implicit final def arrOfArr2Seq[A](implicit R: Read[Arr, A]): Read[Arr, Seq[A]] = instance { case Arr(vector) =>
     vector
       .foldRight[Either[RESPDecErr, (List[A], Int)]](Right(Nil -> 0)) {

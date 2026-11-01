@@ -82,15 +82,6 @@ object ListP {
     }
   }
 
-  private[protocol] final val positions: Read[Arr, Seq[NonNegInt]] = Read.instance { case Arr(vector) =>
-    vector
-      .foldRight[Either[RESPDecErr, List[NonNegInt]]](Right(Nil)) {
-        case (Read.num2NonNegIntRead(Right(i)), Right(is)) => Right(i :: is)
-        case (other, Right(_))                             => Left(RESPDecErr(s"Read[Arr(Num), Seq[NonNegInt]] error: unexpected $other"))
-        case (_, left)                                     => left
-      }
-  }
-
   private[protocol] final def keyedSeq[A](implicit R: Read[Bulk, A]): RESPRead.Aux[Arr, Option[KV[Seq[A]]]] = {
     val as = Read.arrOfBulk2Seq[A]
     RESPRead.nullable(Read.instancePF("Arr(Key, Seq[A])") { case Arr(Bulk(Key(k)) +: as(Right(values)) +: Seq()) => KV(k, values) })
@@ -157,9 +148,10 @@ trait ListBaseP extends Features {
   final def lpos[A: Show](key: Key, element: A, search: ListSearch): Single.Aux[Option[NonNegInt]] =
     Protocol("LPOS", key *: element *: search.params *: EmptyTuple).asOpt[Num, NonNegInt]
   final def lpos[A: Show](key: Key, element: A, count: NonNegInt): Single.Aux[Seq[NonNegInt]] =
-    Protocol("LPOS", key *: element *: "COUNT" *: count *: EmptyTuple).using(RESPRead.instance(ListP.positions))
+    Protocol("LPOS", key *: element *: "COUNT" *: count *: EmptyTuple).using(RESPRead.instance(Read.arrOfNum2Seq[NonNegInt]))
   final def lpos[A: Show](key: Key, element: A, count: NonNegInt, search: ListSearch): Single.Aux[Seq[NonNegInt]] =
-    Protocol("LPOS", key *: element *: "COUNT" *: count *: search.params *: EmptyTuple).using(RESPRead.instance(ListP.positions))
+    Protocol("LPOS", key *: element *: "COUNT" *: count *: search.params *: EmptyTuple)
+      .using(RESPRead.instance(Read.arrOfNum2Seq[NonNegInt]))
 
   final def lpush[A: Show](key: Key, values: OneOrMore[A]): Single.Aux[PosInt] =
     Protocol("LPUSH", key *: values.value *: EmptyTuple).as[Num, PosInt]

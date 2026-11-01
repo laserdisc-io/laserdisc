@@ -31,7 +31,8 @@ trait Base6_2
     with GeoExtP
     with HashP
     with HyperLogLogP
-    with KeyP
+    with KeyBaseP
+    with KeyExtP
     with ListBaseP
     with ListExtP
     with PublishP
@@ -54,10 +55,18 @@ trait Blocking7_0  extends Blocking6_2 with BListMPopP with BSortedSetMPopP
 trait Blocking8_10 extends Blocking7_0 with BListMoveManyP
 
 trait Redis6_2 extends Base6_2
-trait Redis7_0 extends Redis6_2 with StringSetGetFlagP with ListMPopP with SetInterCardP with SortedSetInterCardP with SortedSetMPopP {
+trait Redis7_0
+    extends Redis6_2
+    with StringSetGetFlagP
+    with KeyExpireConditionP
+    with KeySortReadOnlyP
+    with ListMPopP
+    with SetInterCardP
+    with SortedSetInterCardP
+    with SortedSetMPopP {
   override lazy val blocking: Blocking7_0 = new Blocking7_0 {}
 }
-trait Redis7_2  extends Redis7_0 with SortedSetRankWithScoreP
+trait Redis7_2  extends Redis7_0 with KeyWaitAofP with SortedSetRankWithScoreP
 trait Redis7_4  extends Redis7_2
 trait Redis8_0  extends Redis7_4
 trait Redis8_2  extends Redis8_0

@@ -30,7 +30,6 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   import org.scalacheck.Gen.const
 
   private implicit final val encodingShow: Show[KeyEncoding] = Show.unsafeFromToString
-  private implicit final val typeShow: Show[KeyType]         = Show.unsafeFromToString
 
   private implicit final val encodingArb: Arbitrary[KeyEncoding] = Arbitrary {
     Gen.oneOf(
@@ -56,7 +55,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
     )
   }
   private implicit final val typeArb: Arbitrary[KeyType] = Arbitrary {
-    Gen.oneOf(KeyType.string, KeyType.list, KeyType.set, KeyType.zset, KeyType.hash)
+    Gen.oneOf(KeyType.string, KeyType.list, KeyType.set, KeyType.zset, KeyType.hash, KeyType.stream)
   }
 
   private final val ttlResponseToNum: KeyTTLResponse => Num = {
@@ -404,6 +403,108 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
       val protocol = wait(pi1, pl)
       assertEquals(protocol.encode, Arr(Bulk("WAIT"), Bulk(pi1), Bulk(pl)))
       assertEquals(protocol.decode(Num(pi2.value.toLong)), pi2)
+    }
+  }
+
+  property("The Key protocol using copy roundtrips successfully given source, destination, db and REPLACE") {
+    forAll { (s: Key, d: Key, db: DbIndex, b: Boolean) =>
+      val protocol = copy(s, d, db, KeyReplace)
+      assertEquals(protocol.encode, Arr(Bulk("COPY"), Bulk(s), Bulk(d), Bulk("DB"), Bulk(db), Bulk("REPLACE")))
+      assertEquals(protocol.decode(Num(if (b) 1L else 0L)), b)
+    }
+  }
+
+  property("The Key protocol using migrate sends AUTH2 after the mode and before KEYS") {
+    forAll { (ks: TwoOrMoreKeys, h: Host, p: Port, db: DbIndex, t: NonNegInt, u: String, pw: String) =>
+      val protocol = migrate(ks, h, p, db, t, KeyMigrateMode.both, KeyMigrateAuth.userAndPassword(u, pw))
+      assertEquals(
+        protocol.encode,
+        Arr(
+          List(
+            Bulk("MIGRATE"),
+            Bulk(h),
+            Bulk(p),
+            Bulk(""),
+            Bulk(db),
+            Bulk(t),
+            Bulk("COPY"),
+            Bulk("REPLACE"),
+            Bulk("AUTH2"),
+            Bulk(u),
+            Bulk(pw),
+            Bulk("KEYS")
+          ) :::
+            ks.value.map(Bulk(_))
+        )
+      )
+      assertEquals(protocol.decode(Str("NOKEY")), Left(NOKEY))
+    }
+  }
+
+  property("The Key protocol using scan roundtrips successfully given cursor, glob pattern, count and type") {
+    forAll { (nnl: NonNegLong, g: GlobPattern, pi: PosInt, t: KeyType, sk: Scan[Key]) =>
+      val protocol = scan(nnl, g, pi, t)
+      assertEquals(protocol.encode, Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g), Bulk("COUNT"), Bulk(pi), Bulk("TYPE"), Bulk(t)))
+      assertEquals(protocol.decode(scanKeyToArr(sk)), sk)
+    }
+  }
+
+  property("The Key protocol using typeof reads a stream") {
+    forAll { (k: Key) =>
+      assertEquals(typeof(k).decode(Str("stream")), Some(KeyType.stream))
+    }
+  }
+
+  property("The Key protocol using sort with GET reads a value or None for each pattern") {
+    forAll { (k: Key, by: Key, d: Key, o: NonNegLong, c: PosLong, ovs: List[Option[String]]) =>
+      val options  = KeySort.by(by).limit(o, c).desc.alpha
+      val protocol = sort[String](k, options, KeySortGet(Key("#"), Key("h_*->f")))
+      assertEquals(
+        protocol.encode,
+        Arr(
+          Bulk("SORT"),
+          Bulk(k),
+          Bulk("BY"),
+          Bulk(by),
+          Bulk("LIMIT"),
+          Bulk(o),
+          Bulk(c),
+          Bulk("DESC"),
+          Bulk("ALPHA"),
+          Bulk("GET"),
+          Bulk("#"),
+          Bulk("GET"),
+          Bulk("h_*->f")
+        )
+      )
+      assertEquals(protocol.decode(Arr(ovs.map(_.fold(NullBulk: GenBulk)(Bulk(_))))), ovs)
+      assertEquals(sort(k, KeySort.noSort, d).encode, Arr(Bulk("SORT"), Bulk(k), Bulk("BY"), Bulk("nosort"), Bulk("STORE"), Bulk(d)))
+    }
+  }
+
+  property("The Key protocol using expire with a condition sends it after the seconds") {
+    forAll { (k: Key, s: NonNegInt, b: Boolean) =>
+      val protocol = expire(k, s, KeyExpireCondition.xxGt)
+      assertEquals(protocol.encode, Arr(Bulk("EXPIRE"), Bulk(k), Bulk(s), Bulk("XX"), Bulk("GT")))
+      assertEquals(protocol.decode(Num(if (b) 1L else 0L)), b)
+    }
+  }
+
+  property("The Key protocol using pexpiretime reads no key, no expiry or the timestamp") {
+    forAll { (k: Key, ts: NonNegLong) =>
+      val protocol = pexpiretime(k)
+      assertEquals(protocol.encode, Arr(Bulk("PEXPIRETIME"), Bulk(k)))
+      assertEquals(protocol.decode(Num(-2L)), KeyNoKeyTTLResponse)
+      assertEquals(protocol.decode(Num(-1L)), KeyNoExpireTTLResponse)
+      assertEquals(protocol.decode(Num(ts.value)), KeyExpireAt(ts))
+    }
+  }
+
+  property("The Key protocol using waitaof reads how many it reached locally and on replicas") {
+    forAll { (l: NonNegInt, r: NonNegInt, t: NonNegLong) =>
+      val protocol = waitaof(l, r, t)
+      assertEquals(protocol.encode, Arr(Bulk("WAITAOF"), Bulk(l), Bulk(r), Bulk(t)))
+      assertEquals(protocol.decode(Arr(Num(l.value.toLong), Num(r.value.toLong))), l -> r)
     }
   }
 }

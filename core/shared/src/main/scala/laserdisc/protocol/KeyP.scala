@@ -47,6 +47,61 @@ object KeyP {
     }
   }
 
+  /** AUTH and AUTH2, for MIGRATE */
+  sealed trait MigrateAuth { def params: List[String] }
+  object MigrateAuth       {
+    private final class Of(override final val params: List[String]) extends MigrateAuth
+
+    def password(password: String): MigrateAuth                          = new Of(List("AUTH", password))
+    def userAndPassword(username: String, password: String): MigrateAuth = new Of(List("AUTH2", username, password))
+  }
+
+  /** REPLACE, for COPY */
+  sealed trait Replace
+  object Replace extends Replace {
+    implicit val replaceShow: Show[Replace] = Show.const("REPLACE")
+  }
+
+  /** BY, LIMIT, ASC, DESC and ALPHA, for SORT and SORT_RO. Patterns are key names with `*`, and `->field` for a hash field */
+  final class Sort private (val params: List[String]) {
+    def by(pattern: Key): Sort                          = new Sort(params ++ List("BY", pattern.value))
+    def noSort: Sort                                    = new Sort(params ++ List("BY", "nosort"))
+    def limit(offset: NonNegLong, count: PosLong): Sort =
+      new Sort(params ++ List("LIMIT", Show[NonNegLong].show(offset), Show[PosLong].show(count)))
+    def asc: Sort   = new Sort(params :+ "ASC")
+    def desc: Sort  = new Sort(params :+ "DESC")
+    def alpha: Sort = new Sort(params :+ "ALPHA")
+  }
+  object Sort {
+    final val default: Sort = new Sort(Nil)
+
+    def by(pattern: Key): Sort                          = default.by(pattern)
+    def noSort: Sort                                    = default.noSort
+    def limit(offset: NonNegLong, count: PosLong): Sort = default.limit(offset, count)
+    def asc: Sort                                       = default.asc
+    def desc: Sort                                      = default.desc
+    def alpha: Sort                                     = default.alpha
+  }
+
+  /** GET, for SORT and SORT_RO: `#` for the element itself, or a key name with `*` and `->field` for a hash field */
+  final class SortGet private (val params: List[String])
+  object SortGet {
+    def apply(pattern: Key, more: Key*): SortGet = new SortGet((pattern :: more.toList).flatMap(p => List("GET", p.value)))
+  }
+
+  /** NX, XX, GT and LT, for EXPIRE, PEXPIRE, EXPIREAT and PEXPIREAT */
+  sealed trait ExpireCondition { def params: List[String] }
+  object ExpireCondition       {
+    private final class Of(override final val params: List[String]) extends ExpireCondition
+
+    final val nx: ExpireCondition   = new Of(List("NX"))
+    final val xx: ExpireCondition   = new Of(List("XX"))
+    final val gt: ExpireCondition   = new Of(List("GT"))
+    final val lt: ExpireCondition   = new Of(List("LT"))
+    final val xxGt: ExpireCondition = new Of(List("XX", "GT"))
+    final val xxLt: ExpireCondition = new Of(List("XX", "LT"))
+  }
+
   sealed trait MigrateMode { def params: List[String] }
   object MigrateMode       {
     object copy    extends MigrateMode { override final val params: List[String] = List("COPY")            }
@@ -78,12 +133,26 @@ object KeyP {
     case object set    extends Type
     case object zset   extends Type
     case object hash   extends Type
+    case object stream extends Type
+
+    implicit final val typeShow: Show[Type] = Show.instance {
+      case `string` => "string"
+      case `list`   => "list"
+      case `set`    => "set"
+      case `zset`   => "zset"
+      case `hash`   => "hash"
+      case `stream` => "stream"
+    }
   }
 
   sealed trait TTLResponse
+
+  /** The reply of EXPIRETIME and PEXPIRETIME */
+  sealed trait ExpireTimeResponse
+
   object TTLResponse {
-    case object NoKey                             extends TTLResponse
-    case object NoExpire                          extends TTLResponse
+    case object NoKey                             extends TTLResponse with ExpireTimeResponse
+    case object NoExpire                          extends TTLResponse with ExpireTimeResponse
     final case class ExpireAfter(ttl: NonNegLong) extends TTLResponse
 
     implicit final val num2TTLResponseRead: Read[Num, TTLResponse] = Read.instance {
@@ -93,18 +162,34 @@ object KeyP {
       case Num(other)       => Left(RESPDecErr(s"Unexpected key TTL. Was $other"))
     }
   }
+
+  private[protocol] final val localAndReplicas: Read[Arr, (NonNegInt, NonNegInt)] = Read.instancePF("Arr(NonNegInt, NonNegInt)") {
+    case Arr(Read.num2NonNegIntRead(Right(local)) +: Read.num2NonNegIntRead(Right(replicas)) +: Seq()) => local -> replicas
+  }
+
+  object ExpireTimeResponse {
+    final case class ExpireAt(timestamp: NonNegLong) extends ExpireTimeResponse
+
+    implicit final val num2ExpireTimeResponseRead: Read[Num, ExpireTimeResponse] = Read.instance {
+      case Num(-2)          => Right(TTLResponse.NoKey)
+      case Num(-1)          => Right(TTLResponse.NoExpire)
+      case Num(l) if l >= 0 => Right(ExpireAt(NonNegLong.unsafeFrom(l)))
+      case Num(other)       => Left(RESPDecErr(s"Unexpected key expire time. Was $other"))
+    }
+  }
 }
 
 trait KeyBaseP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
+      "COPY: DB REPLACE",
       "DEL",
       "DUMP",
       "EXISTS",
       "EXPIRE",
       "EXPIREAT",
       "KEYS",
-      "MIGRATE: COPY KEYS REPLACE",
+      "MIGRATE: AUTH AUTH2 COPY KEYS REPLACE",
       "MOVE",
       "OBJECT ENCODING",
       "OBJECT FREQ",
@@ -118,8 +203,8 @@ trait KeyBaseP extends Features {
       "RENAME",
       "RENAMENX",
       "RESTORE: ABSTTL FREQ IDLETIME REPLACE",
-      "SCAN: COUNT MATCH",
-      "SORT: ASC BY DESC LIMIT STORE",
+      "SCAN: COUNT MATCH TYPE",
+      "SORT: ALPHA ASC BY DESC GET LIMIT STORE",
       "TOUCH",
       "TTL",
       "TYPE",
@@ -129,6 +214,12 @@ trait KeyBaseP extends Features {
 
   object keytypes {
     final type KeyEncoding        = KeyP.Encoding
+    final type KeyExpireCondition = KeyP.ExpireCondition
+    final type KeyExpireTime      = KeyP.ExpireTimeResponse
+    final type KeyMigrateAuth     = KeyP.MigrateAuth
+    final type KeyReplace         = KeyP.Replace
+    final type KeySort            = KeyP.Sort
+    final type KeySortGet         = KeyP.SortGet
     final type KeyMigrateMode     = KeyP.MigrateMode
     final type KeyRestoreEviction = KeyP.RestoreEviction
     final type KeyRestoreMode     = KeyP.RestoreMode
@@ -136,6 +227,12 @@ trait KeyBaseP extends Features {
     final type KeyTTLResponse     = KeyP.TTLResponse
 
     final val KeyEncoding               = KeyP.Encoding
+    final val KeyExpireCondition        = KeyP.ExpireCondition
+    final val KeyExpireAt               = KeyP.ExpireTimeResponse.ExpireAt
+    final val KeyMigrateAuth            = KeyP.MigrateAuth
+    final val KeyReplace                = KeyP.Replace
+    final val KeySort                   = KeyP.Sort
+    final val KeySortGet                = KeyP.SortGet
     final val KeyMigrateMode            = KeyP.MigrateMode
     final val KeyIdleTimeEviction       = KeyP.RestoreEviction.IdleTime
     final val KeyFrequencyEviction      = KeyP.RestoreEviction.Frequency
@@ -162,9 +259,19 @@ trait KeyBaseP extends Features {
     case Str("set")    => Right(Some(KeyType.set))
     case Str("zset")   => Right(Some(KeyType.zset))
     case Str("hash")   => Right(Some(KeyType.hash))
+    case Str("stream") => Right(Some(KeyType.stream))
     case Str("none")   => Right(None)
     case Str(other)    => Left(RESPDecErr(s"Unexpected string for Read[Str, Option[KeyType]]. Was $other"))
   }
+
+  final def copy(source: Key, destination: Key): Single.Aux[Boolean] =
+    Protocol("COPY", source *: destination *: EmptyTuple).as[Num, Boolean]
+  final def copy(source: Key, destination: Key, db: DbIndex): Single.Aux[Boolean] =
+    Protocol("COPY", source *: destination *: "DB" *: db *: EmptyTuple).as[Num, Boolean]
+  final def copy(source: Key, destination: Key, replace: KeyReplace): Single.Aux[Boolean] =
+    Protocol("COPY", source *: destination *: replace *: EmptyTuple).as[Num, Boolean]
+  final def copy(source: Key, destination: Key, db: DbIndex, replace: KeyReplace): Single.Aux[Boolean] =
+    Protocol("COPY", source *: destination *: "DB" *: db *: replace *: EmptyTuple).as[Num, Boolean]
 
   final def del(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]
 
@@ -202,6 +309,46 @@ trait KeyBaseP extends Features {
       mode: KeyMigrateMode
   ): Single.Aux[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: mode.params *: "KEYS" *: keys.value *: EmptyTuple)
+      .as[Str, Either[NOKEY, OK]]
+  final def migrate(
+      key: Key,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt,
+      auth: KeyMigrateAuth
+  ): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: auth.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
+  final def migrate(
+      keys: TwoOrMoreKeys,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt,
+      auth: KeyMigrateAuth
+  ): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: auth.params *: "KEYS" *: keys.value *: EmptyTuple)
+      .as[Str, Either[NOKEY, OK]]
+  final def migrate(
+      key: Key,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt,
+      mode: KeyMigrateMode,
+      auth: KeyMigrateAuth
+  ): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: mode.params *: auth.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
+  final def migrate(
+      keys: TwoOrMoreKeys,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt,
+      mode: KeyMigrateMode,
+      auth: KeyMigrateAuth
+  ): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: mode.params *: auth.params *: "KEYS" *: keys.value *: EmptyTuple)
       .as[Str, Either[NOKEY, OK]]
 
   final def move(key: Key, db: DbIndex): Single.Aux[Boolean] = Protocol("MOVE", key *: db *: EmptyTuple).as[Num, Boolean]
@@ -256,8 +403,15 @@ trait KeyBaseP extends Features {
     Protocol("SCAN", cursor *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[Key]]
   final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[Key]] =
     Protocol("SCAN", cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[Key]]
+  final def scan(cursor: NonNegLong, keyType: KeyType): Single.Aux[Scan[Key]] =
+    Protocol("SCAN", cursor *: "TYPE" *: keyType *: EmptyTuple).as[Arr, Scan[Key]]
+  final def scan(cursor: NonNegLong, pattern: GlobPattern, keyType: KeyType): Single.Aux[Scan[Key]] =
+    Protocol("SCAN", cursor *: "MATCH" *: pattern *: "TYPE" *: keyType *: EmptyTuple).as[Arr, Scan[Key]]
+  final def scan(cursor: NonNegLong, count: PosInt, keyType: KeyType): Single.Aux[Scan[Key]] =
+    Protocol("SCAN", cursor *: "COUNT" *: count *: "TYPE" *: keyType *: EmptyTuple).as[Arr, Scan[Key]]
+  final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt, keyType: KeyType): Single.Aux[Scan[Key]] =
+    Protocol("SCAN", cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "TYPE" *: keyType *: EmptyTuple).as[Arr, Scan[Key]]
 
-  // FIXME sort has many more combinations
   final def sort[A: Read[Bulk, _]](key: Key): Single.Aux[Seq[A]]                       = Protocol("SORT", key).as[Arr, Seq[A]]
   final def sort[A: Read[Bulk, _]](key: Key, pattern: GlobPattern): Single.Aux[Seq[A]] =
     Protocol("SORT", key *: "BY" *: pattern *: EmptyTuple).as[Arr, Seq[A]]
@@ -267,6 +421,14 @@ trait KeyBaseP extends Features {
     Protocol("SORT", key *: direction *: EmptyTuple).as[Arr, Seq[A]]
   final def sort(key: Key, destination: Key): Single.Aux[NonNegInt] =
     Protocol("SORT", key.value :: "STORE" :: destination.value :: Nil).as[Num, NonNegInt]
+  final def sort[A: Read[Bulk, _]](key: Key, options: KeySort): Single.Aux[Seq[A]] =
+    Protocol("SORT", key *: options.params *: EmptyTuple).as[Arr, Seq[A]]
+  final def sort[A: Read[Bulk, _]](key: Key, options: KeySort, get: KeySortGet): Single.Aux[Seq[Option[A]]] =
+    Protocol("SORT", key *: options.params *: get.params *: EmptyTuple).as[Arr, Seq[Option[A]]]
+  final def sort(key: Key, options: KeySort, destination: Key): Single.Aux[NonNegInt] =
+    Protocol("SORT", key *: options.params *: "STORE" *: destination *: EmptyTuple).as[Num, NonNegInt]
+  final def sort(key: Key, options: KeySort, get: KeySortGet, destination: Key): Single.Aux[NonNegInt] =
+    Protocol("SORT", key *: options.params *: get.params *: "STORE" *: destination *: EmptyTuple).as[Num, NonNegInt]
 
   final def touch(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("TOUCH", keys.value).as[Num, NonNegInt]
 
@@ -281,4 +443,58 @@ trait KeyBaseP extends Features {
     Protocol("WAIT", replicas *: timeout *: EmptyTuple).as[Num, PosInt]
 }
 
-trait KeyP extends KeyBaseP with KeyExtP
+/** NX, XX, GT and LT for EXPIRE, PEXPIRE, EXPIREAT and PEXPIREAT, and EXPIRETIME and PEXPIRETIME: Redis 7.0 */
+trait KeyExpireConditionP extends Features {
+  import KeyP.{ExpireCondition, ExpireTimeResponse}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "EXPIRE: GT LT NX XX",
+      "EXPIREAT: GT LT NX XX",
+      "EXPIRETIME",
+      "PEXPIRE: GT LT NX XX",
+      "PEXPIREAT: GT LT NX XX",
+      "PEXPIRETIME"
+    )
+
+  final def expire(key: Key, seconds: NonNegInt, condition: ExpireCondition): Single.Aux[Boolean] =
+    Protocol("EXPIRE", key *: seconds *: condition.params *: EmptyTuple).as[Num, Boolean]
+
+  final def expireat(key: Key, seconds: NonNegInt, condition: ExpireCondition): Single.Aux[Boolean] =
+    Protocol("EXPIREAT", key *: seconds *: condition.params *: EmptyTuple).as[Num, Boolean]
+
+  final def expiretime(key: Key): Single.Aux[ExpireTimeResponse] = Protocol("EXPIRETIME", key).as[Num, ExpireTimeResponse]
+
+  final def pexpire(key: Key, milliseconds: NonNegLong, condition: ExpireCondition): Single.Aux[Boolean] =
+    Protocol("PEXPIRE", key *: milliseconds *: condition.params *: EmptyTuple).as[Num, Boolean]
+
+  final def pexpireat(key: Key, millisecondsTimestamp: NonNegLong, condition: ExpireCondition): Single.Aux[Boolean] =
+    Protocol("PEXPIREAT", key *: millisecondsTimestamp *: condition.params *: EmptyTuple).as[Num, Boolean]
+
+  final def pexpiretime(key: Key): Single.Aux[ExpireTimeResponse] = Protocol("PEXPIRETIME", key).as[Num, ExpireTimeResponse]
+}
+
+/** SORT_RO: Redis 7.0 */
+trait KeySortReadOnlyP extends Features {
+  import KeyP.{Sort, SortGet}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SORT_RO: ALPHA ASC BY DESC GET LIMIT")
+
+  final def sortro[A: Read[Bulk, _]](key: Key, options: Sort): Single.Aux[Seq[A]] =
+    Protocol("SORT_RO", key *: options.params *: EmptyTuple).as[Arr, Seq[A]]
+  final def sortro[A: Read[Bulk, _]](key: Key, options: Sort, get: SortGet): Single.Aux[Seq[Option[A]]] =
+    Protocol("SORT_RO", key *: options.params *: get.params *: EmptyTuple).as[Arr, Seq[Option[A]]]
+}
+
+/** WAITAOF: Redis 7.2 */
+trait KeyWaitAofP extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("WAITAOF")
+
+  /** Waits until the writes before it are on disk locally (when `local` is 1) and on `replicas` replicas, or until `timeout` milliseconds
+    * have passed (0 waits forever). Replies with how many of each it reached
+    */
+  final def waitaof(local: NonNegInt, replicas: NonNegInt, timeout: NonNegLong): Single.Aux[(NonNegInt, NonNegInt)] =
+    Protocol("WAITAOF", local *: replicas *: timeout *: EmptyTuple).using(RESPRead.instance(KeyP.localAndReplicas))
+}
+
+trait KeyP extends KeyBaseP with KeyExtP with KeyExpireConditionP with KeySortReadOnlyP with KeyWaitAofP

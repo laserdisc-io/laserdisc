@@ -300,4 +300,36 @@ final class VersionImportsSpec extends BaseSpec {
       frame("GEOSEARCHSTORE", "b", "a", "BYPOLYGON", "3", "1.5", "1.5", "2.5", "1.5", "2.5", "2.5", "ASC")
     )
   }
+
+  test("redis_6_2 has COPY, SCAN with TYPE and SORT with GET, but not EXPIRE with a condition, EXPIRETIME, SORT_RO or WAITAOF") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+    import keytypes.*
+
+    assertEquals(copy("a", "b", KeyReplace).frames, frame("COPY", "a", "b", "REPLACE"))
+    assertEquals(scan(0L, KeyType.zset).frames, frame("SCAN", "0", "TYPE", "zset"))
+    assertEquals(sort[String]("a", KeySort.alpha, KeySortGet("#")).frames, frame("SORT", "a", "ALPHA", "GET", "#"))
+    assert(compileErrors("""expire("a", 10, KeyExpireCondition.nx)""").nonEmpty)
+    assert(compileErrors("""expiretime("a")""").nonEmpty)
+    assert(compileErrors("""sortro[String]("a", KeySort.alpha)""").nonEmpty)
+    assert(compileErrors("""waitaof(0, 1, 100L)""").nonEmpty)
+  }
+
+  test("redis_7_0 has EXPIRE with a condition, EXPIRETIME and SORT_RO, but not WAITAOF") {
+    import laserdisc.auto.*
+    import laserdisc.redis_7_0.*
+    import keytypes.*
+
+    assertEquals(pexpireat("a", 100L, KeyExpireCondition.lt).frames, frame("PEXPIREAT", "a", "100", "LT"))
+    assertEquals(expiretime("a").frames, frame("EXPIRETIME", "a"))
+    assertEquals(sortro[String]("a", KeySort.desc).frames, frame("SORT_RO", "a", "DESC"))
+    assert(compileErrors("""waitaof(0, 1, 100L)""").nonEmpty)
+  }
+
+  test("valkey_7_2 has WAITAOF") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_7_2.*
+
+    assertEquals(waitaof(0, 1, 100L).frames, frame("WAITAOF", "0", "1", "100"))
+  }
 }

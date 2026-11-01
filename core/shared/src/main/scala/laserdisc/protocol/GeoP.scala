@@ -173,7 +173,19 @@ object GeoP {
   }
 }
 
-trait GeoBaseP {
+trait GeoBaseP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "GEOADD",
+      "GEODIST: FT KM M MI",
+      "GEOHASH",
+      "GEOPOS",
+      "GEORADIUS: ASC COUNT DESC FT KM M MI STORE STOREDIST WITHCOORD WITHDIST WITHHASH",
+      "GEORADIUSBYMEMBER: ASC COUNT DESC FT KM M MI STORE STOREDIST WITHCOORD WITHDIST WITHHASH",
+      "GEORADIUSBYMEMBER_RO: ASC COUNT DESC FT KM M MI WITHCOORD WITHDIST WITHHASH",
+      "GEORADIUS_RO: ASC COUNT DESC FT KM M MI WITHCOORD WITHDIST WITHHASH"
+    )
+
   object geotypes {
     final type GeoCoordinates         = GeoP.Coordinates
     final type GeoKeyAndCoord         = GeoP.KeyAndCoordinates

@@ -24,7 +24,14 @@ package protocol
 
 import Protocol.{Multi, Single}
 
-trait TransactionBaseP {
+trait TransactionBaseP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "MULTI",
+      "EXEC",
+      "UNWATCH",
+      "WATCH"
+    )
 
   /** Runs `protocol` as a transaction (see [[Protocol.multi]]): the result is `None` when nothing ran because a watched key changed */
   final def multi[A](protocol: Single.Aux[A]): Multi.Aux[Option[Maybe[A]]] =

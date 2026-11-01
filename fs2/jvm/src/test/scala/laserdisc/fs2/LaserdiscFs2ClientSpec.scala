@@ -170,15 +170,15 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
     val bulk     = List.fill(payloadSize)(text).mkString(" - ")
 
     def cleanup(cl: RedisClient[IO]): IO[Unit] =
-      cl.send(lists.lrem(key, 0L, bulk)).flatMap(_ => async.unit)
+      cl.send(lrem(key, 0L, bulk)).flatMap(_ => async.unit)
 
     def preset(cl: RedisClient[IO]): IO[Unit] =
-      (1 to requestsInSequence).map(_ => cl.send(lists.rpush(key, bulk :: Nil))).toList.sequence.flatMap(_ => async.unit)
+      (1 to requestsInSequence).map(_ => cl.send(rpush(key, bulk :: Nil))).toList.sequence.flatMap(_ => async.unit)
 
     def requests(cl: RedisClient[IO]): IO[List[String]] =
       ParSeq
         .range(0, requestsInParallel)
-        .map(_ => async.start(cl.send(lists.lrange[String](key, 0L, Index(payloadSize)))))
+        .map(_ => async.start(cl.send(lrange[String](key, 0L, Index(payloadSize)))))
         .map(ioFib => ioFib.flatMap(_.joinWith(cancellationError).attempt))
         .map(
           _.map(

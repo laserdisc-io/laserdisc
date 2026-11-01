@@ -24,7 +24,14 @@ package protocol
 
 import Protocol.Single
 
-trait BListBaseP {
+trait BListBaseP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "BLPOP",
+      "BRPOP",
+      "BRPOPLPUSH"
+    )
+
   final def blpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[A]]] =
     Protocol("BLPOP", keys.value *: seconds *: EmptyTuple).asOpt[Arr, KV[A]]
 

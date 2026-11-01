@@ -24,7 +24,14 @@ package protocol
 
 import Protocol.Single
 
-trait HyperLogLogBaseP {
+trait HyperLogLogBaseP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "PFADD",
+      "PFCOUNT",
+      "PFMERGE"
+    )
+
   final def pfadd(key: Key, elements: OneOrMoreKeys): Single.Aux[Boolean] = Protocol("PFADD", key :: elements.value).as[Num, Boolean]
 
   final def pfcount(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("PFCOUNT", keys.value).as[Num, NonNegInt]

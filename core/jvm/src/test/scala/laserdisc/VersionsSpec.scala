@@ -23,10 +23,15 @@ package laserdisc
 
 import laserdisc.protocol.Features
 
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.{Files, Paths}
 import scala.io.Source
 
-// checks each version against what that server version says it has, from core/jvm/src/test/resources/servers/
+// checks each version against what that server version says it has, from core/jvm/src/test/resources/servers/, and
+// writes what the server has that laserdisc doesn't to versions-report/ next to the test classes
 final class VersionsSpec extends BaseSpec {
+
+  private val reports = Paths.get(getClass.getResource("/servers").toURI).getParent.getParent.resolve("versions-report")
 
   private def server(name: String): Map[String, Set[String]] = {
     val source = Source.fromResource(s"servers/$name.txt")
@@ -62,8 +67,16 @@ final class VersionsSpec extends BaseSpec {
     }
     assert(notOnServer.isEmpty, s"$name doesn't have: ${notOnServer.mkString(", ")}")
 
-    val missing = ours.keys.toList.sorted.flatMap(c => (has(c) -- ours(c)).toList.sorted.map(k => s"$c $k"))
-    if (missing.nonEmpty) println(s"--- $name has, but laserdisc doesn't: ${missing.mkString(", ")}")
+    val missingCommands = (has.keySet -- ours.keySet).toList.sorted
+    val missingKeywords = ours.keys.toList.sorted.flatMap(c => (has(c) -- ours(c)).toList.sorted.map(k => s"$c $k"))
+    Files.createDirectories(reports)
+    Files.write(
+      reports.resolve(s"$name.txt"),
+      (s"Commands (${missingCommands.size}):" :: missingCommands ::: "" :: s"Keywords (${missingKeywords.size}):" :: missingKeywords)
+        .mkString("", "\n", "\n")
+        .getBytes(UTF_8)
+    )
+    println(s"--- $name: laserdisc has ${ours.size} of ${has.size} commands, missing ${missingKeywords.size} keywords of those")
   }
 
   test("redis_6_2 matches Redis 6.2")(check(redis_6_2, "redis-6.2"))

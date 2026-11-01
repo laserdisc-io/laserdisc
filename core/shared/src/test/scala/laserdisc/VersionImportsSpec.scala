@@ -108,6 +108,14 @@ final class VersionImportsSpec extends BaseSpec {
     assert(compileErrors("""set("a", 2, strings.compare.ifNe(1))""").nonEmpty)
   }
 
+  test("a version's options can be used next to import laserdisc.*") {
+    import laserdisc.*
+    import laserdisc.auto.*
+    import laserdisc.valkey_8_1.*
+
+    assertEquals(set(Key("a"), 2, strings.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
+  }
+
   test("valkey_8_0 has no IFEQ") {
     import laserdisc.auto.*
     import laserdisc.valkey_8_0.*

@@ -24,7 +24,26 @@ package protocol
 
 import Protocol.Single
 
-trait HashBaseP {
+trait HashBaseP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "HDEL",
+      "HEXISTS",
+      "HGET",
+      "HGETALL",
+      "HINCRBY",
+      "HINCRBYFLOAT",
+      "HKEYS",
+      "HLEN",
+      "HMGET",
+      "HMSET",
+      "HSCAN: COUNT MATCH",
+      "HSET",
+      "HSETNX",
+      "HSTRLEN",
+      "HVALS"
+    )
+
   final def hdel(key: Key, fields: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("HDEL", key :: fields.value).as[Num, NonNegInt]
 
   final def hexists(key: Key, field: Key): Single.Aux[Boolean] = Protocol("HEXISTS", key :: field :: Nil).as[Num, Boolean]

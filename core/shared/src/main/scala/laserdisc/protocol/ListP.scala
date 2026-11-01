@@ -37,7 +37,25 @@ object ListP {
   }
 }
 
-trait ListBaseP {
+trait ListBaseP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "LINDEX",
+      "LINSERT: AFTER BEFORE",
+      "LLEN",
+      "LPOP",
+      "LPUSH",
+      "LPUSHX",
+      "LRANGE",
+      "LREM",
+      "LSET",
+      "LTRIM",
+      "RPOP",
+      "RPOPLPUSH",
+      "RPUSH",
+      "RPUSHX"
+    )
+
   object listtypes {
     final type ListPosition = ListP.Position
 

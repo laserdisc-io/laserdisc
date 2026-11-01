@@ -133,7 +133,32 @@ object SortedSetP {
   }
 }
 
-trait SortedSetBaseP {
+trait SortedSetBaseP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "ZADD: CH INCR NX XX",
+      "ZCARD",
+      "ZCOUNT",
+      "ZINCRBY",
+      "ZINTERSTORE: AGGREGATE MAX MIN SUM WEIGHTS",
+      "ZLEXCOUNT",
+      "ZRANGE",
+      "ZRANGEBYLEX: LIMIT",
+      "ZRANGEBYSCORE: LIMIT WITHSCORES",
+      "ZRANK",
+      "ZREM",
+      "ZREMRANGEBYLEX",
+      "ZREMRANGEBYRANK",
+      "ZREMRANGEBYSCORE",
+      "ZREVRANGE",
+      "ZREVRANGEBYLEX: LIMIT",
+      "ZREVRANGEBYSCORE: LIMIT WITHSCORES",
+      "ZREVRANK",
+      "ZSCAN: COUNT MATCH",
+      "ZSCORE",
+      "ZUNIONSTORE: AGGREGATE MAX MIN SUM WEIGHTS"
+    )
+
   import SortedSetP.{Aggregate, Flag, LexRange, ScoreRange}
 
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])

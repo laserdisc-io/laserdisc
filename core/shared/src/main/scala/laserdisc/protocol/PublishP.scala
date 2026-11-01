@@ -24,7 +24,12 @@ package protocol
 
 import Protocol.Single
 
-trait PublishP {
+trait PublishP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "PUBLISH"
+    )
+
   // TODO work out all pub/sub system properly
 
   final def publish[A: Show](channel: Key, value: A): Single.Aux[NonNegInt] =

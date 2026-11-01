@@ -40,6 +40,8 @@ trait Base6_2
     with StringExtP
     with TransactionP {
   object blocking extends BListP
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ blocking.supported
 }
 
 trait Redis6_2  extends Base6_2

@@ -23,20 +23,6 @@ package laserdisc
 
 import protocol.*
 
-object cluster     extends ClusterP
-object connection  extends ConnectionP
-object geo         extends GeoP
-object hashmaps    extends HashP
-object hyperloglog extends HyperLogLogP
-object keys        extends KeyP
-object lists       extends ListP { object blocking extends BListP }
-object publish     extends PublishP
-object server      extends ServerP
-object sets        extends SetP
-object sortedsets  extends SortedSetP
-object strings     extends StringP
-object transaction extends TransactionP
-
 object all
     extends ClusterP
     with ConnectionP

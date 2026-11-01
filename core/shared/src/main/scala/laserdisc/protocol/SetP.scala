@@ -24,7 +24,26 @@ package protocol
 
 import Protocol.Single
 
-trait SetBaseP {
+trait SetBaseP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "SADD",
+      "SCARD",
+      "SDIFF",
+      "SDIFFSTORE",
+      "SINTER",
+      "SINTERSTORE",
+      "SISMEMBER",
+      "SMEMBERS",
+      "SMOVE",
+      "SPOP",
+      "SRANDMEMBER",
+      "SREM",
+      "SSCAN: COUNT MATCH",
+      "SUNION",
+      "SUNIONSTORE"
+    )
+
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
   final def sadd[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[NonNegInt] =

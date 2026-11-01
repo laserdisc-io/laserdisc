@@ -95,7 +95,38 @@ object KeyP {
   }
 }
 
-trait KeyBaseP {
+trait KeyBaseP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "DEL",
+      "DUMP",
+      "EXISTS",
+      "EXPIRE",
+      "EXPIREAT",
+      "KEYS",
+      "MIGRATE: COPY KEYS REPLACE",
+      "MOVE",
+      "OBJECT ENCODING",
+      "OBJECT FREQ",
+      "OBJECT IDLETIME",
+      "OBJECT REFCOUNT",
+      "PERSIST",
+      "PEXPIRE",
+      "PEXPIREAT",
+      "PTTL",
+      "RANDOMKEY",
+      "RENAME",
+      "RENAMENX",
+      "RESTORE: ABSTTL FREQ IDLETIME REPLACE",
+      "SCAN: COUNT MATCH",
+      "SORT: ASC BY DESC LIMIT STORE",
+      "TOUCH",
+      "TTL",
+      "TYPE",
+      "UNLINK",
+      "WAIT"
+    )
+
   object keytypes {
     final type KeyEncoding        = KeyP.Encoding
     final type KeyMigrateMode     = KeyP.MigrateMode

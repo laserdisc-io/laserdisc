@@ -295,7 +295,32 @@ object ClusterP {
   }
 }
 
-trait ClusterP {
+trait ClusterP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "CLUSTER ADDSLOTS",
+      "CLUSTER COUNT-FAILURE-REPORTS",
+      "CLUSTER COUNTKEYSINSLOT",
+      "CLUSTER DELSLOTS",
+      "CLUSTER FAILOVER: FORCE TAKEOVER",
+      "CLUSTER FORGET",
+      "CLUSTER GETKEYSINSLOT",
+      "CLUSTER INFO",
+      "CLUSTER KEYSLOT",
+      "CLUSTER MEET",
+      "CLUSTER NODES",
+      "CLUSTER REPLICAS",
+      "CLUSTER REPLICATE",
+      "CLUSTER RESET: HARD SOFT",
+      "CLUSTER SAVECONFIG",
+      "CLUSTER SET-CONFIG-EPOCH",
+      "CLUSTER SETSLOT: IMPORTING MIGRATING NODE STABLE",
+      "CLUSTER SLAVES",
+      "CLUSTER SLOTS",
+      "READONLY",
+      "READWRITE"
+    )
+
   object clustertypes {
     final type ClusterAddress           = ClusterP.Address
     final type ClusterFailoverMode      = ClusterP.FailoverMode

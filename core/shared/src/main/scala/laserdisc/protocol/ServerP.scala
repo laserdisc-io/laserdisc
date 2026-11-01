@@ -195,7 +195,32 @@ object ServerP {
   }
 }
 
-trait ServerP {
+trait ServerP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "BGREWRITEAOF",
+      "BGSAVE",
+      "CLIENT GETNAME",
+      "CLIENT KILL",
+      "CLIENT LIST",
+      "CLIENT PAUSE",
+      "CLIENT SETNAME",
+      "CONFIG GET",
+      "CONFIG RESETSTAT",
+      "CONFIG REWRITE",
+      "CONFIG SET",
+      "DBSIZE",
+      "FLUSHALL: ASYNC",
+      "FLUSHDB: ASYNC",
+      "INFO",
+      "LASTSAVE",
+      "ROLE",
+      "SAVE",
+      "SHUTDOWN: NOSAVE SAVE",
+      "SLAVEOF: NO ONE",
+      "TIME"
+    )
+
   import ServerP.{Configuration, ConnectedClients, Info, InfoSection, Role, ShutdownFlag}
 
   object servers {

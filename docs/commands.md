@@ -18,19 +18,45 @@ instead, use its object:
 
 | Family | Import |
 | --- | --- |
-| Strings | `laserdisc.strings.*` |
-| Keys | `laserdisc.keys.*` |
-| Hashes | `laserdisc.hashmaps.*` |
-| Lists | `laserdisc.lists.*`, and `laserdisc.lists.blocking.*` for blocking commands |
-| Sets | `laserdisc.sets.*` |
-| Sorted sets | `laserdisc.sortedsets.*` |
-| Geospatial | `laserdisc.geo.*` |
-| HyperLogLog | `laserdisc.hyperloglog.*` |
-| Publish | `laserdisc.publish.*` |
-| Transactions | `laserdisc.transaction.*` |
-| Connection | `laserdisc.connection.*` |
-| Server | `laserdisc.server.*` |
-| Cluster | `laserdisc.cluster.*` |
+| Strings | `laserdisc.families.strings.*` |
+| Keys | `laserdisc.families.keys.*` |
+| Hashes | `laserdisc.families.hashmaps.*` |
+| Lists | `laserdisc.families.lists.*`, and `laserdisc.families.lists.blocking.*` for blocking commands |
+| Sets | `laserdisc.families.sets.*` |
+| Sorted sets | `laserdisc.families.sortedsets.*` |
+| Geospatial | `laserdisc.families.geo.*` |
+| HyperLogLog | `laserdisc.families.hyperloglog.*` |
+| Publish | `laserdisc.families.publish.*` |
+| Transactions | `laserdisc.families.transaction.*` |
+| Connection | `laserdisc.families.connection.*` |
+| Server | `laserdisc.families.server.*` |
+| Cluster | `laserdisc.families.cluster.*` |
+
+## Your server's version
+
+`laserdisc.all.*` has every command, including some your server may not have.
+To get only what your server has, import its version instead:
+
+```scala mdoc:compile-only
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.valkey_8_1.*
+
+val setIfOne = set("a", 2, strings.ifEq(1))
+```
+
+A command or option your server doesn't have won't compile. For example,
+`strings.ifEq` arrived in Valkey 8.1 and Redis 8.4, so the same line doesn't
+compile with `laserdisc.redis_8_2.*`.
+
+| Server | Import |
+| --- | --- |
+| Redis 6.2 to 8.10 | `laserdisc.redis_6_2.*`, `laserdisc.redis_7_0.*`, `laserdisc.redis_7_2.*`, `laserdisc.redis_7_4.*`, `laserdisc.redis_8_0.*`, `laserdisc.redis_8_2.*`, `laserdisc.redis_8_4.*`, `laserdisc.redis_8_6.*`, `laserdisc.redis_8_8.*`, `laserdisc.redis_8_10.*` |
+| Valkey 7.2 to 9.1 | `laserdisc.valkey_7_2.*`, `laserdisc.valkey_8_0.*`, `laserdisc.valkey_8_1.*`, `laserdisc.valkey_9_0.*`, `laserdisc.valkey_9_1.*` |
+| KeyDB | `laserdisc.redis_6_2.*` |
+
+Each import covers every patch release of its version: `laserdisc.redis_7_2.*`
+is for Redis 7.2.0 and later 7.2 releases.
 
 ## Arguments
 

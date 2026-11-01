@@ -24,7 +24,17 @@ package protocol
 
 import Protocol.Single
 
-trait ConnectionP {
+trait ConnectionP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "AUTH",
+      "ECHO",
+      "PING",
+      "QUIT",
+      "SELECT",
+      "SWAPDB"
+    )
+
   private implicit final val pongRead: Read[Str, PONG] = Read.instance {
     case Str(pong) if pong == PONG.value => Right(PONG)
     case Str(other)                      => Left(RESPDecErr(s"Wrong PONG encoding: was $other"))

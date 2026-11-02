@@ -22,7 +22,8 @@
 package laserdisc
 
 package object protocol {
-  private[protocol] final val KVPairRegex = "(.*):(.*)".r
+  // the key ends at the first colon, so values may have colons
+  private[protocol] final val KVPairRegex = "([^:]*):(.*)".r
 
   private[protocol] val KVP: Read[String, (String, String)] = {
     case KVPairRegex(k, v) => Right(k -> v)

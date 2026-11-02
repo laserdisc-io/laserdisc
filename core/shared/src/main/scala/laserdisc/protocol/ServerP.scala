@@ -30,7 +30,14 @@ import scala.annotation.nowarn
 object ServerP {
   import scala.language.dynamics
 
-  sealed trait InfoSection
+  /** The name of a section in INFO's reply: one laserdisc names, or `Other` for one it doesn't, like a module's or KeyDB's */
+  sealed trait InfoSectionKey
+  object InfoSectionKey {
+    final case class Other(name: String) extends InfoSectionKey
+  }
+
+  /** A section of INFO in Redis 6.2, or a group of them (`all`, `everything` and `default`) */
+  sealed trait InfoSection extends InfoSectionKey
   object InfoSection {
     final type default = default.type
 
@@ -41,11 +48,20 @@ object ServerP {
     object stats        extends InfoSection
     object replication  extends InfoSection
     object cpu          extends InfoSection
+    object modules      extends InfoSection
     object commandstats extends InfoSection
+    object errorstats   extends InfoSection
     object cluster      extends InfoSection
     object keyspace     extends InfoSection
     object all          extends InfoSection
+    object everything   extends InfoSection
     object default      extends InfoSection
+
+    final val latencystats: LatencyStatsSection = new LatencyStatsSection
+    final val threads: Redis8Section            = new Redis8Section("threads")
+    final val keysizes: Redis8Section           = new Redis8Section("keysizes")
+    final val hotkeys: HotKeysSection           = new HotKeysSection
+    final val tls: TlsSection                   = new TlsSection
 
     implicit val defaultShow: Show[default]         = Show.const("default")
     implicit val infoSectionShow: Show[InfoSection] = Show.instance {
@@ -56,13 +72,34 @@ object ServerP {
       case `stats`        => "stats"
       case `replication`  => "replication"
       case `cpu`          => "cpu"
+      case `modules`      => "modules"
       case `commandstats` => "commandstats"
+      case `errorstats`   => "errorstats"
       case `cluster`      => "cluster"
       case `keyspace`     => "keyspace"
       case `all`          => "all"
+      case `everything`   => "everything"
       case `default`      => "default"
     }
   }
+
+  /** A section of INFO that a later version added */
+  sealed abstract class LaterInfoSection(val name: String) extends InfoSectionKey
+  object LaterInfoSection {
+    implicit def laterInfoSectionShow[S <: LaterInfoSection]: Show[S] = Show.instance(_.name)
+  }
+
+  /** LATENCYSTATS: Redis 7.0 */
+  final class LatencyStatsSection private[ServerP] () extends LaterInfoSection("latencystats")
+
+  /** THREADS and KEYSIZES: Redis 8.0 */
+  final class Redis8Section private[ServerP] (name: String) extends LaterInfoSection(name)
+
+  /** HOTKEYS: Redis 8.6 */
+  final class HotKeysSection private[ServerP] () extends LaterInfoSection("hotkeys")
+
+  /** TLS: Valkey 9.1 */
+  final class TlsSection private[ServerP] () extends LaterInfoSection("tls")
 
   sealed trait ShutdownFlag
   object ShutdownFlag {
@@ -153,130 +190,337 @@ object ServerP {
       Read[Arr, Seq[(String, String)]].map(kvs => Configuration(new Parameters(kvs.toMap)))
   }
 
-  final case class Info(sections: Map[InfoSection, Parameters])
+  final case class Info(sections: Map[InfoSectionKey, Parameters])
   object Info {
-    private val ISR: Read[String, InfoSection] = Read.instance {
-      case "server"       => Right(InfoSection.server)
-      case "clients"      => Right(InfoSection.clients)
-      case "memory"       => Right(InfoSection.memory)
-      case "persistence"  => Right(InfoSection.persistence)
-      case "stats"        => Right(InfoSection.stats)
-      case "replication"  => Right(InfoSection.replication)
-      case "cpu"          => Right(InfoSection.cpu)
-      case "commandstats" => Right(InfoSection.commandstats)
-      case "cluster"      => Right(InfoSection.cluster)
-      case "keyspace"     => Right(InfoSection.keyspace)
-      case other          => Left(RESPDecErr(s"Unexpected server info specification. Was $other"))
+    private def section(name: String): InfoSectionKey = name.toLowerCase match {
+      case "server"       => InfoSection.server
+      case "clients"      => InfoSection.clients
+      case "memory"       => InfoSection.memory
+      case "persistence"  => InfoSection.persistence
+      case "stats"        => InfoSection.stats
+      case "replication"  => InfoSection.replication
+      case "cpu"          => InfoSection.cpu
+      case "modules"      => InfoSection.modules
+      case "commandstats" => InfoSection.commandstats
+      case "errorstats"   => InfoSection.errorstats
+      case "cluster"      => InfoSection.cluster
+      case "keyspace"     => InfoSection.keyspace
+      case "latencystats" => InfoSection.latencystats
+      case "threads"      => InfoSection.threads
+      case "keysizes"     => InfoSection.keysizes
+      case "hotkeys"      => InfoSection.hotkeys
+      case "tls"          => InfoSection.tls
+      case other          => InfoSectionKey.Other(other)
     }
-    private val PR: Read[Seq[String], Parameters] =
-      KVPS.map(kv => new Parameters(kv.toMap))
 
-    private val IFI: Read[String, (InfoSection, Parameters)] =
-      _.split(LF_CH).toList match {
-        case ISR(Right(infoSection)) :: PR(Right(parameters)) => Right(infoSection -> parameters)
-        case ISR(Left(e)) :: _                                =>
-          Left(RESPDecErr(s"Read[String, (InfoSection, Parameters)], Error decoding server's info section. Error was: $e"))
-        case _ :: PR(Left(e)) =>
-          Left(RESPDecErr(s"Read[String, (InfoSection, Parameters)], Error decoding server's info section parameters. Error was: $e"))
-        case other =>
-          Left(RESPDecErr(s"Unexpected encoding for server's info section. Expected [info section, [parameter: value]] but was $other"))
-      }
-
+    // sections start with a "# Name" line, followed by "key:value" lines, and are separated by empty lines
     implicit val infoRead: Read[Bulk, Info] = Read.instance { case Bulk(s) =>
-      s.split(LF * 2)
-        .foldRight[Either[RESPDecErr, (List[(InfoSection, Parameters)], Int)]](Right(Nil -> 0)) {
-          case (IFI(Right(infoSection)), Right((iss, isl))) => Right((infoSection :: iss) -> (isl + 1))
-          case (IFI(Left(e)), Right((_, isl)))              =>
-            Left(RESPDecErr(s"Read[Bulk, Info], Error decoding the server's info section at position ${isl + 1}. Error was: $e"))
-          case (_, left) => left
+      s.split("\r?\n")
+        .toList
+        .foldLeft[Either[RESPDecErr, List[(InfoSectionKey, List[String])]]](Right(Nil)) {
+          case (Right(sections), line) if line.startsWith("# ") => Right((section(line.drop(2).trim) -> Nil) :: sections)
+          case (Right(sections), line) if line.trim.isEmpty     => Right(sections)
+          case (Right((current, lines) :: sections), line)      => Right((current -> (line :: lines)) :: sections)
+          case (Right(Nil), line) => Left(RESPDecErr(s"Read[Bulk, Info], a line came before any section: $line"))
+          case (left, _)          => left
         }
-        .map(is => Info(is._1.toMap))
+        .flatMap { sections =>
+          sections.reverse.foldRight[Either[RESPDecErr, List[(InfoSectionKey, Parameters)]]](Right(Nil)) {
+            case ((name, lines), Right(read)) =>
+              KVPS.read(lines.reverse) match {
+                case Right(kvs) => Right((name -> new Parameters(kvs.toMap)) :: read)
+                case Left(e)    => Left(RESPDecErr(s"Read[Bulk, Info], error decoding the $name section: ${e.message}"))
+              }
+            case (_, left) => left
+          }
+        }
+        .map(sections => Info(sections.toMap))
     }
   }
+
+  /** The type of a client, for CLIENT KILL and CLIENT LIST */
+  sealed trait ClientType
+  object ClientType {
+    object normal  extends ClientType
+    object master  extends ClientType
+    object replica extends ClientType
+    object pubsub  extends ClientType
+
+    implicit val clientTypeShow: Show[ClientType] = Show.instance {
+      case `normal`  => "normal"
+      case `master`  => "master"
+      case `replica` => "replica"
+      case `pubsub`  => "pubsub"
+    }
+  }
+
+  /** WRITE and ALL, for CLIENT PAUSE: pause only clients that write, or all of them */
+  sealed trait PauseMode
+  object PauseMode {
+    object write extends PauseMode
+    object all   extends PauseMode
+
+    implicit val pauseModeShow: Show[PauseMode] = Show.instance {
+      case `write` => "WRITE"
+      case `all`   => "ALL"
+    }
+  }
+
+  /** TIMEOUT and ERROR, for CLIENT UNBLOCK: unblock the client as if its command timed out, or with an error */
+  sealed trait UnblockMode
+  object UnblockMode {
+    object timeout extends UnblockMode
+    object error   extends UnblockMode
+
+    implicit val unblockModeShow: Show[UnblockMode] = Show.instance {
+      case `timeout` => "TIMEOUT"
+      case `error`   => "ERROR"
+    }
+  }
+
+  /** The filters of CLIENT KILL: a client is closed only if it matches all of them */
+  final class ClientFilter private (val params: List[String]) {
+    import Show.{hostShow, portShow}
+
+    def id(id: NonNegLong): ClientFilter              = new ClientFilter(params ++ List("ID", id.value.toString))
+    def address(host: Host, port: Port): ClientFilter =
+      new ClientFilter(params ++ List("ADDR", s"${hostShow.show(host)}:${portShow.show(port)}"))
+    def localAddress(host: Host, port: Port): ClientFilter =
+      new ClientFilter(params ++ List("LADDR", s"${hostShow.show(host)}:${portShow.show(port)}"))
+    def clientType(clientType: ClientType): ClientFilter =
+      new ClientFilter(params ++ List("TYPE", ClientType.clientTypeShow.show(clientType)))
+    def user(username: String): ClientFilter = new ClientFilter(params ++ List("USER", username))
+
+    /** Whether to spare the client sending the command, which is the default */
+    def skipMe(skip: Boolean): ClientFilter = new ClientFilter(params ++ List("SKIPME", if (skip) "yes" else "no"))
+  }
+  object ClientFilter {
+    private final val none = new ClientFilter(Nil)
+
+    def id(id: NonNegLong): ClientFilter                   = none.id(id)
+    def address(host: Host, port: Port): ClientFilter      = none.address(host, port)
+    def localAddress(host: Host, port: Port): ClientFilter = none.localAddress(host, port)
+    def clientType(clientType: ClientType): ClientFilter   = none.clientType(clientType)
+    def user(username: String): ClientFilter               = none.user(username)
+    def skipMe(skip: Boolean): ClientFilter                = none.skipMe(skip)
+  }
+
+  /** NOW and FORCE, for SHUTDOWN: don't wait for replicas to catch up, and shut down even if saving fails */
+  final class ShutdownOptions private (val params: List[String]) {
+    def now: ShutdownOptions   = new ShutdownOptions(params :+ "NOW")
+    def force: ShutdownOptions = new ShutdownOptions(params :+ "FORCE")
+  }
+  object ShutdownOptions {
+    final val now: ShutdownOptions   = new ShutdownOptions(List("NOW"))
+    final val force: ShutdownOptions = new ShutdownOptions(List("FORCE"))
+  }
+
+  /** What CLIENT INFO replies: the same fields as a line of CLIENT LIST, for the client sending it */
+  final case class ClientInfo(parameters: Parameters)
+  object ClientInfo {
+    implicit val clientInfoRead: Read[Bulk, ClientInfo] = ConnectedClients.connectedClientsRead.flatMap {
+      case ConnectedClients(Seq(parameters)) => Read.const(ClientInfo(parameters))
+      case other => Read.instance(_ => Left(RESPDecErr(s"Expected the information of one client, but was $other")))
+    }
+  }
+
 }
 
-trait ServerP extends Features {
+/** CLIENT: Redis 6.2 */
+trait ClientCommands extends Features {
+  import ServerP.{ClientFilter, ClientInfo, ClientType, ConnectedClients, PauseMode, UnblockMode}
+  import Show.{hostShow, portShow}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "CLIENT GETNAME",
+      "CLIENT ID",
+      "CLIENT INFO",
+      "CLIENT KILL: ADDR ID LADDR MASTER NORMAL PUBSUB REPLICA SKIPME TYPE USER",
+      "CLIENT LIST: ID MASTER NORMAL PUBSUB REPLICA TYPE",
+      "CLIENT PAUSE: ALL WRITE",
+      "CLIENT SETNAME",
+      "CLIENT UNBLOCK: ERROR TIMEOUT",
+      "CLIENT UNPAUSE"
+    )
+
+  val getname: Single.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").asOpt[Bulk, ConnectionName]
+
+  val id: Single.Aux[NonNegLong] = Protocol("CLIENT", "ID").as[Num, NonNegLong]
+
+  val info: Single.Aux[ClientInfo] = Protocol("CLIENT", "INFO").as[Bulk, ClientInfo]
+
+  def kill(host: Host, port: Port): Single.Aux[OK] =
+    Protocol("CLIENT", "KILL" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Str, OK]
+
+  /** Closes the clients that match every filter, and replies how many it closed */
+  def kill(filter: ClientFilter): Single.Aux[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]
+
+  val list: Single.Aux[ConnectedClients]                         = Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
+  def list(clientType: ClientType): Single.Aux[ConnectedClients] =
+    Protocol("CLIENT", "LIST" *: "TYPE" *: clientType *: EmptyTuple).as[Bulk, ConnectedClients]
+  def list(ids: OneOrMore[NonNegLong]): Single.Aux[ConnectedClients] =
+    Protocol("CLIENT", "LIST" *: "ID" *: ids.value *: EmptyTuple).as[Bulk, ConnectedClients]
+
+  def pause(milliseconds: PosLong): Single.Aux[OK]                  = Protocol("CLIENT", "PAUSE" *: milliseconds *: EmptyTuple).as[Str, OK]
+  def pause(milliseconds: PosLong, mode: PauseMode): Single.Aux[OK] =
+    Protocol("CLIENT", "PAUSE" *: milliseconds *: mode *: EmptyTuple).as[Str, OK]
+
+  def setname(connectionName: ConnectionName): Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[Str, OK]
+
+  /** Unblocks a client waiting in a blocking command, and replies whether there was one */
+  def unblock(id: NonNegLong): Single.Aux[Boolean]                    = Protocol("CLIENT", "UNBLOCK" *: id *: EmptyTuple).as[Num, Boolean]
+  def unblock(id: NonNegLong, mode: UnblockMode): Single.Aux[Boolean] =
+    Protocol("CLIENT", "UNBLOCK" *: id *: mode *: EmptyTuple).as[Num, Boolean]
+
+  val unpause: Single.Aux[OK] = Protocol("CLIENT", "UNPAUSE").as[Str, OK]
+
+  val unsetname: Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
+}
+
+/** CLIENT NO-EVICT: Redis 7.0 */
+trait ClientNoEvictCommands extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT NO-EVICT: OFF ON")
+
+  /** Whether this connection is spared when the server evicts clients to free memory */
+  def noevict(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "NO-EVICT" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
+}
+
+/** CLIENT NO-TOUCH and CLIENT SETINFO: Redis 7.2 */
+trait ClientNoTouchCommands extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("CLIENT NO-TOUCH: OFF ON", "CLIENT SETINFO: LIB-NAME LIB-VER")
+
+  /** Whether this connection's commands leave the keys' last access time as it was */
+  def notouch(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "NO-TOUCH" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
+
+  /** The name of the library this connection uses, shown by CLIENT LIST */
+  def setlibname(name: Key): Single.Aux[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-NAME" :: name.value :: Nil).as[Str, OK]
+
+  /** The version of the library this connection uses, shown by CLIENT LIST */
+  def setlibversion(version: Key): Single.Aux[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-VER" :: version.value :: Nil).as[Str, OK]
+}
+
+/** CLIENT KILL with MAXAGE: Redis 7.4, Valkey 8.0 */
+trait ClientMaxAgeCommands extends Features {
+  import ServerP.ClientFilter
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT KILL: MAXAGE")
+
+  /** Closes the clients that match every filter and have been connected for longer than `seconds` */
+  def kill(filter: ClientFilter, seconds: PosLong): Single.Aux[NonNegLong] =
+    Protocol("CLIENT", "KILL" *: filter.params *: "MAXAGE" *: seconds *: EmptyTuple).as[Num, NonNegLong]
+}
+
+/** CONFIG: Redis 6.2 */
+trait ConfigCommands extends Features {
+  import ServerP.Configuration
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("CONFIG GET", "CONFIG RESETSTAT", "CONFIG REWRITE", "CONFIG SET")
+
+  def get(parameter: GlobPattern): Single.Aux[Configuration] = Protocol("CONFIG", "GET" :: parameter.value :: Nil).as[Arr, Configuration]
+
+  val resetstat: Single.Aux[OK] = Protocol("CONFIG", "RESETSTAT").as[Str, OK]
+
+  val rewrite: Single.Aux[OK] = Protocol("CONFIG", "REWRITE").as[Str, OK]
+
+  def set[A: Show](parameter: Key, value: A): Single.Aux[OK] = Protocol("CONFIG", "SET" *: parameter *: value *: EmptyTuple).as[Str, OK]
+}
+
+/** CONFIG GET and CONFIG SET with several parameters: Redis 7.0 */
+trait ConfigManyCommands extends Features {
+  import ServerP.Configuration
+
+  def get(parameters: OneOrMore[GlobPattern]): Single.Aux[Configuration] =
+    Protocol("CONFIG", "GET" :: parameters.value.map(_.value)).as[Arr, Configuration]
+
+  /** Sets every parameter, or none of them if one can't be set */
+  def set[A: Show](parameters: OneOrMore[(Key, A)]): Single.Aux[OK] =
+    Protocol("CONFIG", "SET" *: parameters.value *: EmptyTuple).as[Str, OK]
+}
+
+trait ServerBaseP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "BGREWRITEAOF",
-      "BGSAVE",
-      "CLIENT GETNAME",
-      "CLIENT KILL",
-      "CLIENT LIST",
-      "CLIENT PAUSE",
-      "CLIENT SETNAME",
-      "CONFIG GET",
-      "CONFIG RESETSTAT",
-      "CONFIG REWRITE",
-      "CONFIG SET",
+      "BGSAVE: SCHEDULE",
       "DBSIZE",
-      "FLUSHALL: ASYNC",
-      "FLUSHDB: ASYNC",
+      "FAILOVER: ABORT FORCE TIMEOUT TO",
+      "FLUSHALL: ASYNC SYNC",
+      "FLUSHDB: ASYNC SYNC",
       "INFO",
       "LASTSAVE",
+      "REPLICAOF: NO ONE",
       "ROLE",
       "SAVE",
       "SHUTDOWN: NOSAVE SAVE",
       "SLAVEOF: NO ONE",
       "TIME"
-    )
+    ) ++ client.supported ++ config.supported
 
-  import ServerP.{Configuration, ConnectedClients, Info, InfoSection, Role, ShutdownFlag}
+  import ServerP.{Info, InfoSection, Role, ShutdownFlag}
 
   object servers {
-    final val info = InfoSection
-    final val flag = ShutdownFlag
+    final val clientFilter    = ServerP.ClientFilter
+    final val clientType      = ServerP.ClientType
+    final val flag            = ShutdownFlag
+    final val info            = InfoSection
+    final val pauseMode       = ServerP.PauseMode
+    final val shutdownOptions = ServerP.ShutdownOptions
+    final val unblockMode     = ServerP.UnblockMode
   }
 
-  final val bgrewriteaof: Single.Aux[OK] = Protocol("BGREWRITEAOF", EmptyTuple).as[Str, OK]
+  lazy val client: ClientCommands = new ClientCommands {}
 
-  final val bgsave: Single.Aux[OK] = Protocol("BGSAVE", EmptyTuple).as[Str, OK]
+  lazy val config: ConfigCommands = new ConfigCommands {}
 
-  object client {
-    import Show.{hostShow, portShow}
+  /** Replies with the server's message, like "Background append only file rewriting started" */
+  final val bgrewriteaof: Single.Aux[String] = Protocol("BGREWRITEAOF", EmptyTuple).as[Str, String]
 
-    val getname: Single.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").asOpt[Bulk, ConnectionName]
+  /** Replies with the server's message, like "Background saving started" */
+  final val bgsave: Single.Aux[String] = Protocol("BGSAVE", EmptyTuple).as[Str, String]
 
-    // FIXME other variations of kill
-    def kill(host: Host, port: Port): Single.Aux[OK] =
-      Protocol("CLIENT", "KILL" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Str, OK]
-
-    val list: Single.Aux[ConnectedClients] = Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
-
-    def pause(milliseconds: PosLong): Single.Aux[OK] = Protocol("CLIENT", "PAUSE" *: milliseconds *: EmptyTuple).as[Str, OK]
-
-    def setname(connectionName: ConnectionName): Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[Str, OK]
-
-    val unsetname: Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
-  }
-
-  // TODO command?
-
-  object config {
-    def get(parameter: GlobPattern): Single.Aux[Configuration] =
-      Protocol("CONFIG", "GET" :: parameter.value :: Nil).as[Arr, Configuration]
-
-    val resetstat: Single.Aux[OK] = Protocol("CONFIG", "RESETSTAT").as[Str, OK]
-
-    val rewrite: Single.Aux[OK] = Protocol("CONFIG", "REWRITE").as[Str, OK]
-
-    def set[A: Show](parameter: Key, value: A): Single.Aux[OK] = Protocol("CONFIG", "SET" *: parameter *: value *: EmptyTuple).as[Str, OK]
-  }
+  /** BGSAVE that waits for a rewrite of the append only file in progress instead of failing */
+  final val bgsaveschedule: Single.Aux[String] = Protocol("BGSAVE", "SCHEDULE").as[Str, String]
 
   final val dbsize: Single.Aux[NonNegLong] = Protocol("DBSIZE", EmptyTuple).as[Num, NonNegLong]
+
+  /** FAILOVER: hands the primary role to a replica that has caught up, outside a cluster (CLUSTER FAILOVER is `failover`) */
+  final val replicafailover: Single.Aux[OK]                        = Protocol("FAILOVER", EmptyTuple).as[Str, OK]
+  final def replicafailover(milliseconds: PosLong): Single.Aux[OK] =
+    Protocol("FAILOVER", "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
+  final def replicafailover(host: Host, port: Port): Single.Aux[OK] = Protocol("FAILOVER", "TO" *: host *: port *: EmptyTuple).as[Str, OK]
+  final def replicafailover(host: Host, port: Port, milliseconds: PosLong): Single.Aux[OK] =
+    Protocol("FAILOVER", "TO" *: host *: port *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
+
+  /** FAILOVER to that replica even if it hasn't caught up when the time is up */
+  final def replicafailoverforce(host: Host, port: Port, milliseconds: PosLong): Single.Aux[OK] =
+    Protocol("FAILOVER", "TO" *: host *: port *: "FORCE" *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
+
+  /** Stops a FAILOVER in progress */
+  final val replicafailoverabort: Single.Aux[OK] = Protocol("FAILOVER", "ABORT").as[Str, OK]
 
   final val flushall: Single.Aux[OK] = Protocol("FLUSHALL", EmptyTuple).as[Str, OK]
 
   final val flushallasync: Single.Aux[OK] = Protocol("FLUSHALL", "ASYNC").as[Str, OK]
 
+  final val flushallsync: Single.Aux[OK] = Protocol("FLUSHALL", "SYNC").as[Str, OK]
+
   final val flushdb: Single.Aux[OK] = Protocol("FLUSHDB", EmptyTuple).as[Str, OK]
 
   final val flushdbasync: Single.Aux[OK] = Protocol("FLUSHDB", "ASYNC").as[Str, OK]
+
+  final val flushdbsync: Single.Aux[OK] = Protocol("FLUSHDB", "SYNC").as[Str, OK]
 
   final val info: Single.Aux[Info]                       = info(servers.info.default)
   final def info(section: InfoSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
 
   final val lastsave: Single.Aux[NonNegLong] = Protocol("LASTSAVE", EmptyTuple).as[Num, NonNegLong]
+
+  final def replicaof(host: Host, port: Port): Single.Aux[OK] = Protocol("REPLICAOF", host *: port *: EmptyTuple).as[Str, OK]
+
+  final val replicaofnoone: Single.Aux[OK] = Protocol("REPLICAOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
   final val role: Single.Aux[Role] = Protocol("ROLE", EmptyTuple).as[Arr, Role]
 
@@ -289,7 +533,65 @@ trait ServerP extends Features {
 
   final val slaveofnoone: Single.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
-  // TODO slowlog? sync?
-
   final val time: Single.Aux[Time] = Protocol("TIME", EmptyTuple).as[Arr, Time]
+}
+
+/** SHUTDOWN with NOW, FORCE and ABORT, and INFO with several sections: Redis 7.0 */
+trait ServerShutdownAndInfoP extends Features {
+  import ServerP.{Info, InfoSection, LatencyStatsSection, ShutdownFlag, ShutdownOptions}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SHUTDOWN: ABORT FORCE NOW")
+
+  final def shutdown(options: ShutdownOptions): Single.Aux[OK]                     = Protocol("SHUTDOWN", options.params).as[Str, OK]
+  final def shutdown(flag: ShutdownFlag, options: ShutdownOptions): Single.Aux[OK] =
+    Protocol("SHUTDOWN", flag *: options.params *: EmptyTuple).as[Str, OK]
+
+  /** Stops a shutdown that is waiting for replicas to catch up */
+  final val shutdownabort: Single.Aux[OK] = Protocol("SHUTDOWN", "ABORT").as[Str, OK]
+
+  final def info(sections: OneOrMore[InfoSection]): Single.Aux[Info] = Protocol("INFO", sections.value).as[Bulk, Info]
+  final def info(section: LatencyStatsSection): Single.Aux[Info]     = Protocol("INFO", section).as[Bulk, Info]
+}
+
+/** INFO THREADS and INFO KEYSIZES: Redis 8.0 */
+trait ServerInfoRedis8P extends Features {
+  import ServerP.{Info, Redis8Section}
+
+  final def info(section: Redis8Section): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
+}
+
+/** INFO HOTKEYS: Redis 8.6 */
+trait ServerHotKeysP extends Features {
+  import ServerP.{HotKeysSection, Info}
+
+  final def info(section: HotKeysSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
+}
+
+/** INFO TLS: Valkey 9.1 */
+trait ServerInfoTlsP extends Features {
+  import ServerP.{Info, TlsSection}
+
+  final def info(section: TlsSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
+}
+
+/** BGSAVE CANCEL: Valkey 8.1 */
+trait ServerBgSaveCancelP extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("BGSAVE: CANCEL")
+
+  /** Stops a BGSAVE in progress, or one scheduled with BGSAVE SCHEDULE */
+  final val bgsavecancel: Single.Aux[String] = Protocol("BGSAVE", "CANCEL").as[Str, String]
+}
+
+trait ClientAllCommands extends ClientCommands with ClientNoEvictCommands with ClientNoTouchCommands with ClientMaxAgeCommands
+trait ConfigAllCommands extends ConfigCommands with ConfigManyCommands
+
+trait ServerP
+    extends ServerBaseP
+    with ServerShutdownAndInfoP
+    with ServerInfoRedis8P
+    with ServerHotKeysP
+    with ServerInfoTlsP
+    with ServerBgSaveCancelP {
+  override lazy val client: ClientAllCommands = new ClientAllCommands {}
+  override lazy val config: ConfigAllCommands = new ConfigAllCommands {}
 }

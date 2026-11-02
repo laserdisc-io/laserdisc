@@ -461,4 +461,81 @@ final class VersionImportsSpec extends BaseSpec {
       assertEquals(msetex(kvs, strings.flag.xx).frames, frame("MSETEX", "1", "a", "1", "XX"))
     }
   }
+
+  test("redis_6_2 has CLIENT UNPAUSE, FAILOVER and FLUSHALL SYNC, but not CLIENT NO-EVICT, SHUTDOWN NOW or several CONFIG parameters") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+
+    assertEquals(client.unpause.frames, frame("CLIENT", "UNPAUSE"))
+    assertEquals(replicafailover.frames, frame("FAILOVER"))
+    assertEquals(flushallsync.frames, frame("FLUSHALL", "SYNC"))
+    assert(compileErrors("""client.noevict(on = true)""").nonEmpty)
+    assert(compileErrors("""shutdown(servers.shutdownOptions.now)""").nonEmpty)
+    assert(compileErrors("""config.set(OneOrMore.unsafeFrom(List(Key("a") -> 1)))""").nonEmpty)
+    assert(compileErrors("""info(OneOrMore.unsafeFrom(List(servers.info.cpu)))""").nonEmpty)
+  }
+
+  test("redis_7_0 has CLIENT NO-EVICT, SHUTDOWN NOW and several CONFIG parameters, but not CLIENT NO-TOUCH") {
+    import laserdisc.auto.*
+    import laserdisc.redis_7_0.*
+
+    assertEquals(client.noevict(on = true).frames, frame("CLIENT", "NO-EVICT", "ON"))
+    assertEquals(shutdownabort.frames, frame("SHUTDOWN", "ABORT"))
+    assertEquals(config.set(OneOrMore.unsafeFrom(List(Key("a") -> 1))).frames, frame("CONFIG", "SET", "a", "1"))
+    assert(compileErrors("""client.notouch(on = true)""").nonEmpty)
+  }
+
+  test("only Redis 7.4 and Valkey 8.0 and later have CLIENT KILL with MAXAGE, and only Valkey 8.1 and later BGSAVE CANCEL") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(client.notouch(on = true).frames, frame("CLIENT", "NO-TOUCH", "ON"))
+      assert(compileErrors("""client.kill(servers.clientFilter.id(1L), 10L)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_0.*
+      assertEquals(client.kill(servers.clientFilter.id(1L), 10L).frames, frame("CLIENT", "KILL", "ID", "1", "MAXAGE", "10"))
+      assert(compileErrors("""bgsavecancel""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_1.*
+      assertEquals(bgsavecancel.frames, frame("BGSAVE", "CANCEL"))
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(client.kill(servers.clientFilter.id(1L), 10L).frames, frame("CLIENT", "KILL", "ID", "1", "MAXAGE", "10"))
+      assert(compileErrors("""bgsavecancel""").nonEmpty)
+    }
+  }
+
+  test("each version can ask INFO only for the sections it has") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(info(servers.info.errorstats).frames, frame("INFO", "errorstats"))
+      assert(compileErrors("""info(servers.info.latencystats)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_4.*
+      assertEquals(info(servers.info.latencystats).frames, frame("INFO", "latencystats"))
+      assert(compileErrors("""info(servers.info.keysizes)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_4.*
+      assertEquals(info(servers.info.threads).frames, frame("INFO", "threads"))
+      assert(compileErrors("""info(servers.info.hotkeys)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(info(servers.info.hotkeys).frames, frame("INFO", "hotkeys"))
+      assert(compileErrors("""info(servers.info.tls)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(info(servers.info.tls).frames, frame("INFO", "tls"))
+      assert(compileErrors("""info(servers.info.keysizes)""").nonEmpty)
+    }
+  }
 }

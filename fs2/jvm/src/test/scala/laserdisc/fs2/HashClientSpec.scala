@@ -25,14 +25,16 @@ package fs2
 import laserdisc.auto.*
 
 final class RedisHashClientSpec extends HashClientSpec(6379, "redis") {
-  test("a redis client expires fields, reads them with an expiry and deletes them with the commands of Redis 8.10")(fieldExpiry(redis_8_10))
+  test("a redis client expires fields, reads them with an expiry and deletes them with the commands of Redis 8.10")(
+    fieldExpiry(redis_8_10, redis_8_10, redis_8_10, redis_8_10, redis_8_10)
+  )
 }
 
 final class KeyDbHashClientSpec extends HashClientSpec(6380, "keyDb")
 
 final class ValkeyHashClientSpec extends HashClientSpec(6381, "valkey") {
   test("a valkey client expires fields, reads them with an expiry and deletes them with the commands of Valkey 9.1")(
-    fieldExpiry(valkey_9_1)
+    fieldExpiry(valkey_9_1, valkey_9_1, valkey_9_1, valkey_9_1, valkey_9_1)
   )
 
   test("a valkey client sets fields only if the hash exists with the commands of Valkey 9.1") {
@@ -51,15 +53,20 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
   protected final def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
+  // the version, and the same version again as each of the hash features it has
   protected final def fieldExpiry(
-      version: Redis7_2
-        with protocol.HashScanNoValuesP
-        with protocol.HashFieldExpiryP
-        with protocol.HashGetSetExpiryP
-        with protocol.HashGetDelP
+      version: Redis7_2,
+      noValues: protocol.HashScanNoValuesP,
+      expiry: protocol.HashFieldExpiryP,
+      getSet: protocol.HashGetSetExpiryP,
+      getDel: protocol.HashGetDelP
   ): Unit = {
     import version.*
     import hashtypes.*
+    import noValues.hscannovalues
+    import expiry.{hexpire, hexpiretime, hpersist, hpexpireat, hpttl, httl}
+    import getSet.{hgetex, hsetex}
+    import getDel.hgetdel
 
     send(del("h:e"))
     send(hset("h:e", OneOrMore.unsafeFrom(List(Key("a") -> 1, Key("b") -> 2, Key("c") -> 3))))

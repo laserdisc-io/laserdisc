@@ -42,6 +42,7 @@ trait Base6_2
     with SetExtP
     with SortedSetBaseP
     with SortedSetExtP
+    with StreamBaseP
     with StringBaseP
     with StringExtP
     with TransactionP {

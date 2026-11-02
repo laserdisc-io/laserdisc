@@ -631,4 +631,21 @@ final class VersionImportsSpec extends BaseSpec {
       assertEquals(acl.setuser("u", servers.aclSelectorRules.writeKeys("w:*")).frames, frame("ACL", "SETUSER", "u", "%W~w:*"))
     }
   }
+
+  test("redis_6_2 and families.streams have the stream commands") {
+    import laserdisc.auto.*
+
+    val fields = OneOrMore.unsafeFrom(List(Key("a") -> 1))
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(xadd("s", fields).frames, frame("XADD", "s", "*", "a", "1"))
+      assertEquals(xlen("s").frames, frame("XLEN", "s"))
+    }
+    {
+      import laserdisc.families.streams.*
+      import streamtypes.*
+      assertEquals(xtrim("s", StreamTrim.maxLenApprox(10L)).frames, frame("XTRIM", "s", "MAXLEN", "~", "10"))
+    }
+  }
 }

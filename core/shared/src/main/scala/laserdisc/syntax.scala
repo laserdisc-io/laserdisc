@@ -35,6 +35,7 @@ object all
     with ServerP
     with SetP
     with SortedSetP
+    with StreamP
     with StringP
     with TransactionP {
   object blocking extends BListP with BSortedSetP

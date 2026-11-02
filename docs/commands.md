@@ -19,6 +19,7 @@ instead, use its object:
 | Family | Import |
 | --- | --- |
 | Strings | `laserdisc.families.strings.*` |
+| Streams | `laserdisc.families.streams.*` |
 | Keys | `laserdisc.families.keys.*` |
 | Hashes | `laserdisc.families.hashmaps.*` |
 | Lists | `laserdisc.families.lists.*`, and `laserdisc.families.lists.blocking.*` for blocking commands |

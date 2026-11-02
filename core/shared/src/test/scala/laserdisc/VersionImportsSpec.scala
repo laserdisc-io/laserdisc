@@ -615,4 +615,20 @@ final class VersionImportsSpec extends BaseSpec {
       assert(compileErrors("""backup.status""").nonEmpty)
     }
   }
+
+  test("redis_6_2 has ACL, but not ACL DRYRUN or rules with selectors, which redis_7_0 has") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(acl.setuser("u", servers.aclRules.on).frames, frame("ACL", "SETUSER", "u", "on"))
+      assert(compileErrors("""acl.dryrun("u", ping)""").nonEmpty)
+      assert(compileErrors("""acl.setuser("u", servers.aclSelectorRules.on)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(acl.dryrun("u", ping).frames, frame("ACL", "DRYRUN", "u", "PING"))
+      assertEquals(acl.setuser("u", servers.aclSelectorRules.writeKeys("w:*")).frames, frame("ACL", "SETUSER", "u", "%W~w:*"))
+    }
+  }
 }

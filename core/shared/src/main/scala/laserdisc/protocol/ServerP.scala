@@ -457,24 +457,26 @@ trait ServerBaseP extends ServerInspectionBaseP {
       "SHUTDOWN: NOSAVE SAVE",
       "SLAVEOF: NO ONE",
       "TIME"
-    ) ++ client.supported ++ config.supported ++ latency.supported ++ command.supported
+    ) ++ client.supported ++ config.supported ++ latency.supported ++ command.supported ++ acl.supported
 
   import ServerP.{Info, InfoSection, Role, ShutdownFlag}
 
   object servers {
-    final val clientFilter    = ServerP.ClientFilter
-    final val clientType      = ServerP.ClientType
-    final val commandFilter   = ServerInspection.CommandFilter
-    final val flushMode       = ClusterManagement.FlushMode
-    final val slotStatsMetric = ClusterManagement.SlotStatsMetric
-    final val commandLogType  = ServerInspection.CommandLogType
-    final val hotKeysMetrics  = ServerInspection.HotKeysMetrics
-    final val hotKeysOptions  = ServerInspection.HotKeysOptions
-    final val flag            = ShutdownFlag
-    final val info            = InfoSection
-    final val pauseMode       = ServerP.PauseMode
-    final val shutdownOptions = ServerP.ShutdownOptions
-    final val unblockMode     = ServerP.UnblockMode
+    final val aclRules         = Acl.AclRules.none
+    final val aclSelectorRules = Acl.AclRulesWithSelectors.none
+    final val clientFilter     = ServerP.ClientFilter
+    final val clientType       = ServerP.ClientType
+    final val commandFilter    = ServerInspection.CommandFilter
+    final val flushMode        = ClusterManagement.FlushMode
+    final val slotStatsMetric  = ClusterManagement.SlotStatsMetric
+    final val commandLogType   = ServerInspection.CommandLogType
+    final val hotKeysMetrics   = ServerInspection.HotKeysMetrics
+    final val hotKeysOptions   = ServerInspection.HotKeysOptions
+    final val flag             = ShutdownFlag
+    final val info             = InfoSection
+    final val pauseMode        = ServerP.PauseMode
+    final val shutdownOptions  = ServerP.ShutdownOptions
+    final val unblockMode      = ServerP.UnblockMode
   }
 
   lazy val client: ClientCommands = new ClientCommands {}
@@ -484,6 +486,8 @@ trait ServerBaseP extends ServerInspectionBaseP {
   lazy val latency: LatencyCommands = new LatencyCommands {}
 
   lazy val command: CommandCommands = new CommandCommands {}
+
+  lazy val acl: AclCommands = new AclCommands {}
 
   /** Replies with the server's message, like "Background append only file rewriting started" */
   final val bgrewriteaof: Single.Aux[String] = Protocol("BGREWRITEAOF", EmptyTuple).as[Str, String]
@@ -607,6 +611,7 @@ trait ClientAllCommands  extends ClientCommands with ClientNoEvictCommands with 
 trait ConfigAllCommands  extends ConfigCommands with ConfigManyCommands
 trait LatencyAllCommands extends LatencyCommands with LatencyHistogramCommands
 trait CommandAllCommands extends CommandCommands with CommandListCommands
+trait AclAllCommands     extends AclCommands with AclSelectorCommands
 
 trait ServerP
     extends ServerBaseP
@@ -621,4 +626,5 @@ trait ServerP
   override lazy val config: ConfigAllCommands   = new ConfigAllCommands {}
   override lazy val latency: LatencyAllCommands = new LatencyAllCommands {}
   override lazy val command: CommandAllCommands = new CommandAllCommands {}
+  override lazy val acl: AclAllCommands         = new AclAllCommands {}
 }

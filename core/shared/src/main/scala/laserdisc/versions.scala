@@ -60,6 +60,9 @@ trait Config7_0 extends ConfigCommands with ConfigManyCommands
 trait Latency7_0 extends LatencyCommands with LatencyHistogramCommands
 trait Command7_0 extends CommandCommands with CommandListCommands
 
+/** The ACL commands, under `acl` */
+trait Acl7_0 extends AclCommands with AclSelectorCommands
+
 /** The blocking commands, under `blocking` */
 trait Blocking6_2  extends BListBaseP with BListExtP with BSortedSetBaseP
 trait Blocking7_0  extends Blocking6_2 with BListMPopP with BSortedSetMPopP
@@ -84,6 +87,7 @@ trait Redis7_0
   override lazy val config: Config7_0     = new Config7_0 {}
   override lazy val latency: Latency7_0   = new Latency7_0 {}
   override lazy val command: Command7_0   = new Command7_0 {}
+  override lazy val acl: Acl7_0           = new Acl7_0 {}
 }
 trait Redis7_2 extends Redis7_0 with KeyWaitAofP with SortedSetRankWithScoreP with ClusterMyShardIdP {
   override lazy val client: Client7_2 = new Client7_2 {}

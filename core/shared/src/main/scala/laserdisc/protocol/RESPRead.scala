@@ -120,6 +120,18 @@ object RESPRead {
 
   implicit final def derive[A: RESPSub, B](implicit R: Read[A, B]): RESPRead.Aux[A, B] = instance(R)
 
+  /** Reads OK as `None`, and a message as `Some`, for commands that reply OK when all is well and explain otherwise (e.g. ACL DRYRUN) */
+  private[laserdisc] final val okOrMessage: RESPRead.Aux[RESP, Option[String]] =
+    new RESPRead[Option[String]] {
+      override final type Sub = RESP
+      override final def read(resp: RESP): Maybe[Option[String]] = resp match {
+        case Str("OK") => Right(None)
+        case Bulk(s)   => Right(Some(s))
+        case err: Err  => Left(err)
+        case other     => Left(RESPDecErr(s"Expected OK or a message, but was $other"))
+      }
+    }
+
   /** Reads whatever Redis replies with as is ([[Err]] still being a failure), for commands without a dedicated [[Protocol]] (e.g. the CLI)
     */
   private[laserdisc] final val raw: RESPRead.Aux[RESP, RESP] =

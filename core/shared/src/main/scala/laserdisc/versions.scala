@@ -25,7 +25,7 @@ import protocol.*
 
 /** What Redis 6.2 has, which every version below builds on */
 trait Base6_2
-    extends ClusterP
+    extends ClusterBaseP
     with ConnectionP
     with GeoBaseP
     with GeoExtP
@@ -77,35 +77,49 @@ trait Redis7_0
     with SetInterCardP
     with SortedSetInterCardP
     with SortedSetMPopP
-    with ServerShutdownAndInfoP {
+    with ServerShutdownAndInfoP
+    with ClusterShardsP {
   override lazy val blocking: Blocking7_0 = new Blocking7_0 {}
   override lazy val client: Client7_0     = new Client7_0 {}
   override lazy val config: Config7_0     = new Config7_0 {}
   override lazy val latency: Latency7_0   = new Latency7_0 {}
   override lazy val command: Command7_0   = new Command7_0 {}
 }
-trait Redis7_2 extends Redis7_0 with KeyWaitAofP with SortedSetRankWithScoreP {
+trait Redis7_2 extends Redis7_0 with KeyWaitAofP with SortedSetRankWithScoreP with ClusterMyShardIdP {
   override lazy val client: Client7_2 = new Client7_2 {}
 }
 trait Redis7_4 extends Redis7_2 with HashScanNoValuesP with HashFieldExpiryP {
   override lazy val client: Client7_4 = new Client7_4 {}
 }
-trait Redis8_0  extends Redis7_4 with HashGetSetExpiryP with HashGetDelP with ServerInfoRedis8P
-trait Redis8_2  extends Redis8_0 with StringBitopExtendedP
-trait Redis8_4  extends Redis8_2 with StringSetIfEqP with StringSetCompareP with StringDigestAndDelExP with StringMSetExP
+trait Redis8_0 extends Redis7_4 with HashGetSetExpiryP with HashGetDelP with ServerInfoRedis8P
+trait Redis8_2 extends Redis8_0 with StringBitopExtendedP with ClusterSlotStatsP
+trait Redis8_4
+    extends Redis8_2
+    with StringSetIfEqP
+    with StringSetCompareP
+    with StringDigestAndDelExP
+    with StringMSetExP
+    with ClusterMigrationP
 trait Redis8_6  extends Redis8_4 with ServerHotKeysP
 trait Redis8_8  extends Redis8_6 with SortedSetAggregateCountP with StringIncrExP
-trait Redis8_10 extends Redis8_8 with ListMoveManyP with SetDiffCardP with SetUnionCardP {
+trait Redis8_10 extends Redis8_8 with ListMoveManyP with SetDiffCardP with SetUnionCardP with ServerBackupP {
   override lazy val blocking: Blocking8_10 = new Blocking8_10 {}
 }
 
 /** Valkey started from Redis 7.2 */
 trait Valkey7_2 extends Redis7_2
-trait Valkey8_0 extends Valkey7_2 with HashScanNoValuesP with SortedSetScanNoScoresP {
+trait Valkey8_0 extends Valkey7_2 with HashScanNoValuesP with SortedSetScanNoScoresP with ClusterSlotStatsP with ClusterSetSlotTimeoutP {
   override lazy val client: Client7_4 = new Client7_4 {}
 }
 trait Valkey8_1 extends Valkey8_0 with StringSetIfEqP with ServerBgSaveCancelP with ServerCommandLogP
-trait Valkey9_0 extends Valkey8_1 with GeoSearchPolygonP with HashFieldExpiryP with HashGetSetExpiryP with StringDelIfEqP
+trait Valkey9_0
+    extends Valkey8_1
+    with GeoSearchPolygonP
+    with HashFieldExpiryP
+    with HashGetSetExpiryP
+    with StringDelIfEqP
+    with ClusterReplicateNoOneP
+    with ClusterSlotMigrationsP
 trait Valkey9_1 extends Valkey9_0 with HashGetDelP with HashSetExKeyConditionP with StringMSetExP with ServerInfoTlsP
 
 object redis_6_2  extends Redis6_2

@@ -465,6 +465,8 @@ trait ServerBaseP extends ServerInspectionBaseP {
     final val clientFilter    = ServerP.ClientFilter
     final val clientType      = ServerP.ClientType
     final val commandFilter   = ServerInspection.CommandFilter
+    final val flushMode       = ClusterManagement.FlushMode
+    final val slotStatsMetric = ClusterManagement.SlotStatsMetric
     final val commandLogType  = ServerInspection.CommandLogType
     final val hotKeysMetrics  = ServerInspection.HotKeysMetrics
     final val hotKeysOptions  = ServerInspection.HotKeysOptions
@@ -613,7 +615,8 @@ trait ServerP
     with ServerHotKeysP
     with ServerInfoTlsP
     with ServerBgSaveCancelP
-    with ServerCommandLogP {
+    with ServerCommandLogP
+    with ServerBackupP {
   override lazy val client: ClientAllCommands   = new ClientAllCommands {}
   override lazy val config: ConfigAllCommands   = new ConfigAllCommands {}
   override lazy val latency: LatencyAllCommands = new LatencyAllCommands {}

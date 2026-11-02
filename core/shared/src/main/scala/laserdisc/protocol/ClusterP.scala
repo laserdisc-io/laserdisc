@@ -295,19 +295,22 @@ object ClusterP {
   }
 }
 
-trait ClusterP extends Features {
+trait ClusterBaseP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "CLUSTER ADDSLOTS",
+      "CLUSTER BUMPEPOCH",
       "CLUSTER COUNT-FAILURE-REPORTS",
       "CLUSTER COUNTKEYSINSLOT",
       "CLUSTER DELSLOTS",
       "CLUSTER FAILOVER: FORCE TAKEOVER",
+      "CLUSTER FLUSHSLOTS",
       "CLUSTER FORGET",
       "CLUSTER GETKEYSINSLOT",
       "CLUSTER INFO",
       "CLUSTER KEYSLOT",
       "CLUSTER MEET",
+      "CLUSTER MYID",
       "CLUSTER NODES",
       "CLUSTER REPLICAS",
       "CLUSTER REPLICATE",
@@ -414,4 +417,22 @@ trait ClusterP extends Features {
     Protocol("CLUSTER", "SLAVES" *: nodeId *: EmptyTuple).as[Bulk, ClusterNodes]
 
   final val slots: Single.Aux[ClusterSlots] = Protocol("CLUSTER", "SLOTS").as[Arr, ClusterSlots]
+
+  /** Gives this node a new config epoch, and replies with the server's message: BUMPED or STILL, with the epoch */
+  final val bumpepoch: Single.Aux[String] = Protocol("CLUSTER", "BUMPEPOCH").as[Str, String]
+
+  /** Forgets every slot this node serves */
+  final val flushslots: Single.Aux[OK] = Protocol("CLUSTER", "FLUSHSLOTS").as[Str, OK]
+
+  final val myid: Single.Aux[NodeId] = Protocol("CLUSTER", "MYID").using(RESPRead.instance(ClusterManagement.nodeId))
 }
+
+trait ClusterP
+    extends ClusterBaseP
+    with ClusterShardsP
+    with ClusterMyShardIdP
+    with ClusterSlotStatsP
+    with ClusterMigrationP
+    with ClusterSetSlotTimeoutP
+    with ClusterReplicateNoOneP
+    with ClusterSlotMigrationsP

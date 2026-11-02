@@ -572,4 +572,47 @@ final class VersionImportsSpec extends BaseSpec {
       assert(compileErrors("""hotkeys.stop""").nonEmpty)
     }
   }
+
+  test("each version has the cluster commands its server has") {
+    import laserdisc.auto.*
+
+    val ranges = OneOrMore.unsafeFrom(List(Slot(0) -> Slot(10)))
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(myid.frames, frame("CLUSTER", "MYID"))
+      assert(compileErrors("""shards""").nonEmpty)
+      assert(compileErrors("""addslotsrange(ranges)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(addslotsrange(ranges).frames, frame("CLUSTER", "ADDSLOTSRANGE", "0", "10"))
+      assert(compileErrors("""myshardid""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_2.*
+      assertEquals(myshardid.frames, frame("CLUSTER", "MYSHARDID"))
+      assertEquals(slotstats(Slot(0), Slot(1)).frames, frame("CLUSTER", "SLOT-STATS", "SLOTSRANGE", "0", "1"))
+      assert(compileErrors("""trimslots(ranges)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(trimslots(ranges).frames, frame("TRIMSLOTS", "RANGES", "1", "0", "10"))
+      assertEquals(backup.status.frames, frame("BACKUP", "STATUS"))
+      assert(compileErrors("""replicatenoone""").nonEmpty)
+      assert(compileErrors("""flushslot(Slot(0))""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_0.*
+      assertEquals(setslot(Slot(0), NonNegLong(5L)).frames, frame("CLUSTER", "SETSLOT", "0", "STABLE", "TIMEOUT", "5"))
+      assert(compileErrors("""replicatenoone""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(replicatenoone.frames, frame("CLUSTER", "REPLICATE", "NO", "ONE"))
+      assertEquals(flushslot(Slot(0)).frames, frame("CLUSTER", "FLUSHSLOT", "0"))
+      assert(compileErrors("""trimslots(ranges)""").nonEmpty)
+      assert(compileErrors("""backup.status""").nonEmpty)
+    }
+  }
 }

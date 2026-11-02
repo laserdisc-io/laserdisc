@@ -42,6 +42,19 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis"
     assertEquals(send(hotkeys.reset), OK)
     assertEquals(send(hotkeys.get), None)
   }
+
+  test("a redis client starts, reads and aborts a backup with the commands of Redis 8.10") {
+    val v = redis_8_10
+    import v.backup
+
+    assertEquals(send(backup.start), OK)
+    assert(send(backup.status).state != "idle")
+    assert(send(backup.list).forall(_.nonEmpty))
+    assertEquals(send(backup.abort), OK)
+    assertEquals(send(backup.status).error, "aborted by user")
+    assertEquals(send(backup.cleanup), OK)
+    assertEquals(send(backup.status).state, "idle")
+  }
 }
 
 final class KeyDbInspectionClientSpec extends InspectionClientSpec(6380, "keyDb")

@@ -684,4 +684,26 @@ final class VersionImportsSpec extends BaseSpec {
       )
     }
   }
+
+  test("only Redis 8.2 and later have the stream reference policies, and only Redis 8.6 and later idempotent XADD") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_8_2.*
+      import streamtypes.*
+      assertEquals(xtrim("s", StreamTrim.maxLen(1L), StreamRefPolicy.delRef).frames, frame("XTRIM", "s", "MAXLEN", "1", "DELREF"))
+      assert(compileErrors("""xcfgset("s", StreamIdmpConfig.maxSize(10L))""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      import streamtypes.*
+      assertEquals(xcfgset("s", StreamIdmpConfig.maxSize(10L)).frames, frame("XCFGSET", "s", "IDMP-MAXSIZE", "10"))
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      import streamtypes.*
+      assert(compileErrors("""xtrim("s", StreamTrim.maxLen(1L), StreamRefPolicy.delRef)""").nonEmpty)
+      assert(compileErrors("""xcfgset("s", StreamIdmpConfig.maxSize(10L))""").nonEmpty)
+    }
+  }
 }

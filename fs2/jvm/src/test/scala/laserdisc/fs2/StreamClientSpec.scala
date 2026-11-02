@@ -24,7 +24,33 @@ package fs2
 
 import laserdisc.auto.*
 
-final class RedisStreamClientSpec  extends StreamClientSpec(6379, "redis")
+final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
+  test("a redis client deletes with reference policies and adds idempotently with the commands of Redis 8.10") {
+    import laserdisc.redis_8_10.*
+    import streamtypes.*
+
+    send(del("x:r"))
+    send(xgroupcreate("x:r", "grp", StreamFrom.latest, StreamMkStream))
+    val first  = send(xadd("x:r", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
+    val second = send(xadd("x:r", OneOrMore.unsafeFrom(List(Key("a") -> 2))))
+    send(xreadgroup[Int]("grp", "c", OneOrMore.unsafeFrom(List(Key("x:r") -> StreamGroupFrom.newEntries))))
+
+    assertEquals(send(xdelex("x:r", OneOrMore.unsafeFrom(List(first)), StreamRefPolicy.acked)), Seq(StreamDeleteResult.Referenced))
+    assertEquals(
+      send(xackdel("x:r", "grp", OneOrMore.unsafeFrom(List(first, StreamId(9999999999999L, 0L))))),
+      Seq(StreamDeleteResult.Deleted, StreamDeleteResult.NotFound)
+    )
+    assertEquals(send(xtrim("x:r", StreamTrim.maxLen(0L), StreamRefPolicy.acked)).value, 0L)
+    assertEquals(send(xtrim("x:r", StreamTrim.maxLen(0L), StreamRefPolicy.delRef)).value, 1L)
+    assert(second.milliseconds.value > 0L)
+
+    val once  = send(xadd("x:r", StreamIdmp.of("producer", "order-1"), OneOrMore.unsafeFrom(List(Key("a") -> 3))))
+    val again = send(xadd("x:r", StreamIdmp.of("producer", "order-1"), OneOrMore.unsafeFrom(List(Key("a") -> 3))))
+    assertEquals(again, once)
+    assertEquals(send(xlen("x:r")).value, 1L)
+    assertEquals(send(xcfgset("x:r", StreamIdmpConfig.duration(60L).maxSize(100L))), OK)
+  }
+}
 final class KeyDbStreamClientSpec  extends StreamClientSpec(6380, "keyDb")
 final class ValkeyStreamClientSpec extends StreamClientSpec(6381, "valkey")
 

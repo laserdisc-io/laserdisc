@@ -176,6 +176,58 @@ object StreamP {
     */
   final case class ConsumerInfo(name: Key, pending: NonNegLong, idle: NonNegLong, inactive: Option[Long])
 
+  /** KEEPREF, DELREF and ACKED, for XADD, XTRIM, XDELEX and XACKDEL: when deleting entries, keep the groups' references to them, delete
+    * those too, or only delete entries every group has acknowledged. Redis 8.2
+    */
+  sealed trait RefPolicy
+  object RefPolicy {
+    object keepRef extends RefPolicy
+    object delRef  extends RefPolicy
+    object acked   extends RefPolicy
+
+    implicit val refPolicyShow: Show[RefPolicy] = Show.instance {
+      case `keepRef` => "KEEPREF"
+      case `delRef`  => "DELREF"
+      case `acked`   => "ACKED"
+    }
+  }
+
+  /** What XDELEX and XACKDEL did to an entry: deleted it, found no such entry, or kept it because a group still needs it */
+  sealed trait DeleteResult
+  object DeleteResult {
+    case object Deleted    extends DeleteResult
+    case object NotFound   extends DeleteResult
+    case object Referenced extends DeleteResult
+
+    implicit final val num2DeleteResultRead: Read[Num, DeleteResult] = Read.instance {
+      case Num(1)     => Right(Deleted)
+      case Num(-1)    => Right(NotFound)
+      case Num(2)     => Right(Referenced)
+      case Num(other) => Left(RESPDecErr(s"Unexpected stream delete result. Was $other"))
+    }
+  }
+
+  /** IDMP and IDMPAUTO, for XADD: add the entry only once for a producer and an idempotency id (or one the server derives from the fields),
+    * replying with the first entry's id on a repeat. Redis 8.6, with ids the server picks
+    */
+  sealed trait Idmp { def params: List[String] }
+  object Idmp       {
+    private final class Of(override final val params: List[String]) extends Idmp
+
+    def of(producer: Key, id: Key): Idmp = new Of(List("IDMP", producer.value, id.value))
+    def auto(producer: Key): Idmp        = new Of(List("IDMPAUTO", producer.value))
+  }
+
+  /** IDMP-DURATION and IDMP-MAXSIZE, for XCFGSET: how long, in seconds, and how many idempotency ids a stream remembers per producer */
+  final class IdmpConfig private (val params: List[String]) {
+    def duration(seconds: PosLong): IdmpConfig = new IdmpConfig(params ++ List("IDMP-DURATION", seconds.value.toString))
+    def maxSize(ids: PosLong): IdmpConfig      = new IdmpConfig(params ++ List("IDMP-MAXSIZE", ids.value.toString))
+  }
+  object IdmpConfig {
+    def duration(seconds: PosLong): IdmpConfig = new IdmpConfig(List("IDMP-DURATION", seconds.value.toString))
+    def maxSize(ids: PosLong): IdmpConfig      = new IdmpConfig(List("IDMP-MAXSIZE", ids.value.toString))
+  }
+
   /** NOMKSTREAM, for XADD: don't create the stream when it doesn't exist */
   sealed trait NoMkStream
   object NoMkStream extends NoMkStream {
@@ -312,6 +364,10 @@ trait StreamBaseP extends Features {
     final type StreamMkStream       = StreamP.MkStream
     final type StreamNoAck          = StreamP.NoAck
     final type StreamClaimOptions   = StreamP.ClaimOptions
+    final type StreamDeleteResult   = StreamP.DeleteResult
+    final type StreamIdmp           = StreamP.Idmp
+    final type StreamIdmpConfig     = StreamP.IdmpConfig
+    final type StreamRefPolicy      = StreamP.RefPolicy
     final type StreamPending        = StreamP.PendingEntry
     final type StreamPendingSummary = StreamP.PendingSummary
     final type StreamId             = StreamP.Id
@@ -325,6 +381,10 @@ trait StreamBaseP extends Features {
     final val StreamMkStream       = StreamP.MkStream
     final val StreamNoAck          = StreamP.NoAck
     final val StreamClaimOptions   = StreamP.ClaimOptions
+    final val StreamDeleteResult   = StreamP.DeleteResult
+    final val StreamIdmp           = StreamP.Idmp
+    final val StreamIdmpConfig     = StreamP.IdmpConfig
+    final val StreamRefPolicy      = StreamP.RefPolicy
     final val StreamPending        = StreamP.PendingEntry
     final val StreamPendingSummary = StreamP.PendingSummary
     final val StreamId             = StreamP.Id
@@ -622,6 +682,77 @@ trait StreamSetIdEntriesP extends Features {
       .as[Str, OK]
 }
 
+/** KEEPREF, DELREF and ACKED for XADD and XTRIM, and XDELEX and XACKDEL: Redis 8.2 */
+trait StreamRefPolicyP extends Features {
+  import StreamP.{DeleteResult, Id, NoMkStream, RefPolicy, Trim, fieldsParams}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "XACKDEL: ACKED DELREF IDS KEEPREF",
+      "XADD: ACKED DELREF KEEPREF",
+      "XDELEX: ACKED DELREF IDS KEEPREF",
+      "XTRIM: ACKED DELREF KEEPREF"
+    )
+
+  private final val results = RESPRead.instance(Read.arrOfNum2Seq[DeleteResult])
+
+  private final def idsParams(ids: OneOrMore[Id]): List[String] = "IDS" :: ids.value.length.toString :: ids.value.map(_.toString)
+
+  /** XADD trimming with a policy for the groups' references */
+  final def xadd[A: Show](key: Key, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
+    Protocol("XADD", key *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+  final def xadd[A: Show](key: Key, id: Id, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
+    Protocol("XADD", key *: policy *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+  final def xadd[A: Show](
+      key: Key,
+      noMkStream: NoMkStream,
+      trim: Trim,
+      policy: RefPolicy,
+      fields: OneOrMore[(Key, A)]
+  ): Single.Aux[Option[Id]] =
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).asOpt[Bulk, Id]
+  final def xadd[A: Show](
+      key: Key,
+      noMkStream: NoMkStream,
+      id: Id,
+      trim: Trim,
+      policy: RefPolicy,
+      fields: OneOrMore[(Key, A)]
+  ): Single.Aux[Option[Id]] =
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).asOpt[Bulk, Id]
+
+  /** Acknowledges the entries for the group and deletes them, with what it did to each */
+  final def xackdel(key: Key, group: Key, ids: OneOrMore[Id]): Single.Aux[Seq[DeleteResult]] =
+    Protocol("XACKDEL", key.value :: group.value :: idsParams(ids)).using(results)
+  final def xackdel(key: Key, group: Key, ids: OneOrMore[Id], policy: RefPolicy): Single.Aux[Seq[DeleteResult]] =
+    Protocol("XACKDEL", key.value :: group.value :: Show[RefPolicy].show(policy) :: idsParams(ids)).using(results)
+
+  /** Deletes the entries, with what it did to each */
+  final def xdelex(key: Key, ids: OneOrMore[Id]): Single.Aux[Seq[DeleteResult]] =
+    Protocol("XDELEX", key.value :: idsParams(ids)).using(results)
+  final def xdelex(key: Key, ids: OneOrMore[Id], policy: RefPolicy): Single.Aux[Seq[DeleteResult]] =
+    Protocol("XDELEX", key.value :: Show[RefPolicy].show(policy) :: idsParams(ids)).using(results)
+
+  final def xtrim(key: Key, trim: Trim, policy: RefPolicy): Single.Aux[NonNegLong] =
+    Protocol("XTRIM", key.value :: trim.params ++ List(Show[RefPolicy].show(policy))).as[Num, NonNegLong]
+}
+
+/** IDMP and IDMPAUTO for XADD, and XCFGSET: Redis 8.6 */
+trait StreamIdmpP extends Features {
+  import StreamP.{Id, Idmp, IdmpConfig, Trim, fieldsParams}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("XADD: IDMP IDMPAUTO", "XCFGSET: IDMP-DURATION IDMP-MAXSIZE")
+
+  /** XADD that adds the entry only once for the producer and idempotency id, and replies with that entry's id */
+  final def xadd[A: Show](key: Key, idmp: Idmp, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
+    Protocol("XADD", key.value :: idmp.params ++ ("*" :: fieldsParams(fields))).as[Bulk, Id]
+  final def xadd[A: Show](key: Key, idmp: Idmp, trim: Trim, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
+    Protocol("XADD", key.value :: idmp.params ++ trim.params ++ ("*" :: fieldsParams(fields))).as[Bulk, Id]
+
+  final def xcfgset(key: Key, config: IdmpConfig): Single.Aux[OK] = Protocol("XCFGSET", key.value :: config.params).as[Str, OK]
+}
+
 /** XGROUP CREATE and XGROUP SETID with ENTRIESREAD: Redis 7.0 */
 trait StreamGroupEntriesReadP extends Features {
   import StreamP.{From, MkStream}
@@ -639,4 +770,11 @@ trait StreamGroupEntriesReadP extends Features {
     Protocol("XGROUP", "SETID" :: key.value :: group.value :: from.param :: "ENTRIESREAD" :: entriesRead.value.toString :: Nil).as[Str, OK]
 }
 
-trait StreamP extends StreamBaseP with StreamGroupBaseP with StreamClaimAndInfoBaseP with StreamGroupEntriesReadP with StreamSetIdEntriesP
+trait StreamP
+    extends StreamBaseP
+    with StreamGroupBaseP
+    with StreamClaimAndInfoBaseP
+    with StreamGroupEntriesReadP
+    with StreamSetIdEntriesP
+    with StreamRefPolicyP
+    with StreamIdmpP

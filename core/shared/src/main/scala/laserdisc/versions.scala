@@ -101,7 +101,7 @@ trait Redis7_4 extends Redis7_2 with HashScanNoValuesP with HashFieldExpiryP {
   override lazy val client: Client7_4 = new Client7_4 {}
 }
 trait Redis8_0 extends Redis7_4 with HashGetSetExpiryP with HashGetDelP with ServerInfoRedis8P
-trait Redis8_2 extends Redis8_0 with StringBitopExtendedP with ClusterSlotStatsP
+trait Redis8_2 extends Redis8_0 with StringBitopExtendedP with ClusterSlotStatsP with StreamRefPolicyP
 trait Redis8_4
     extends Redis8_2
     with StringSetIfEqP
@@ -109,7 +109,7 @@ trait Redis8_4
     with StringDigestAndDelExP
     with StringMSetExP
     with ClusterMigrationP
-trait Redis8_6  extends Redis8_4 with ServerHotKeysP
+trait Redis8_6  extends Redis8_4 with ServerHotKeysP with StreamIdmpP
 trait Redis8_8  extends Redis8_6 with SortedSetAggregateCountP with StringIncrExP
 trait Redis8_10 extends Redis8_8 with ListMoveManyP with SetDiffCardP with SetUnionCardP with ServerBackupP {
   override lazy val blocking: Blocking8_10 = new Blocking8_10 {}

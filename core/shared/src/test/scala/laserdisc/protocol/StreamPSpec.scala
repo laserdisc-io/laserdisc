@@ -216,4 +216,37 @@ final class StreamPSpec extends BaseSpec with StreamP {
       bulks("XSETID", "s", "9-1", "ENTRIESADDED", "3", "MAXDELETEDID", "2-1")
     )
   }
+
+  test("The Stream protocol using Redis 8.2's reference policies sends them and reads what XDELEX and XACKDEL did to each entry") {
+    val ids = OneOrMore.unsafeFrom(List(id(1L), id(9L)))
+    assertEquals(
+      xadd(Key("s"), StreamTrim.maxLen(NonNegLong(1L)), StreamRefPolicy.keepRef, fields).encode,
+      bulks("XADD", "s", "KEEPREF", "MAXLEN", "1", "*", "a", "1", "b", "2")
+    )
+    assertEquals(
+      xtrim(Key("s"), StreamTrim.maxLen(NonNegLong(0L)), StreamRefPolicy.acked).encode,
+      bulks("XTRIM", "s", "MAXLEN", "0", "ACKED")
+    )
+    assertEquals(xdelex(Key("s"), ids, StreamRefPolicy.delRef).encode, bulks("XDELEX", "s", "DELREF", "IDS", "2", "1-1", "9-1"))
+    assertEquals(xackdel(Key("s"), Key("g"), ids).encode, bulks("XACKDEL", "s", "g", "IDS", "2", "1-1", "9-1"))
+    assertEquals(
+      xdelex(Key("s"), ids).decode(Arr(Num(1L), Num(-1L), Num(2L))),
+      Seq(StreamDeleteResult.Deleted, StreamDeleteResult.NotFound, StreamDeleteResult.Referenced)
+    )
+  }
+
+  test("The Stream protocol using Redis 8.6's idempotent XADD and XCFGSET sends them") {
+    assertEquals(
+      xadd(Key("s"), StreamIdmp.of(Key("p1"), Key("i1")), fields).encode,
+      bulks("XADD", "s", "IDMP", "p1", "i1", "*", "a", "1", "b", "2")
+    )
+    assertEquals(
+      xadd(Key("s"), StreamIdmp.auto(Key("p2")), StreamTrim.maxLenApprox(NonNegLong(10L)), fields).encode,
+      bulks("XADD", "s", "IDMPAUTO", "p2", "MAXLEN", "~", "10", "*", "a", "1", "b", "2")
+    )
+    assertEquals(
+      xcfgset(Key("s"), StreamIdmpConfig.duration(PosLong(50L)).maxSize(PosLong(10L))).encode,
+      bulks("XCFGSET", "s", "IDMP-DURATION", "50", "IDMP-MAXSIZE", "10")
+    )
+  }
 }

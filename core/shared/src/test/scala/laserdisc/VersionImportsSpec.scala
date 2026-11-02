@@ -538,4 +538,38 @@ final class VersionImportsSpec extends BaseSpec {
       assert(compileErrors("""info(servers.info.keysizes)""").nonEmpty)
     }
   }
+
+  test("redis_6_2 has SLOWLOG, MEMORY, LATENCY and COMMAND INFO, but not LATENCY HISTOGRAM, COMMAND LIST, HOTKEYS or COMMANDLOG") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+
+    assertEquals(slowlog.len.frames, frame("SLOWLOG", "LEN"))
+    assertEquals(memory.usage("a").frames, frame("MEMORY", "USAGE", "a"))
+    assertEquals(latency.latest.frames, frame("LATENCY", "LATEST"))
+    assertEquals(command.count.frames, frame("COMMAND", "COUNT"))
+    assert(compileErrors("""latency.histogram""").nonEmpty)
+    assert(compileErrors("""command.list""").nonEmpty)
+    assert(compileErrors("""hotkeys.stop""").nonEmpty)
+    assert(compileErrors("""commandlog.len(servers.commandLogType.slow)""").nonEmpty)
+  }
+
+  test("redis_7_0 has LATENCY HISTOGRAM and COMMAND LIST, redis_8_6 has HOTKEYS, and valkey_8_1 has COMMANDLOG") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(latency.histogram.frames, frame("LATENCY", "HISTOGRAM"))
+      assertEquals(command.list.frames, frame("COMMAND", "LIST"))
+    }
+    {
+      import laserdisc.redis_8_6.*
+      assertEquals(hotkeys.reset.frames, frame("HOTKEYS", "RESET"))
+      assert(compileErrors("""commandlog.len(servers.commandLogType.slow)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_1.*
+      assertEquals(commandlog.len(servers.commandLogType.largeRequest).frames, frame("COMMANDLOG", "LEN", "large-request"))
+      assert(compileErrors("""hotkeys.stop""").nonEmpty)
+    }
+  }
 }

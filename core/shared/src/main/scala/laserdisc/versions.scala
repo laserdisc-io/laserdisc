@@ -56,6 +56,10 @@ trait Client7_2 extends Client7_0 with ClientNoTouchCommands
 trait Client7_4 extends Client7_2 with ClientMaxAgeCommands
 trait Config7_0 extends ConfigCommands with ConfigManyCommands
 
+/** The LATENCY and COMMAND commands, under `latency` and `command` */
+trait Latency7_0 extends LatencyCommands with LatencyHistogramCommands
+trait Command7_0 extends CommandCommands with CommandListCommands
+
 /** The blocking commands, under `blocking` */
 trait Blocking6_2  extends BListBaseP with BListExtP with BSortedSetBaseP
 trait Blocking7_0  extends Blocking6_2 with BListMPopP with BSortedSetMPopP
@@ -77,6 +81,8 @@ trait Redis7_0
   override lazy val blocking: Blocking7_0 = new Blocking7_0 {}
   override lazy val client: Client7_0     = new Client7_0 {}
   override lazy val config: Config7_0     = new Config7_0 {}
+  override lazy val latency: Latency7_0   = new Latency7_0 {}
+  override lazy val command: Command7_0   = new Command7_0 {}
 }
 trait Redis7_2 extends Redis7_0 with KeyWaitAofP with SortedSetRankWithScoreP {
   override lazy val client: Client7_2 = new Client7_2 {}
@@ -98,7 +104,7 @@ trait Valkey7_2 extends Redis7_2
 trait Valkey8_0 extends Valkey7_2 with HashScanNoValuesP with SortedSetScanNoScoresP {
   override lazy val client: Client7_4 = new Client7_4 {}
 }
-trait Valkey8_1 extends Valkey8_0 with StringSetIfEqP with ServerBgSaveCancelP
+trait Valkey8_1 extends Valkey8_0 with StringSetIfEqP with ServerBgSaveCancelP with ServerCommandLogP
 trait Valkey9_0 extends Valkey8_1 with GeoSearchPolygonP with HashFieldExpiryP with HashGetSetExpiryP with StringDelIfEqP
 trait Valkey9_1 extends Valkey9_0 with HashGetDelP with HashSetExKeyConditionP with StringMSetExP with ServerInfoTlsP
 

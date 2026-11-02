@@ -440,7 +440,7 @@ trait ConfigManyCommands extends Features {
     Protocol("CONFIG", "SET" *: parameters.value *: EmptyTuple).as[Str, OK]
 }
 
-trait ServerBaseP extends Features {
+trait ServerBaseP extends ServerInspectionBaseP {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "BGREWRITEAOF",
@@ -457,13 +457,17 @@ trait ServerBaseP extends Features {
       "SHUTDOWN: NOSAVE SAVE",
       "SLAVEOF: NO ONE",
       "TIME"
-    ) ++ client.supported ++ config.supported
+    ) ++ client.supported ++ config.supported ++ latency.supported ++ command.supported
 
   import ServerP.{Info, InfoSection, Role, ShutdownFlag}
 
   object servers {
     final val clientFilter    = ServerP.ClientFilter
     final val clientType      = ServerP.ClientType
+    final val commandFilter   = ServerInspection.CommandFilter
+    final val commandLogType  = ServerInspection.CommandLogType
+    final val hotKeysMetrics  = ServerInspection.HotKeysMetrics
+    final val hotKeysOptions  = ServerInspection.HotKeysOptions
     final val flag            = ShutdownFlag
     final val info            = InfoSection
     final val pauseMode       = ServerP.PauseMode
@@ -474,6 +478,10 @@ trait ServerBaseP extends Features {
   lazy val client: ClientCommands = new ClientCommands {}
 
   lazy val config: ConfigCommands = new ConfigCommands {}
+
+  lazy val latency: LatencyCommands = new LatencyCommands {}
+
+  lazy val command: CommandCommands = new CommandCommands {}
 
   /** Replies with the server's message, like "Background append only file rewriting started" */
   final val bgrewriteaof: Single.Aux[String] = Protocol("BGREWRITEAOF", EmptyTuple).as[Str, String]
@@ -560,11 +568,22 @@ trait ServerInfoRedis8P extends Features {
   final def info(section: Redis8Section): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
 }
 
-/** INFO HOTKEYS: Redis 8.6 */
+/** HOTKEYS and INFO HOTKEYS: Redis 8.6 */
 trait ServerHotKeysP extends Features {
   import ServerP.{HotKeysSection, Info}
 
+  override private[laserdisc] def supported: List[String] = super.supported ++ hotkeys.supported
+
+  object hotkeys extends HotKeysCommands
+
   final def info(section: HotKeysSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
+}
+
+/** COMMANDLOG: Valkey 8.1 */
+trait ServerCommandLogP extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ commandlog.supported
+
+  object commandlog extends CommandLogCommands
 }
 
 /** INFO TLS: Valkey 9.1 */
@@ -582,8 +601,10 @@ trait ServerBgSaveCancelP extends Features {
   final val bgsavecancel: Single.Aux[String] = Protocol("BGSAVE", "CANCEL").as[Str, String]
 }
 
-trait ClientAllCommands extends ClientCommands with ClientNoEvictCommands with ClientNoTouchCommands with ClientMaxAgeCommands
-trait ConfigAllCommands extends ConfigCommands with ConfigManyCommands
+trait ClientAllCommands  extends ClientCommands with ClientNoEvictCommands with ClientNoTouchCommands with ClientMaxAgeCommands
+trait ConfigAllCommands  extends ConfigCommands with ConfigManyCommands
+trait LatencyAllCommands extends LatencyCommands with LatencyHistogramCommands
+trait CommandAllCommands extends CommandCommands with CommandListCommands
 
 trait ServerP
     extends ServerBaseP
@@ -591,7 +612,10 @@ trait ServerP
     with ServerInfoRedis8P
     with ServerHotKeysP
     with ServerInfoTlsP
-    with ServerBgSaveCancelP {
-  override lazy val client: ClientAllCommands = new ClientAllCommands {}
-  override lazy val config: ConfigAllCommands = new ConfigAllCommands {}
+    with ServerBgSaveCancelP
+    with ServerCommandLogP {
+  override lazy val client: ClientAllCommands   = new ClientAllCommands {}
+  override lazy val config: ConfigAllCommands   = new ConfigAllCommands {}
+  override lazy val latency: LatencyAllCommands = new LatencyAllCommands {}
+  override lazy val command: CommandAllCommands = new CommandAllCommands {}
 }

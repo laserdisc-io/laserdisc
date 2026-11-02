@@ -72,4 +72,61 @@ final class StreamPSpec extends BaseSpec with StreamP {
     assertEquals(xtrim(Key("s"), StreamTrim.maxLen(NonNegLong(1L))).encode, bulks("XTRIM", "s", "MAXLEN", "1"))
     assertEquals(xtrim(Key("s"), StreamTrim.minIdApprox(id1)).encode, bulks("XTRIM", "s", "MINID", "~", "1793590457192-0"))
   }
+
+  test("The Stream protocol using xgroupcreate, xgroupsetid and the consumer commands sends their arguments") {
+    assertEquals(
+      xgroupcreate(Key("s"), Key("g"), StreamFrom.latest, StreamMkStream).encode,
+      bulks("XGROUP", "CREATE", "s", "g", "$", "MKSTREAM")
+    )
+    assertEquals(
+      xgroupcreate(Key("s"), Key("g"), StreamFrom.after(id1), NonNegLong(5L)).encode,
+      bulks("XGROUP", "CREATE", "s", "g", "1793590457192-0", "ENTRIESREAD", "5")
+    )
+    assertEquals(xgroupsetid(Key("s"), Key("g"), StreamFrom.latest).encode, bulks("XGROUP", "SETID", "s", "g", "$"))
+    assertEquals(xgroupcreateconsumer(Key("s"), Key("g"), Key("c")).decode(Num(1L)), true)
+    assertEquals(xgroupdelconsumer(Key("s"), Key("g"), Key("c")).decode(Num(2L)), NonNegLong(2L))
+    assertEquals(xgroupdestroy(Key("s"), Key("g")).decode(Num(0L)), false)
+    assertEquals(
+      xack(Key("s"), Key("g"), OneOrMore.unsafeFrom(List(id1, id2))).encode,
+      bulks("XACK", "s", "g", "1793590457192-0", "9999999999999-1")
+    )
+  }
+
+  test("The Stream protocol using xreadgroup sends the group, the options and the streams, and reads deleted entries with no fields") {
+    val streams = OneOrMore.unsafeFrom(List(Key("s") -> StreamGroupFrom.newEntries))
+    assertEquals(
+      xreadgroup[Int](Key("g"), Key("c"), streams, PosLong(5L), StreamNoAck).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "5", "NOACK", "STREAMS", "s", ">")
+    )
+    val history = Arr(Arr(Bulk("s"), Arr(Arr(Bulk("1-1"), NilArr), Arr(Bulk("2-1"), bulks("a", "2")))))
+    val one     = StreamId(NonNegLong(1L), NonNegLong(1L))
+    val two     = StreamId(NonNegLong(2L), NonNegLong(1L))
+    assertEquals(
+      xreadgroup[Int](
+        Key("g"),
+        Key("c"),
+        OneOrMore.unsafeFrom(List(Key("s") -> StreamGroupFrom.pendingAfter(StreamId(NonNegLong(0L), NonNegLong(0L)))))
+      ).decode(history),
+      Some(Seq(KV(Key("s"), Seq(StreamEntry(one, Nil), StreamEntry(two, Seq(Key("a") -> 2))))))
+    )
+  }
+
+  test("The Stream protocol using xpending reads the summary, empty or not, and the pending entries") {
+    val one = StreamId(NonNegLong(1L), NonNegLong(1L))
+    val two = StreamId(NonNegLong(2L), NonNegLong(1L))
+    assertEquals(
+      xpending(Key("s"), Key("g")).decode(Arr(Num(2L), Bulk("1-1"), Bulk("2-1"), Arr(bulks("c1", "2")))),
+      StreamPendingSummary(NonNegLong(2L), Some(one), Some(two), Seq(Key("c1") -> NonNegLong(2L)))
+    )
+    assertEquals(
+      xpending(Key("s"), Key("g")).decode(Arr(Num(0L), NullBulk, NullBulk, NilArr)),
+      StreamPendingSummary(NonNegLong(0L), None, None, Nil)
+    )
+    val detail = xpending(Key("s"), Key("g"), NonNegLong(0L), StreamBound.min, StreamBound.max, PosLong(10L), Key("c1"))
+    assertEquals(detail.encode, bulks("XPENDING", "s", "g", "IDLE", "0", "-", "+", "10", "c1"))
+    assertEquals(
+      detail.decode(Arr(Arr(Bulk("1-1"), Bulk("c1"), Num(19L), Num(1L)))),
+      Seq(StreamPending(one, Key("c1"), NonNegLong(19L), NonNegLong(1L)))
+    )
+  }
 }

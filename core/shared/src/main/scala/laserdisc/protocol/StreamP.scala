@@ -39,7 +39,9 @@ object StreamP {
     }
   }
 
-  /** An entry of a stream: its id and its fields, in the order they were added */
+  /** An entry of a stream: its id and its fields, in the order they were added. An entry has at least one field, so empty fields mean the
+    * entry was deleted while still pending, as XREADGROUP shows it when reading a consumer's history
+    */
   final case class Entry[A](id: Id, fields: Seq[(Key, A)])
 
   /** Where XRANGE and XREVRANGE start or end: the smallest or largest id, an id itself, or the first id after or before it */
@@ -78,6 +80,53 @@ object StreamP {
     def minIdApprox(id: Id, limit: PosLong): Trim = new Of(List("MINID", "~", id.toString, "LIMIT", limit.value.toString))
   }
 
+  /** Where XREADGROUP reads a stream from: entries never delivered to the group yet (`>`), or the consumer's pending entries after an id */
+  sealed trait GroupFrom { def param: String }
+  object GroupFrom       {
+    private final class Of(override final val param: String) extends GroupFrom
+
+    final val newEntries: GroupFrom     = new Of(">")
+    def pendingAfter(id: Id): GroupFrom = new Of(id.toString)
+  }
+
+  /** MKSTREAM, for XGROUP CREATE: create the stream when it doesn't exist */
+  sealed trait MkStream
+  object MkStream extends MkStream {
+    implicit val mkStreamShow: Show[MkStream] = Show.const("MKSTREAM")
+  }
+
+  /** NOACK, for XREADGROUP: don't keep the entries read as pending, as if they were acknowledged at once */
+  sealed trait NoAck
+  object NoAck extends NoAck {
+    implicit val noAckShow: Show[NoAck] = Show.const("NOACK")
+  }
+
+  /** XPENDING's summary: how many entries are pending, the smallest and largest of their ids, and how many each consumer has */
+  final case class PendingSummary(count: NonNegLong, smallest: Option[Id], largest: Option[Id], consumers: Seq[(Key, NonNegLong)])
+
+  /** A pending entry of XPENDING: its id, the consumer it was delivered to, how long ago in milliseconds, and how many times */
+  final case class PendingEntry(id: Id, consumer: Key, idleMilliseconds: NonNegLong, deliveries: NonNegLong)
+
+  private[protocol] final val pendingSummary: Read[Arr, PendingSummary] = {
+    val count                                           = Read.num2NonNegLongRead
+    implicit val consumer: Read[Arr, (Key, NonNegLong)] = Read.arr2Tuple2Read[Key, NonNegLong]
+    val consumers                                       = Read.arrOfArr2Seq[(Key, NonNegLong)]
+    Read.instancePF("Arr(pending summary)") {
+      case Arr(count(Right(n)) +: NullBulk +: NullBulk +: NilArr +: Seq()) => PendingSummary(n, None, None, Nil)
+      case Arr(count(Right(n)) +: Id.bulk2IdRead(Right(smallest)) +: Id.bulk2IdRead(Right(largest)) +: consumers(Right(cs)) +: Seq()) =>
+        PendingSummary(n, Some(smallest), Some(largest), cs)
+    }
+  }
+
+  private[protocol] final val pendingEntries: Read[Arr, Seq[PendingEntry]] = {
+    val number                                = Read.num2NonNegLongRead
+    implicit val one: Read[Arr, PendingEntry] = Read.instancePF("Arr(pending entry)") {
+      case Arr(Id.bulk2IdRead(Right(id)) +: Bulk(Key(consumer)) +: number(Right(idle)) +: number(Right(deliveries)) +: Seq()) =>
+        PendingEntry(id, consumer, idle, deliveries)
+    }
+    Read[Arr, Seq[PendingEntry]]
+  }
+
   /** NOMKSTREAM, for XADD: don't create the stream when it doesn't exist */
   sealed trait NoMkStream
   object NoMkStream extends NoMkStream {
@@ -86,7 +135,10 @@ object StreamP {
 
   private[protocol] final def entry[A](implicit R: Read[Bulk, A]): Read[Arr, Entry[A]] = {
     val fields = Read.arr2Tuple2Seq[Key, A]
-    Read.instancePF("Arr(stream entry)") { case Arr(Id.bulk2IdRead(Right(id)) +: fields(Right(fs)) +: Seq()) => Entry(id, fs) }
+    Read.instancePF("Arr(stream entry)") {
+      case Arr(Id.bulk2IdRead(Right(id)) +: fields(Right(fs)) +: Seq()) => Entry(id, fs)
+      case Arr(Id.bulk2IdRead(Right(id)) +: NilArr +: Seq())            => Entry(id, Nil)
+    }
   }
 
   private[protocol] final def entries[A: Read[Bulk, _]]: Read[Arr, Seq[Entry[A]]] = {
@@ -121,19 +173,29 @@ trait StreamBaseP extends Features {
   import StreamP.{Bound, Entry, From, Id, NoMkStream, Trim, fieldsParams}
 
   object streamtypes {
-    final type StreamBound      = StreamP.Bound
-    final type StreamEntry[A]   = StreamP.Entry[A]
-    final type StreamFrom       = StreamP.From
-    final type StreamId         = StreamP.Id
-    final type StreamNoMkStream = StreamP.NoMkStream
-    final type StreamTrim       = StreamP.Trim
+    final type StreamBound          = StreamP.Bound
+    final type StreamEntry[A]       = StreamP.Entry[A]
+    final type StreamFrom           = StreamP.From
+    final type StreamGroupFrom      = StreamP.GroupFrom
+    final type StreamMkStream       = StreamP.MkStream
+    final type StreamNoAck          = StreamP.NoAck
+    final type StreamPending        = StreamP.PendingEntry
+    final type StreamPendingSummary = StreamP.PendingSummary
+    final type StreamId             = StreamP.Id
+    final type StreamNoMkStream     = StreamP.NoMkStream
+    final type StreamTrim           = StreamP.Trim
 
-    final val StreamBound      = StreamP.Bound
-    final val StreamEntry      = StreamP.Entry
-    final val StreamFrom       = StreamP.From
-    final val StreamId         = StreamP.Id
-    final val StreamNoMkStream = StreamP.NoMkStream
-    final val StreamTrim       = StreamP.Trim
+    final val StreamBound          = StreamP.Bound
+    final val StreamEntry          = StreamP.Entry
+    final val StreamFrom           = StreamP.From
+    final val StreamGroupFrom      = StreamP.GroupFrom
+    final val StreamMkStream       = StreamP.MkStream
+    final val StreamNoAck          = StreamP.NoAck
+    final val StreamPending        = StreamP.PendingEntry
+    final val StreamPendingSummary = StreamP.PendingSummary
+    final val StreamId             = StreamP.Id
+    final val StreamNoMkStream     = StreamP.NoMkStream
+    final val StreamTrim           = StreamP.Trim
   }
 
   private final def entries[A: Read[Bulk, _]] = RESPRead.instance(StreamP.entries[A])
@@ -187,4 +249,143 @@ trait StreamBaseP extends Features {
   final def xtrim(key: Key, trim: Trim): Single.Aux[NonNegLong] = Protocol("XTRIM", key.value :: trim.params).as[Num, NonNegLong]
 }
 
-trait StreamP extends StreamBaseP
+/** Consumer groups: XGROUP, XREADGROUP, XACK and XPENDING. Redis 6.2 */
+trait StreamGroupBaseP extends Features {
+  import StreamP.{Bound, Entry, From, GroupFrom, Id, MkStream, NoAck, PendingEntry, PendingSummary}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "XACK",
+      "XGROUP CREATE: $ MKSTREAM",
+      "XGROUP CREATECONSUMER",
+      "XGROUP DELCONSUMER",
+      "XGROUP DESTROY",
+      "XGROUP SETID: $",
+      "XPENDING: IDLE",
+      "XREADGROUP: COUNT GROUP NOACK STREAMS"
+    )
+
+  /** Acknowledges the entries, and replies how many were pending */
+  final def xack(key: Key, group: Key, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
+    Protocol("XACK", key.value :: group.value :: ids.value.map(_.toString)).as[Num, NonNegLong]
+
+  /** Creates a group that will read the stream after `from` (`StreamFrom.latest` for entries added from now on) */
+  final def xgroupcreate(key: Key, group: Key, from: From): Single.Aux[OK] =
+    Protocol("XGROUP", "CREATE" :: key.value :: group.value :: from.param :: Nil).as[Str, OK]
+  final def xgroupcreate(key: Key, group: Key, from: From, mkStream: MkStream): Single.Aux[OK] =
+    Protocol("XGROUP", "CREATE" *: key *: group *: from.param *: mkStream *: EmptyTuple).as[Str, OK]
+
+  /** Creates a consumer in the group, and replies whether it didn't exist yet */
+  final def xgroupcreateconsumer(key: Key, group: Key, consumer: Key): Single.Aux[Boolean] =
+    Protocol("XGROUP", "CREATECONSUMER" :: key.value :: group.value :: consumer.value :: Nil).as[Num, Boolean]
+
+  /** Deletes a consumer from the group, and replies how many entries it had pending */
+  final def xgroupdelconsumer(key: Key, group: Key, consumer: Key): Single.Aux[NonNegLong] =
+    Protocol("XGROUP", "DELCONSUMER" :: key.value :: group.value :: consumer.value :: Nil).as[Num, NonNegLong]
+
+  /** Deletes the group, and replies whether it existed */
+  final def xgroupdestroy(key: Key, group: Key): Single.Aux[Boolean] =
+    Protocol("XGROUP", "DESTROY" :: key.value :: group.value :: Nil).as[Num, Boolean]
+
+  /** Makes the group read the stream after `from` from now on */
+  final def xgroupsetid(key: Key, group: Key, from: From): Single.Aux[OK] =
+    Protocol("XGROUP", "SETID" :: key.value :: group.value :: from.param :: Nil).as[Str, OK]
+
+  /** How many entries are pending in the group, and for which consumers */
+  final def xpending(key: Key, group: Key): Single.Aux[PendingSummary] =
+    Protocol("XPENDING", key.value :: group.value :: Nil).using(RESPRead.instance(StreamP.pendingSummary))
+
+  /** The pending entries from `start` to `end`, at most `count`, for one consumer or all of them, and only those idle for at least
+    * `idleMilliseconds`
+    */
+  final def xpending(key: Key, group: Key, start: Bound, end: Bound, count: PosLong): Single.Aux[Seq[PendingEntry]] =
+    Protocol("XPENDING", key.value :: group.value :: start.param :: end.param :: count.value.toString :: Nil)
+      .using(RESPRead.instance(StreamP.pendingEntries))
+  final def xpending(key: Key, group: Key, start: Bound, end: Bound, count: PosLong, consumer: Key): Single.Aux[Seq[PendingEntry]] =
+    Protocol("XPENDING", key.value :: group.value :: start.param :: end.param :: count.value.toString :: consumer.value :: Nil)
+      .using(RESPRead.instance(StreamP.pendingEntries))
+  final def xpending(
+      key: Key,
+      group: Key,
+      idleMilliseconds: NonNegLong,
+      start: Bound,
+      end: Bound,
+      count: PosLong
+  ): Single.Aux[Seq[PendingEntry]] =
+    Protocol(
+      "XPENDING",
+      key.value :: group.value :: "IDLE" :: idleMilliseconds.value.toString :: start.param :: end.param :: count.value.toString :: Nil
+    )
+      .using(RESPRead.instance(StreamP.pendingEntries))
+  final def xpending(
+      key: Key,
+      group: Key,
+      idleMilliseconds: NonNegLong,
+      start: Bound,
+      end: Bound,
+      count: PosLong,
+      consumer: Key
+  ): Single.Aux[Seq[PendingEntry]] =
+    Protocol(
+      "XPENDING",
+      key.value :: group.value :: "IDLE" :: idleMilliseconds.value.toString :: start.param :: end.param :: count.value.toString :: consumer.value :: Nil
+    ).using(RESPRead.instance(StreamP.pendingEntries))
+
+  private final def groupStreams(streams: OneOrMore[(Key, GroupFrom)]): List[String] =
+    "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(_._2.param)
+
+  /** Reads the streams for a consumer of the group, by stream, or `None` when none of them has entries for it */
+  final def xreadgroup[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      streams: OneOrMore[(Key, GroupFrom)]
+  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: groupStreams(streams))
+      .using(RESPRead.nullableArr(StreamP.streams[A]))
+  final def xreadgroup[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      streams: OneOrMore[(Key, GroupFrom)],
+      count: PosLong
+  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: "COUNT" :: count.value.toString :: groupStreams(streams))
+      .using(RESPRead.nullableArr(StreamP.streams[A]))
+  final def xreadgroup[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      streams: OneOrMore[(Key, GroupFrom)],
+      noAck: NoAck
+  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: Show[NoAck].show(noAck) :: groupStreams(streams))
+      .using(RESPRead.nullableArr(StreamP.streams[A]))
+  final def xreadgroup[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      streams: OneOrMore[(Key, GroupFrom)],
+      count: PosLong,
+      noAck: NoAck
+  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      "GROUP" :: group.value :: consumer.value :: "COUNT" :: count.value.toString :: Show[NoAck].show(noAck) :: groupStreams(streams)
+    ).using(RESPRead.nullableArr(StreamP.streams[A]))
+}
+
+/** XGROUP CREATE and XGROUP SETID with ENTRIESREAD: Redis 7.0 */
+trait StreamGroupEntriesReadP extends Features {
+  import StreamP.{From, MkStream}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("XGROUP CREATE: ENTRIESREAD", "XGROUP SETID: ENTRIESREAD")
+
+  /** Like `xgroupcreate`, telling the group how many entries it has already read, so that it can report its lag */
+  final def xgroupcreate(key: Key, group: Key, from: From, entriesRead: NonNegLong): Single.Aux[OK] =
+    Protocol("XGROUP", "CREATE" :: key.value :: group.value :: from.param :: "ENTRIESREAD" :: entriesRead.value.toString :: Nil).as[Str, OK]
+  final def xgroupcreate(key: Key, group: Key, from: From, mkStream: MkStream, entriesRead: NonNegLong): Single.Aux[OK] =
+    Protocol("XGROUP", "CREATE" *: key *: group *: from.param *: mkStream *: "ENTRIESREAD" *: entriesRead *: EmptyTuple).as[Str, OK]
+
+  final def xgroupsetid(key: Key, group: Key, from: From, entriesRead: NonNegLong): Single.Aux[OK] =
+    Protocol("XGROUP", "SETID" :: key.value :: group.value :: from.param :: "ENTRIESREAD" :: entriesRead.value.toString :: Nil).as[Str, OK]
+}
+
+trait StreamP extends StreamBaseP with StreamGroupBaseP with StreamGroupEntriesReadP

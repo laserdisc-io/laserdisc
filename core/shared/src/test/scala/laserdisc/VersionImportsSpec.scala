@@ -648,4 +648,20 @@ final class VersionImportsSpec extends BaseSpec {
       assertEquals(xtrim("s", StreamTrim.maxLenApprox(10L)).frames, frame("XTRIM", "s", "MAXLEN", "~", "10"))
     }
   }
+
+  test("redis_6_2 has consumer groups, but not ENTRIESREAD, which redis_7_0 has") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      import streamtypes.*
+      assertEquals(xgroupcreate("s", "g", StreamFrom.latest).frames, frame("XGROUP", "CREATE", "s", "g", "$"))
+      assert(compileErrors("""xgroupsetid("s", "g", StreamFrom.latest, 3L)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      import streamtypes.*
+      assertEquals(xgroupsetid("s", "g", StreamFrom.latest, 3L).frames, frame("XGROUP", "SETID", "s", "g", "$", "ENTRIESREAD", "3"))
+    }
+  }
 }

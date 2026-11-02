@@ -57,4 +57,34 @@ abstract class StreamClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assertEquals(send(xtrim("x:s", StreamTrim.minId(third))).value, 0L)
     assertEquals(send(xrange[Int]("x:s", StreamBound.min, StreamBound.max)).map(_.id), Seq(third))
   }
+
+  test(s"a $dest client reads a stream as a consumer group, acknowledges entries and finds the pending ones") {
+    import laserdisc.redis_6_2.*
+    import streamtypes.*
+
+    send(del("x:g"))
+    assertEquals(send(xgroupcreate("x:g", "grp", StreamFrom.latest, StreamMkStream)), OK)
+    val first  = send(xadd("x:g", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
+    val second = send(xadd("x:g", OneOrMore.unsafeFrom(List(Key("a") -> 2))))
+    assert(send(xgroupcreateconsumer("x:g", "grp", "idle")))
+
+    val fresh = OneOrMore.unsafeFrom(List(Key("x:g") -> StreamGroupFrom.newEntries))
+    assertEquals(send(xreadgroup[Int]("grp", "c1", fresh, 5L)).map(_.flatMap(_.value.map(_.id))), Some(Seq(first, second)))
+    assertEquals(send(xreadgroup[Int]("grp", "c1", fresh)), None)
+
+    val summary = send(xpending("x:g", "grp"))
+    assertEquals(summary.count.value, 2L)
+    assertEquals(summary.consumers, Seq(Key("c1") -> NonNegLong(2L)))
+    assertEquals(send(xpending("x:g", "grp", StreamBound.min, StreamBound.max, 10L, "c1")).map(_.id), Seq(first, second))
+
+    send(xdel("x:g", OneOrMore.unsafeFrom(List(first))))
+    val history = OneOrMore.unsafeFrom(List(Key("x:g") -> StreamGroupFrom.pendingAfter(StreamId(0L, 0L))))
+    assertEquals(send(xreadgroup[Int]("grp", "c1", history)).map(_.flatMap(_.value.map(_.fields.isEmpty))), Some(Seq(true, false)))
+
+    assertEquals(send(xack("x:g", "grp", OneOrMore.unsafeFrom(List(first, second)))).value, 2L)
+    assertEquals(send(xpending("x:g", "grp")).count.value, 0L)
+    assertEquals(send(xgroupdelconsumer("x:g", "grp", "c1")).value, 0L)
+    assertEquals(send(xgroupsetid("x:g", "grp", StreamFrom.latest)), OK)
+    assert(send(xgroupdestroy("x:g", "grp")))
+  }
 }

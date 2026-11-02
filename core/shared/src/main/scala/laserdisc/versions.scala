@@ -67,7 +67,7 @@ trait Command7_0 extends CommandCommands with CommandListCommands
 trait Acl7_0 extends AclCommands with AclSelectorCommands
 
 /** The blocking commands, under `blocking` */
-trait Blocking6_2  extends BListBaseP with BListExtP with BSortedSetBaseP
+trait Blocking6_2  extends BListBaseP with BListExtP with BSortedSetBaseP with BStreamBaseP
 trait Blocking7_0  extends Blocking6_2 with BListMPopP with BSortedSetMPopP
 trait Blocking8_10 extends Blocking7_0 with BListMoveManyP
 

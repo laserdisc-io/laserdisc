@@ -706,4 +706,25 @@ final class VersionImportsSpec extends BaseSpec {
       assert(compileErrors("""xcfgset("s", StreamIdmpConfig.maxSize(10L))""").nonEmpty)
     }
   }
+
+  test("every version has the blocking stream reads under blocking") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      import streamtypes.*
+      assertEquals(
+        blocking.xread[Int](OneOrMore.unsafeFrom(List(Key("s") -> StreamFrom.latest)), 100L).frames,
+        frame("XREAD", "BLOCK", "100", "STREAMS", "s", "$")
+      )
+    }
+    {
+      import laserdisc.families.streams.*
+      import streamtypes.*
+      assertEquals(
+        blocking.xreadgroup[Int]("g", "c", OneOrMore.unsafeFrom(List(Key("s") -> StreamGroupFrom.newEntries)), 100L).frames,
+        frame("XREADGROUP", "GROUP", "g", "c", "BLOCK", "100", "STREAMS", "s", ">")
+      )
+    }
+  }
 }

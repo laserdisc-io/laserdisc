@@ -35,6 +35,6 @@ object publish     extends PublishP
 object server      extends ServerP
 object sets        extends SetP
 object sortedsets  extends SortedSetP { object blocking extends BSortedSetP }
-object streams     extends StreamP
+object streams     extends StreamP    { object blocking extends BStreamP    }
 object strings     extends StringP
 object transaction extends TransactionP

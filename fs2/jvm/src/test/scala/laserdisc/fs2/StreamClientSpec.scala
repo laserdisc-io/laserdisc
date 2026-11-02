@@ -148,4 +148,28 @@ abstract class StreamClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     )
     assertEquals(send(xsetid("x:c", StreamId(9999999999999L, 0L))), OK)
   }
+
+  test(s"a $dest client waits for new entries with the blocking reads, and gets None when the wait runs out") {
+    import laserdisc.redis_6_2.*
+    import streamtypes.*
+
+    send(del("x:b"))
+    send(xgroupcreate("x:b", "grp", StreamFrom.latest, StreamMkStream))
+    val latest = OneOrMore.unsafeFrom(List(Key("x:b") -> StreamFrom.latest))
+    assertEquals(send(blocking.xread[Int](latest, 100L)), None)
+    assertEquals(
+      send(blocking.xreadgroup[Int]("grp", "c", OneOrMore.unsafeFrom(List(Key("x:b") -> StreamGroupFrom.newEntries)), 100L)),
+      None
+    )
+
+    val added = send(xadd("x:b", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
+    val all   = OneOrMore.unsafeFrom(List(Key("x:b") -> StreamFrom.after(StreamId(0L, 0L))))
+    assertEquals(send(blocking.xread[Int](all, 1000L, 10L)).map(_.flatMap(_.value.map(_.id))), Some(Seq(added)))
+    assertEquals(
+      send(blocking.xreadgroup[Int]("grp", "c", OneOrMore.unsafeFrom(List(Key("x:b") -> StreamGroupFrom.newEntries)), 1000L, StreamNoAck))
+        .map(_.flatMap(_.value.map(_.id))),
+      Some(Seq(added))
+    )
+    assertEquals(send(xpending("x:b", "grp")).count.value, 0L)
+  }
 }

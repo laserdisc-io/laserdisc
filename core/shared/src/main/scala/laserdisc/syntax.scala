@@ -38,5 +38,5 @@ object all
     with StreamP
     with StringP
     with TransactionP {
-  object blocking extends BListP with BSortedSetP
+  object blocking extends BListP with BSortedSetP with BStreamP
 }

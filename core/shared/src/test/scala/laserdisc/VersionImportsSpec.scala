@@ -664,4 +664,24 @@ final class VersionImportsSpec extends BaseSpec {
       assertEquals(xgroupsetid("s", "g", StreamFrom.latest, 3L).frames, frame("XGROUP", "SETID", "s", "g", "$", "ENTRIESREAD", "3"))
     }
   }
+
+  test("redis_6_2 has XCLAIM, XAUTOCLAIM, XINFO and XSETID, but not XSETID with ENTRIESADDED, which redis_7_0 has") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      import streamtypes.*
+      assertEquals(xsetid("s", StreamId(5L, 0L)).frames, frame("XSETID", "s", "5-0"))
+      assertEquals(xinfogroups("s").frames, frame("XINFO", "GROUPS", "s"))
+      assert(compileErrors("""xsetid("s", StreamId(5L, 0L), 1L, StreamId(4L, 0L))""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      import streamtypes.*
+      assertEquals(
+        xsetid("s", StreamId(5L, 0L), 1L, StreamId(4L, 0L)).frames,
+        frame("XSETID", "s", "5-0", "ENTRIESADDED", "1", "MAXDELETEDID", "4-0")
+      )
+    }
+  }
 }

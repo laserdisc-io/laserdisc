@@ -44,6 +44,7 @@ trait Base6_2
     with SortedSetExtP
     with StreamBaseP
     with StreamGroupBaseP
+    with StreamClaimAndInfoBaseP
     with StringBaseP
     with StringExtP
     with TransactionP {
@@ -84,7 +85,8 @@ trait Redis7_0
     with SortedSetMPopP
     with ServerShutdownAndInfoP
     with ClusterShardsP
-    with StreamGroupEntriesReadP {
+    with StreamGroupEntriesReadP
+    with StreamSetIdEntriesP {
   override lazy val blocking: Blocking7_0 = new Blocking7_0 {}
   override lazy val client: Client7_0     = new Client7_0 {}
   override lazy val config: Config7_0     = new Config7_0 {}

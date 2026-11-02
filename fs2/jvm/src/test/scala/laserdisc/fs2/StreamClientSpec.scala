@@ -87,4 +87,39 @@ abstract class StreamClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assertEquals(send(xgroupsetid("x:g", "grp", StreamFrom.latest)), OK)
     assert(send(xgroupdestroy("x:g", "grp")))
   }
+
+  test(s"a $dest client claims pending entries and reads the stream's, groups' and consumers' information") {
+    import laserdisc.redis_6_2.*
+    import streamtypes.*
+
+    send(del("x:c"))
+    send(xgroupcreate("x:c", "grp", StreamFrom.latest, StreamMkStream))
+    val first  = send(xadd("x:c", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
+    val second = send(xadd("x:c", OneOrMore.unsafeFrom(List(Key("a") -> 2))))
+    val third  = send(xadd("x:c", OneOrMore.unsafeFrom(List(Key("a") -> 3))))
+    send(xreadgroup[Int]("grp", "c1", OneOrMore.unsafeFrom(List(Key("x:c") -> StreamGroupFrom.newEntries))))
+    send(xdel("x:c", OneOrMore.unsafeFrom(List(second))))
+
+    assertEquals(send(xclaim[Int]("x:c", "grp", "c2", 0L, OneOrMore.unsafeFrom(List(first, second)))).map(_.id), Seq(first))
+    assertEquals(
+      send(xclaimjustid("x:c", "grp", "c2", 0L, OneOrMore.unsafeFrom(List(third)), StreamClaimOptions.none.retryCount(5L))),
+      Seq(third)
+    )
+    val auto = send(xautoclaim[Int]("x:c", "grp", "c3", 0L, StreamId(0L, 0L), 10L))
+    assertEquals(auto.claimed.map(_.id), Seq(first, third))
+    assertEquals(auto.next, StreamId(0L, 0L))
+
+    val info = send(xinfostream[Int]("x:c"))
+    assertEquals(info.length.value, 2L)
+    assertEquals(info.lastGeneratedId, third)
+    assertEquals(info.firstEntry.map(_.id), Some(first))
+    // from Redis 7.0, claiming drops a deleted entry from the pending list; Redis 6.2 (and KeyDB) keeps it
+    val pending = if (dest == "keyDb") 3L else 2L
+    assertEquals(send(xinfogroups("x:c")).map(g => g.name -> g.pending.value), Seq(Key("grp") -> pending))
+    assertEquals(
+      send(xinfoconsumers("x:c", "grp")).map(c => c.name -> c.pending.value).toSet,
+      Set(Key("c1") -> 0L, Key("c2") -> 0L, Key("c3") -> pending)
+    )
+    assertEquals(send(xsetid("x:c", StreamId(9999999999999L, 0L))), OK)
+  }
 }

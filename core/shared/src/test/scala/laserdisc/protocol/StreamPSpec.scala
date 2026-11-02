@@ -129,4 +129,91 @@ final class StreamPSpec extends BaseSpec with StreamP {
       Seq(StreamPending(one, Key("c1"), NonNegLong(19L), NonNegLong(1L)))
     )
   }
+
+  private def id(ms: Long): StreamId = StreamId(NonNegLong.unsafeFrom(ms), NonNegLong(1L))
+
+  test("The Stream protocol using xclaim sends the options and reads the claimed entries, leaving out Redis 6.2's nils") {
+    val ids = OneOrMore.unsafeFrom(List(id(1L), id(2L)))
+    assertEquals(
+      xclaim[Int](
+        Key("s"),
+        Key("g"),
+        Key("c"),
+        NonNegLong(0L),
+        ids,
+        StreamClaimOptions.none.idle(NonNegLong(5L)).retryCount(NonNegLong(2L)).force
+      ).encode,
+      bulks("XCLAIM", "s", "g", "c", "0", "1-1", "2-1", "IDLE", "5", "RETRYCOUNT", "2", "FORCE")
+    )
+    assertEquals(
+      xclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), ids).decode(Arr(Arr(Bulk("1-1"), bulks("a", "1")), NullBulk)),
+      Seq(StreamEntry(id(1L), Seq(Key("a") -> 1)))
+    )
+    assertEquals(
+      xclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), ids).encode,
+      bulks("XCLAIM", "s", "g", "c", "0", "1-1", "2-1", "JUSTID")
+    )
+    assertEquals(xclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), ids).decode(bulks("3-1")), Seq(id(3L)))
+  }
+
+  test("The Stream protocol using xautoclaim reads Redis 6.2's reply and Redis 7.0's, which lists the deleted ids") {
+    val start   = StreamId(NonNegLong(0L), NonNegLong(0L))
+    val redis62 = Arr(Bulk("0-0"), Arr(Arr(Bulk("1-1"), bulks("a", "1")), NullBulk))
+    val redis70 = Arr(Bulk("0-0"), Arr(Arr(Bulk("1-1"), bulks("a", "1"))), bulks("2-1"))
+    val claim   = xautoclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), start, PosLong(10L))
+    assertEquals(claim.encode, bulks("XAUTOCLAIM", "s", "g", "c", "0", "0-0", "COUNT", "10"))
+    assertEquals(claim.decode(redis62), StreamP.AutoClaimed(start, Seq(StreamEntry(id(1L), Seq(Key("a") -> 1))), Nil))
+    assertEquals(claim.decode(redis70), StreamP.AutoClaimed(start, Seq(StreamEntry(id(1L), Seq(Key("a") -> 1))), Seq(id(2L))))
+    assertEquals(
+      xautoclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), start).decode(Arr(Bulk("0-0"), bulks("1-1", "3-1"), Arr(Nil))),
+      StreamP.AutoClaimed(start, Seq(id(1L), id(3L)), Nil)
+    )
+  }
+
+  test("The Stream protocol using xinfo reads the stream, its groups and its consumers, with the newer fields when there") {
+    val stream = Arr(
+      Bulk("length") :: Num(2L) :: Bulk("radix-tree-keys") :: Num(1L) :: Bulk("radix-tree-nodes") :: Num(2L) :: Bulk("last-generated-id") ::
+        Bulk("3-1") :: Bulk("entries-added") :: Num(3L) :: Bulk("groups") :: Num(1L) :: Bulk("first-entry") :: Arr(
+          Bulk("1-1"),
+          bulks("a", "1")
+        ) ::
+        Bulk("last-entry") :: NilArr :: Nil
+    )
+    assertEquals(
+      xinfostream[Int](Key("s")).decode(stream),
+      StreamP.StreamInfo(
+        NonNegLong(2L),
+        NonNegLong(1L),
+        NonNegLong(2L),
+        id(3L),
+        NonNegLong(1L),
+        Some(StreamEntry(id(1L), Seq(Key("a") -> 1))),
+        None,
+        Map("entries-added" -> "3")
+      )
+    )
+    val keydbGroup = Arr(
+      Bulk("name") :: Bulk("g") :: Bulk("consumers") :: Num(3L) :: Bulk("pending") :: Num(3L) :: Bulk("last-delivered-id") :: Bulk(
+        "3-1"
+      ) :: Nil
+    )
+    val redisGroup = Arr(keydbGroup.elements ::: List(Bulk("entries-read"), Num(3L), Bulk("lag"), NullBulk))
+    assertEquals(
+      xinfogroups(Key("s")).decode(Arr(keydbGroup, redisGroup)),
+      Seq(
+        StreamP.GroupInfo(Key("g"), NonNegLong(3L), NonNegLong(3L), id(3L), None, None),
+        StreamP.GroupInfo(Key("g"), NonNegLong(3L), NonNegLong(3L), id(3L), Some(NonNegLong(3L)), None)
+      )
+    )
+    val consumer =
+      Arr(Bulk("name") :: Bulk("c1") :: Bulk("pending") :: Num(0L) :: Bulk("idle") :: Num(29L) :: Bulk("inactive") :: Num(-1L) :: Nil)
+    assertEquals(
+      xinfoconsumers(Key("s"), Key("g")).decode(Arr(consumer)),
+      Seq(StreamP.ConsumerInfo(Key("c1"), NonNegLong(0L), NonNegLong(29L), Some(-1L)))
+    )
+    assertEquals(
+      xsetid(Key("s"), id(9L), NonNegLong(3L), id(2L)).encode,
+      bulks("XSETID", "s", "9-1", "ENTRIESADDED", "3", "MAXDELETEDID", "2-1")
+    )
+  }
 }

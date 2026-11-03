@@ -37,6 +37,7 @@ trait Base6_2
     with ListBaseP
     with ListExtP
     with PublishP
+    with ScriptingBaseP
     with ServerBaseP
     with SetBaseP
     with SetExtP
@@ -66,6 +67,9 @@ trait Command7_0 extends CommandCommands with CommandListCommands
 /** The ACL commands, under `acl` */
 trait Acl7_0 extends AclCommands with AclSelectorCommands
 
+/** The SCRIPT commands, under `script` */
+trait ScriptValkey8_0 extends ScriptCommands with ScriptShowCommands
+
 /** The blocking commands, under `blocking` */
 trait Blocking6_2  extends BListBaseP with BListExtP with BSortedSetBaseP with BStreamBaseP
 trait Blocking7_0  extends Blocking6_2 with BListMPopP with BSortedSetMPopP
@@ -86,7 +90,8 @@ trait Redis7_0
     with ServerShutdownAndInfoP
     with ClusterShardsP
     with StreamGroupEntriesReadP
-    with StreamSetIdEntriesP {
+    with StreamSetIdEntriesP
+    with ScriptingFunctionsP {
   override lazy val blocking: Blocking7_0 = new Blocking7_0 {}
   override lazy val client: Client7_0     = new Client7_0 {}
   override lazy val config: Config7_0     = new Config7_0 {}
@@ -118,7 +123,8 @@ trait Redis8_10 extends Redis8_8 with ListMoveManyP with SetDiffCardP with SetUn
 /** Valkey started from Redis 7.2 */
 trait Valkey7_2 extends Redis7_2
 trait Valkey8_0 extends Valkey7_2 with HashScanNoValuesP with SortedSetScanNoScoresP with ClusterSlotStatsP with ClusterSetSlotTimeoutP {
-  override lazy val client: Client7_4 = new Client7_4 {}
+  override lazy val client: Client7_4       = new Client7_4 {}
+  override lazy val script: ScriptValkey8_0 = new ScriptValkey8_0 {}
 }
 trait Valkey8_1 extends Valkey8_0 with StringSetIfEqP with ServerBgSaveCancelP with ServerCommandLogP
 trait Valkey9_0

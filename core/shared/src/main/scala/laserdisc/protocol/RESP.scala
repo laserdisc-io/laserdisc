@@ -154,6 +154,11 @@ final case class Arr(elements: List[RESP]) extends GenArr {
 }
 object Arr {
   final def apply(one: RESP, rest: RESP*): Arr = new Arr(one +: rest.toList)
+
+  /** An array whose elements are all `A`s, to say how to read a reply whose elements are all of one RESP type, like a script's table of
+    * numbers: `Arr.Of[Num]`
+    */
+  final class Of[A] private[protocol] (val elements: List[A])
 }
 
 private[protocol] final case class Repr[A](decoded: A, bits: BitVector)

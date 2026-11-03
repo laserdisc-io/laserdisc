@@ -33,7 +33,7 @@ import scala.util.NotGiven
 final type Maybe[A] = Either[Throwable, A]
 
 // Export all protocol
-export protocol.{Arr, Bulk, Err, NilArr, NullBulk, Num, Protocol, RESP, RESPDecErr, Read, Show, Str}
+export protocol.{Arr, Bulk, Err, NilArr, NullBulk, Num, Protocol, RESP, RESPDecErr, Read, Show, Str, Value}
 final type NilArr   = protocol.NilArr.type
 final type NullBulk = protocol.NullBulk.type
 
@@ -113,6 +113,7 @@ final val RangeOffsetMaxValueWit      = new Witness(536870911)
 final val Rfc1123HostnameMaxLengthWit = new Witness(255)
 final val Rfc1123HostnameRegexWit     =
   new Witness("(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*")
+final val Sha1RegexWit                = new Witness("[a-f0-9]{40}")
 final val SignedBitWidthMaxValueWit   = new Witness(64)
 final val SlotMaxValueWit             = new Witness(16383)
 final val StringLengthMaxValueWit     = new Witness(4294967295L)
@@ -151,6 +152,7 @@ final type PONGRef             = StrictEqual[PONGEqWit.T]
 final type PortRef             = Interval.Closed[PortMinValueWit.T, PortMaxValueWit.T]
 final type PosRef              = Positive
 final type RangeOffsetRef      = Interval.Closed[0, RangeOffsetMaxValueWit.T]
+final type Sha1Ref             = Match[Sha1RegexWit.T]
 final type SignedBitWidthRef   = Interval.Closed[1, SignedBitWidthMaxValueWit.T]
 final type SlotRef             = Interval.Closed[0, SlotMaxValueWit.T]
 final type StringLengthRef     = Interval.Closed[0L, StringLengthMaxValueWit.T]
@@ -183,6 +185,7 @@ final type Port                  = Port.T
 final type PosInt                = PosInt.T
 final type PosLong               = PosLong.T
 final type RangeOffset           = RangeOffset.T
+final type Sha1                  = Sha1.T
 final type SignedBitWidth        = SignedBitWidth.T
 final type Slot                  = Slot.T
 final type StringLength          = StringLength.T
@@ -219,6 +222,7 @@ object Port                  extends RefinedTypeOps[Int, PortRef]
 object PosInt                extends RefinedTypeOps[Int, PosRef]
 object PosLong               extends RefinedTypeOps[Long, PosRef]
 object RangeOffset           extends RefinedTypeOps[Int, RangeOffsetRef]
+object Sha1                  extends RefinedTypeOps[String, Sha1Ref]
 object SignedBitWidth        extends RefinedTypeOps[Int, SignedBitWidthRef]
 object Slot                  extends RefinedTypeOps[Int, SlotRef]
 object StringLength          extends RefinedTypeOps[Long, StringLengthRef]

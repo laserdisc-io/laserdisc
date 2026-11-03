@@ -32,6 +32,7 @@ object all
     with KeyP
     with ListP
     with PublishP
+    with ScriptingP
     with ServerP
     with SetP
     with SortedSetP

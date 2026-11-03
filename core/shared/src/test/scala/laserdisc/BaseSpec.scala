@@ -98,6 +98,7 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   final val latitudeIsValid: Double => Boolean                                = Latitude.from(_).isRight
   final val longitudeIsValid: Double => Boolean                               = Longitude.from(_).isRight
   final val nodeIdIsValid: String => Boolean                                  = NodeId.from(_).isRight
+  final val sha1IsValid: String => Boolean                                    = Sha1.from(_).isRight
   final val nonNegDoubleIsValid: Double => Boolean                            = NonNegDouble.from(_).isRight
   final val nonNegIntIsValid: Int => Boolean                                  = NonNegInt.from(_).isRight
   final val nonNegLongIsValid: Long => Boolean                                = NonNegLong.from(_).isRight
@@ -140,6 +141,7 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   final val longitudeGen: Gen[Double] =
     chooseNum(LongitudeMinValueWit.value, LongitudeMaxValueWit.value).filter(longitudeIsValid) :| "longitude"
   final val nodeIdGen: Gen[String]        = strOfNSameFreqGen(40, hexGen).filter(nodeIdIsValid) :| "node id"
+  final val sha1Gen: Gen[String]          = strOfNSameFreqGen(40, hexGen).filter(sha1IsValid) :| "sha1"
   final val nonNegDoubleGen: Gen[Double]  = chooseNum(0.0d, DMax).filter(nonNegDoubleIsValid) :| "double >= 0.0D"
   final val nonNegIntGen: Gen[Int]        = chooseNum(0, IMax).filter(nonNegIntIsValid) :| "int >= 0"
   final val nonNegLongGen: Gen[Long]      = chooseNum(0L, LMax).filter(nonNegLongIsValid) :| "long >= 0L"

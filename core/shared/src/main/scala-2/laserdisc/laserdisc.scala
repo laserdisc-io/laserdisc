@@ -69,6 +69,7 @@ package object laserdisc {
   final type RESP       = protocol.RESP
   final type Show[A]    = protocol.Show[A]
   final type RESPDecErr = protocol.RESPDecErr
+  final type Value      = protocol.Value
 
   // Specialized type lambda
   final type ReadArrToSeq[A] = Read[Arr, Seq[A]]
@@ -85,6 +86,7 @@ package object laserdisc {
   final val Show       = protocol.Show
   final val Str        = protocol.Str
   final val RESPDecErr = protocol.RESPDecErr
+  final val Value      = protocol.Value
 
   private final type NoControlChar = Not[ControlChar]
   private final type NoWhitespace  = Not[Whitespace]
@@ -117,6 +119,7 @@ package object laserdisc {
   final val Rfc1123HostnameRegexWit     = W(
     "(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*"
   )
+  final val Sha1RegexWit                = W("[a-f0-9]{40}")
   final val SignedBitWidthMaxValueWit   = W(64)
   final val SlotMaxValueWit             = W(16383)
   final val StringLengthMaxValueWit     = W(4294967295L)
@@ -147,6 +150,7 @@ package object laserdisc {
   final type PortRef             = Interval.Closed[PortMinValueWit.T, PortMaxValueWit.T]
   final type PosRef              = Positive
   final type RangeOffsetRef      = Interval.Closed[W.`0`.T, RangeOffsetMaxValueWit.T]
+  final type Sha1Ref             = MatchesRegex[Sha1RegexWit.T]
   final type SignedBitWidthRef   = Interval.Closed[W.`1`.T, SignedBitWidthMaxValueWit.T]
   final type SlotRef             = Interval.Closed[W.`0`.T, SlotMaxValueWit.T]
   final type StringLengthRef     = Interval.Closed[W.`0L`.T, StringLengthMaxValueWit.T]
@@ -180,6 +184,7 @@ package object laserdisc {
   final type PosInt                = Int Refined PosRef
   final type PosLong               = Long Refined PosRef
   final type RangeOffset           = Int Refined RangeOffsetRef
+  final type Sha1                  = String Refined Sha1Ref
   final type SignedBitWidth        = Int Refined SignedBitWidthRef
   final type Slot                  = Int Refined SlotRef
   final type StringLength          = Long Refined StringLengthRef
@@ -216,6 +221,7 @@ package object laserdisc {
   object PosInt                extends RefinedTypeOps.Numeric[PosInt, Int]
   object PosLong               extends RefinedTypeOps.Numeric[PosLong, Long]
   object RangeOffset           extends RefinedTypeOps.Numeric[RangeOffset, Int]
+  object Sha1                  extends RefinedTypeOps[Sha1, String]
   object SignedBitWidth        extends RefinedTypeOps.Numeric[SignedBitWidth, Int]
   object Slot                  extends RefinedTypeOps.Numeric[Slot, Int]
   object StringLength          extends RefinedTypeOps.Numeric[StringLength, Long]

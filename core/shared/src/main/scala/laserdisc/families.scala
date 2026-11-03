@@ -32,6 +32,7 @@ object hyperloglog extends HyperLogLogP
 object keys        extends KeyP
 object lists       extends ListP      { object blocking extends BListP      }
 object publish     extends PublishP
+object scripting   extends ScriptingP
 object server      extends ServerP
 object sets        extends SetP
 object sortedsets  extends SortedSetP { object blocking extends BSortedSetP }

@@ -35,7 +35,7 @@ import scala.annotation.implicitNotFound
 @implicitNotFound(
   """Implicit not found RESPSub[${A}].
 
-${A} must be one of the RESP types Arr, Bulk, NilArr, NullBulk, Num or Str
+${A} must be one of the RESP types Arr, Arr.Of, Bulk, NilArr, NullBulk, Num or Str
   """
 ) sealed abstract class RESPSub[A](val nil: RESP) {
   def unapply(resp: RESP): Option[A]
@@ -55,6 +55,10 @@ object RESPSub {
   implicit final val nullBulkRESPSub: RESPSub[NullBulk] = instance(NullBulk) { case NullBulk => NullBulk }
   implicit final val numRESPSub: RESPSub[Num]           = instance(NullBulk) { case num: Num => num }
   implicit final val strRESPSub: RESPSub[Str]           = instance(NullBulk) { case str: Str => str }
+
+  implicit final def arrOfRESPSub[A](implicit A: RESPSub[A]): RESPSub[Arr.Of[A]] = instance(NilArr) {
+    case Arr(elements) if elements.forall(A.unapply(_).isDefined) => new Arr.Of(elements.flatMap(A.unapply(_)))
+  }
 }
 
 @implicitNotFound(
@@ -70,7 +74,12 @@ You should not need to define one manually, as one will be derived for you autom
   def read(resp: RESP): Maybe[A]
 }
 
-object RESPRead {
+// a Read to A gives a RESPRead to Option[A], with the "null" RESP as None, unless there's a Read to Option[A] itself
+sealed trait RESPReadLowPriority {
+  implicit final def deriveOption[A: RESPSub, B](implicit R: Read[A, B]): RESPRead.Aux[A, Option[B]] = RESPRead.nullable(R)
+}
+
+object RESPRead extends RESPReadLowPriority {
   final type Aux[Sub0, A] = RESPRead[A] { type Sub = Sub0 }
   final def apply[Sub, A](implicit instance: Aux[Sub, A]): Aux[Sub, A] = instance
 

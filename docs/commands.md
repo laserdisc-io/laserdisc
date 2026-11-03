@@ -29,6 +29,7 @@ instead, use its object:
 | HyperLogLog | `laserdisc.families.hyperloglog.*` |
 | Publish | `laserdisc.families.publish.*` |
 | Transactions | `laserdisc.families.transaction.*` |
+| Scripting | `laserdisc.families.scripting.*` |
 | Connection | `laserdisc.families.connection.*` |
 | Server | `laserdisc.families.server.*` |
 | Cluster | `laserdisc.families.cluster.*` |
@@ -92,6 +93,31 @@ the value at `a` as a `PosInt`; `get[String]("a")` reads it as a `String`.
 
 If the reply can't be read as that type, the result is an error rather than a
 wrong value. If the key doesn't exist, `get` gives `None`.
+
+## Scripts
+
+A script can return anything, so `eval`, `evalsha` and `fcall` take two types:
+the kind of reply the script sends, and the type to read it as. The keys and the
+arguments are the script's `KEYS` and `ARGV`:
+
+```scala mdoc:compile-only
+import laserdisc.*
+import laserdisc.all.*
+
+val keys = OneOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
+val args = OneOrMore.unsafeFrom(List[Value](1, "two"))
+
+// a number
+val count: Protocol.Aux[Long] = eval[Num, Long]("return #KEYS + #ARGV", keys, args)
+// a table of numbers
+val counts: Protocol.Aux[Seq[Long]] = eval[Arr.Of[Num], Seq[Long]]("return {#KEYS, #ARGV}", keys, args)
+// a string, or nil
+val value: Protocol.Aux[Option[String]] = eval[Bulk, Option[String]]("return redis.call('GET', KEYS[1])", keys)
+// always nil
+val done: Protocol.Aux[Unit] = evalargs[NullBulk, Unit]("redis.log(redis.LOG_NOTICE, ARGV[1])", args)
+```
+
+Without keys, use `evalargs`, `evalshaargs` or `fcallargs`.
 
 ## Transactions
 

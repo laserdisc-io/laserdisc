@@ -93,7 +93,20 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   implicit final val str2OKRead: Read[Str, OK]         = instancePF("Str(OK)") { case Str("OK") => OK }
   implicit final val str2KeyRead: Read[Str, Key]       = instancePF("Str(Key)") { case Str(Key(s)) => s }
 
-  implicit final val num2LongRead: Read[Num, Long]       = instance(n => Right(n.value))
+  implicit final val num2LongRead: Read[Num, Long] = instance(n => Right(n.value))
+
+  /** Nothing, as a script returning nil replies */
+  implicit final val nullBulk2UnitRead: Read[NullBulk, Unit] = infallible(_ => ())
+
+  implicit final def arrOf2Seq[A, B](implicit R: Read[A, B]): Read[Arr.Of[A], Seq[B]] = instance { arr =>
+    arr.elements
+      .foldRight[Either[RESPDecErr, (List[B], Int)]](Right(Nil -> arr.elements.size)) {
+        case (R(Right(b)), Right((bs, i))) => Right((b :: bs) -> (i - 1))
+        case (R(Left(e)), Right((_, i)))   => Left(RESPDecErr(s"Read[Arr.Of[A], Seq[B]] error at element $i: ${e.message}"))
+        case (_, left)                     => left
+      }
+      .map(_._1)
+  }
   implicit final val num2BooleanRead: Read[Num, Boolean] = instancePF("0L or 1L") {
     case Num(0L) => false
     case Num(1L) => true

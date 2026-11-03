@@ -727,4 +727,38 @@ final class VersionImportsSpec extends BaseSpec {
       )
     }
   }
+
+  test("every version has EVAL and SCRIPT, only Redis 7.0 and later have functions, and only Valkey 8.0 and later SCRIPT SHOW") {
+    import laserdisc.auto.*
+
+    val sha: Sha1 = Sha1("e0e1f9fabfc9d4800c877a703b823ac0578ff8db")
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(eval[Num, Long]("return 1").frames, frame("EVAL", "return 1", "0"))
+      assertEquals(script.load("return 1").frames, frame("SCRIPT", "LOAD", "return 1"))
+      assert(compileErrors("""fcall[Num, Long]("f")""").nonEmpty)
+      assert(compileErrors("""function.list""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(fcall[Num, Long]("f").frames, frame("FCALL", "f", "0"))
+      assertEquals(function.list.frames, frame("FUNCTION", "LIST"))
+      assert(compileErrors("""script.show(sha)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(fcallro[Num, Long]("f").frames, frame("FCALL_RO", "f", "0"))
+      assert(compileErrors("""script.show(sha)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_0.*
+      assertEquals(script.show(sha).frames, frame("SCRIPT", "SHOW", sha.value))
+    }
+    {
+      import laserdisc.families.scripting.*
+      assertEquals(script.show(sha).frames, frame("SCRIPT", "SHOW", sha.value))
+      assertEquals(evalro[Num, Long]("return 1").frames, frame("EVAL_RO", "return 1", "0"))
+    }
+  }
 }

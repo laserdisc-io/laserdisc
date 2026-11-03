@@ -115,33 +115,25 @@ object Acl {
     case _        => None
   }
 
-  private[protocol] final val user: Read[Arr, AclUser] = Read.instance { case Arr(fields) =>
-    val byName    = fields.grouped(2).collect { case Seq(Bulk(k), v) => k -> v }.toMap
-    val selectors = byName.get("selectors") match {
-      case None                => Some(Nil)
-      case Some(Arr(selected)) =>
-        val read = selected.map {
-          case Arr(fs) =>
-            val m = fs.grouped(2).collect { case Seq(Bulk(k), Bulk(v)) => k -> v }.toMap
-            for {
-              c  <- m.get("commands")
-              k  <- m.get("keys")
-              ch <- m.get("channels")
-            } yield AclSelector(c, k, ch)
-          case _ => None
-        }
-        if (read.forall(_.isDefined)) Some(read.flatten) else None
-      case Some(_) => None
-    }
-    (for {
-      flags     <- byName.get("flags").flatMap(texts)
-      passwords <- byName.get("passwords").flatMap(texts)
-      commands  <- byName.get("commands").collect { case Bulk(c) => c }
-      keys      <- byName.get("keys").flatMap(rules(_, "~"))
-      channels  <- byName.get("channels").fold[Option[String]](Some(""))(rules(_, "&"))
-      selected  <- selectors
-    } yield AclUser(flags, passwords, commands, keys, channels, selected, byName.get("databases").collect { case Bulk(d) => d }))
-      .toRight(RESPDecErr(s"Unexpected ACL user. Was $fields"))
+  private final val selector: Read[Arr, AclSelector] = Read.record("ACL selector") { m =>
+    def text(k: String) = m.get(k).collect { case Bulk(s) => s }
+    for {
+      c  <- text("commands")
+      k  <- text("keys")
+      ch <- text("channels")
+    } yield AclSelector(c, k, ch)
+  }
+  private final val selectors: Read[Arr, Seq[AclSelector]] = Read.arrOf(selector)
+
+  private[protocol] final val user: Read[Arr, AclUser] = Read.record("ACL user") { m =>
+    for {
+      flags     <- m.get("flags").flatMap(texts)
+      passwords <- m.get("passwords").flatMap(texts)
+      commands  <- m.get("commands").collect { case Bulk(c) => c }
+      keys      <- m.get("keys").flatMap(rules(_, "~"))
+      channels  <- m.get("channels").fold[Option[String]](Some(""))(rules(_, "&"))
+      selected  <- m.get("selectors").fold[Option[Seq[AclSelector]]](Some(Nil)) { case selectors(Right(ss)) => Some(ss); case _ => None }
+    } yield AclUser(flags, passwords, commands, keys, channels, selected, m.get("databases").collect { case Bulk(d) => d })
   }
 
   /** An entry of ACL LOG: what was denied (`reason` like `auth` or `command`, `object` the command, key or channel), to whom, how many
@@ -160,37 +152,31 @@ object Acl {
       updatedAt: Option[Long]
   )
 
-  private[protocol] final val logEntries: Read[Arr, Seq[AclLogEntry]] = Read.instance { case Arr(entries) =>
-    entries.foldRight[Either[RESPDecErr, List[AclLogEntry]]](Right(Nil)) {
-      case (Arr(fields), Right(es)) =>
-        val byName            = fields.grouped(2).collect { case Seq(Bulk(k), v) => k -> v }.toMap
-        def text(k: String)   = byName.get(k).collect { case Bulk(s) => s }
-        def number(k: String) = byName.get(k).collect { case Num(n) => n }
-        val read              = for {
-          count    <- number("count")
-          reason   <- text("reason")
-          context  <- text("context")
-          denied   <- text("object")
-          username <- text("username")
-          age      <- text("age-seconds").collect { case ToDouble(d) => d }
-          info     <- text("client-info")
-        } yield AclLogEntry(
-          count,
-          reason,
-          context,
-          denied,
-          username,
-          age,
-          info,
-          number("entry-id"),
-          number("timestamp-created"),
-          number("timestamp-last-updated")
-        )
-        read.fold[Either[RESPDecErr, List[AclLogEntry]]](Left(RESPDecErr(s"Unexpected ACL log entry. Was $fields")))(e => Right(e :: es))
-      case (other, Right(_)) => Left(RESPDecErr(s"Unexpected ACL log entry. Was $other"))
-      case (_, left)         => left
-    }
+  private final val logEntry: Read[Arr, AclLogEntry] = Read.record("ACL log entry") { m =>
+    def text(k: String)   = m.get(k).collect { case Bulk(s) => s }
+    def number(k: String) = m.get(k).collect { case Num(n) => n }
+    for {
+      count    <- number("count")
+      reason   <- text("reason")
+      context  <- text("context")
+      denied   <- text("object")
+      username <- text("username")
+      age      <- text("age-seconds").collect { case ToDouble(d) => d }
+      info     <- text("client-info")
+    } yield AclLogEntry(
+      count,
+      reason,
+      context,
+      denied,
+      username,
+      age,
+      info,
+      number("entry-id"),
+      number("timestamp-created"),
+      number("timestamp-last-updated")
+    )
   }
+  private[protocol] final val logEntries: Read[Arr, Seq[AclLogEntry]] = Read.arrOf(logEntry)
 }
 
 /** ACL: Redis 6.2 */

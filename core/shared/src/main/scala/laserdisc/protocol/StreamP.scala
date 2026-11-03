@@ -235,7 +235,7 @@ object StreamP {
   }
 
   private[protocol] final def entry[A](implicit R: Read[Bulk, A]): Read[Arr, Entry[A]] = {
-    val fields = Read.arr2Tuple2Seq[Key, A]
+    val fields = Read.pairs(Read.bulk2KeyRead, R)
     Read.instancePF("Arr(stream entry)") {
       case Arr(Id.bulk2IdRead(Right(id)) +: fields(Right(fs)) +: Seq()) => Entry(id, fs)
       case Arr(Id.bulk2IdRead(Right(id)) +: NilArr +: Seq())            => Entry(id, Nil)
@@ -275,8 +275,6 @@ object StreamP {
     case Arr(Id.bulk2IdRead(Right(next)) +: claims(Right(cs)) +: ids(Right(deleted)) +: Seq()) => AutoClaimed(next, cs, deleted)
   }
 
-  private final def byName(fields: Seq[RESP]): Map[String, RESP] = fields.grouped(2).collect { case Seq(Bulk(k), v) => k -> v }.toMap
-
   private final def number(resp: Option[RESP]): Option[NonNegLong] = resp.collect { case Num(NonNegLong(n)) => n }
 
   private[protocol] final def streamInfo[A: Read[Bulk, _]]: Read[Arr, StreamInfo[A]] = {
@@ -287,9 +285,8 @@ object StreamP {
       case Some(one(Right(e)))            => Some(Some(e))
       case _                              => None
     }
-    Read.instance { case Arr(fields) =>
-      val m = byName(fields)
-      (for {
+    Read.record("stream info") { m =>
+      for {
         length <- number(m.get("length"))
         keys   <- number(m.get("radix-tree-keys"))
         nodes  <- number(m.get("radix-tree-nodes"))
@@ -303,40 +300,28 @@ object StreamP {
           case (k, Num(v)) if !typed(k)  => k -> v.toString
         }
         StreamInfo(length, keys, nodes, last, groups, first, lastE, others)
-      }).toRight(RESPDecErr(s"Unexpected stream info. Was $fields"))
+      }
     }
   }
 
-  private[protocol] final val groupInfos: Read[Arr, Seq[GroupInfo]] = Read.instance { case Arr(groups) =>
-    groups.foldRight[Either[RESPDecErr, List[GroupInfo]]](Right(Nil)) {
-      case (Arr(fields), Right(gs)) =>
-        val m = byName(fields)
-        (for {
-          name      <- m.get("name").collect { case Bulk(Key(k)) => k }
-          consumers <- number(m.get("consumers"))
-          pending   <- number(m.get("pending"))
-          last      <- m.get("last-delivered-id").collect { case Id.bulk2IdRead(Right(id)) => id }
-        } yield GroupInfo(name, consumers, pending, last, number(m.get("entries-read")), number(m.get("lag"))))
-          .fold[Either[RESPDecErr, List[GroupInfo]]](Left(RESPDecErr(s"Unexpected group info. Was $fields")))(g => Right(g :: gs))
-      case (other, Right(_)) => Left(RESPDecErr(s"Unexpected group info. Was $other"))
-      case (_, left)         => left
-    }
+  private final val groupInfo: Read[Arr, GroupInfo] = Read.record("group info") { m =>
+    for {
+      name      <- m.get("name").collect { case Bulk(Key(k)) => k }
+      consumers <- number(m.get("consumers"))
+      pending   <- number(m.get("pending"))
+      last      <- m.get("last-delivered-id").collect { case Id.bulk2IdRead(Right(id)) => id }
+    } yield GroupInfo(name, consumers, pending, last, number(m.get("entries-read")), number(m.get("lag")))
   }
+  private[protocol] final val groupInfos: Read[Arr, Seq[GroupInfo]] = Read.arrOf(groupInfo)
 
-  private[protocol] final val consumerInfos: Read[Arr, Seq[ConsumerInfo]] = Read.instance { case Arr(consumers) =>
-    consumers.foldRight[Either[RESPDecErr, List[ConsumerInfo]]](Right(Nil)) {
-      case (Arr(fields), Right(cs)) =>
-        val m = byName(fields)
-        (for {
-          name    <- m.get("name").collect { case Bulk(Key(k)) => k }
-          pending <- number(m.get("pending"))
-          idle    <- number(m.get("idle"))
-        } yield ConsumerInfo(name, pending, idle, m.get("inactive").collect { case Num(n) => n }))
-          .fold[Either[RESPDecErr, List[ConsumerInfo]]](Left(RESPDecErr(s"Unexpected consumer info. Was $fields")))(c => Right(c :: cs))
-      case (other, Right(_)) => Left(RESPDecErr(s"Unexpected consumer info. Was $other"))
-      case (_, left)         => left
-    }
+  private final val consumerInfo: Read[Arr, ConsumerInfo] = Read.record("consumer info") { m =>
+    for {
+      name    <- m.get("name").collect { case Bulk(Key(k)) => k }
+      pending <- number(m.get("pending"))
+      idle    <- number(m.get("idle"))
+    } yield ConsumerInfo(name, pending, idle, m.get("inactive").collect { case Num(n) => n })
   }
+  private[protocol] final val consumerInfos: Read[Arr, Seq[ConsumerInfo]] = Read.arrOf(consumerInfo)
 
   private[protocol] final def fieldsParams[A: Show](fields: OneOrMore[(Key, A)]): List[String] =
     fields.value.flatMap { case (k, v) => List(k.value, Show[A].show(v)) }

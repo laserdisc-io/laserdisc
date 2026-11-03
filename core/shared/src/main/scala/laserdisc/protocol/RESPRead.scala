@@ -26,8 +26,8 @@ import scala.annotation.implicitNotFound
 
 /** Evidence that `A` is one of the non-error [[RESP]] types Redis may reply with.
   *
-  * Instances exist only for the concrete [[RESP]] cases (and never for [[Err]], which is always handled as a failure), so a [[RESPRead]]
-  * can never be built for a type that Redis could not possibly send back.
+  * Instances exist only for the concrete [[RESP]] cases, and for [[RESP]] itself as any of them (and never for [[Err]], which is always
+  * handled as a failure), so a [[RESPRead]] can never be built for a type that Redis could not possibly send back.
   *
   * Each instance also knows the "null" [[RESP]] that stands for a missing value of `A`: [[NilArr]] for [[Arr]], [[NullBulk]] for everything
   * else.
@@ -35,7 +35,7 @@ import scala.annotation.implicitNotFound
 @implicitNotFound(
   """Implicit not found RESPSub[${A}].
 
-${A} must be one of the RESP types Arr, Arr.Of, Bulk, NilArr, NullBulk, Num or Str
+${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Bulk, NilArr, NullBulk, Num or Str, or RESP for any of them
   """
 ) sealed abstract class RESPSub[A](val nil: RESP) {
   def unapply(resp: RESP): Option[A]
@@ -57,7 +57,13 @@ object RESPSub {
   implicit final val strRESPSub: RESPSub[Str]           = instance(NullBulk) { case str: Str => str }
 
   // any array: its elements are checked as they're read
-  implicit final def arrOfRESPSub[A]: RESPSub[Arr.Of[A]] = instance(NilArr) { case Arr(elements) => new Arr.Of[A](elements) }
+  implicit final def arrOfRESPSub[A]: RESPSub[Arr.Of[A]]             = instance(NilArr) { case Arr(elements) => new Arr.Of[A](elements) }
+  implicit final def arrPairsRESPSub[A, B]: RESPSub[Arr.Pairs[A, B]] = instance(NilArr) { case Arr(elements) =>
+    new Arr.Pairs[A, B](elements)
+  }
+
+  // any of the above, never Err
+  implicit final val respRESPSub: RESPSub[RESP] = instance(NullBulk) { case resp if !resp.isInstanceOf[Err] => resp }
 }
 
 @implicitNotFound(

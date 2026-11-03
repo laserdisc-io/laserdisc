@@ -79,50 +79,36 @@ object ServerInspection {
     */
   final case class LatencyHistogram(calls: NonNegLong, buckets: Seq[(NonNegLong, NonNegLong)])
   private[protocol] final val latencyHistograms: Read[Arr, Map[String, LatencyHistogram]] = {
-    val buckets = Read.arrOf[Num, NonNegLong].map(_.grouped(2).collect { case Seq(upTo, calls) => upTo -> calls }.toList)
-    Read.instance { case Arr(elements) =>
-      elements
-        .grouped(2)
-        .foldRight[Either[RESPDecErr, List[(String, LatencyHistogram)]]](Right(Nil)) {
-          case (
-                Seq(Bulk(command), Arr(Bulk("calls") +: nonNegLong(Right(calls)) +: Bulk("histogram_usec") +: buckets(Right(bs)) +: Seq())),
-                Right(hs)
-              ) =>
-            Right((command -> LatencyHistogram(calls, bs)) :: hs)
-          case (other, Right(_)) => Left(RESPDecErr(s"Unexpected latency histogram. Was $other"))
-          case (_, left)         => left
-        }
-        .map(_.toMap)
+    val buckets   = Read.pairs(Read.num2NonNegLongRead, Read.num2NonNegLongRead)
+    val histogram = Read.instancePF[Arr, LatencyHistogram]("Arr(latency histogram)") {
+      case Arr(Bulk("calls") +: nonNegLong(Right(calls)) +: Bulk("histogram_usec") +: buckets(Right(bs)) +: Seq()) =>
+        LatencyHistogram(calls, bs)
     }
+    Read.pairs(Read.bulk2StringRead, histogram).map(_.toMap)
   }
 
   /** MEMORY STATS: the figures for the whole server, and those of each database, as text since they mix whole and decimal numbers */
   final case class MemoryStats(values: Map[String, String], databases: Map[Int, Map[String, String]])
   private[protocol] final val memoryStats: Read[Arr, MemoryStats] = {
-    def value(resp: RESP): Option[String] = resp match {
-      case Num(n)  => Some(n.toString)
-      case Bulk(s) => Some(s)
-      case _       => None
-    }
-    val Db = raw"db\.(\d+)".r
-    Read.instance { case Arr(elements) =>
-      elements
-        .grouped(2)
-        .foldLeft[Either[RESPDecErr, MemoryStats]](Right(MemoryStats(Map.empty, Map.empty))) {
-          case (Right(stats), Seq(Bulk(Db(n)), Arr(fields))) =>
-            val read = fields.grouped(2).toList.map {
-              case Seq(Bulk(k), v) => value(v).map(k -> _)
-              case _               => None
+    val value    = Read.instancePF[RESP, String]("a number") { case Num(n) => n.toString; case Bulk(s) => s }
+    val database = Read.pairs(Read.bulk2StringRead, value).map(_.toMap)
+    val Db       = raw"db\.(\d+)".r
+    Read.instance { arr =>
+      Read.fields.read(arr).flatMap {
+        _.foldLeft[Either[RESPDecErr, MemoryStats]](Right(MemoryStats(Map.empty, Map.empty))) {
+          case (Right(stats), (k @ Db(n), fs: Arr)) =>
+            database.read(fs) match {
+              case Right(d) => Right(stats.copy(databases = stats.databases + (n.toInt -> d)))
+              case Left(e)  => Left(RESPDecErr(s"Unexpected memory stats for $k: ${e.message}"))
             }
-            if (read.forall(_.isDefined)) Right(stats.copy(databases = stats.databases + (n.toInt -> read.flatten.toMap)))
-            else Left(RESPDecErr(s"Unexpected memory stats for database $n. Was $fields"))
-          case (Right(stats), Seq(Bulk(k), v)) =>
-            value(v).fold[Either[RESPDecErr, MemoryStats]](Left(RESPDecErr(s"Unexpected memory stat $k. Was $v")))(s =>
-              Right(stats.copy(values = stats.values + (k -> s)))
-            )
-          case (Right(_), other) => Left(RESPDecErr(s"Unexpected memory stats. Was $other"))
-          case (left, _)         => left
+          case (Right(stats), (k, v)) =>
+            value.read(v) match {
+              case Right(s) => Right(stats.copy(values = stats.values + (k -> s)))
+              case Left(e)  => Left(RESPDecErr(s"Unexpected memory stat $k: ${e.message}"))
+            }
+          case (left, _) => left
         }
+      }
     }
   }
 
@@ -177,20 +163,14 @@ object ServerInspection {
 
   /** A module of MODULE LIST. Redis 7.0 also replies with its path and arguments */
   final case class ModuleInfo(name: String, version: Long, path: Option[String], arguments: Seq[String])
-  private[protocol] final val moduleInfos: Read[Arr, Seq[ModuleInfo]] = Read.instance { case Arr(modules) =>
-    modules.foldRight[Either[RESPDecErr, List[ModuleInfo]]](Right(Nil)) {
-      case (Arr(fields), Right(ms)) =>
-        val byName = fields.grouped(2).collect { case Seq(Bulk(k), v) => k -> v }.toMap
-        (byName.get("name"), byName.get("ver")) match {
-          case (Some(Bulk(name)), Some(Num(version))) =>
-            val arguments = byName.get("args").flatMap(texts).getOrElse(Nil)
-            Right(ModuleInfo(name, version, byName.get("path").collect { case Bulk(p) => p }, arguments) :: ms)
-          case _ => Left(RESPDecErr(s"Unexpected module. Was $fields"))
-        }
-      case (other, Right(_)) => Left(RESPDecErr(s"Unexpected module. Was $other"))
-      case (_, left)         => left
+  private[protocol] final val moduleInfos: Read[Arr, Seq[ModuleInfo]] = Read.arrOf(
+    Read.record("module") { m =>
+      for {
+        name    <- m.get("name").collect { case Bulk(n) => n }
+        version <- m.get("ver").collect { case Num(v) => v }
+      } yield ModuleInfo(name, version, m.get("path").collect { case Bulk(p) => p }, m.get("args").flatMap(texts).getOrElse(Nil))
     }
-  }
+  )
 
   /** SLOW, LARGE-REQUEST and LARGE-REPLY, for COMMANDLOG: Valkey 8.1 */
   sealed trait CommandLogType
@@ -240,27 +220,19 @@ object ServerInspection {
     */
   final case class HotKeys(values: Map[String, String], byCpuTime: Seq[(Key, NonNegLong)], byNetBytes: Seq[(Key, NonNegLong)])
   private[protocol] final val hotKeys: Read[Arr, Seq[HotKeys]] = {
-    val keysAndCounts = Read.instance[Arr, Seq[(Key, NonNegLong)]] { case Arr(elements) =>
-      elements
-        .grouped(2)
-        .foldRight[Either[RESPDecErr, List[(Key, NonNegLong)]]](Right(Nil)) {
-          case (Seq(Bulk(Key(k)), nonNegLong(Right(n))), Right(kns)) => Right((k -> n) :: kns)
-          case (other, Right(_))                                     => Left(RESPDecErr(s"Unexpected hot key. Was $other"))
-          case (_, left)                                             => left
-        }
-    }
-    implicit val hotKeysReport: Read[Arr, HotKeys] = Read.instance { case Arr(fields) =>
-      fields
-        .grouped(2)
-        .foldLeft[Either[RESPDecErr, HotKeys]](Right(HotKeys(Map.empty, Nil, Nil))) {
-          case (Right(h), Seq(Bulk("by-cpu-time-us"), keysAndCounts(Right(kns)))) => Right(h.copy(byCpuTime = kns))
-          case (Right(h), Seq(Bulk("by-net-bytes"), keysAndCounts(Right(kns))))   => Right(h.copy(byNetBytes = kns))
-          case (Right(h), Seq(Bulk(k), Num(n)))                                   => Right(h.copy(values = h.values + (k -> n.toString)))
-          case (Right(h), Seq(Bulk(k), Bulk(v)))                                  => Right(h.copy(values = h.values + (k -> v)))
-          case (Right(h), Seq(Bulk(_), Arr(_)))                                   => Right(h)
+    val keysAndCounts                              = Read.pairs(Read.bulk2KeyRead, Read.num2NonNegLongRead)
+    implicit val hotKeysReport: Read[Arr, HotKeys] = Read.instance { arr =>
+      Read.fields.read(arr).flatMap {
+        _.foldLeft[Either[RESPDecErr, HotKeys]](Right(HotKeys(Map.empty, Nil, Nil))) {
+          case (Right(h), ("by-cpu-time-us", keysAndCounts(Right(kns)))) => Right(h.copy(byCpuTime = kns))
+          case (Right(h), ("by-net-bytes", keysAndCounts(Right(kns))))   => Right(h.copy(byNetBytes = kns))
+          case (Right(h), (k, Num(n)))                                   => Right(h.copy(values = h.values + (k -> n.toString)))
+          case (Right(h), (k, Bulk(v)))                                  => Right(h.copy(values = h.values + (k -> v)))
+          case (Right(h), (k, _: Arr)) if k != "by-cpu-time-us" && k != "by-net-bytes" => Right(h)
           case (Right(_), other) => Left(RESPDecErr(s"Unexpected hot keys report. Was $other"))
           case (left, _)         => left
         }
+      }
     }
     Read[Arr, Seq[HotKeys]]
   }

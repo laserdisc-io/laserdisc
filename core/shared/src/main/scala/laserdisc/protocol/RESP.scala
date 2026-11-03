@@ -159,6 +159,11 @@ object Arr {
     * numbers: `Arr.Of[Num]`. With `Arr.Of[Option[A]]`, an element may also be the "null" of `A` (see [[RESPSub]])
     */
   final class Of[A] private[protocol] (private[protocol] val elements: List[RESP])
+
+  /** An array of pairs laid out flat, `[a, b, a, b…]`, to say how to read a reply like ZRANGE's members and scores:
+    * `Arr.Pairs[Bulk, Bulk]`, or one made of names and values: `Arr.Pairs[Bulk, RESP]`
+    */
+  final class Pairs[A, B] private[protocol] (private[protocol] val elements: List[RESP])
 }
 
 private[protocol] final case class Repr[A](decoded: A, bits: BitVector)

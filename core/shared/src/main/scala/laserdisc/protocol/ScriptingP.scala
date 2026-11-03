@@ -55,8 +55,6 @@ object ScriptingP {
 
   private[protocol] final val sha1: Read[Bulk, Sha1] = Read.instancePF("Bulk(Sha1)") { case Bulk(Sha1(sha)) => sha }
 
-  private final def byName(fields: Seq[RESP]): Map[String, RESP] = fields.grouped(2).collect { case Seq(Bulk(k), v) => k -> v }.toMap
-
   // FUNCTION LIST's flags are simple strings
   private final def texts(resp: RESP): Option[Seq[String]] = resp match {
     case Arr(elements) => Some(elements.collect { case Bulk(s) => s; case Str(s) => s }).filter(_.size == elements.size)
@@ -66,66 +64,46 @@ object ScriptingP {
 
   private final def number(resp: Option[RESP]): Option[NonNegLong] = resp.collect { case Num(NonNegLong(n)) => n }
 
-  private final def function(resp: RESP): Option[Function] = resp match {
-    case Arr(fields) =>
-      val m = byName(fields)
-      for {
-        name        <- m.get("name").collect { case Bulk(Key(k)) => k }
-        description <- m.get("description").collect { case Bulk(d) => Some(d); case NullBulk => None }
-        flags       <- m.get("flags").flatMap(texts)
-      } yield Function(name, description, flags)
-    case _ => None
+  private final val function: Read[Arr, Function] = Read.record("function") { m =>
+    for {
+      name        <- m.get("name").collect { case Bulk(Key(k)) => k }
+      description <- m.get("description").collect { case Bulk(d) => Some(d); case NullBulk => None }
+      flags       <- m.get("flags").flatMap(texts)
+    } yield Function(name, description, flags)
+  }
+  private final val functions: Read[Arr, Seq[Function]] = Read.arrOf(function)
+
+  private final val library: Read[Arr, Library] = Read.record("function library") { m =>
+    for {
+      name   <- m.get("library_name").collect { case Bulk(Key(k)) => k }
+      engine <- m.get("engine").collect { case Bulk(e) => e }
+      fs     <- m.get("functions").collect { case functions(Right(fs)) => fs }
+    } yield Library(name, engine, fs, m.get("library_code").collect { case Bulk(code) => code })
+  }
+  private[protocol] final val libraries: Read[Arr, Seq[Library]] = Read.arrOf(library)
+
+  private final val running: Read[Arr, Running] = Read.record("running function") { m =>
+    for {
+      name     <- m.get("name").collect { case Bulk(Key(k)) => k }
+      command  <- m.get("command").flatMap(texts)
+      duration <- number(m.get("duration_ms"))
+    } yield Running(name, command, duration)
   }
 
-  private final def library(resp: RESP): Option[Library] = resp match {
-    case Arr(fields) =>
-      val m = byName(fields)
-      for {
-        name      <- m.get("library_name").collect { case Bulk(Key(k)) => k }
-        engine    <- m.get("engine").collect { case Bulk(e) => e }
-        functions <- m.get("functions").collect { case Arr(fs) => fs.map(function) }.filter(_.forall(_.isDefined))
-      } yield Library(name, engine, functions.flatten, m.get("library_code").collect { case Bulk(code) => code })
-    case _ => None
+  private final val counts: Read[Arr, (NonNegLong, NonNegLong)] = Read.record("engine") { m =>
+    for {
+      libraries <- number(m.get("libraries_count"))
+      functions <- number(m.get("functions_count"))
+    } yield libraries -> functions
   }
+  private final val engines: Read[Arr, Seq[Engine]] =
+    Read.pairs(Read.bulk2StringRead, counts).map(_.map { case (name, (ls, fs)) => Engine(name, ls, fs) })
 
-  private[protocol] final val libraries: Read[Arr, Seq[Library]] = Read.instance { case Arr(elements) =>
-    val read = elements.map(library)
-    if (read.forall(_.isDefined)) Right(read.flatten) else Left(RESPDecErr(s"Unexpected function libraries. Was $elements"))
-  }
-
-  private final def running(resp: RESP): Option[Option[Running]] = resp match {
-    case NullBulk | NilArr => Some(None)
-    case Arr(fields)       =>
-      val m = byName(fields)
-      for {
-        name     <- m.get("name").collect { case Bulk(Key(k)) => k }
-        command  <- m.get("command").flatMap(texts)
-        duration <- number(m.get("duration_ms"))
-      } yield Some(Running(name, command, duration))
-    case _ => None
-  }
-
-  private final def engines(resp: RESP): Option[Seq[Engine]] = resp match {
-    case Arr(fields) =>
-      val read = fields.grouped(2).toList.map {
-        case Seq(Bulk(name), Arr(counts)) =>
-          val m = byName(counts)
-          for {
-            libraries <- number(m.get("libraries_count"))
-            functions <- number(m.get("functions_count"))
-          } yield Engine(name, libraries, functions)
-        case _ => None
-      }
-      if (read.forall(_.isDefined)) Some(read.flatten) else None
-    case _ => None
-  }
-
-  private[protocol] final val stats: Read[Arr, Stats] = Read.instance { case Arr(fields) =>
-    val m = byName(fields)
-    (for {
-      r  <- m.get("running_script").flatMap(running)
-      es <- m.get("engines").flatMap(engines)
-    } yield Stats(r, es)).toRight(RESPDecErr(s"Unexpected function stats. Was $fields"))
+  private[protocol] final val stats: Read[Arr, Stats] = Read.record("function stats") { m =>
+    for {
+      r  <- m.get("running_script").collect { case NullBulk | NilArr => None; case running(Right(r)) => Some(r) }
+      es <- m.get("engines").collect { case engines(Right(es)) => es }
+    } yield Stats(r, es)
   }
 
   // the number of keys, the keys, then the arguments

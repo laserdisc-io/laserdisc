@@ -212,7 +212,7 @@ trait HashBaseP extends Features {
   final def hrandfields(key: Key, count: NonZeroInt): Single.Aux[Seq[Key]] =
     Protocol("HRANDFIELD", key *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def hrandfieldswithvalues[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[(Key, A)]] =
-    Protocol("HRANDFIELD", key *: count *: "WITHVALUES" *: EmptyTuple).as[Arr, Seq[(Key, A)]]
+    Protocol("HRANDFIELD", key *: count *: "WITHVALUES" *: EmptyTuple).as[Arr.Pairs[Bulk, Bulk], Seq[(Key, A)]]
 
   final def hscan(key: Key, cursor: NonNegLong): Single.Aux[ScanKV] = Protocol("HSCAN", key *: cursor *: EmptyTuple).as[Arr, ScanKV]
   final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[ScanKV] =

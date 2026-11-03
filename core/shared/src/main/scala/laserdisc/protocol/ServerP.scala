@@ -186,8 +186,8 @@ object ServerP {
 
   final case class Configuration(parameters: Parameters)
   object Configuration {
-    implicit val configRead: Read[Arr, Configuration] =
-      Read[Arr, Seq[(String, String)]].map(kvs => Configuration(new Parameters(kvs.toMap)))
+    implicit val configRead: Read[Arr.Pairs[Bulk, Bulk], Configuration] =
+      Read[Arr.Pairs[Bulk, Bulk], Map[String, String]].map(kvs => Configuration(new Parameters(kvs)))
   }
 
   final case class Info(sections: Map[InfoSectionKey, Parameters])
@@ -419,7 +419,8 @@ trait ConfigCommands extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("CONFIG GET", "CONFIG RESETSTAT", "CONFIG REWRITE", "CONFIG SET")
 
-  def get(parameter: GlobPattern): Single.Aux[Configuration] = Protocol("CONFIG", "GET" :: parameter.value :: Nil).as[Arr, Configuration]
+  def get(parameter: GlobPattern): Single.Aux[Configuration] =
+    Protocol("CONFIG", "GET" :: parameter.value :: Nil).as[Arr.Pairs[Bulk, Bulk], Configuration]
 
   val resetstat: Single.Aux[OK] = Protocol("CONFIG", "RESETSTAT").as[Str, OK]
 
@@ -433,7 +434,7 @@ trait ConfigManyCommands extends Features {
   import ServerP.Configuration
 
   def get(parameters: OneOrMore[GlobPattern]): Single.Aux[Configuration] =
-    Protocol("CONFIG", "GET" :: parameters.value.map(_.value)).as[Arr, Configuration]
+    Protocol("CONFIG", "GET" :: parameters.value.map(_.value)).as[Arr.Pairs[Bulk, Bulk], Configuration]
 
   /** Sets every parameter, or none of them if one can't be set */
   def set[A: Show](parameters: OneOrMore[(Key, A)]): Single.Aux[OK] =

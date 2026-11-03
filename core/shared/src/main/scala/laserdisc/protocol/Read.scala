@@ -118,8 +118,8 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   }
 
   // a plain Arr read as an Arr.Of[A], for readers within others
-  private[protocol] final def arrOf[A, B](implicit S: RESPSub[A], R: Read[A, B]): Read[Arr, Seq[B]] = instance { arr =>
-    arrOf2Seq[A, B].read(new Arr.Of[A](arr.elements))
+  private[protocol] final def arrOf[A, B](R: Read[A, B])(implicit S: RESPSub[A]): Read[Arr, Seq[B]] = instance { arr =>
+    elements(new Arr.Of[A](arr.elements))(resp => S.unapply(resp).map(R.read))
   }
 
   implicit final def arrOfOption2Seq[A, B](implicit S: RESPSub[A], R: Read[A, B]): Read[Arr.Of[Option[A]], Seq[Option[B]]] =
@@ -129,6 +129,56 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
         case resp                  => S.unapply(resp).map(R.read(_).map(Some(_)))
       }
     }
+
+  // the first pair that fails fails the whole array, naming it
+  private final def pairsOf[A, B, C, D](SA: RESPSub[A], RA: Read[A, C], SB: RESPSub[B], RB: Read[B, D])(
+      elements: List[RESP]
+  ): Either[RESPDecErr, Seq[(C, D)]] = {
+    def element[X, Y](resp: RESP, i: Int, which: String)(S: RESPSub[X], R: Read[X, Y]): Either[RESPDecErr, Y] = S.unapply(resp) match {
+      case Some(x) => R.read(x).left.map(e => RESPDecErr(s"Read[Arr.Pairs, Seq] error in the $which element of pair $i: ${e.message}"))
+      case None    => Left(RESPDecErr(s"Read[Arr.Pairs, Seq] error in the $which element of pair $i: Unexpected element. Was $resp"))
+    }
+    @scala.annotation.tailrec
+    def go(rest: List[RESP], i: Int, acc: List[(C, D)]): Either[RESPDecErr, Seq[(C, D)]] = rest match {
+      case Nil            => Right(acc.reverse)
+      case a :: b :: tail =>
+        element(a, i, "first")(SA, RA).flatMap(c => element(b, i, "second")(SB, RB).map(c -> _)) match {
+          case Right(cd) => go(tail, i + 1, cd :: acc)
+          case Left(e)   => Left(e)
+        }
+      case last :: Nil => Left(RESPDecErr(s"Read[Arr.Pairs, Seq] error: odd number of elements, the last being $last"))
+    }
+    go(elements, 1, Nil)
+  }
+
+  implicit final def arrPairs2Seq[A, B, C, D](
+      implicit SA: RESPSub[A],
+      RA: Read[A, C],
+      SB: RESPSub[B],
+      RB: Read[B, D]
+  ): Read[Arr.Pairs[A, B], Seq[(C, D)]] = instance(arr => pairsOf(SA, RA, SB, RB)(arr.elements))
+
+  implicit final def arrPairs2Map[A, B, C, D](
+      implicit SA: RESPSub[A],
+      RA: Read[A, C],
+      SB: RESPSub[B],
+      RB: Read[B, D]
+  ): Read[Arr.Pairs[A, B], Map[C, D]] = instance(arr => pairsOf(SA, RA, SB, RB)(arr.elements).map(_.toMap))
+
+  // a plain Arr read as an Arr.Pairs[A, B], for readers within others
+  private[protocol] final def pairs[A, B, C, D](RA: Read[A, C], RB: Read[B, D])(
+      implicit SA: RESPSub[A],
+      SB: RESPSub[B]
+  ): Read[Arr, Seq[(C, D)]] = instance(arr => pairsOf(SA, RA, SB, RB)(arr.elements))
+
+  // the names and values of a plain Arr, for readers of replies made of fields
+  private[protocol] final lazy val fields: Read[Arr, Map[String, RESP]] =
+    pairs(bulk2StringRead, infallible[RESP, RESP](r => r)).map(_.toMap)
+
+  // a reply made of fields read as one value, or failing with the reply when a field is missing or isn't what's expected
+  private[protocol] final def record[A](name: String)(f: Map[String, RESP] => Option[A]): Read[Arr, A] = instance { arr =>
+    fields.read(arr).flatMap(f(_).toRight(RESPDecErr(s"Unexpected $name. Was $arr")))
+  }
 
   implicit final val num2BooleanRead: Read[Num, Boolean] = instancePF("0L or 1L") {
     case Num(0L) => false
@@ -196,59 +246,14 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   implicit final def arr2Tuple2Read[A, B](implicit RA: Read[Bulk, A], RB: Read[Bulk, B]): Read[Arr, (A, B)] = instancePF("Arr(A, B)") {
     case Arr(RA(Right(a)) +: RB(Right(b)) +: Seq()) => a -> b
   }
-  implicit final def arr2Tuple2Seq[A, B](implicit RA: Read[Bulk, A], RB: Read[Bulk, B]): Read[Arr, Seq[(A, B)]] = instance {
-    case Arr(vector) =>
-      vector
-        .grouped(2)
-        .foldRight[Either[RESPDecErr, (List[(A, B)], Int)]](Right(Nil -> 0)) {
-          case (RA(Right(a)) +: RB(Right(b)) +: Seq(), Right((abs0, absl))) =>
-            Right(((a -> b) :: abs0) -> (absl + 1))
-          case (RA(Left(ea)) +: _ +: Seq(), Right((_, absl))) =>
-            Left(RESPDecErr(s"Read[Arr(Bulk), Seq[(A, B)]] error in the first element at pair ${absl + 1}: ${ea.message}"))
-          case (_ +: RA(Left(eb)) +: Seq(), Right((_, absl))) =>
-            Left(RESPDecErr(s"Read[Arr(Bulk), Seq[(A, B)]] error in the second element at pair ${absl + 1}: ${eb.message}"))
-          case (otherA +: otherB +: Seq(), Right((_, absl))) =>
-            Left(RESPDecErr(s"Read[Arr(Bulk), Seq[(A, B)]] error at element ${absl + 1}: Unexpected for A or B. Was ${(otherA, otherB)}"))
-          case (_ +: Seq(), Right(_)) =>
-            Left(RESPDecErr(s"Read[Arr(Bulk), Seq[(A, B)]] error: uneven number of elements in Arr. Can't form pairs."))
-          case (_, left) => left
-        }
-        .map(_._1)
-  }
-  implicit final val arr2Map: Read[Arr, Map[Key, String]] = instance { case Arr(vector) =>
-    vector
-      .grouped(2)
-      .foldRight[Either[RESPDecErr, (Map[Key, String], Int)]](Right(Map.empty -> 0)) {
-        case (Bulk(Key(k)) +: Bulk(v) +: Seq(), Right((kvs, kvl))) =>
-          Right((kvs + (k -> v)) -> (kvl + 1))
-        case (Bulk(Key(_)) +: any +: Seq(), Right((_, kvl))) =>
-          Left(RESPDecErr(s"Read[Arr, Map[Key, String]] error in the value at pair ${kvl + 1}: $any is not Bulk(String)"))
-        case (any +: Bulk(_) +: Seq(), Right((_, kvl))) =>
-          Left(RESPDecErr(s"Read[Arr, Map[Key, String]] error in the key at pair ${kvl + 1}: $any is not Key(String)"))
-        case (_ +: Seq(), Right(_)) =>
-          Left(RESPDecErr(s"Read[Arr, Map[Key, String]] error: uneven number of elements in Arr. Can't form a Map."))
-        case (_, left) => left
-      }
-      .map(_._1)
-  }
-  implicit final val arr2ScanKV: Read[Arr, ScanKV] = instance {
-    case Arr(Bulk(ToLong(NonNegLong(cursor))) +: NilArr +: Seq())      => Right(ScanKV(cursor, None))
-    case Arr(Bulk(ToLong(NonNegLong(cursor))) +: Arr(vector) +: Seq()) =>
-      vector
-        .grouped(2)
-        .foldRight[Either[RESPDecErr, (List[KV[String]], Int)]](Right(Nil -> 0)) {
-          case (Bulk(Key(k)) +: Bulk(v) +: Seq(), Right((kv, kvl))) =>
-            Right((KV(k, v) :: kv) -> (kvl + 1))
-          case (Bulk(Key(_)) +: any +: Seq(), Right((_, kvl))) =>
-            Left(RESPDecErr(s"Read[Arr, ScanKV] error in the value at pair ${kvl + 1}: $any is not Bulk(String)"))
-          case (any +: Bulk(_) +: Seq(), Right((_, kvl))) =>
-            Left(RESPDecErr(s"Read[Arr, ScanKV] error in the key at pair ${kvl + 1}: $any is not Key(String)"))
-          case (_ +: Seq(), Right(_)) =>
-            Left(RESPDecErr(s"Read[Arr, ScanKV] error: uneven number of elements in Arr. Can't form a KV[String]."))
-          case (_, left) => left
-        }
-        .map(r => ScanKV(cursor, Some(r._1)))
-    case Arr(any) => Left(RESPDecErr(s"Read[Arr, ScanKV] error. $any is not a valid encoding for ScanKV"))
+  implicit final val arr2Map: Read[Arr, Map[Key, String]] = pairs(bulk2KeyRead, bulk2StringRead).map(_.toMap)
+  implicit final val arr2ScanKV: Read[Arr, ScanKV]        = {
+    val kvs = pairs(bulk2KeyRead, bulk2StringRead).map(_.map { case (k, v) => KV(k, v) })
+    instance {
+      case Arr(Bulk(ToLong(NonNegLong(cursor))) +: NilArr +: Seq())     => Right(ScanKV(cursor, None))
+      case Arr(Bulk(ToLong(NonNegLong(cursor))) +: (arr: Arr) +: Seq()) => kvs.read(arr).map(vs => ScanKV(cursor, Some(vs)))
+      case Arr(any) => Left(RESPDecErr(s"Read[Arr, ScanKV] error. $any is not a valid encoding for ScanKV"))
+    }
   }
   implicit final def arr2KV[A](implicit R: Read[Bulk, A]): Read[Arr, KV[A]] = instancePF("Arr(KV[A])") {
     case Arr(Bulk(Key(k)) +: R(Right(a)) +: Seq()) => KV(k, a)

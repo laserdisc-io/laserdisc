@@ -37,24 +37,14 @@ object ClusterManagement {
     List(from.value.toString, to.value.toString)
   }
 
-  // the pairs of a [name, value, name, value…] array, with values that are text or whole numbers kept as text
-  private final def fields(elements: Seq[RESP]): Option[Map[String, String]] = {
-    val read = elements.grouped(2).toList.map {
-      case Seq(Bulk(k), Bulk(v)) => Some(k -> v)
-      case Seq(Bulk(k), Num(v))  => Some(k -> v.toString)
-      case Seq(Bulk(k), Str(v))  => Some(k -> v)
-      case _                     => None
-    }
-    if (read.forall(_.isDefined)) Some(read.flatten.toMap) else None
+  // the names and values of a reply made of fields, with values that are text or whole numbers kept as text
+  private final val texts: Read[Arr, Map[String, String]] = {
+    val text = Read.instancePF[RESP, String]("text or a whole number") { case Bulk(v) => v; case Num(v) => v.toString; case Str(v) => v }
+    Read.pairs(Read.bulk2StringRead, text).map(_.toMap)
   }
 
-  private final def maps(name: String): Read[Arr, Seq[Map[String, String]]] = Read.instance { case Arr(elements) =>
-    elements.foldRight[Either[RESPDecErr, List[Map[String, String]]]](Right(Nil)) {
-      case (Arr(fs), Right(ms)) =>
-        fields(fs).fold[Either[RESPDecErr, List[Map[String, String]]]](Left(RESPDecErr(s"Unexpected $name. Was $fs")))(m => Right(m :: ms))
-      case (other, Right(_)) => Left(RESPDecErr(s"Unexpected $name. Was $other"))
-      case (_, left)         => left
-    }
+  private final def textRecord[A](name: String)(f: Map[String, String] => Option[A]): Read[Arr, A] = Read.instance { arr =>
+    texts.read(arr).flatMap(f(_).toRight(RESPDecErr(s"Unexpected $name. Was $arr")))
   }
 
   /** A node of CLUSTER SHARDS. A node may have a port, a TLS port or both, and a hostname */
@@ -74,7 +64,7 @@ object ClusterManagement {
   final case class Shard(slots: Seq[(Slot, Slot)], nodes: Seq[ShardNode], id: Option[String])
 
   private[protocol] final val shards: Read[Arr, Seq[Shard]] = {
-    def node(fs: Map[String, String]): Option[ShardNode] =
+    val node = textRecord("shard node") { fs =>
       for {
         id     <- fs.get("id")
         ip     <- fs.get("ip")
@@ -83,29 +73,16 @@ object ClusterManagement {
         health <- fs.get("health")
         offset <- fs.get("replication-offset").flatMap(long)
       } yield ShardNode(id, ip, end, role, health, offset, fs.get("port").flatMap(int), fs.get("tls-port").flatMap(int), fs.get("hostname"))
-    def slots(elements: Seq[RESP]): Option[Seq[(Slot, Slot)]] = {
-      val read = elements.grouped(2).toList.map {
-        case Seq(Num(ToInt(Slot(from))), Num(ToInt(Slot(to)))) => Some(from -> to)
-        case _                                                 => None
-      }
-      if (read.forall(_.isDefined)) Some(read.flatten) else None
     }
-    Read.instance { case Arr(shards) =>
-      shards.foldRight[Either[RESPDecErr, List[Shard]]](Right(Nil)) {
-        case (Arr(fs), Right(ss)) =>
-          val byName = fs.grouped(2).collect { case Seq(Bulk(k), v) => k -> v }.toMap
-          val read   = for {
-            ranges <- byName.get("slots").collect { case Arr(es) => es }.flatMap(slots)
-            nodes  <- byName.get("nodes").collect { case Arr(ns) => ns }.flatMap { ns =>
-              val read = ns.toList.map { case Arr(nfs) => fields(nfs).flatMap(node); case _ => None }
-              if (read.forall(_.isDefined)) Some(read.flatten) else None
-            }
-          } yield Shard(ranges, nodes, byName.get("id").collect { case Bulk(id) => id })
-          read.fold[Either[RESPDecErr, List[Shard]]](Left(RESPDecErr(s"Unexpected shard. Was $fs")))(s => Right(s :: ss))
-        case (other, Right(_)) => Left(RESPDecErr(s"Unexpected shard. Was $other"))
-        case (_, left)         => left
-      }
+    val nodes = Read.arrOf(node)
+    val slots = Read.pairs(Read.num2SlotRead, Read.num2SlotRead)
+    val shard = Read.record("shard") { m =>
+      for {
+        ranges <- m.get("slots").collect { case slots(Right(rs)) => rs }
+        ns     <- m.get("nodes").collect { case nodes(Right(ns)) => ns }
+      } yield Shard(ranges, ns, m.get("id").collect { case Bulk(id) => id })
     }
+    Read.arrOf(shard)
   }
 
   /** A link of CLUSTER LINKS: a connection to (`to`) or from (`from`) another node, with its buffer use in bytes */
@@ -117,8 +94,8 @@ object ClusterManagement {
       sendBufferAllocated: Long,
       sendBufferUsed: Long
   )
-  private[protocol] final val links: Read[Arr, Seq[ClusterLink]] = maps("cluster link").flatMap { ms =>
-    val read = ms.toList.map { m =>
+  private[protocol] final val links: Read[Arr, Seq[ClusterLink]] = Read.arrOf(
+    textRecord("cluster link") { m =>
       for {
         direction <- m.get("direction")
         node      <- m.get("node")
@@ -128,20 +105,17 @@ object ClusterManagement {
         used      <- m.get("send-buffer-used").flatMap(long)
       } yield ClusterLink(direction, node, created, events, allocated, used)
     }
-    if (read.forall(_.isDefined)) Read.const(read.flatten) else Read.instance(_ => Left(RESPDecErr(s"Unexpected cluster links. Was $ms")))
-  }
+  )
 
   /** The figures of a slot of CLUSTER SLOT-STATS, by metric name, like `key-count` */
   final case class SlotStats(slot: Slot, metrics: Map[String, Long])
-  private[protocol] final val slotStats: Read[Arr, Seq[SlotStats]] = Read.instance { case Arr(slots) =>
-    slots.foldRight[Either[RESPDecErr, List[SlotStats]]](Right(Nil)) {
-      case (Arr(Num(ToInt(Slot(slot))) +: Arr(ms) +: Seq()), Right(ss)) =>
-        val read = ms.grouped(2).toList.map { case Seq(Bulk(k), Num(v)) => Some(k -> v); case _ => None }
-        if (read.forall(_.isDefined)) Right(SlotStats(slot, read.flatten.toMap) :: ss)
-        else Left(RESPDecErr(s"Unexpected slot stats of $slot. Was $ms"))
-      case (other, Right(_)) => Left(RESPDecErr(s"Unexpected slot stats. Was $other"))
-      case (_, left)         => left
+  private[protocol] final val slotStats: Read[Arr, Seq[SlotStats]] = {
+    val metrics = Read.pairs(Read.bulk2StringRead, Read.num2LongRead).map(_.toMap)
+    val one     = Read.instance[Arr, SlotStats] {
+      case Arr(Num(ToInt(Slot(slot))) +: (ms: Arr) +: Seq()) => metrics.read(ms).map(SlotStats(slot, _))
+      case Arr(other)                                        => Left(RESPDecErr(s"Unexpected slot stats. Was $other"))
     }
+    Read.arrOf(one)
   }
 
   /** What CLUSTER SLOT-STATS orders slots by. `cpuUsec`, `networkBytesIn` and `networkBytesOut` need the server's
@@ -164,7 +138,7 @@ object ClusterManagement {
 
   /** A slot migration of CLUSTER MIGRATION STATUS (Redis) or CLUSTER GETSLOTMIGRATIONS (Valkey), by field name */
   final case class SlotMigration(fields: Map[String, String])
-  private[protocol] final val slotMigrations: Read[Arr, Seq[SlotMigration]] = maps("slot migration").map(_.map(SlotMigration(_)))
+  private[protocol] final val slotMigrations: Read[Arr, Seq[SlotMigration]] = Read.arrOf(texts.map(SlotMigration(_)))
 
   /** ASYNC and SYNC, for CLUSTER FLUSHSLOT */
   sealed trait FlushMode
@@ -180,17 +154,13 @@ object ClusterManagement {
 
   /** BACKUP STATUS: the state (like `idle` or `snapshotting`), the last error, and when the backup started and ended */
   final case class BackupStatus(state: String, error: String, startTime: Long, endTime: Long)
-  private[protocol] final val backupStatus: Read[Arr, BackupStatus] = Read.instance { case Arr(fs) =>
-    fields(fs)
-      .flatMap { m =>
-        for {
-          state <- m.get("state")
-          error <- m.get("error")
-          start <- m.get("start_time").flatMap(long)
-          end   <- m.get("end_time").flatMap(long)
-        } yield BackupStatus(state, error, start, end)
-      }
-      .toRight(RESPDecErr(s"Unexpected backup status. Was $fs"))
+  private[protocol] final val backupStatus: Read[Arr, BackupStatus] = textRecord("backup status") { m =>
+    for {
+      state <- m.get("state")
+      error <- m.get("error")
+      start <- m.get("start_time").flatMap(long)
+      end   <- m.get("end_time").flatMap(long)
+    } yield BackupStatus(state, error, start, end)
   }
 
   private[protocol] final def slotRanges(slots: OneOrMore[(Slot, Slot)]): List[String] = ranges(slots)

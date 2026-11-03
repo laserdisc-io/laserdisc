@@ -55,4 +55,62 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
       "RESP type(s) of Arr(Bulk(1),NullBulk,Num(3),NullBulk) matched but failed to deserialize correctly with error Read[Arr.Of, Seq] error at element 3: Unexpected element. Was Num(3)"
     )
   }
+
+  test("decoding Arr.Pairs[Bulk, Bulk] reads the pairs in order") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Pairs[Bulk, Bulk], Seq[(String, Long)]]
+    val request  = "id" *: EmptyTuple
+
+    assertEquals(protocol(request).decode(Arr(Bulk("a"), Bulk("1"), Bulk("b"), Bulk("2"))), Seq("a" -> 1L, "b" -> 2L))
+    assertEquals(protocol(request).decode(Arr(Nil)), Seq.empty[(String, Long)])
+  }
+
+  test("decoding Arr.Pairs[Bulk, Bulk] with the wrong encoding names the pair, and which of its elements, that fails") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Pairs[Bulk, Bulk], Seq[(String, Long)]]
+    val request  = "id" *: EmptyTuple
+
+    assertLeftEquals(
+      protocol(request).decode(Arr(Bulk("a"), Bulk("1"), Bulk("b"), Bulk("x"))).leftMap(_.getMessage),
+      "RESP type(s) of Arr(Bulk(a),Bulk(1),Bulk(b),Bulk(x)) matched but failed to deserialize correctly with error Read[Arr.Pairs, Seq] error in the second element of pair 2: Read Error: expected Bulk(Long) but was Bulk(x)"
+    )
+    assertLeftEquals(
+      protocol(request).decode(Arr(Num(1L), Bulk("1"))).leftMap(_.getMessage),
+      "RESP type(s) of Arr(Num(1),Bulk(1)) matched but failed to deserialize correctly with error Read[Arr.Pairs, Seq] error in the first element of pair 1: Unexpected element. Was Num(1)"
+    )
+    assertLeftEquals(
+      protocol(request).decode(Arr(Bulk("a"), Bulk("1"), Bulk("b"))).leftMap(_.getMessage),
+      "RESP type(s) of Arr(Bulk(a),Bulk(1),Bulk(b)) matched but failed to deserialize correctly with error Read[Arr.Pairs, Seq] error: odd number of elements, the last being Bulk(b)"
+    )
+  }
+
+  test("decoding Arr.Pairs[Bulk, RESP] as a Map takes values of any type, but never an error") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Pairs[Bulk, RESP], Map[String, RESP]]
+    val request  = "id" *: EmptyTuple
+
+    assertEquals(
+      protocol(request).decode(Arr(Bulk("a"), Num(1L), Bulk("b"), Arr(Bulk("c")), Bulk("d"), NullBulk)),
+      Map[String, RESP]("a" -> Num(1L), "b" -> Arr(Bulk("c")), "d" -> NullBulk)
+    )
+    assertLeftEquals(
+      protocol(request)
+        .decode(Arr(Bulk("a"), Err("ERR")))
+        .leftMap(_.getMessage.contains("error in the second element of pair 1: Unexpected element")),
+      true
+    )
+  }
+
+  test("a reply made of fields fails when its names and values don't pair up, rather than dropping them") {
+    assertEquals(Read.record("thing")(_.get("a")).read(Arr(Bulk("a"), Num(1L))), Num(1L))
+    assertLeftEquals(
+      Read.record("thing")(_.get("a")).read(Arr(Bulk("a"), Num(1L), Bulk("b"))).leftMap(_.message.contains("odd number")),
+      true
+    )
+    assertLeftEquals(
+      Read.record("thing")(_.get("a")).read(Arr(Num(1L), Bulk("a"))).leftMap(_.message.contains("first element of pair 1")),
+      true
+    )
+    assertLeftEquals(
+      Read.record("thing")(_.get("a")).read(Arr(Bulk("b"), Num(1L))).leftMap(_.message),
+      "Unexpected thing. Was Arr(Bulk(b),Num(1))"
+    )
+  }
 }

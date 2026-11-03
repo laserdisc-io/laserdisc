@@ -79,7 +79,7 @@ object ServerInspection {
     */
   final case class LatencyHistogram(calls: NonNegLong, buckets: Seq[(NonNegLong, NonNegLong)])
   private[protocol] final val latencyHistograms: Read[Arr, Map[String, LatencyHistogram]] = {
-    val buckets = Read.arrOfNum2Seq[NonNegLong].map(_.grouped(2).collect { case Seq(upTo, calls) => upTo -> calls }.toList)
+    val buckets = Read.arrOf[Num, NonNegLong].map(_.grouped(2).collect { case Seq(upTo, calls) => upTo -> calls }.toList)
     Read.instance { case Arr(elements) =>
       elements
         .grouped(2)
@@ -308,11 +308,11 @@ trait ServerInspectionBaseP extends Features {
     val stats: Single.Aux[MemoryStats] = Protocol("MEMORY", "STATS").using(RESPRead.instance(ServerInspection.memoryStats))
 
     /** How many bytes the key and its value use, or `None` when it doesn't exist */
-    def usage(key: Key): Single.Aux[Option[NonNegLong]] = Protocol("MEMORY", "USAGE" :: key.value :: Nil).asOpt[Num, NonNegLong]
+    def usage(key: Key): Single.Aux[Option[NonNegLong]] = Protocol("MEMORY", "USAGE" :: key.value :: Nil).as[Num, Option[NonNegLong]]
 
     /** Like `usage`, estimating a collection from `samples` of its elements, or from all of them when 0 */
     def usage(key: Key, samples: NonNegInt): Single.Aux[Option[NonNegLong]] =
-      Protocol("MEMORY", "USAGE" *: key *: "SAMPLES" *: samples *: EmptyTuple).asOpt[Num, NonNegLong]
+      Protocol("MEMORY", "USAGE" *: key *: "SAMPLES" *: samples *: EmptyTuple).as[Num, Option[NonNegLong]]
   }
 
   object module {
@@ -366,7 +366,7 @@ trait CommandCommands extends Features {
 
   /** The keys a command would use, without running it */
   def getkeys(command: Single): Single.Aux[Seq[Key]] =
-    Protocol("COMMAND", "GETKEYS" :: ServerInspection.argumentsOf(command)).as[Arr, Seq[Key]]
+    Protocol("COMMAND", "GETKEYS" :: ServerInspection.argumentsOf(command)).as[Arr.Of[Bulk], Seq[Key]]
 
   /** The information of each command, or `None` for a name the server doesn't know */
   def info(names: OneOrMore[Key]): Single.Aux[Seq[Option[CommandInfo]]] =
@@ -385,8 +385,8 @@ trait CommandListCommands extends Features {
     Protocol("COMMAND", "GETKEYSANDFLAGS" :: ServerInspection.argumentsOf(command)).using(RESPRead.instance(ServerInspection.keysAndFlags))
 
   /** The names of every command, or of those the filter keeps */
-  val list: Single.Aux[Seq[String]]                        = Protocol("COMMAND", "LIST").as[Arr, Seq[String]]
-  def list(filter: CommandFilter): Single.Aux[Seq[String]] = Protocol("COMMAND", "LIST" :: filter.params).as[Arr, Seq[String]]
+  val list: Single.Aux[Seq[String]]                        = Protocol("COMMAND", "LIST").as[Arr.Of[Bulk], Seq[String]]
+  def list(filter: CommandFilter): Single.Aux[Seq[String]] = Protocol("COMMAND", "LIST" :: filter.params).as[Arr.Of[Bulk], Seq[String]]
 }
 
 /** HOTKEYS: Redis 8.6 */

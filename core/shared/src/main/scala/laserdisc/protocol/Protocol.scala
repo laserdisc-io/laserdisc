@@ -108,11 +108,6 @@ object Protocol {
       */
     final def as[A, B](implicit R: RESPRead.Aux[A, B]): Single.Aux[B] = using(R)
 
-    /** Like [[as]], but Redis may also reply with the "null" counterpart of A ([[NilArr]] for [[Arr]], [[NullBulk]] otherwise), which is
-      * read as `None`
-      */
-    final def asOpt[A: RESPSub, B](implicit R: Read[A, B]): Single.Aux[Option[B]] = using(RESPRead.nullable(R))
-
     final def using[A, B](R: RESPRead.Aux[A, B]): Single.Aux[B] =
       new Single {
         override final type A = B

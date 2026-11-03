@@ -80,22 +80,22 @@ trait SetBaseP extends Features {
   final def sismember[A: Show](key: Key, member: A): Single.Aux[Boolean] =
     Protocol("SISMEMBER", key *: member *: EmptyTuple).as[Num, Boolean]
 
-  final def smembers[A: Read[Bulk, _]](key: Key): Single.Aux[Seq[A]] = Protocol("SMEMBERS", key).as[Arr, Seq[A]]
+  final def smembers[A: Read[Bulk, _]](key: Key): Single.Aux[Seq[A]] = Protocol("SMEMBERS", key).as[Arr.Of[Bulk], Seq[A]]
 
   final def smismember[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[Seq[Boolean]] =
-    Protocol("SMISMEMBER", key *: members.value *: EmptyTuple).using(RESPRead.instance(Read.arrOfNum2Seq[Boolean]))
+    Protocol("SMISMEMBER", key *: members.value *: EmptyTuple).as[Arr.Of[Num], Seq[Boolean]]
 
   final def smove[A: Show](source: Key, destination: Key, member: A): Single.Aux[Boolean] =
     Protocol("SMOVE", source *: destination *: member *: EmptyTuple).as[Num, Boolean]
 
-  final def spop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]             = Protocol("SPOP", key).asOpt[Bulk, A]
+  final def spop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]             = Protocol("SPOP", key).as[Bulk, Option[A]]
   final def spop[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Seq[A]] =
-    Protocol("SPOP", key *: count *: EmptyTuple).as[Arr, Seq[A]]
+    Protocol("SPOP", key *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
   final def srandmember[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] =
-    Protocol("SRANDMEMBER", key).asOpt[Bulk, A]
+    Protocol("SRANDMEMBER", key).as[Bulk, Option[A]]
   final def srandmembers[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[A]] =
-    Protocol("SRANDMEMBER", key *: count *: EmptyTuple).as[Arr, Seq[A]]
+    Protocol("SRANDMEMBER", key *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
   final def srem[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[NonNegInt] =
     Protocol("SREM", key *: members.value *: EmptyTuple).as[Num, NonNegInt]

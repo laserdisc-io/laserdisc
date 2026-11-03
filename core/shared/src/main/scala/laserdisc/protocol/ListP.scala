@@ -129,7 +129,7 @@ trait ListBaseP extends Features {
   private final val zeroIsNone     = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
   final def lindex[A: Read[Bulk, _]](key: Key, index: Index): Single.Aux[Option[A]] =
-    Protocol("LINDEX", key *: index *: EmptyTuple).asOpt[Bulk, A]
+    Protocol("LINDEX", key *: index *: EmptyTuple).as[Bulk, Option[A]]
 
   final def linsert[A: Show](key: Key, position: ListPosition, pivot: A, value: A): Single.Aux[Option[PosInt]] =
     Protocol("LINSERT", key *: position *: pivot *: value *: EmptyTuple).using(minusOneIsNone)
@@ -137,21 +137,21 @@ trait ListBaseP extends Features {
   final def llen(key: Key): Single.Aux[NonNegInt] = Protocol("LLEN", key).as[Num, NonNegInt]
 
   final def lmove[A: Read[Bulk, _]](source: Key, destination: Key, from: ListSide, to: ListSide): Single.Aux[Option[A]] =
-    Protocol("LMOVE", source *: destination *: from *: to *: EmptyTuple).asOpt[Bulk, A]
+    Protocol("LMOVE", source *: destination *: from *: to *: EmptyTuple).as[Bulk, Option[A]]
 
-  final def lpop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]                     = Protocol("LPOP", key).asOpt[Bulk, A]
+  final def lpop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]                     = Protocol("LPOP", key).as[Bulk, Option[A]]
   final def lpop[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Option[Seq[A]]] =
     Protocol("LPOP", key *: count *: EmptyTuple).using(RESPRead.nullableArr(Read[Arr, Seq[A]]))
 
   final def lpos[A: Show](key: Key, element: A): Single.Aux[Option[NonNegInt]] =
-    Protocol("LPOS", key *: element *: EmptyTuple).asOpt[Num, NonNegInt]
+    Protocol("LPOS", key *: element *: EmptyTuple).as[Num, Option[NonNegInt]]
   final def lpos[A: Show](key: Key, element: A, search: ListSearch): Single.Aux[Option[NonNegInt]] =
-    Protocol("LPOS", key *: element *: search.params *: EmptyTuple).asOpt[Num, NonNegInt]
+    Protocol("LPOS", key *: element *: search.params *: EmptyTuple).as[Num, Option[NonNegInt]]
   final def lpos[A: Show](key: Key, element: A, count: NonNegInt): Single.Aux[Seq[NonNegInt]] =
-    Protocol("LPOS", key *: element *: "COUNT" *: count *: EmptyTuple).using(RESPRead.instance(Read.arrOfNum2Seq[NonNegInt]))
+    Protocol("LPOS", key *: element *: "COUNT" *: count *: EmptyTuple).as[Arr.Of[Num], Seq[NonNegInt]]
   final def lpos[A: Show](key: Key, element: A, count: NonNegInt, search: ListSearch): Single.Aux[Seq[NonNegInt]] =
     Protocol("LPOS", key *: element *: "COUNT" *: count *: search.params *: EmptyTuple)
-      .using(RESPRead.instance(Read.arrOfNum2Seq[NonNegInt]))
+      .as[Arr.Of[Num], Seq[NonNegInt]]
 
   final def lpush[A: Show](key: Key, values: OneOrMore[A]): Single.Aux[PosInt] =
     Protocol("LPUSH", key *: values.value *: EmptyTuple).as[Num, PosInt]
@@ -162,7 +162,7 @@ trait ListBaseP extends Features {
     Protocol("LPUSHX", key *: values.value *: EmptyTuple).using(zeroIsNone)
 
   final def lrange[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single.Aux[Seq[A]] =
-    Protocol("LRANGE", key *: start *: end *: EmptyTuple).as[Arr, Seq[A]]
+    Protocol("LRANGE", key *: start *: end *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
   final def lrem[A: Show](key: Key, count: Index, value: A): Single.Aux[NonNegInt] =
     Protocol("LREM", key *: count *: value *: EmptyTuple).as[Num, NonNegInt]
@@ -172,12 +172,12 @@ trait ListBaseP extends Features {
 
   final def ltrim(key: Key, start: Index, stop: Index): Single.Aux[OK] = Protocol("LTRIM", key *: start *: stop *: EmptyTuple).as[Str, OK]
 
-  final def rpop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]                     = Protocol("RPOP", key).asOpt[Bulk, A]
+  final def rpop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]                     = Protocol("RPOP", key).as[Bulk, Option[A]]
   final def rpop[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Option[Seq[A]]] =
     Protocol("RPOP", key *: count *: EmptyTuple).using(RESPRead.nullableArr(Read[Arr, Seq[A]]))
 
   final def rpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Single.Aux[Option[A]] =
-    Protocol("RPOPLPUSH", source :: destination :: Nil).asOpt[Bulk, A]
+    Protocol("RPOPLPUSH", source :: destination :: Nil).as[Bulk, Option[A]]
 
   final def rpush[A: Show](key: Key, values: OneOrMore[A]): Single.Aux[PosInt] =
     Protocol("RPUSH", key *: values.value *: EmptyTuple).as[Num, PosInt]
@@ -214,7 +214,7 @@ trait ListMoveManyP extends Features {
       amount: Amount,
       order: Order
   ): Single.Aux[Option[Seq[A]]] =
-    Protocol("LMOVEM", source *: destination *: from *: to *: amount.params *: order *: EmptyTuple).asOpt[Arr, Seq[A]]
+    Protocol("LMOVEM", source *: destination *: from *: to *: amount.params *: order *: EmptyTuple).as[Arr.Of[Bulk], Option[Seq[A]]]
 }
 
 trait ListP extends ListBaseP with ListExtP with ListMPopP with ListMoveManyP

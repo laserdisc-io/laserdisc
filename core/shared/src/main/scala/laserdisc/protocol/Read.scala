@@ -98,15 +98,38 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   /** Nothing, as a script returning nil replies */
   implicit final val nullBulk2UnitRead: Read[NullBulk, Unit] = infallible(_ => ())
 
-  implicit final def arrOf2Seq[A, B](implicit R: Read[A, B]): Read[Arr.Of[A], Seq[B]] = instance { arr =>
-    arr.elements
-      .foldRight[Either[RESPDecErr, (List[B], Int)]](Right(Nil -> arr.elements.size)) {
-        case (R(Right(b)), Right((bs, i))) => Right((b :: bs) -> (i - 1))
-        case (R(Left(e)), Right((_, i)))   => Left(RESPDecErr(s"Read[Arr.Of[A], Seq[B]] error at element $i: ${e.message}"))
-        case (_, left)                     => left
-      }
-      .map(_._1)
+  // the first element that fails fails the whole array, naming it
+  private final def elements[B](arr: Arr.Of[?])(read: RESP => Option[Either[RESPDecErr, B]]): Either[RESPDecErr, Seq[B]] = {
+    @scala.annotation.tailrec
+    def go(rest: List[RESP], i: Int, acc: List[B]): Either[RESPDecErr, Seq[B]] = rest match {
+      case Nil          => Right(acc.reverse)
+      case resp :: tail =>
+        read(resp) match {
+          case Some(Right(b)) => go(tail, i + 1, b :: acc)
+          case Some(Left(e))  => Left(RESPDecErr(s"Read[Arr.Of, Seq] error at element $i: ${e.message}"))
+          case None           => Left(RESPDecErr(s"Read[Arr.Of, Seq] error at element $i: Unexpected element. Was $resp"))
+        }
+    }
+    go(arr.elements, 1, Nil)
   }
+
+  implicit final def arrOf2Seq[A, B](implicit S: RESPSub[A], R: Read[A, B]): Read[Arr.Of[A], Seq[B]] = instance { arr =>
+    elements(arr)(resp => S.unapply(resp).map(R.read))
+  }
+
+  // a plain Arr read as an Arr.Of[A], for readers within others
+  private[protocol] final def arrOf[A, B](implicit S: RESPSub[A], R: Read[A, B]): Read[Arr, Seq[B]] = instance { arr =>
+    arrOf2Seq[A, B].read(new Arr.Of[A](arr.elements))
+  }
+
+  implicit final def arrOfOption2Seq[A, B](implicit S: RESPSub[A], R: Read[A, B]): Read[Arr.Of[Option[A]], Seq[Option[B]]] =
+    instance { arr =>
+      elements(arr) {
+        case resp if resp == S.nil => Some(Right(None))
+        case resp                  => S.unapply(resp).map(R.read(_).map(Some(_)))
+      }
+    }
+
   implicit final val num2BooleanRead: Read[Num, Boolean] = instancePF("0L or 1L") {
     case Num(0L) => false
     case Num(1L) => true
@@ -159,20 +182,6 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
       .map(_._1)
   }
 
-  /** For arrays of numbers (e.g. LPOS with a count, or SMISMEMBER). Not implicit, as it would clash with [[arrOfBulk2Seq]] for types that
-    * can be read from both
-    */
-  final def arrOfNum2Seq[A](implicit R: Read[Num, A]): Read[Arr, Seq[A]] = instance { case Arr(vector) =>
-    vector
-      .foldRight[Either[RESPDecErr, (List[A], Int)]](Right(Nil -> 0)) {
-        case (R(Right(a)), Right((as0, asl))) => Right((a :: as0) -> (asl + 1))
-        case (R(Left(e)), Right((_, asl)))    => Left(RESPDecErr(s"Read[Arr(Num), Seq[A]] error at element ${asl + 1}: ${e.message}"))
-        case (other, Right((_, asl)))         =>
-          Left(RESPDecErr(s"Read[Arr(Num), Seq[A]] error at element ${asl + 1}: Unexpected for Num. Was $other"))
-        case (_, left) => left
-      }
-      .map(_._1)
-  }
   implicit final def arrOfArr2Seq[A](implicit R: Read[Arr, A]): Read[Arr, Seq[A]] = instance { case Arr(vector) =>
     vector
       .foldRight[Either[RESPDecErr, (List[A], Int)]](Right(Nil -> 0)) {
@@ -180,30 +189,6 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
         case (R(Left(e)), Right((_, asl)))    => Left(RESPDecErr(s"Read[Arr(Arr), Seq[A]] error at element ${asl + 1}: ${e.message}"))
         case (other, Right((_, asl)))         =>
           Left(RESPDecErr(s"Read[Arr(Arr), Seq[A]] error at element ${asl + 1}: Unexpected for Arr. Was $other"))
-        case (_, left) => left
-      }
-      .map(_._1)
-  }
-  implicit final def arrOfBulk2OptionSeq[A](implicit R: Read[Bulk, A]): Read[Arr, Seq[Option[A]]] = instance { case Arr(vector) =>
-    vector
-      .foldRight[Either[RESPDecErr, (List[Option[A]], Int)]](Right(Nil -> 0)) {
-        case (NullBulk, Right((as0, asl)))    => Right((None :: as0) -> (asl + 1))
-        case (R(Right(a)), Right((as0, asl))) => Right((Some(a) :: as0) -> (asl + 1))
-        case (R(Left(e)), Right((_, asl))) => Left(RESPDecErr(s"Read[Arr(Bulk), Seq[Option[A]]] error at element ${asl + 1}: ${e.message}"))
-        case (other, Right((_, asl)))      =>
-          Left(RESPDecErr(s"Read[Arr(Bulk), Seq[Option[A]]] error at element ${asl + 1}: Unexpected for Bulk. Was $other"))
-        case (_, left) => left
-      }
-      .map(_._1)
-  }
-  implicit final def arrOfArr2OptionSeq[A](implicit R: Read[Arr, A]): Read[Arr, Seq[Option[A]]] = instance { case Arr(vector) =>
-    vector
-      .foldRight[Either[RESPDecErr, (List[Option[A]], Int)]](Right(Nil -> 0)) {
-        case (NilArr, Right((as0, asl)))      => Right((None :: as0) -> (asl + 1))
-        case (R(Right(a)), Right((as0, asl))) => Right((Some(a) :: as0) -> (asl + 1))
-        case (R(Left(e)), Right((_, asl))) => Left(RESPDecErr(s"Read[Arr(Arr), Seq[Option[A]]] error at element ${asl + 1}: ${e.message}"))
-        case (other, Right((_, asl)))      =>
-          Left(RESPDecErr(s"Read[Arr(Arr), Seq[Option[A]]] error at element ${asl + 1}: Unexpected for Arr. Was $other"))
         case (_, left) => left
       }
       .map(_._1)

@@ -34,14 +34,25 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
     )
   }
 
-  test("decoding the correct type Read[Arr(Bulk), Seq[Option[A]]] with the wrong encoding gives details about the decoding error") {
-    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr, Seq[Option[Long]]]
+  test("decoding Arr.Of[Bulk] with the wrong encoding names the first element that fails") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Bulk], Seq[Long]]
     val request  = "id" *: EmptyTuple
-    val response = Arr(Num(1L), NullBulk, Num(3L), NullBulk)
 
     assertLeftEquals(
-      protocol(request).decode(response).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Num(1),NullBulk,Num(3),NullBulk) matched but failed to deserialize correctly with error Read[Arr(Bulk), Seq[Option[A]]] error at element 2: Unexpected for Bulk. Was Num(3)"
+      protocol(request).decode(Arr(Bulk("1"), Num(2L), Bulk("x"))).leftMap(_.getMessage),
+      "RESP type(s) of Arr(Bulk(1),Num(2),Bulk(x)) matched but failed to deserialize correctly with error Read[Arr.Of, Seq] error at element 2: Unexpected element. Was Num(2)"
+    )
+    assertLeftEquals(protocol(request).decode(Arr(Bulk("1"), Bulk("x"))).leftMap(_.getMessage.contains("element 2")), true)
+  }
+
+  test("decoding Arr.Of[Option[Bulk]] reads NullBulk as None, and names the first element that fails") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Option[Bulk]], Seq[Option[Long]]]
+    val request  = "id" *: EmptyTuple
+
+    assertEquals(protocol(request).decode(Arr(Bulk("1"), NullBulk)), Seq(Some(1L), None))
+    assertLeftEquals(
+      protocol(request).decode(Arr(Bulk("1"), NullBulk, Num(3L), NullBulk)).leftMap(_.getMessage),
+      "RESP type(s) of Arr(Bulk(1),NullBulk,Num(3),NullBulk) matched but failed to deserialize correctly with error Read[Arr.Of, Seq] error at element 3: Unexpected element. Was Num(3)"
     )
   }
 }

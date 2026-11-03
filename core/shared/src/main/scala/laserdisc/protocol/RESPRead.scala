@@ -56,9 +56,8 @@ object RESPSub {
   implicit final val numRESPSub: RESPSub[Num]           = instance(NullBulk) { case num: Num => num }
   implicit final val strRESPSub: RESPSub[Str]           = instance(NullBulk) { case str: Str => str }
 
-  implicit final def arrOfRESPSub[A](implicit A: RESPSub[A]): RESPSub[Arr.Of[A]] = instance(NilArr) {
-    case Arr(elements) if elements.forall(A.unapply(_).isDefined) => new Arr.Of(elements.flatMap(A.unapply(_)))
-  }
+  // any array: its elements are checked as they're read
+  implicit final def arrOfRESPSub[A]: RESPSub[Arr.Of[A]] = instance(NilArr) { case Arr(elements) => new Arr.Of[A](elements) }
 }
 
 @implicitNotFound(

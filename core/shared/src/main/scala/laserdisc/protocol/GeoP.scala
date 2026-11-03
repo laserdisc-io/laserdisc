@@ -311,23 +311,24 @@ trait GeoBaseP extends Features {
     Protocol("GEOADD", key *: flag *: "CH" *: lonLatMember(positions) *: EmptyTuple).as[Num, NonNegInt]
 
   final def geodist(key: Key, member1: Key, member2: Key): Single.Aux[Option[NonNegDouble]] =
-    Protocol("GEODIST", key *: member1 *: member2 *: EmptyTuple).asOpt[Bulk, NonNegDouble]
+    Protocol("GEODIST", key *: member1 *: member2 *: EmptyTuple).as[Bulk, Option[NonNegDouble]]
   final def geodist(key: Key, member1: Key, member2: Key, unit: GeoUnit): Single.Aux[Option[NonNegDouble]] =
-    Protocol("GEODIST", key *: member1 *: member2 *: unit *: EmptyTuple).asOpt[Bulk, NonNegDouble]
+    Protocol("GEODIST", key *: member1 *: member2 *: unit *: EmptyTuple).as[Bulk, Option[NonNegDouble]]
 
   final def geohash(key: Key, members: OneOrMoreKeys): Single.Aux[Seq[Option[GeoHash]]] =
-    Protocol("GEOHASH", key :: members.value).as[Arr, Seq[Option[GeoHash]]]
+    Protocol("GEOHASH", key :: members.value).as[Arr.Of[Option[Bulk]], Seq[Option[GeoHash]]]
 
   final def geopos(key: Key, members: OneOrMoreKeys): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    Protocol("GEOPOS", key :: members.value).as[Arr, Seq[Option[GeoCoordinates]]]
+    Protocol("GEOPOS", key :: members.value).as[Arr.Of[Option[Arr]], Seq[Option[GeoCoordinates]]]
 
   final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit): Single.Aux[Seq[Key]] =
-    Protocol("GEORADIUS", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEORADIUS", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit, limit: PosInt): Single.Aux[Seq[Key]] =
     Protocol("GEORADIUS", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: "COUNT" *: limit *: EmptyTuple)
-      .as[Arr, Seq[Key]]
+      .as[Arr.Of[Bulk], Seq[Key]]
   final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit, sort: Direction): Single.Aux[Seq[Key]] =
-    Protocol("GEORADIUS", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: sort *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEORADIUS", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: sort *: EmptyTuple)
+      .as[Arr.Of[Bulk], Seq[Key]]
   final def georadius(
       key: Key,
       coordinates: GeoCoordinates,
@@ -337,12 +338,12 @@ trait GeoBaseP extends Features {
       sort: Direction
   ): Single.Aux[Seq[Key]] =
     Protocol("GEORADIUS", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: "COUNT" *: limit *: sort *: EmptyTuple)
-      .as[Arr, Seq[Key]]
+      .as[Arr.Of[Bulk], Seq[Key]]
   final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
     Protocol("GEORADIUS", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: mode.params *: EmptyTuple)
-      .as[Arr, Seq[mode.Res]]
+      .as[Arr.Of[Arr], Seq[mode.Res]]
   final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit, limit: PosInt, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
@@ -350,12 +351,12 @@ trait GeoBaseP extends Features {
       "GEORADIUS",
       key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: "COUNT" *: limit *: mode.params *: EmptyTuple
     )
-      .as[Arr, Seq[mode.Res]]
+      .as[Arr.Of[Arr], Seq[mode.Res]]
   final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit, sort: Direction, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
     Protocol("GEORADIUS", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: sort *: mode.params *: EmptyTuple)
-      .as[Arr, Seq[mode.Res]]
+      .as[Arr.Of[Arr], Seq[mode.Res]]
   final def georadius(
       key: Key,
       coordinates: GeoCoordinates,
@@ -368,7 +369,7 @@ trait GeoBaseP extends Features {
     Protocol(
       "GEORADIUS",
       key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: "COUNT" *: limit *: sort *: mode.params *: EmptyTuple
-    ).as[Arr, Seq[mode.Res]]
+    ).as[Arr.Of[Arr], Seq[mode.Res]]
   final def georadius(
       key: Key,
       coordinates: GeoCoordinates,
@@ -414,30 +415,31 @@ trait GeoBaseP extends Features {
       key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: "COUNT" *: limit *: sort *: store.params *: EmptyTuple
     ).as[Num, NonNegInt]
   final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit): Single.Aux[Seq[Key]] =
-    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, limit: PosInt): Single.Aux[Seq[Key]] =
-    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: "COUNT" *: limit *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: "COUNT" *: limit *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, sort: Direction): Single.Aux[Seq[Key]] =
-    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: sort *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: sort *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, limit: PosInt, sort: Direction): Single.Aux[Seq[Key]] =
-    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: "COUNT" *: limit *: sort *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: "COUNT" *: limit *: sort *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
   final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, limit: PosInt, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: "COUNT" *: limit *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: "COUNT" *: limit *: mode.params *: EmptyTuple)
+      .as[Arr.Of[Arr], Seq[mode.Res]]
   final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, sort: Direction, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: sort *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: sort *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
   final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, limit: PosInt, sort: Direction, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
     Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: "COUNT" *: limit *: sort *: mode.params *: EmptyTuple)
-      .as[Arr, Seq[mode.Res]]
+      .as[Arr.Of[Arr], Seq[mode.Res]]
   final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, store: GeoStoreMode): Single.Aux[NonNegInt] =
     Protocol("GEORADIUSBYMEMBER", key *: member *: radius *: unit *: store.params *: EmptyTuple).as[Num, NonNegInt]
   final def georadius(
@@ -471,27 +473,27 @@ trait GeoBaseP extends Features {
       .as[Num, NonNegInt]
 
   final def geosearch(key: Key, area: GeoArea): Single.Aux[Seq[Key]] =
-    Protocol("GEOSEARCH", key *: area.params *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEOSEARCH", key *: area.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def geosearch(key: Key, area: GeoArea, sort: Direction): Single.Aux[Seq[Key]] =
-    Protocol("GEOSEARCH", key *: area.params *: sort *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEOSEARCH", key *: area.params *: sort *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def geosearch(key: Key, area: GeoArea, count: GeoCount): Single.Aux[Seq[Key]] =
-    Protocol("GEOSEARCH", key *: area.params *: count.params *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEOSEARCH", key *: area.params *: count.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def geosearch(key: Key, area: GeoArea, sort: Direction, count: GeoCount): Single.Aux[Seq[Key]] =
-    Protocol("GEOSEARCH", key *: area.params *: sort *: count.params *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEOSEARCH", key *: area.params *: sort *: count.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def geosearch(key: Key, area: GeoArea, mode: GeoRadiusMode)(implicit ev: Read[Arr, mode.Res]): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEOSEARCH", key *: area.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEOSEARCH", key *: area.params *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
   final def geosearch(key: Key, area: GeoArea, sort: Direction, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEOSEARCH", key *: area.params *: sort *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEOSEARCH", key *: area.params *: sort *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
   final def geosearch(key: Key, area: GeoArea, count: GeoCount, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEOSEARCH", key *: area.params *: count.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEOSEARCH", key *: area.params *: count.params *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
   final def geosearch(key: Key, area: GeoArea, sort: Direction, count: GeoCount, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEOSEARCH", key *: area.params *: sort *: count.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEOSEARCH", key *: area.params *: sort *: count.params *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
 
   final def geosearchstore(source: Key, destination: Key, area: GeoArea): Single.Aux[NonNegInt] =
     Protocol("GEOSEARCHSTORE", destination *: source *: area.params *: EmptyTuple).as[Num, NonNegInt]
@@ -532,10 +534,11 @@ trait GeoBaseP extends Features {
 
   object ro {
     final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit): Single.Aux[Seq[Key]] =
-      Protocol("GEORADIUS_RO", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: EmptyTuple).as[Arr, Seq[Key]]
+      Protocol("GEORADIUS_RO", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: EmptyTuple)
+        .as[Arr.Of[Bulk], Seq[Key]]
     final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit, limit: PosInt): Single.Aux[Seq[Key]] =
       Protocol("GEORADIUS_RO", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: "COUNT" *: limit *: EmptyTuple)
-        .as[Arr, Seq[Key]]
+        .as[Arr.Of[Bulk], Seq[Key]]
     final def georadius(
         key: Key,
         coordinates: GeoCoordinates,
@@ -544,7 +547,7 @@ trait GeoBaseP extends Features {
         sort: Direction
     ): Single.Aux[Seq[Key]] =
       Protocol("GEORADIUS_RO", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: sort *: EmptyTuple)
-        .as[Arr, Seq[Key]]
+        .as[Arr.Of[Bulk], Seq[Key]]
     final def georadius(
         key: Key,
         coordinates: GeoCoordinates,
@@ -557,24 +560,24 @@ trait GeoBaseP extends Features {
         "GEORADIUS_RO",
         key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: "COUNT" *: limit *: sort *: EmptyTuple
       )
-        .as[Arr, Seq[Key]]
+        .as[Arr.Of[Bulk], Seq[Key]]
     final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit, mode: GeoRadiusMode)(
         implicit ev: Read[Arr, mode.Res]
     ): Single.Aux[Seq[mode.Res]] =
       Protocol("GEORADIUS_RO", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: mode.params *: EmptyTuple)
-        .as[Arr, Seq[mode.Res]]
+        .as[Arr.Of[Arr], Seq[mode.Res]]
     final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit, limit: PosInt, mode: GeoRadiusMode)(
         implicit ev: Read[Arr, mode.Res]
     ): Single.Aux[Seq[mode.Res]] =
       Protocol(
         "GEORADIUS_RO",
         key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: "COUNT" *: limit *: mode.params *: EmptyTuple
-      ).as[Arr, Seq[mode.Res]]
+      ).as[Arr.Of[Arr], Seq[mode.Res]]
     final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit, sort: Direction, mode: GeoRadiusMode)(
         implicit ev: Read[Arr, mode.Res]
     ): Single.Aux[Seq[mode.Res]] =
       Protocol("GEORADIUS_RO", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: sort *: mode.params *: EmptyTuple)
-        .as[Arr, Seq[mode.Res]]
+        .as[Arr.Of[Arr], Seq[mode.Res]]
     final def georadius(
         key: Key,
         coordinates: GeoCoordinates,
@@ -587,13 +590,13 @@ trait GeoBaseP extends Features {
       Protocol(
         "GEORADIUS_RO",
         key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: "COUNT" *: limit *: sort *: mode.params *: EmptyTuple
-      ).as[Arr, Seq[mode.Res]]
+      ).as[Arr.Of[Arr], Seq[mode.Res]]
     final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit): Single.Aux[Seq[Key]] =
-      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: EmptyTuple).as[Arr, Seq[Key]]
+      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
     final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, limit: PosInt): Single.Aux[Seq[Key]] =
-      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: "COUNT" *: limit *: EmptyTuple).as[Arr, Seq[Key]]
+      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: "COUNT" *: limit *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
     final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, sort: Direction): Single.Aux[Seq[Key]] =
-      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: sort *: EmptyTuple).as[Arr, Seq[Key]]
+      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: sort *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
     final def georadius(
         key: Key,
         member: Key,
@@ -602,25 +605,25 @@ trait GeoBaseP extends Features {
         limit: PosInt,
         sort: Direction
     ): Single.Aux[Seq[Key]] =
-      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: "COUNT" *: limit *: sort *: EmptyTuple).as[Arr, Seq[Key]]
+      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: "COUNT" *: limit *: sort *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
     final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, mode: GeoRadiusMode)(
         implicit ev: Read[Arr, mode.Res]
     ): Single.Aux[Seq[mode.Res]] =
-      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
     final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, limit: PosInt, mode: GeoRadiusMode)(
         implicit ev: Read[Arr, mode.Res]
     ): Single.Aux[Seq[mode.Res]] =
       Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: "COUNT" *: limit *: mode.params *: EmptyTuple)
-        .as[Arr, Seq[mode.Res]]
+        .as[Arr.Of[Arr], Seq[mode.Res]]
     final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, sort: Direction, mode: GeoRadiusMode)(
         implicit ev: Read[Arr, mode.Res]
     ): Single.Aux[Seq[mode.Res]] =
-      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: sort *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+      Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: sort *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
     final def georadius(key: Key, member: Key, radius: NonNegDouble, unit: GeoUnit, limit: PosInt, sort: Direction, mode: GeoRadiusMode)(
         implicit ev: Read[Arr, mode.Res]
     ): Single.Aux[Seq[mode.Res]] =
       Protocol("GEORADIUSBYMEMBER_RO", key *: member *: radius *: unit *: "COUNT" *: limit *: sort *: mode.params *: EmptyTuple)
-        .as[Arr, Seq[mode.Res]]
+        .as[Arr.Of[Arr], Seq[mode.Res]]
   }
 }
 
@@ -631,27 +634,27 @@ trait GeoSearchPolygonP extends Features { this: GeoBaseP =>
   import geotypes.*
 
   final def geosearch(key: Key, polygon: GeoPolygon): Single.Aux[Seq[Key]] =
-    Protocol("GEOSEARCH", key *: polygon.params *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEOSEARCH", key *: polygon.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def geosearch(key: Key, polygon: GeoPolygon, sort: Direction): Single.Aux[Seq[Key]] =
-    Protocol("GEOSEARCH", key *: polygon.params *: sort *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEOSEARCH", key *: polygon.params *: sort *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def geosearch(key: Key, polygon: GeoPolygon, count: GeoCount): Single.Aux[Seq[Key]] =
-    Protocol("GEOSEARCH", key *: polygon.params *: count.params *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEOSEARCH", key *: polygon.params *: count.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def geosearch(key: Key, polygon: GeoPolygon, sort: Direction, count: GeoCount): Single.Aux[Seq[Key]] =
-    Protocol("GEOSEARCH", key *: polygon.params *: sort *: count.params *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("GEOSEARCH", key *: polygon.params *: sort *: count.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def geosearch(key: Key, polygon: GeoPolygon, mode: GeoRadiusMode)(implicit ev: Read[Arr, mode.Res]): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEOSEARCH", key *: polygon.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEOSEARCH", key *: polygon.params *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
   final def geosearch(key: Key, polygon: GeoPolygon, sort: Direction, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEOSEARCH", key *: polygon.params *: sort *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEOSEARCH", key *: polygon.params *: sort *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
   final def geosearch(key: Key, polygon: GeoPolygon, count: GeoCount, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEOSEARCH", key *: polygon.params *: count.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEOSEARCH", key *: polygon.params *: count.params *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
   final def geosearch(key: Key, polygon: GeoPolygon, sort: Direction, count: GeoCount, mode: GeoRadiusMode)(
       implicit ev: Read[Arr, mode.Res]
   ): Single.Aux[Seq[mode.Res]] =
-    Protocol("GEOSEARCH", key *: polygon.params *: sort *: count.params *: mode.params *: EmptyTuple).as[Arr, Seq[mode.Res]]
+    Protocol("GEOSEARCH", key *: polygon.params *: sort *: count.params *: mode.params *: EmptyTuple).as[Arr.Of[Arr], Seq[mode.Res]]
 
   final def geosearchstore(source: Key, destination: Key, polygon: GeoPolygon): Single.Aux[NonNegInt] =
     Protocol("GEOSEARCHSTORE", destination *: source *: polygon.params *: EmptyTuple).as[Num, NonNegInt]

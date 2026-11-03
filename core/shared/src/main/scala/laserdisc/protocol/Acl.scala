@@ -213,8 +213,8 @@ trait AclCommands extends Features {
     )
 
   /** The ACL categories, or the commands of one */
-  val cat: Single.Aux[Seq[String]]                = Protocol("ACL", "CAT").as[Arr, Seq[String]]
-  def cat(category: Key): Single.Aux[Seq[String]] = Protocol("ACL", "CAT" :: category.value :: Nil).as[Arr, Seq[String]]
+  val cat: Single.Aux[Seq[String]]                = Protocol("ACL", "CAT").as[Arr.Of[Bulk], Seq[String]]
+  def cat(category: Key): Single.Aux[Seq[String]] = Protocol("ACL", "CAT" :: category.value :: Nil).as[Arr.Of[Bulk], Seq[String]]
 
   /** Deletes the users, and replies how many it deleted */
   def deluser(users: OneOrMoreKeys): Single.Aux[NonNegLong] = Protocol("ACL", "DELUSER" :: users.value.map(_.value)).as[Num, NonNegLong]
@@ -228,7 +228,7 @@ trait AclCommands extends Features {
     Protocol("ACL", "GETUSER" :: user.value :: Nil).using(RESPRead.nullableArr(Acl.user))
 
   /** Every user's rules, as the lines of an ACL file */
-  val list: Single.Aux[Seq[String]] = Protocol("ACL", "LIST").as[Arr, Seq[String]]
+  val list: Single.Aux[Seq[String]] = Protocol("ACL", "LIST").as[Arr.Of[Bulk], Seq[String]]
 
   val load: Single.Aux[OK] = Protocol("ACL", "LOAD").as[Str, OK]
 
@@ -243,7 +243,7 @@ trait AclCommands extends Features {
   /** Creates the user, or changes it, applying the rules in order */
   def setuser(user: Key, rules: AclRules): Single.Aux[OK] = Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 
-  val users: Single.Aux[Seq[String]] = Protocol("ACL", "USERS").as[Arr, Seq[String]]
+  val users: Single.Aux[Seq[String]] = Protocol("ACL", "USERS").as[Arr.Of[Bulk], Seq[String]]
 
   val whoami: Single.Aux[String] = Protocol("ACL", "WHOAMI").as[Bulk, String]
 }

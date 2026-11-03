@@ -344,7 +344,7 @@ trait ClientCommands extends Features {
       "CLIENT UNPAUSE"
     )
 
-  val getname: Single.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").asOpt[Bulk, ConnectionName]
+  val getname: Single.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").as[Bulk, Option[ConnectionName]]
 
   val id: Single.Aux[NonNegLong] = Protocol("CLIENT", "ID").as[Num, NonNegLong]
 

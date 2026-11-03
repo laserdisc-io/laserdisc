@@ -336,7 +336,7 @@ trait ServerBackupP extends Features {
   object backup {
     val start: Single.Aux[OK]            = Protocol("BACKUP", "START").as[Str, OK]
     val status: Single.Aux[BackupStatus] = Protocol("BACKUP", "STATUS").using(RESPRead.instance(ClusterManagement.backupStatus))
-    val list: Single.Aux[Seq[String]]    = Protocol("BACKUP", "LIST").as[Arr, Seq[String]]
+    val list: Single.Aux[Seq[String]]    = Protocol("BACKUP", "LIST").as[Arr.Of[Bulk], Seq[String]]
     val seal: Single.Aux[OK]             = Protocol("BACKUP", "SEAL").as[Str, OK]
     val abort: Single.Aux[OK]            = Protocol("BACKUP", "ABORT").as[Str, OK]
     val cleanup: Single.Aux[OK]          = Protocol("BACKUP", "CLEANUP").as[Str, OK]

@@ -406,13 +406,13 @@ trait StreamBaseP extends Features {
 
   /** XADD only to an existing stream: `None` when it doesn't exist */
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: "*" *: fieldsParams(fields) *: EmptyTuple).asOpt[Bulk, Id]
+    Protocol("XADD", key *: noMkStream *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: Id, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: id.toString *: fieldsParams(fields) *: EmptyTuple).asOpt[Bulk, Id]
+    Protocol("XADD", key *: noMkStream *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, trim: Trim, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).asOpt[Bulk, Id]
+    Protocol("XADD", key *: noMkStream *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: Id, trim: Trim, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).asOpt[Bulk, Id]
+    Protocol("XADD", key *: noMkStream *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
 
   /** Deletes the entries, and replies how many it deleted */
   final def xdel(key: Key, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
@@ -711,7 +711,7 @@ trait StreamRefPolicyP extends Features {
       "XTRIM: ACKED DELREF KEEPREF"
     )
 
-  private final val results = RESPRead.instance(Read.arrOfNum2Seq[DeleteResult])
+  private final val results = RESPRead[Arr.Of[Num], Seq[DeleteResult]]
 
   private final def idsParams(ids: OneOrMore[Id]): List[String] = "IDS" :: ids.value.length.toString :: ids.value.map(_.toString)
 
@@ -727,7 +727,7 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).asOpt[Bulk, Id]
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
   final def xadd[A: Show](
       key: Key,
       noMkStream: NoMkStream,
@@ -736,7 +736,7 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).asOpt[Bulk, Id]
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
 
   /** Acknowledges the entries for the group and deletes them, with what it did to each */
   final def xackdel(key: Key, group: Key, ids: OneOrMore[Id]): Single.Aux[Seq[DeleteResult]] =

@@ -156,9 +156,9 @@ object Arr {
   final def apply(one: RESP, rest: RESP*): Arr = new Arr(one +: rest.toList)
 
   /** An array whose elements are all `A`s, to say how to read a reply whose elements are all of one RESP type, like a script's table of
-    * numbers: `Arr.Of[Num]`
+    * numbers: `Arr.Of[Num]`. With `Arr.Of[Option[A]]`, an element may also be the "null" of `A` (see [[RESPSub]])
     */
-  final class Of[A] private[protocol] (val elements: List[A])
+  final class Of[A] private[protocol] (private[protocol] val elements: List[RESP])
 }
 
 private[protocol] final case class Repr[A](decoded: A, bits: BitVector)

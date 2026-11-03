@@ -142,7 +142,7 @@ trait ScriptCommands extends Features {
 
   /** Whether each script is in the cache */
   def exists(shas: OneOrMore[Sha1]): Single.Aux[Seq[Boolean]] =
-    Protocol("SCRIPT", "EXISTS" :: shas.value.map(_.value)).using(RESPRead.instance(Read.arrOfNum2Seq[Boolean]))
+    Protocol("SCRIPT", "EXISTS" :: shas.value.map(_.value)).as[Arr.Of[Num], Seq[Boolean]]
 
   /** Empties the script cache */
   val flush: Single.Aux[OK]                  = Protocol("SCRIPT", "FLUSH").as[Str, OK]

@@ -286,7 +286,7 @@ trait StringBaseP extends Features {
 
   final def bitfieldro(key: Key, gets: OneOrMore[(BitField.Encoding, BitField.Offset)]): Single.Aux[Seq[Long]] =
     Protocol("BITFIELD_RO", key *: gets.value.flatMap { case (e, o) => List("GET", e.param, o.param) } *: EmptyTuple)
-      .using(RESPRead.instance(Read.arrOfNum2Seq[Long]))
+      .as[Arr.Of[Num], Seq[Long]]
 
   final def bitop(bitwise: Bitwise, keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
     Protocol("BITOP", bitwise *: destinationKey *: keys.value *: EmptyTuple).as[Num, NonNegInt]
@@ -306,21 +306,21 @@ trait StringBaseP extends Features {
   final def decrby[A: Read[Num, _]](key: Key, decrement: PosLong): Single.Aux[A] =
     Protocol("DECRBY", key *: decrement *: EmptyTuple).as[Num, A]
 
-  final def get[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("GET", key).asOpt[Bulk, A]
+  final def get[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("GET", key).as[Bulk, Option[A]]
 
   final def getbit(key: Key, offset: PosLong): Single.Aux[Bit] = Protocol("GETBIT", key *: offset *: EmptyTuple).as[Num, Bit]
 
   final def getrange[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single.Aux[A] =
     Protocol("GETRANGE", key *: start *: end *: EmptyTuple).as[Bulk, A]
 
-  final def getdel[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("GETDEL", key).asOpt[Bulk, A]
+  final def getdel[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("GETDEL", key).as[Bulk, Option[A]]
 
-  final def getex[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]                    = Protocol("GETEX", key).asOpt[Bulk, A]
+  final def getex[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]                    = Protocol("GETEX", key).as[Bulk, Option[A]]
   final def getex[A: Read[Bulk, _]](key: Key, expiry: GetExpiry): Single.Aux[Option[A]] =
-    Protocol("GETEX", key *: expiry.params *: EmptyTuple).asOpt[Bulk, A]
+    Protocol("GETEX", key *: expiry.params *: EmptyTuple).as[Bulk, Option[A]]
 
   final def getset[A: Read[Bulk, _]](key: Key, value: Value): Single.Aux[Option[A]] =
-    Protocol("GETSET", key *: value.shown *: EmptyTuple).asOpt[Bulk, A]
+    Protocol("GETSET", key *: value.shown *: EmptyTuple).as[Bulk, Option[A]]
 
   final def incr[A: Read[Num, _]](key: Key): Single.Aux[A] = Protocol("INCR", key).as[Num, A]
 
@@ -352,15 +352,15 @@ trait StringBaseP extends Features {
   final def set[A: Show](key: Key, value: A, expiry: SetExpiry): Single.Aux[OK] =
     Protocol("SET", key *: value *: expiry.params *: EmptyTuple).as[Str, OK]
   final def set[A: Show](key: Key, value: A, flag: Flag): Single.Aux[Option[OK]] =
-    Protocol("SET", key *: value *: flag *: EmptyTuple).asOpt[Str, OK]
+    Protocol("SET", key *: value *: flag *: EmptyTuple).as[Str, Option[OK]]
   final def set[A: Show](key: Key, value: A, expiry: SetExpiry, flag: Flag): Single.Aux[Option[OK]] =
-    Protocol("SET", key *: value *: flag *: expiry.params *: EmptyTuple).asOpt[Str, OK]
+    Protocol("SET", key *: value *: flag *: expiry.params *: EmptyTuple).as[Str, Option[OK]]
 
   /** SET with GET, which replies with the previous value */
   final def setget[A: Read[Bulk, _]](key: Key, value: Value): Single.Aux[Option[A]] =
-    Protocol("SET", key *: value.shown *: "GET" *: EmptyTuple).asOpt[Bulk, A]
+    Protocol("SET", key *: value.shown *: "GET" *: EmptyTuple).as[Bulk, Option[A]]
   final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry): Single.Aux[Option[A]] =
-    Protocol("SET", key *: value.shown *: "GET" *: expiry.params *: EmptyTuple).asOpt[Bulk, A]
+    Protocol("SET", key *: value.shown *: "GET" *: expiry.params *: EmptyTuple).as[Bulk, Option[A]]
 
   final def setbit(key: Key, offset: StringLength, bit: Bit): Single.Aux[Bit] =
     Protocol("SETBIT", key *: offset *: bit *: EmptyTuple).as[Num, Bit]
@@ -383,9 +383,9 @@ trait StringSetGetFlagP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SET: GET NX XX")
 
   final def setget[A: Read[Bulk, _]](key: Key, value: Value, flag: Flag): Single.Aux[Option[A]] =
-    Protocol("SET", key *: value.shown *: flag *: "GET" *: EmptyTuple).asOpt[Bulk, A]
+    Protocol("SET", key *: value.shown *: flag *: "GET" *: EmptyTuple).as[Bulk, Option[A]]
   final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry, flag: Flag): Single.Aux[Option[A]] =
-    Protocol("SET", key *: value.shown *: flag *: "GET" *: expiry.params *: EmptyTuple).asOpt[Bulk, A]
+    Protocol("SET", key *: value.shown *: flag *: "GET" *: expiry.params *: EmptyTuple).as[Bulk, Option[A]]
 }
 
 /** SET with IFEQ: Valkey 8.1, Redis 8.4 */
@@ -395,9 +395,9 @@ trait StringSetIfEqP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SET: IFEQ")
 
   final def set[A: Show](key: Key, value: A, ifEq: IfEq): Single.Aux[Option[OK]] =
-    Protocol("SET", key *: value *: ifEq.params *: EmptyTuple).asOpt[Str, OK]
+    Protocol("SET", key *: value *: ifEq.params *: EmptyTuple).as[Str, Option[OK]]
   final def set[A: Show](key: Key, value: A, expiry: SetExpiry, ifEq: IfEq): Single.Aux[Option[OK]] =
-    Protocol("SET", key *: value *: ifEq.params *: expiry.params *: EmptyTuple).asOpt[Str, OK]
+    Protocol("SET", key *: value *: ifEq.params *: expiry.params *: EmptyTuple).as[Str, Option[OK]]
 }
 
 /** SET with IFNE, IFDEQ and IFDNE: Redis 8.4 */
@@ -407,9 +407,9 @@ trait StringSetCompareP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SET: IFDEQ IFDNE IFNE")
 
   final def set[A: Show](key: Key, value: A, compare: Compare): Single.Aux[Option[OK]] =
-    Protocol("SET", key *: value *: compare.params *: EmptyTuple).asOpt[Str, OK]
+    Protocol("SET", key *: value *: compare.params *: EmptyTuple).as[Str, Option[OK]]
   final def set[A: Show](key: Key, value: A, expiry: SetExpiry, compare: Compare): Single.Aux[Option[OK]] =
-    Protocol("SET", key *: value *: compare.params *: expiry.params *: EmptyTuple).asOpt[Str, OK]
+    Protocol("SET", key *: value *: compare.params *: expiry.params *: EmptyTuple).as[Str, Option[OK]]
 }
 
 /** BITCOUNT and BITPOS with BYTE or BIT: Redis 7.0 */
@@ -463,7 +463,7 @@ trait StringDigestAndDelExP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("DELEX: IFDEQ IFDNE IFEQ IFNE", "DIGEST")
 
   /** A hash of the value at the key, which IFDEQ and IFDNE compare against */
-  final def digest(key: Key): Single.Aux[Option[String]] = Protocol("DIGEST", key).asOpt[Bulk, String]
+  final def digest(key: Key): Single.Aux[Option[String]] = Protocol("DIGEST", key).as[Bulk, Option[String]]
 
   /** Deletes the key, like DEL with one key, and replies whether it did */
   final def delex(key: Key): Single.Aux[Boolean]                   = Protocol("DELEX", key).as[Num, Boolean]

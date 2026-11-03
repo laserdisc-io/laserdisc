@@ -384,7 +384,7 @@ trait ClusterBaseP extends Features {
   final def forget(nodeId: NodeId): Single.Aux[OK] = Protocol("CLUSTER", "FORGET" *: nodeId *: EmptyTuple).as[Str, OK]
 
   final def getkeysinslot(slot: Slot, count: PosInt): Single.Aux[Seq[Key]] =
-    Protocol("CLUSTER", "GETKEYSINSLOT" *: slot *: count *: EmptyTuple).as[Arr, Seq[Key]]
+    Protocol("CLUSTER", "GETKEYSINSLOT" *: slot *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
 
   final def keyslot(key: Key): Single.Aux[Slot] = Protocol("CLUSTER", "KEYSLOT" *: key *: EmptyTuple).as[Num, Slot]
 

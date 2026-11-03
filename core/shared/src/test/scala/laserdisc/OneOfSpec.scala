@@ -38,7 +38,7 @@ final class OneOfSpec extends BaseSpec {
     assertLeftEquals(message(protocol(request).decode(Num(1L))), "RESP type(s) did not match: Num(1)")
     assertLeftEquals(
       message(protocol(request).decode(Bulk("x"))),
-      "RESP type(s) of Bulk(x) matched but failed to deserialize correctly with error Read[OneOf] error: alternative 2: Read Error: expected Bulk(Int) but was Bulk(x)"
+      "RESP type(s) of Bulk(x) matched but failed to deserialize correctly with error Read[OneOf] error: Read Error: expected Bulk(Int) but was Bulk(x)"
     )
   }
 
@@ -48,7 +48,7 @@ final class OneOfSpec extends BaseSpec {
     assertEquals(protocol(request).decode(Bulk("1")), 1)
     assertLeftEquals(
       message(protocol(request).decode(NullBulk)),
-      "RESP type(s) of NullBulk matched but failed to deserialize correctly with error Read[OneOf] error: alternative 1: missing value"
+      "RESP type(s) of NullBulk matched but failed to deserialize correctly with error Read[OneOf] error: missing value"
     )
   }
 

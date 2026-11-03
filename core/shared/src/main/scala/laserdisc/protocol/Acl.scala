@@ -211,7 +211,7 @@ trait AclCommands extends Features {
 
   /** The user's rules, or `None` when there's no such user */
   def getuser(user: Key): Single.Aux[Option[AclUser]] =
-    Protocol("ACL", "GETUSER" :: user.value :: Nil).using(RESPRead.nullableArr(Acl.user))
+    Protocol("ACL", "GETUSER" :: user.value :: Nil).using(RESPRead.orNilArrOrNullBulk(Acl.user))
 
   /** Every user's rules, as the lines of an ACL file */
   val list: Single.Aux[Seq[String]] = Protocol("ACL", "LIST").as[Arr.Of[Bulk], Seq[String]]

@@ -63,9 +63,10 @@ final class ScriptingPSpec extends BaseSpec with ScriptingP {
     )
     assertEquals(eval[NullBulk, Unit]("return nil").decode(NullBulk), ())
     assert(eval[NullBulk, Unit]("return nil").decode(Bulk("a")).isLeft)
-    assertEquals(eval[Bulk, Option[String]]("return nil").decode(NullBulk), None)
-    assertEquals(eval[Bulk, Option[String]]("return 'a'").decode(Bulk("a")), Some("a"))
-    assertEquals(eval[Arr.Of[Num], Option[Seq[Long]]]("return nil").decode(NilArr), None)
+    assertEquals(eval[OrNullBulk[Bulk], Option[String]]("return nil").decode(NullBulk), None)
+    assertEquals(eval[OrNullBulk[Bulk], Option[String]]("return 'a'").decode(Bulk("a")), Some("a"))
+    assertEquals(eval[OrNullBulk[Num], Option[Long]]("return nil").decode(NullBulk), None)
+    assertEquals(eval[OrNilArr[Arr.Of[Num]], Option[Seq[Long]]]("return nil").decode(NilArr), None)
   }
 
   test("The Scripting protocol using script loads, checks, shows, flushes and kills scripts") {

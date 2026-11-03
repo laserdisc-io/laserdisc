@@ -88,12 +88,12 @@ trait SetBaseP extends Features {
   final def smove[A: Show](source: Key, destination: Key, member: A): Single.Aux[Boolean] =
     Protocol("SMOVE", source *: destination *: member *: EmptyTuple).as[Num, Boolean]
 
-  final def spop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]             = Protocol("SPOP", key).as[Bulk, Option[A]]
+  final def spop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]]             = Protocol("SPOP", key).as[OrNullBulk[Bulk], Option[A]]
   final def spop[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Seq[A]] =
     Protocol("SPOP", key *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
   final def srandmember[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] =
-    Protocol("SRANDMEMBER", key).as[Bulk, Option[A]]
+    Protocol("SRANDMEMBER", key).as[OrNullBulk[Bulk], Option[A]]
   final def srandmembers[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[A]] =
     Protocol("SRANDMEMBER", key *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 

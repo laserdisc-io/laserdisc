@@ -311,15 +311,15 @@ trait GeoBaseP extends Features {
     Protocol("GEOADD", key *: flag *: "CH" *: lonLatMember(positions) *: EmptyTuple).as[Num, NonNegInt]
 
   final def geodist(key: Key, member1: Key, member2: Key): Single.Aux[Option[NonNegDouble]] =
-    Protocol("GEODIST", key *: member1 *: member2 *: EmptyTuple).as[Bulk, Option[NonNegDouble]]
+    Protocol("GEODIST", key *: member1 *: member2 *: EmptyTuple).as[OrNullBulk[Bulk], Option[NonNegDouble]]
   final def geodist(key: Key, member1: Key, member2: Key, unit: GeoUnit): Single.Aux[Option[NonNegDouble]] =
-    Protocol("GEODIST", key *: member1 *: member2 *: unit *: EmptyTuple).as[Bulk, Option[NonNegDouble]]
+    Protocol("GEODIST", key *: member1 *: member2 *: unit *: EmptyTuple).as[OrNullBulk[Bulk], Option[NonNegDouble]]
 
   final def geohash(key: Key, members: OneOrMoreKeys): Single.Aux[Seq[Option[GeoHash]]] =
-    Protocol("GEOHASH", key :: members.value).as[Arr.Of[Option[Bulk]], Seq[Option[GeoHash]]]
+    Protocol("GEOHASH", key :: members.value).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[GeoHash]]]
 
   final def geopos(key: Key, members: OneOrMoreKeys): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    Protocol("GEOPOS", key :: members.value).as[Arr.Of[Option[Arr]], Seq[Option[GeoCoordinates]]]
+    Protocol("GEOPOS", key :: members.value).as[Arr.Of[OrNilArr[Arr]], Seq[Option[GeoCoordinates]]]
 
   final def georadius(key: Key, coordinates: GeoCoordinates, radius: NonNegDouble, unit: GeoUnit): Single.Aux[Seq[Key]] =
     Protocol("GEORADIUS", key *: coordinates.longitude *: coordinates.latitude *: radius *: unit *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]

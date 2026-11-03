@@ -27,49 +27,47 @@ import scala.annotation.{implicitNotFound, nowarn}
 /** Evidence that `A` is one of the non-error [[RESP]] types Redis may reply with.
   *
   * Instances exist only for the concrete [[RESP]] cases, and for [[RESP]] itself as any of them (and never for [[Err]], which is always
-  * handled as a failure), so a [[RESPRead]] can never be built for a type that Redis could not possibly send back.
-  *
-  * Each instance also knows the "null" [[RESP]] that stands for a missing value of `A`: [[NilArr]] for [[Arr]], [[NullBulk]] for everything
-  * else.
+  * handled as a failure), so a [[RESPRead]] can never be built for a type that Redis could not possibly send back. A value that may be
+  * missing is a [[OneOf]] of its type and of a null, like [[laserdisc.OrNullBulk]] or [[laserdisc.OrNilArr]].
   */
 @implicitNotFound(
   """Implicit not found RESPSub[${A}].
 
 ${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Arr.Tuple, Bulk, NilArr, NullBulk, Num or Str, a OneOf of them, or RESP for any of them
   """
-) sealed abstract class RESPSub[A](val nil: RESP) {
+) sealed abstract class RESPSub[A] {
   def unapply(resp: RESP): Option[A]
 }
 
 object RESPSub {
   @inline final def apply[A](implicit instance: RESPSub[A]): RESPSub[A] = instance
 
-  private final def instance[A](nil: RESP)(pf: PartialFunction[RESP, A]): RESPSub[A] =
-    new RESPSub[A](nil) {
+  private final def instance[A](pf: PartialFunction[RESP, A]): RESPSub[A] =
+    new RESPSub[A] {
       override final def unapply(resp: RESP): Option[A] = pf.lift(resp)
     }
 
-  implicit final val arrRESPSub: RESPSub[Arr]           = instance(NilArr) { case arr: Arr => arr }
-  implicit final val bulkRESPSub: RESPSub[Bulk]         = instance(NullBulk) { case bulk: Bulk => bulk }
-  implicit final val nilArrRESPSub: RESPSub[NilArr]     = instance(NilArr) { case NilArr => NilArr }
-  implicit final val nullBulkRESPSub: RESPSub[NullBulk] = instance(NullBulk) { case NullBulk => NullBulk }
-  implicit final val numRESPSub: RESPSub[Num]           = instance(NullBulk) { case num: Num => num }
-  implicit final val strRESPSub: RESPSub[Str]           = instance(NullBulk) { case str: Str => str }
+  implicit final val arrRESPSub: RESPSub[Arr]           = instance { case arr: Arr => arr }
+  implicit final val bulkRESPSub: RESPSub[Bulk]         = instance { case bulk: Bulk => bulk }
+  implicit final val nilArrRESPSub: RESPSub[NilArr]     = instance { case NilArr => NilArr }
+  implicit final val nullBulkRESPSub: RESPSub[NullBulk] = instance { case NullBulk => NullBulk }
+  implicit final val numRESPSub: RESPSub[Num]           = instance { case num: Num => num }
+  implicit final val strRESPSub: RESPSub[Str]           = instance { case str: Str => str }
 
   // any array: its elements are checked as they're read
-  implicit final def arrOfRESPSub[A]: RESPSub[Arr.Of[A]]             = instance(NilArr) { case Arr(elements) => new Arr.Of[A](elements) }
-  implicit final def arrPairsRESPSub[A, B]: RESPSub[Arr.Pairs[A, B]] = instance(NilArr) { case Arr(elements) =>
+  implicit final def arrOfRESPSub[A]: RESPSub[Arr.Of[A]]             = instance { case Arr(elements) => new Arr.Of[A](elements) }
+  implicit final def arrPairsRESPSub[A, B]: RESPSub[Arr.Pairs[A, B]] = instance { case Arr(elements) =>
     new Arr.Pairs[A, B](elements)
   }
 
-  implicit final def arrTupleRESPSub[T]: RESPSub[Arr.Tuple[T]] = instance(NilArr) { case Arr(elements) => new Arr.Tuple[T](elements) }
+  implicit final def arrTupleRESPSub[T]: RESPSub[Arr.Tuple[T]] = instance { case Arr(elements) => new Arr.Tuple[T](elements) }
 
-  implicit final def oneOfRESPSub[T <: Tuple](implicit A: Alternatives[T], @nowarn D: Distinct[T]): RESPSub[OneOf[T]] = instance(NullBulk) {
+  implicit final def oneOfRESPSub[T <: Tuple](implicit A: Alternatives[T], @nowarn D: Distinct[T]): RESPSub[OneOf[T]] = instance {
     case resp if A.matches(resp) => new OneOf[T](resp)
   }
 
   // any of the above, never Err
-  implicit final val respRESPSub: RESPSub[RESP] = instance(NullBulk) { case resp if !resp.isInstanceOf[Err] => resp }
+  implicit final val respRESPSub: RESPSub[RESP] = instance { case resp if !resp.isInstanceOf[Err] => resp }
 }
 
 @implicitNotFound(
@@ -85,14 +83,7 @@ You should not need to define one manually, as one will be derived for you autom
   def read(resp: RESP): Maybe[A]
 }
 
-// a Read to A gives a RESPRead to Option[A], with the "null" RESP as None, unless there's a Read to Option[A] itself, or A is a OneOf,
-// which reads its nulls as None on its own
-sealed trait RESPReadLowPriority {
-  implicit final def deriveOption[A: RESPSub, B](implicit R: Read[A, B], @nowarn ev: A <:!< OneOf[?]): RESPRead.Aux[A, Option[B]] =
-    RESPRead.nullable(R)
-}
-
-object RESPRead extends RESPReadLowPriority {
+object RESPRead {
   final type Aux[Sub0, A] = RESPRead[A] { type Sub = Sub0 }
   final def apply[Sub, A](implicit instance: Aux[Sub, A]): Aux[Sub, A] = instance
 
@@ -116,29 +107,20 @@ object RESPRead extends RESPReadLowPriority {
       }
     }
 
-  /** Like [[instance]], but the "null" [[RESP]] for `A` (see [[RESPSub]]) is read as `None` */
-  final def nullable[A, B](R: Read[A, B])(implicit S: RESPSub[A]): RESPRead.Aux[A, Option[B]] =
-    new RESPRead[Option[B]] {
-      override final type Sub = A
-      override final def read(resp: RESP): Maybe[Option[B]] = resp match {
-        case S(a)                => readMatched(R, resp, a).map(Some(_))
-        case nil if nil == S.nil => Right(None)
-        case _                   => mismatch(resp)
-      }
-    }
+  // an array read with R, or None for a null array, for readers given explicitly
+  private[protocol] final def orNilArr[B](R: Read[Arr, B]): RESPRead.Aux[OrNilArr[Arr], Option[B]] = {
+    implicit val read: Read[Arr, B] = R
+    RESPRead[OrNilArr[Arr], Option[B]]
+  }
 
-  /** Like [[nullable]] for [[Arr]], but [[NullBulk]] is read as `None` too, for replies Redis changed from one to the other (e.g. LPOP with
-    * a count, before Redis 7.0)
-    */
-  final def nullableArr[B](R: Read[Arr, B]): RESPRead.Aux[Arr, Option[B]] =
-    new RESPRead[Option[B]] {
-      override final type Sub = Arr
-      override final def read(resp: RESP): Maybe[Option[B]] = resp match {
-        case arr: Arr          => readMatched(R, resp, arr).map(Some(_))
-        case NilArr | NullBulk => Right(None)
-        case _                 => mismatch(resp)
-      }
-    }
+  // an array read with R, or None for a null array or a null bulk string, for replies Redis changed from one to the other (e.g. LPOP with a
+  // count, before Redis 7.0), and readers given explicitly
+  private[protocol] final def orNilArrOrNullBulk[B](
+      R: Read[Arr, B]
+  ): RESPRead.Aux[OneOf[NilArr *: NullBulk *: Arr *: EmptyTuple], Option[B]] = {
+    implicit val read: Read[Arr, B] = R
+    RESPRead[OneOf[NilArr *: NullBulk *: Arr *: EmptyTuple], Option[B]]
+  }
 
   implicit final def derive[A: RESPSub, B](implicit R: Read[A, B]): RESPRead.Aux[A, B] = instance(R)
 

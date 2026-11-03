@@ -28,7 +28,7 @@ import org.openjdk.jmh.infra.Blackhole
 @State(Scope.Benchmark)
 class ProtocolBenchArr {
   private final def protocol         = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Bulk], Seq[Long]]
-  private final def protocolWithNull = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Option[Bulk]], Seq[Option[Long]]]
+  private final def protocolWithNull = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[Long]]]
   private final def protocolPairs    = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Pairs[Bulk, Bulk], Seq[(String, Long)]]
 
   private final val request = "id" *: EmptyTuple

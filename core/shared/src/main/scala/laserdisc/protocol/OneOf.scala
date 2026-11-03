@@ -115,21 +115,21 @@ sealed trait AlternativeReadMissing {
 
 /** How the alternatives of a [[OneOf]] are read as `B`, trying each in turn */
 sealed trait AlternativesRead[T, B] {
-  def read(resp: RESP, i: Int): Either[List[String], B]
+  def read(resp: RESP, i: Int): Either[List[(Int, String)], B]
 }
 
 object AlternativesRead {
   implicit final def emptyAlternativesRead[B]: AlternativesRead[EmptyTuple, B] = new AlternativesRead[EmptyTuple, B] {
-    override final def read(resp: RESP, i: Int): Either[List[String], B] = Left(Nil)
+    override final def read(resp: RESP, i: Int): Either[List[(Int, String)], B] = Left(Nil)
   }
 
   implicit final def consAlternativesRead[H, T <: Tuple, B](
       implicit H: AlternativeRead[H, B],
       T: AlternativesRead[T, B]
   ): AlternativesRead[H *: T, B] = new AlternativesRead[H *: T, B] {
-    override final def read(resp: RESP, i: Int): Either[List[String], B] = H.read(resp) match {
+    override final def read(resp: RESP, i: Int): Either[List[(Int, String)], B] = H.read(resp) match {
       case Some(Right(b)) => Right(b)
-      case Some(Left(e))  => T.read(resp, i + 1).left.map(s"alternative $i: $e" :: _)
+      case Some(Left(e))  => T.read(resp, i + 1).left.map((i -> e) :: _)
       case None           => T.read(resp, i + 1)
     }
   }

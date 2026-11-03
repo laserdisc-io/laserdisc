@@ -23,7 +23,7 @@ package laserdisc
 
 package object protocol {
   // a SCAN reply: the cursor, then the values, if any, as `E`
-  private[protocol] final type ScanOf[E] = Arr.Tuple[Bulk *: Option[E] *: EmptyTuple]
+  private[protocol] final type ScanOf[E] = Arr.Tuple[Bulk *: OrNilArr[E] *: EmptyTuple]
 
   // a SCAN reply's cursor and values, for Loop.cursor
   private[protocol] final def scanned[A](scan: Scan[A]): (NonNegLong, Seq[A])        = scan.cursor -> scan.values.getOrElse(Nil)

@@ -63,9 +63,9 @@ abstract class ScriptingClientSpec(p: Port, dest: String) extends LaserdiscFs2Su
     assertEquals(send(eval[Arr.Of[Num], Seq[Long]]("return {#KEYS, #ARGV}", scriptKeys, args)), Seq(2L, 3L))
     assertEquals(send(eval[NullBulk, Unit]("return nil")), ())
     send(del("s:a"))
-    assertEquals(send(eval[Bulk, Option[String]]("return redis.call('GET', KEYS[1])", scriptKeys)), None)
+    assertEquals(send(eval[OrNullBulk[Bulk], Option[String]]("return redis.call('GET', KEYS[1])", scriptKeys)), None)
     send(set("s:a", "here"))
-    assertEquals(send(eval[Bulk, Option[String]]("return redis.call('GET', KEYS[1])", scriptKeys)), Some("here"))
+    assertEquals(send(eval[OrNullBulk[Bulk], Option[String]]("return redis.call('GET', KEYS[1])", scriptKeys)), Some("here"))
 
     send(script.flush)
     val sha = send(script.load(counts))

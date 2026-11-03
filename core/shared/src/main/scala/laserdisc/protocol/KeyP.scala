@@ -275,7 +275,7 @@ trait KeyBaseP extends Features {
 
   final def del(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]
 
-  final def dump(key: Key): Single.Aux[Option[Bulk]] = Protocol("DUMP", key).as[Bulk, Option[Bulk]]
+  final def dump(key: Key): Single.Aux[Option[Bulk]] = Protocol("DUMP", key).as[OrNullBulk[Bulk], Option[Bulk]]
 
   final def exists(keys: OneOrMoreKeys): Single.Aux[Option[PosInt]] = Protocol("EXISTS", keys.value).using(zeroIsNone)
 
@@ -355,7 +355,7 @@ trait KeyBaseP extends Features {
 
   object obj {
     def encoding(key: Key): Single.Aux[Option[KeyEncoding]] =
-      Protocol("OBJECT", "ENCODING" :: key.value :: Nil).as[Bulk, Option[KeyEncoding]]
+      Protocol("OBJECT", "ENCODING" :: key.value :: Nil).as[OrNullBulk[Bulk], Option[KeyEncoding]]
 
     def freq(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
 
@@ -375,7 +375,7 @@ trait KeyBaseP extends Features {
 
   final def pttl(key: Key): Single.Aux[KeyTTLResponse] = Protocol("PTTL", key).as[Num, KeyTTLResponse]
 
-  final val randomkey: Single.Aux[Option[Key]] = Protocol("RANDOMKEY", EmptyTuple).as[Bulk, Option[Key]]
+  final val randomkey: Single.Aux[Option[Key]] = Protocol("RANDOMKEY", EmptyTuple).as[OrNullBulk[Bulk], Option[Key]]
 
   final def rename(key: Key, newKey: Key): Single.Aux[OK] = Protocol("RENAME", key :: newKey :: Nil).as[Str, OK]
 
@@ -436,7 +436,7 @@ trait KeyBaseP extends Features {
   final def sort[A: Read[Bulk, _]](key: Key, options: KeySort): Single.Aux[Seq[A]] =
     Protocol("SORT", key *: options.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
   final def sort[A: Read[Bulk, _]](key: Key, options: KeySort, get: KeySortGet): Single.Aux[Seq[Option[A]]] =
-    Protocol("SORT", key *: options.params *: get.params *: EmptyTuple).as[Arr.Of[Option[Bulk]], Seq[Option[A]]]
+    Protocol("SORT", key *: options.params *: get.params *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
   final def sort(key: Key, options: KeySort, destination: Key): Single.Aux[NonNegInt] =
     Protocol("SORT", key *: options.params *: "STORE" *: destination *: EmptyTuple).as[Num, NonNegInt]
   final def sort(key: Key, options: KeySort, get: KeySortGet, destination: Key): Single.Aux[NonNegInt] =
@@ -446,7 +446,7 @@ trait KeyBaseP extends Features {
 
   final def ttl(key: Key): Single.Aux[KeyTTLResponse] = Protocol("TTL", key).as[Num, KeyTTLResponse]
 
-  final def typeof(key: Key): Single.Aux[Option[KeyType]] = Protocol("TYPE", key).as[Str, Option[KeyType]]
+  final def typeof(key: Key): Single.Aux[Option[KeyType]] = Protocol("TYPE", key).as[OrNullBulk[Str], Option[KeyType]]
 
   final def unlink(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("UNLINK", keys.value).as[Num, NonNegInt]
 
@@ -495,7 +495,7 @@ trait KeySortReadOnlyP extends Features {
   final def sortro[A: Read[Bulk, _]](key: Key, options: Sort): Single.Aux[Seq[A]] =
     Protocol("SORT_RO", key *: options.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
   final def sortro[A: Read[Bulk, _]](key: Key, options: Sort, get: SortGet): Single.Aux[Seq[Option[A]]] =
-    Protocol("SORT_RO", key *: options.params *: get.params *: EmptyTuple).as[Arr.Of[Option[Bulk]], Seq[Option[A]]]
+    Protocol("SORT_RO", key *: options.params *: get.params *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
 }
 
 /** WAITAOF: Redis 7.2 */

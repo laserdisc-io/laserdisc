@@ -280,11 +280,12 @@ trait ServerInspectionBaseP extends Features {
     val stats: Single.Aux[MemoryStats] = Protocol("MEMORY", "STATS").using(RESPRead.instance(ServerInspection.memoryStats))
 
     /** How many bytes the key and its value use, or `None` when it doesn't exist */
-    def usage(key: Key): Single.Aux[Option[NonNegLong]] = Protocol("MEMORY", "USAGE" :: key.value :: Nil).as[Num, Option[NonNegLong]]
+    def usage(key: Key): Single.Aux[Option[NonNegLong]] =
+      Protocol("MEMORY", "USAGE" :: key.value :: Nil).as[OrNullBulk[Num], Option[NonNegLong]]
 
     /** Like `usage`, estimating a collection from `samples` of its elements, or from all of them when 0 */
     def usage(key: Key, samples: NonNegInt): Single.Aux[Option[NonNegLong]] =
-      Protocol("MEMORY", "USAGE" *: key *: "SAMPLES" *: samples *: EmptyTuple).as[Num, Option[NonNegLong]]
+      Protocol("MEMORY", "USAGE" *: key *: "SAMPLES" *: samples *: EmptyTuple).as[OrNullBulk[Num], Option[NonNegLong]]
   }
 
   object module {
@@ -375,7 +376,7 @@ trait HotKeysCommands extends Features {
   val stop: Single.Aux[OK] = Protocol("HOTKEYS", "STOP").as[Str, OK]
 
   /** The reports of the tracking, or `None` when there's none to report */
-  val get: Single.Aux[Option[Seq[HotKeys]]] = Protocol("HOTKEYS", "GET").using(RESPRead.nullableArr(ServerInspection.hotKeys))
+  val get: Single.Aux[Option[Seq[HotKeys]]] = Protocol("HOTKEYS", "GET").using(RESPRead.orNilArrOrNullBulk(ServerInspection.hotKeys))
 
   /** Frees what the tracking used */
   val reset: Single.Aux[OK] = Protocol("HOTKEYS", "RESET").as[Str, OK]

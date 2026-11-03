@@ -135,7 +135,7 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     val fields = OneOrMoreKeys.unsafeFrom(List(Key("age"), Key("name")))
     assertEquals(send(hmget[Int *: Option[String] *: EmptyTuple]("h:m", fields)), 36 *: Option.empty[String] *: EmptyTuple)
     this.client.send(hmget[Int *: String *: EmptyTuple]("h:m", fields)).unsafeRunSync()(using runtime) match {
-      case Left(e)  => assert(e.getMessage.endsWith("error at element 2: missing value"), e.getMessage)
+      case Left(e)  => assert(e.getMessage.endsWith("error at element 2: Read[OneOf] error: missing value"), e.getMessage)
       case Right(v) => fail(s"expected a missing value, got $v")
     }
   }

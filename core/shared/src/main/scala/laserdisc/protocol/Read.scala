@@ -122,14 +122,6 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
     elements(new Arr.Of[A](arr.elements))(resp => S.unapply(resp).map(R.read))
   }
 
-  implicit final def arrOfOption2Seq[A, B](implicit S: RESPSub[A], R: Read[A, B]): Read[Arr.Of[Option[A]], Seq[Option[B]]] =
-    instance { arr =>
-      elements(arr) {
-        case resp if resp == S.nil => Some(Right(None))
-        case resp                  => S.unapply(resp).map(R.read(_).map(Some(_)))
-      }
-    }
-
   // the first pair that fails fails the whole array, naming it
   private final def pairsOf[A, B, C, D](SA: RESPSub[A], RA: Read[A, C], SB: RESPSub[B], RB: Read[B, D])(
       elements: List[RESP]
@@ -220,11 +212,12 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   implicit final val bulk2KeyRead: Read[Bulk, Key]         = instancePF("Bulk(Key)") { case Bulk(Key(k)) => k }
   implicit final val bulk2GeoHashRead: Read[Bulk, GeoHash] = instancePF("Bulk(GeoHash)") { case Bulk(GeoHash(gh)) => gh }
 
-  // the first alternative that matches and reads, or what each one that matched said
+  // the first alternative that matches and reads, or what the one that matched said, or what each of them said, numbered
   implicit final def oneOf2Read[T <: Tuple, B](implicit R: AlternativesRead[T, B]): Read[OneOf[T], B] = instance { oneOf =>
     R.read(oneOf.value, 1).left.map {
-      case Nil      => RESPDecErr(s"Read[OneOf] error: no alternative matched ${oneOf.value}")
-      case failures => RESPDecErr(s"Read[OneOf] error: ${failures.mkString("; ")}")
+      case Nil           => RESPDecErr(s"Read[OneOf] error: no alternative matched ${oneOf.value}")
+      case (_, e) :: Nil => RESPDecErr(s"Read[OneOf] error: $e")
+      case failures      => RESPDecErr(s"Read[OneOf] error: ${failures.map { case (i, e) => s"alternative $i: $e" }.mkString("; ")}")
     }
   }
 
@@ -235,20 +228,20 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   private[protocol] final def tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr, L] =
     instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements))
 
-  // an array of values that may be missing, like HMGET's, read position by position
-  implicit final def arrOfOption2Tuple[E, L <: Tuple](implicit R: NullableTupleRead[E, L]): Read[Arr.Of[Option[E]], L] = instance { arr =>
+  // an array of values of one type, like HMGET's that may be missing, read position by position
+  implicit final def arrOf2Tuple[E, L <: Tuple](implicit R: OfTupleRead[E, L]): Read[Arr.Of[E], L] = instance { arr =>
     if (arr.elements.size != R.size) Left(RESPDecErr(s"Read[Arr.Of] error: expected ${R.size} elements, got ${arr.elements.size}"))
     else R.read(arr.elements, 1).left.map(e => RESPDecErr(s"Read[Arr.Of] ${e.message}"))
   }
 
   // a cursor, then the values, if any
   implicit final def arrTuple2Scan[E, A](
-      implicit R: TupleRead[Bulk *: Option[E] *: EmptyTuple, NonNegLong *: Option[Seq[A]] *: EmptyTuple]
-  ): Read[Arr.Tuple[Bulk *: Option[E] *: EmptyTuple], Scan[A]] = instance { arr =>
+      implicit R: TupleRead[Bulk *: OrNilArr[E] *: EmptyTuple, NonNegLong *: Option[Seq[A]] *: EmptyTuple]
+  ): Read[Arr.Tuple[Bulk *: OrNilArr[E] *: EmptyTuple], Scan[A]] = instance { arr =>
     TupleRead.read(R, "Arr.Tuple")(arr.elements).map { case cursor *: values *: _ => Scan(cursor, values) }
   }
-  implicit final val arrTuple2ScanKV: Read[Arr.Tuple[Bulk *: Option[Arr.Pairs[Bulk, Bulk]] *: EmptyTuple], ScanKV] =
-    Read[Arr.Tuple[Bulk *: Option[Arr.Pairs[Bulk, Bulk]] *: EmptyTuple], Scan[(Key, String)]].map { scan =>
+  implicit final val arrTuple2ScanKV: Read[Arr.Tuple[Bulk *: OrNilArr[Arr.Pairs[Bulk, Bulk]] *: EmptyTuple], ScanKV] =
+    Read[Arr.Tuple[Bulk *: OrNilArr[Arr.Pairs[Bulk, Bulk]] *: EmptyTuple], Scan[(Key, String)]].map { scan =>
       ScanKV(scan.cursor, scan.values.map(_.map { case (k, v) => KV(k, v) }))
     }
 

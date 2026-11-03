@@ -22,28 +22,17 @@
 package laserdisc
 package protocol
 
-/** How one element of an array is read: an `E` as an `A`, or with `Option[E]`, the "null" of `E` (see [[RESPSub]]) as `None` */
+/** How one element of an array is read: an `E` as an `A` (a value that may be missing is a [[OneOf]], like [[laserdisc.OrNullBulk]]) */
 sealed trait ElementRead[E, A] {
   def read(resp: RESP): Either[String, A]
 }
 
-object ElementRead extends ElementReadLowPriority {
-  implicit final def optionElementRead[E, A](implicit S: RESPSub[E], R: Read[E, A]): ElementRead[Option[E], Option[A]] =
-    new ElementRead[Option[E], Option[A]] {
-      override final def read(resp: RESP): Either[String, Option[A]] =
-        if (resp == S.nil) Right(None) else ElementRead.read(S, R)(resp).map(Some(_))
-    }
-
-  private[protocol] final def read[E, A](S: RESPSub[E], R: Read[E, A])(resp: RESP): Either[String, A] = S.unapply(resp) match {
-    case Some(e)               => R.read(e).left.map(_.message)
-    case None if resp == S.nil => Left("missing value")
-    case None                  => Left(s"Unexpected element. Was $resp")
-  }
-}
-
-sealed trait ElementReadLowPriority {
+object ElementRead {
   implicit final def elementRead[E, A](implicit S: RESPSub[E], R: Read[E, A]): ElementRead[E, A] = new ElementRead[E, A] {
-    override final def read(resp: RESP): Either[String, A] = ElementRead.read(S, R)(resp)
+    override final def read(resp: RESP): Either[String, A] = S.unapply(resp) match {
+      case Some(e) => R.read(e).left.map(_.message)
+      case None    => Left(s"Unexpected element. Was $resp")
+    }
   }
 }
 
@@ -80,27 +69,22 @@ object TupleRead {
     else R.read(elements, 1).left.map(e => RESPDecErr(s"Read[$name] ${e.message}"))
 }
 
-/** How the elements of an array whose elements are all `E`s, or their "null", are read position by position: as `Option[A]` where `L` says
-  * so, with the "null" as `None`, and as `A` anywhere else, where the "null" is an error
+/** How the elements of an array whose elements are all `E`s are read position by position, as the types at the same positions of `L`: like
+  * HMGET's, as `Arr.Of[OrNullBulk[Bulk]]`, where a position of `L` that's an `Option` reads a missing value as `None`
   */
-sealed trait NullableTupleRead[E, L] {
+sealed trait OfTupleRead[E, L] {
   def size: Int
   def read(elements: List[RESP], i: Int): Either[RESPDecErr, L]
 }
 
-object NullableTupleRead extends NullableTupleReadLowPriority {
-  implicit final def emptyNullableTupleRead[E]: NullableTupleRead[E, EmptyTuple] = new NullableTupleRead[E, EmptyTuple] {
+object OfTupleRead {
+  implicit final def emptyOfTupleRead[E]: OfTupleRead[E, EmptyTuple] = new OfTupleRead[E, EmptyTuple] {
     override final val size: Int                                                          = 0
     override final def read(elements: List[RESP], i: Int): Either[RESPDecErr, EmptyTuple] = Right(EmptyTuple)
   }
 
-  implicit final def optionNullableTupleRead[E, A, L <: Tuple](
-      implicit H: ElementRead[Option[E], Option[A]],
-      T: NullableTupleRead[E, L]
-  ): NullableTupleRead[E, Option[A] *: L] = cons(H, T)
-
-  private[protocol] final def cons[E, X, A, L <: Tuple](H: ElementRead[X, A], T: NullableTupleRead[E, L]): NullableTupleRead[E, A *: L] =
-    new NullableTupleRead[E, A *: L] {
+  implicit final def consOfTupleRead[E, A, L <: Tuple](implicit H: ElementRead[E, A], T: OfTupleRead[E, L]): OfTupleRead[E, A *: L] =
+    new OfTupleRead[E, A *: L] {
       override final val size: Int                                                      = T.size + 1
       override final def read(elements: List[RESP], i: Int): Either[RESPDecErr, A *: L] = elements match {
         case resp :: rest =>
@@ -111,11 +95,4 @@ object NullableTupleRead extends NullableTupleReadLowPriority {
         case Nil => Left(RESPDecErr(s"error at element $i: missing"))
       }
     }
-}
-
-sealed trait NullableTupleReadLowPriority {
-  implicit final def nullableTupleRead[E, A, L <: Tuple](
-      implicit H: ElementRead[E, A],
-      T: NullableTupleRead[E, L]
-  ): NullableTupleRead[E, A *: L] = NullableTupleRead.cons(H, T)
 }

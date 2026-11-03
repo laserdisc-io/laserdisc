@@ -23,9 +23,9 @@ package laserdisc
 package protocol
 
 final class RESPReadSpec extends BaseSpec {
-  private val num: RESPRead.Aux[Num, Long]             = RESPRead.derive
-  private val optBulk: RESPRead.Aux[Bulk, Option[Int]] = RESPRead.nullable(Read[Bulk, Int])
-  private val optArr: RESPRead.Aux[Arr, Option[Arr]]   = RESPRead.nullable(Read[Arr, Arr])
+  private val num: RESPRead.Aux[Num, Long]                         = RESPRead.derive
+  private val optBulk: RESPRead.Aux[OrNullBulk[Bulk], Option[Int]] = RESPRead[OrNullBulk[Bulk], Option[Int]]
+  private val optArr: RESPRead.Aux[OrNilArr[Arr], Option[Arr]]     = RESPRead[OrNilArr[Arr], Option[Arr]]
 
   test("RESPRead reads a matching RESP type") {
     assertEquals(num.read(Num(42L)), 42L)
@@ -44,12 +44,12 @@ final class RESPReadSpec extends BaseSpec {
     assertLeftEquals(
       optBulk.read(Bulk("nope")),
       RESPDecErr(
-        "RESP type(s) of Bulk(nope) matched but failed to deserialize correctly with error Read Error: expected Bulk(Int) but was Bulk(nope)"
+        "RESP type(s) of Bulk(nope) matched but failed to deserialize correctly with error Read[OneOf] error: Read Error: expected Bulk(Int) but was Bulk(nope)"
       )
     )
   }
 
-  test("nullable RESPRead reads the null counterpart of the RESP type as None") {
+  test("a RESPRead of a value or a null reads the null as None") {
     assertEquals(optBulk.read(Bulk("42")), Some(42))
     assertEquals(optBulk.read(NullBulk), None)
     assertEquals(optArr.read(Arr(Bulk("a"))), Some(Arr(Bulk("a"))))
@@ -63,7 +63,7 @@ final class RESPReadSpec extends BaseSpec {
     assertLeftEquals(RESPRead.raw.read(Err("boom")), Err("boom"))
   }
 
-  test("nullable RESPRead does not accept the wrong null") {
+  test("a RESPRead of a value or a null does not accept the other null") {
     assertLeftEquals(optBulk.read(NilArr), RESPDecErr("RESP type(s) did not match: NilArr"))
     assertLeftEquals(optArr.read(NullBulk), RESPDecErr("RESP type(s) did not match: NullBulk"))
   }

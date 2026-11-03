@@ -40,18 +40,18 @@ trait BListBaseP extends Features {
       to: ListP.Side,
       seconds: NonNegInt
   ): Single.Aux[Option[A]] =
-    Protocol("BLMOVE", source *: destination *: from *: to *: seconds *: EmptyTuple).as[Bulk, Option[A]]
+    Protocol("BLMOVE", source *: destination *: from *: to *: seconds *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
   final def blpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[A]]] =
-    Protocol("BLPOP", keys.value *: seconds *: EmptyTuple).as[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Option[KV[A]]]
+    Protocol("BLPOP", keys.value *: seconds *: EmptyTuple).as[OrNilArr[Arr.Tuple[Bulk *: Bulk *: EmptyTuple]], Option[KV[A]]]
 
   final def brpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[A]]] =
-    Protocol("BRPOP", keys.value *: seconds *: EmptyTuple).as[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Option[KV[A]]]
+    Protocol("BRPOP", keys.value *: seconds *: EmptyTuple).as[OrNilArr[Arr.Tuple[Bulk *: Bulk *: EmptyTuple]], Option[KV[A]]]
 
   final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Single.Aux[Option[A]] =
-    Protocol("BRPOPLPUSH", source *: destination *: 0 *: EmptyTuple).as[Bulk, Option[A]]
+    Protocol("BRPOPLPUSH", source *: destination *: 0 *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
   final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key, timeout: PosInt): Single.Aux[Option[A]] =
-    Protocol("BRPOPLPUSH", source *: destination *: timeout *: EmptyTuple).as[Bulk, Option[A]]
+    Protocol("BRPOPLPUSH", source *: destination *: timeout *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 }
 
 /** BLMPOP: Redis 7.0 */
@@ -82,7 +82,7 @@ trait BListMoveManyP extends Features {
       seconds: NonNegInt
   ): Single.Aux[Option[Seq[A]]] =
     Protocol("BLMOVEM", source *: destination *: from *: to *: seconds *: amount.params *: order *: EmptyTuple)
-      .as[Arr.Of[Bulk], Option[Seq[A]]]
+      .as[OrNilArr[Arr.Of[Bulk]], Option[Seq[A]]]
 }
 
 trait BListP extends BListBaseP with BListExtP with BListMPopP with BListMoveManyP

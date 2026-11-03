@@ -151,10 +151,15 @@ val count: Protocol.Aux[Long] = eval[Num, Long]("return #KEYS + #ARGV", keys, ar
 // a table of numbers
 val counts: Protocol.Aux[Seq[Long]] = eval[Arr.Of[Num], Seq[Long]]("return {#KEYS, #ARGV}", keys, args)
 // a string, or nil
-val value: Protocol.Aux[Option[String]] = eval[Bulk, Option[String]]("return redis.call('GET', KEYS[1])", keys)
+val value: Protocol.Aux[Option[String]] = eval[OrNullBulk[Bulk], Option[String]]("return redis.call('GET', KEYS[1])", keys)
 // always nil
 val done: Protocol.Aux[Unit] = evalargs[NullBulk, Unit]("redis.log(redis.LOG_NOTICE, ARGV[1])", args)
 ```
+
+When the script may return nil instead of a value, say so in the reply's kind:
+`OrNullBulk[Bulk]` for a string, `OrNullBulk[Num]` for a number, and
+`OrNilArr[Arr.Of[Num]]` for a table. Then read it as an `Option`, which is
+`None` for nil.
 
 Without keys, use `evalargs`, `evalshaargs` or `fcallargs`.
 

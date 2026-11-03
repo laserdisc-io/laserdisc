@@ -387,13 +387,13 @@ trait StreamBaseP extends Features {
 
   /** XADD only to an existing stream: `None` when it doesn't exist */
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
+    Protocol("XADD", key *: noMkStream *: "*" *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: Id, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
+    Protocol("XADD", key *: noMkStream *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, trim: Trim, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
+    Protocol("XADD", key *: noMkStream *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: Id, trim: Trim, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
+    Protocol("XADD", key *: noMkStream *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
 
   /** Deletes the entries, and replies how many it deleted */
   final def xdel(key: Key, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
@@ -417,10 +417,10 @@ trait StreamBaseP extends Features {
   /** The streams' entries after the given ids, by stream, or `None` when none of them has any */
   final def xread[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)]): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREAD", "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(_._2.param))
-      .using(RESPRead.nullableArr(StreamP.streams[A]))
+      .using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
   final def xread[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)], count: PosLong): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREAD", "COUNT" :: count.value.toString :: "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(_._2.param))
-      .using(RESPRead.nullableArr(StreamP.streams[A]))
+      .using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
 
   /** XRANGE from the end: `end` is the larger bound */
   final def xrevrange[A: Read[Bulk, _]](key: Key, end: Bound, start: Bound): Single.Aux[Seq[Entry[A]]] =
@@ -533,7 +533,7 @@ trait StreamGroupBaseP extends Features {
       streams: OneOrMore[(Key, GroupFrom)]
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: groupStreams(streams))
-      .using(RESPRead.nullableArr(StreamP.streams[A]))
+      .using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
   final def xreadgroup[A: Read[Bulk, _]](
       group: Key,
       consumer: Key,
@@ -541,7 +541,7 @@ trait StreamGroupBaseP extends Features {
       count: PosLong
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: "COUNT" :: count.value.toString :: groupStreams(streams))
-      .using(RESPRead.nullableArr(StreamP.streams[A]))
+      .using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
   final def xreadgroup[A: Read[Bulk, _]](
       group: Key,
       consumer: Key,
@@ -549,7 +549,7 @@ trait StreamGroupBaseP extends Features {
       noAck: NoAck
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: Show[NoAck].show(noAck) :: groupStreams(streams))
-      .using(RESPRead.nullableArr(StreamP.streams[A]))
+      .using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
   final def xreadgroup[A: Read[Bulk, _]](
       group: Key,
       consumer: Key,
@@ -560,7 +560,7 @@ trait StreamGroupBaseP extends Features {
     Protocol(
       "XREADGROUP",
       "GROUP" :: group.value :: consumer.value :: "COUNT" :: count.value.toString :: Show[NoAck].show(noAck) :: groupStreams(streams)
-    ).using(RESPRead.nullableArr(StreamP.streams[A]))
+    ).using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
 }
 
 /** XCLAIM, XAUTOCLAIM, XINFO and XSETID: Redis 6.2 */
@@ -708,7 +708,8 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple)
+      .as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](
       key: Key,
       noMkStream: NoMkStream,
@@ -717,7 +718,8 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Option[Id]]
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple)
+      .as[OrNullBulk[Bulk], Option[Id]]
 
   /** Acknowledges the entries for the group and deletes them, with what it did to each */
   final def xackdel(key: Key, group: Key, ids: OneOrMore[Id]): Single.Aux[Seq[DeleteResult]] =

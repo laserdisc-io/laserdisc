@@ -156,7 +156,7 @@ object Arr {
   final def apply(one: RESP, rest: RESP*): Arr = new Arr(one +: rest.toList)
 
   /** An array whose elements are all `A`s, to say how to read a reply whose elements are all of one RESP type, like a script's table of
-    * numbers: `Arr.Of[Num]`. With `Arr.Of[Option[A]]`, an element may also be the "null" of `A` (see [[RESPSub]])
+    * numbers: `Arr.Of[Num]`. With `Arr.Of[OrNullBulk[Bulk]]`, an element may also be missing (see [[OneOf]])
     */
   final class Of[A] private[protocol] (private[protocol] val elements: List[RESP])
 
@@ -166,7 +166,8 @@ object Arr {
   final class Pairs[A, B] private[protocol] (private[protocol] val elements: List[RESP])
 
   /** An array of a fixed number of elements, each with a type of its own, to say how to read a reply like SCAN's cursor and keys:
-    * `Arr.Tuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]`. With `Option[A]` at a position, that element may also be the "null" of `A`
+    * `Arr.Tuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]`. With a [[OneOf]] at a position, like `OrNilArr[Arr.Of[Bulk]]`, that element may also
+    * be missing
     */
   final class Tuple[T] private[protocol] (private[protocol] val elements: List[RESP])
 }

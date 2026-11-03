@@ -34,8 +34,8 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
     assertLeftEquals(protocol(request).decode(Arr(Bulk("1"), Bulk("x"))).leftMap(_.getMessage.contains("element 2")), true)
   }
 
-  test("decoding Arr.Of[Option[Bulk]] reads NullBulk as None, and names the first element that fails") {
-    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Option[Bulk]], Seq[Option[Long]]]
+  test("decoding Arr.Of[OrNullBulk[Bulk]] reads NullBulk as None, and names the first element that fails") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[Long]]]
     val request  = "id" *: EmptyTuple
 
     assertEquals(protocol(request).decode(Arr(Bulk("1"), NullBulk)), Seq(Some(1L), None))
@@ -106,7 +106,7 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
   test("decoding Arr.Tuple reads each element as the type at its position, with the null of an Option position as None") {
     def protocol =
       Protocol("CUSTOM", _: String *: EmptyTuple)
-        .as[Arr.Tuple[Bulk *: Option[Arr.Of[Bulk]] *: EmptyTuple], NonNegLong *: Option[Seq[Int]] *: EmptyTuple]
+        .as[Arr.Tuple[Bulk *: OrNilArr[Arr.Of[Bulk]] *: EmptyTuple], NonNegLong *: Option[Seq[Int]] *: EmptyTuple]
     val request = "id" *: EmptyTuple
 
     assertEquals(protocol(request).decode(Arr(Bulk("3"), Arr(Bulk("1"), Bulk("2")))), NonNegLong(3L) *: Option(Seq(1, 2)) *: EmptyTuple)
@@ -126,26 +126,28 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
       "RESP type(s) of Arr(Bulk(a)) matched but failed to deserialize correctly with error Read[Arr.Tuple] error: expected 2 elements, got 1"
     )
     assertLeftEquals(
-      protocol(request).decode(Arr(Bulk("a"), NullBulk)).leftMap(_.getMessage.endsWith("error at element 2: missing value")),
+      protocol(request)
+        .decode(Arr(Bulk("a"), NullBulk))
+        .leftMap(_.getMessage.endsWith("error at element 2: Unexpected element. Was NullBulk")),
       true
     )
   }
 
-  test("decoding Arr.Of[Option[Bulk]] as a tuple reads a missing value as None at an Option position, and as an error anywhere else") {
-    def lenient = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Option[Bulk]], Int *: Option[String] *: EmptyTuple]
-    def strict  = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Option[Bulk]], Int *: String *: EmptyTuple]
+  test("decoding Arr.Of[OrNullBulk[Bulk]] as a tuple reads a missing value as None at an Option position, and as an error anywhere else") {
+    def lenient = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Int *: Option[String] *: EmptyTuple]
+    def strict  = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Int *: String *: EmptyTuple]
     val request = "id" *: EmptyTuple
 
     assertEquals(lenient(request).decode(Arr(Bulk("36"), NullBulk)), 36 *: Option.empty[String] *: EmptyTuple)
     assertEquals(lenient(request).decode(Arr(Bulk("36"), Bulk("ada"))), 36 *: Option("ada") *: EmptyTuple)
     assertLeftEquals(
       strict(request).decode(Arr(Bulk("36"), NullBulk)).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(36),NullBulk) matched but failed to deserialize correctly with error Read[Arr.Of] error at element 2: missing value"
+      "RESP type(s) of Arr(Bulk(36),NullBulk) matched but failed to deserialize correctly with error Read[Arr.Of] error at element 2: Read[OneOf] error: missing value"
     )
     assertLeftEquals(
       strict(request)
         .decode(Arr(Bulk("x"), Bulk("ada")))
-        .leftMap(_.getMessage.endsWith("error at element 1: Read Error: expected Bulk(Int) but was Bulk(x)")),
+        .leftMap(_.getMessage.endsWith("error at element 1: Read[OneOf] error: Read Error: expected Bulk(Int) but was Bulk(x)")),
       true
     )
     assertLeftEquals(

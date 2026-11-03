@@ -22,16 +22,37 @@
 package laserdisc
 package protocol
 
-import shapeless.Witness
+import shapeless.{IsTuple, LabelledGeneric, Refute, Witness}
 import shapeless.labelled.*
 
-private[protocol] trait ReadLabelledInstances {
-  implicit final def arr2LabelledTuple[HK <: Symbol, HV, T <: Tuple](
-      implicit HK: Witness.Aux[HK],
-      RHV: Read[Bulk, HV],
-      RT: Read[Arr, T]
-  ): Read[Arr, FieldType[HK, HV] *: T] = Read.instance {
-    case Arr(Bulk(HK.value.`name`) +: RHV(Right(hv)) +: rest) => RT.read(Arr(rest)).map(field[HK](hv) *: _)
-    case Arr(other)                                           => Left(RESPDecErr(s"Read Error: expected `[K, V] *: T` but was $other"))
+import scala.annotation.nowarn
+
+/** The fields of a case class, read by their names */
+private[protocol] sealed trait FieldsRead[L <: Tuple] {
+  def read(fields: Map[String, Bulk]): Either[RESPDecErr, L]
+}
+
+private[protocol] object FieldsRead {
+  implicit final val emptyFieldsRead: FieldsRead[EmptyTuple] = new FieldsRead[EmptyTuple] {
+    override final def read(fields: Map[String, Bulk]): Either[RESPDecErr, EmptyTuple] = Right(EmptyTuple)
   }
+
+  implicit final def fieldsRead[K <: Symbol, V, T <: Tuple](
+      implicit K: Witness.Aux[K],
+      V: FieldRead[V],
+      T: FieldsRead[T]
+  ): FieldsRead[FieldType[K, V] *: T] = new FieldsRead[FieldType[K, V] *: T] {
+    override final def read(fields: Map[String, Bulk]): Either[RESPDecErr, FieldType[K, V] *: T] =
+      V.read(K.value.name, fields).flatMap(v => T.read(fields).map(field[K](v) *: _))
+  }
+}
+
+private[protocol] trait ReadLabelledInstances {
+
+  /** A case class (not a tuple) read from a reply made of fields, like HGETALL's, by the names of its fields */
+  implicit final def productRead[P <: Product, L <: Tuple](
+      implicit @nowarn ev: Refute[IsTuple[P]],
+      gen: LabelledGeneric.Aux[P, L],
+      L: FieldsRead[L]
+  ): Read[Arr.Pairs[Bulk, Bulk], P] = ProductRead(L.read(_).map(gen.from))
 }

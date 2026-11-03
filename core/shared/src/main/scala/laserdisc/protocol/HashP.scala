@@ -189,7 +189,8 @@ trait HashBaseP extends Features {
   final def hget[A: Read[Bulk, _]](key: Key, field: Key): Single.Aux[Option[A]] =
     Protocol("HGET", key :: field :: Nil).as[Bulk, Option[A]]
 
-  final def hgetall[A: Read[Arr, _]](key: Key): Single.Aux[A] = Protocol("HGETALL", key).as[Arr, A]
+  /** All the fields of a hash, as a `Map`, a `Seq` of pairs, or a case class, whose fields are read by name */
+  final def hgetall[A: Read[Arr.Pairs[Bulk, Bulk], _]](key: Key): Single.Aux[A] = Protocol("HGETALL", key).as[Arr.Pairs[Bulk, Bulk], A]
 
   final def hincrby(key: Key, field: Key, increment: NonZeroLong): Single.Aux[Long] =
     Protocol("HINCRBY", key *: field *: increment *: EmptyTuple).as[Num, Long]
@@ -233,6 +234,10 @@ trait HashBaseP extends Features {
     Protocol("HSET", key *: field *: value *: EmptyTuple).as[Num, Boolean]
   final def hset[A: Show](key: Key, fieldValues: OneOrMore[(Key, A)]): Single.Aux[NonNegInt] =
     Protocol("HSET", key *: fieldValues.value *: EmptyTuple).as[Num, NonNegInt]
+
+  /** Sets the fields of a case class, each under its name, leaving out the `Option` fields that are `None` */
+  final def hset[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](key: Key, product: P): Single.Aux[NonNegInt] =
+    Protocol("HSET", key *: product *: EmptyTuple).as[Num, NonNegInt]
 
   final def hsetnx[A: Show](key: Key, field: Key, value: A): Single.Aux[Boolean] =
     Protocol("HSETNX", key *: field *: value *: EmptyTuple).as[Num, Boolean]

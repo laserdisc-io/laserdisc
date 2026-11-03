@@ -24,7 +24,9 @@ package protocol
 
 import org.scalacheck.Prop.forAll
 
-abstract class HashPSpec extends BaseSpec with HashP {
+final case class HashPSpecUser(name: String, age: Int, email: Option[String])
+
+abstract class HashPSpec extends BaseSpec with HashP with EitherSyntax {
   private final val scanKVToArr: ScanKV => Arr = scanKV =>
     Arr(
       Bulk(scanKV.cursor.value),
@@ -85,32 +87,15 @@ abstract class HashPSpec extends BaseSpec with HashP {
   }
 
   test("The Hash protocol using hgetall fails to compile given key but missing read instance") {
-    assertCompileErrors(
-      compileErrors("""hgetall[Map[String, Int]](Key("a"))"""),
-      """|error:
-         |Implicit not found Read[laserdisc.protocol.Arr, Map[String,Int]].
-         |
-         |Try writing your own, for example:
-         |
-         |implicit final val myRead: Read[laserdisc.protocol.Arr, Map[String,Int]] = Read.instance { (a: laserdisc.protocol.Arr) =>
-         |  ??? // Right(b) when a can be read as Map[String,Int], Left(RESPDecErr(...)) when it can't
-         |}
-         |
-         |You may also be able to build it from an existing Read with map, contramap or flatMap.
-         |
-         |hgetall[Map[String, Int]](Key("a"))
-         |                         ^
-         |""".stripMargin,
-      "Implicit not found Read[laserdisc.protocol.Arr, Map[String, Int]]."
+    assertCompileErrorsContain(
+      compileErrors("""hgetall[Seq[Long]](Key("a"))"""),
+      "Implicit not found Read[laserdisc.protocol.Arr.Pairs[laserdisc.protocol.Bulk,laserdisc.protocol.Bulk], Seq[Long]].",
+      "Implicit not found Read[laserdisc.protocol.Arr.Pairs[laserdisc.protocol.Bulk, laserdisc.protocol.Bulk], Seq[Long]]."
     )
   }
 
-  property("The Hash protocol using hgetall roundtrips successfully given key") {
-    forAll { (k: Key, f: Key, v: String) =>
-      val protocol = hgetall(k)
-      assertEquals(protocol.encode, Arr(Bulk("HGETALL"), Bulk(k)))
-      assertEquals(protocol.decode(Arr(Bulk(f), Bulk(v))), Arr(Bulk(f), Bulk(v)))
-    }
+  test("The Hash protocol using hgetall fails to compile given a tuple, which has no field names") {
+    assert(compileErrors("""hgetall[(String, Int)](Key("a"))""").nonEmpty)
   }
 
   property("The Hash protocol using hgetall roundtrips successfully given key and specific read instance (Map[Key, String])") {
@@ -121,12 +106,45 @@ abstract class HashPSpec extends BaseSpec with HashP {
     }
   }
 
-  property("The Hash protocol using hgetall roundtrips successfully given key and specific read instance (Key *: String *: EmptyTuple)") {
+  property("The Hash protocol using hgetall roundtrips successfully given key and specific read instance (Seq[(Key, String)])") {
     forAll { (k: Key, f: Key, v: String) =>
-      val protocol = hgetall[Key *: String *: EmptyTuple](k)
+      val protocol = hgetall[Seq[(Key, String)]](k)
       assertEquals(protocol.encode, Arr(Bulk("HGETALL"), Bulk(k)))
-      assertEquals(protocol.decode(Arr(Bulk(f), Bulk(v))), f *: v *: EmptyTuple)
+      assertEquals(protocol.decode(Arr(Bulk(f), Bulk(v))), Seq(f -> v))
     }
+  }
+
+  test("The Hash protocol using hgetall reads a case class by field name, in any order, leaving out other fields") {
+    val protocol = hgetall[HashPSpecUser](Key("u"))
+    assertEquals(
+      protocol.decode(Arr(Bulk("age"), Bulk("36"), Bulk("extra"), Bulk("x"), Bulk("name"), Bulk("ada"))),
+      HashPSpecUser("ada", 36, None)
+    )
+    assertEquals(
+      protocol.decode(Arr(Bulk("name"), Bulk("ada"), Bulk("email"), Bulk("ada@example.com"), Bulk("age"), Bulk("36"))),
+      HashPSpecUser("ada", 36, Some("ada@example.com"))
+    )
+  }
+
+  test("The Hash protocol using hgetall names the case class field that's missing or doesn't read") {
+    val protocol = hgetall[HashPSpecUser](Key("u"))
+    assertLeftEquals(protocol.decode(Arr(Bulk("name"), Bulk("ada"))).leftMap(_.getMessage.endsWith("missing field age")), true)
+    assertLeftEquals(
+      protocol.decode(Arr(Bulk("name"), Bulk("ada"), Bulk("age"), Bulk("x"))).leftMap(_.getMessage),
+      "RESP type(s) of Arr(Bulk(name),Bulk(ada),Bulk(age),Bulk(x)) matched but failed to deserialize correctly with error field age: Read Error: expected Bulk(Int) but was Bulk(x)"
+    )
+  }
+
+  test("The Hash protocol using hset writes a case class field by field, leaving out the fields that are None") {
+    assertEquals(
+      hset(Key("u"), HashPSpecUser("ada", 36, None)).encode,
+      Arr(Bulk("HSET"), Bulk("u"), Bulk("name"), Bulk("ada"), Bulk("age"), Bulk("36"))
+    )
+    assertEquals(
+      hset(Key("u"), HashPSpecUser("ada", 36, Some("ada@example.com"))).encode,
+      Arr(Bulk("HSET"), Bulk("u"), Bulk("name"), Bulk("ada"), Bulk("age"), Bulk("36"), Bulk("email"), Bulk("ada@example.com"))
+    )
+    assertEquals(hset(Key("u"), HashPSpecUser("ada", 36, None)).decode(Num(2L)).map(_.value), 2)
   }
 
   property("The Hash protocol using hincrby roundtrips successfully given key, field and long increment") {

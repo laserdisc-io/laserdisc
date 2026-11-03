@@ -94,6 +94,30 @@ the value at `a` as a `PosInt`; `get[String]("a")` reads it as a `String`.
 If the reply can't be read as that type, the result is an error rather than a
 wrong value. If the key doesn't exist, `get` gives `None`.
 
+## Hashes
+
+You can store a case class in a hash, one field per field of the class, and
+read it back:
+
+```scala mdoc:compile-only
+import laserdisc.*
+import laserdisc.all.*
+import laserdisc.auto.*
+
+final case class User(name: String, age: Int, email: Option[String])
+
+val save = hset("user:1", User("ada", 36, None))
+val load = hgetall[User]("user:1")
+```
+
+Fields are found by name, so their order in the hash doesn't matter, and fields
+the class doesn't have are ignored. An `Option` field that's `None` isn't
+written, and one that's missing from the hash is read as `None`. Any other
+missing field is an error that names it.
+
+`hgetall` also reads a hash as a `Map`, like `hgetall[Map[Key, String]]`, or as
+a list of pairs, like `hgetall[Seq[(Key, Int)]]`.
+
 ## Scripts
 
 A script can return anything, so `eval`, `evalsha` and `fcall` take two types:

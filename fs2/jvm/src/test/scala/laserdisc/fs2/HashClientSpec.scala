@@ -24,6 +24,8 @@ package fs2
 
 import laserdisc.auto.*
 
+final case class HashUser(name: String, age: Int, email: Option[String])
+
 final class RedisHashClientSpec extends HashClientSpec(6379, "redis") {
   test("a redis client expires fields, reads them with an expiry and deletes them with the commands of Redis 8.10")(
     fieldExpiry(redis_8_10, redis_8_10, redis_8_10, redis_8_10, redis_8_10)
@@ -105,5 +107,23 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     assertEquals(send(hrandfieldswithvalues[Int]("h:r", 2)).toSet, Set(Key("a") -> 1, Key("b") -> 2))
     assertEquals(send(hrandfield("h:none")), None)
     assertEquals(send(hrandfields("h:none", 2)), Seq.empty)
+  }
+
+  test(s"a $dest client writes a case class to a hash and reads it back by field name") {
+    import laserdisc.redis_6_2.*
+
+    send(del("h:u", "h:p"))
+    assertEquals(send(hset("h:u", HashUser("ada", 36, None))).value, 2)
+    assertEquals(send(hgetall[HashUser]("h:u")), HashUser("ada", 36, None))
+    send(hset("h:u", "email", "ada@example.com"))
+    send(hset("h:u", "extra", "x"))
+    assertEquals(send(hgetall[HashUser]("h:u")), HashUser("ada", 36, Some("ada@example.com")))
+    assertEquals(send(hgetall[Map[Key, String]]("h:u")).size, 4)
+
+    send(hset("h:p", "name", "bob"))
+    this.client.send(hgetall[HashUser]("h:p")).unsafeRunSync()(using runtime) match {
+      case Left(e)  => assert(e.getMessage.endsWith("missing field age"), e.getMessage)
+      case Right(u) => fail(s"expected a missing field, got $u")
+    }
   }
 }

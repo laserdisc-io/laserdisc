@@ -246,8 +246,7 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   implicit final def arr2Tuple2Read[A, B](implicit RA: Read[Bulk, A], RB: Read[Bulk, B]): Read[Arr, (A, B)] = instancePF("Arr(A, B)") {
     case Arr(RA(Right(a)) +: RB(Right(b)) +: Seq()) => a -> b
   }
-  implicit final val arr2Map: Read[Arr, Map[Key, String]] = pairs(bulk2KeyRead, bulk2StringRead).map(_.toMap)
-  implicit final val arr2ScanKV: Read[Arr, ScanKV]        = {
+  implicit final val arr2ScanKV: Read[Arr, ScanKV] = {
     val kvs = pairs(bulk2KeyRead, bulk2StringRead).map(_.map { case (k, v) => KV(k, v) })
     instance {
       case Arr(Bulk(ToLong(NonNegLong(cursor))) +: NilArr +: Seq())     => Right(ScanKV(cursor, None))

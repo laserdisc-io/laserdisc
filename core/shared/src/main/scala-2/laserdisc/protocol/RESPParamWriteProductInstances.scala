@@ -33,8 +33,8 @@ import scala.annotation.nowarn
 private[protocol] trait RESPParamWriteProductInstances {
   implicit final def taggedRESPParamWrite[K <: Symbol, V](
       implicit K: Witness.Aux[K],
-      V: RESPParamWrite[V]
-  ): RESPParamWrite[FieldType[K, V]] = RESPParamWrite.instance(Bulk(K.value.name) +: V.write(_))
+      V: FieldWrite[V]
+  ): RESPParamWrite[FieldType[K, V]] = RESPParamWrite.instance(V.write(K.value.name, _))
 
   implicit final def productRESPParamWrite[P <: Product, L <: Tuple, N <: Nat](
       implicit gen: LabelledGeneric.Aux[P, L],

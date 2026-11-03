@@ -32,10 +32,10 @@ private[protocol] trait RESPParamWriteProductInstances {
       @nowarn ev: m.MirroredElemTypes <:< NonEmptyTuple
   ): RESPParamWrite[P] = {
     val labels  = constValueTuple[m.MirroredElemLabels].toList.asInstanceOf[List[String]]
-    val writers = summonAll[Tuple.Map[m.MirroredElemTypes, RESPParamWrite]].toList.asInstanceOf[List[RESPParamWrite[Any]]]
+    val writers = summonAll[Tuple.Map[m.MirroredElemTypes, FieldWrite]].toList.asInstanceOf[List[FieldWrite[Any]]]
 
     RESPParamWrite.instance { p =>
-      labels.lazyZip(writers).lazyZip(p.productIterator.toList).flatMap((label, writer, value) => Bulk(label) +: writer.write(value))
+      labels.lazyZip(writers).lazyZip(p.productIterator.toList).flatMap((label, writer, value) => writer.write(label, value))
     }
   }
 }

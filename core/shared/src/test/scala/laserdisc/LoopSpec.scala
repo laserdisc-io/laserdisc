@@ -57,7 +57,7 @@ final class LoopSpec extends BaseSpec {
     assertEquals(sets.commands, List(bulks("SSCAN", "s", "0"), bulks("SSCAN", "s", "3")))
 
     val sortedSets = new Scripted(replies*)
-    assertEquals(sortedSets.stream(all.zscanAll[String](Key("z"), GlobPattern("f*"))), List("f", "1") -> None)
+    assertEquals(sortedSets.stream(all.zscanAll[String](Key("z"), GlobPattern("f*"))), List("f" -> 1.0) -> None)
     assertEquals(sortedSets.commands, List(bulks("ZSCAN", "z", "0", "MATCH", "f*"), bulks("ZSCAN", "z", "3", "MATCH", "f*")))
 
     val fields = new Scripted(replies*)

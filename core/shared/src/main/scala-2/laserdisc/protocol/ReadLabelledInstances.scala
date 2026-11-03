@@ -28,11 +28,11 @@ import shapeless.labelled.*
 import scala.annotation.nowarn
 
 /** The fields of a case class, read by their names */
-private[protocol] sealed trait FieldsRead[L <: Tuple] {
+sealed trait FieldsRead[L <: Tuple] {
   def read(fields: Map[String, Bulk]): Either[RESPDecErr, L]
 }
 
-private[protocol] object FieldsRead {
+object FieldsRead {
   implicit final val emptyFieldsRead: FieldsRead[EmptyTuple] = new FieldsRead[EmptyTuple] {
     override final def read(fields: Map[String, Bulk]): Either[RESPDecErr, EmptyTuple] = Right(EmptyTuple)
   }

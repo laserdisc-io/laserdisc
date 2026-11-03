@@ -396,21 +396,22 @@ trait KeyBaseP extends Features {
   ): Single.Aux[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: eviction.param *: eviction.seconds *: EmptyTuple).as[Str, OK]
 
-  final def scan(cursor: NonNegLong): Single.Aux[Scan[Key]]                       = Protocol("SCAN", cursor).as[Arr, Scan[Key]]
+  final def scan(cursor: NonNegLong): Single.Aux[Scan[Key]] = Protocol("SCAN", cursor).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def scan(cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[Key]] =
-    Protocol("SCAN", cursor *: "MATCH" *: pattern *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("SCAN", cursor *: "MATCH" *: pattern *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def scan(cursor: NonNegLong, count: PosInt): Single.Aux[Scan[Key]] =
-    Protocol("SCAN", cursor *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("SCAN", cursor *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[Key]] =
-    Protocol("SCAN", cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("SCAN", cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def scan(cursor: NonNegLong, keyType: KeyType): Single.Aux[Scan[Key]] =
-    Protocol("SCAN", cursor *: "TYPE" *: keyType *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("SCAN", cursor *: "TYPE" *: keyType *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def scan(cursor: NonNegLong, pattern: GlobPattern, keyType: KeyType): Single.Aux[Scan[Key]] =
-    Protocol("SCAN", cursor *: "MATCH" *: pattern *: "TYPE" *: keyType *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("SCAN", cursor *: "MATCH" *: pattern *: "TYPE" *: keyType *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def scan(cursor: NonNegLong, count: PosInt, keyType: KeyType): Single.Aux[Scan[Key]] =
-    Protocol("SCAN", cursor *: "COUNT" *: count *: "TYPE" *: keyType *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("SCAN", cursor *: "COUNT" *: count *: "TYPE" *: keyType *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt, keyType: KeyType): Single.Aux[Scan[Key]] =
-    Protocol("SCAN", cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "TYPE" *: keyType *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("SCAN", cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "TYPE" *: keyType *: EmptyTuple)
+      .as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
 
   /** SCAN from cursor 0 until the server is done, as a [[Loop]]. A key may come more than once */
   final def scanAll: Loop[Key]                                                        = Loop.cursor(scan(_))(scanned)

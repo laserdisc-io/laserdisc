@@ -35,7 +35,7 @@ import scala.annotation.implicitNotFound
 @implicitNotFound(
   """Implicit not found RESPSub[${A}].
 
-${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Bulk, NilArr, NullBulk, Num or Str, or RESP for any of them
+${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Arr.Tuple, Bulk, NilArr, NullBulk, Num or Str, or RESP for any of them
   """
 ) sealed abstract class RESPSub[A](val nil: RESP) {
   def unapply(resp: RESP): Option[A]
@@ -61,6 +61,8 @@ object RESPSub {
   implicit final def arrPairsRESPSub[A, B]: RESPSub[Arr.Pairs[A, B]] = instance(NilArr) { case Arr(elements) =>
     new Arr.Pairs[A, B](elements)
   }
+
+  implicit final def arrTupleRESPSub[T]: RESPSub[Arr.Tuple[T]] = instance(NilArr) { case Arr(elements) => new Arr.Tuple[T](elements) }
 
   // any of the above, never Err
   implicit final val respRESPSub: RESPSub[RESP] = instance(NullBulk) { case resp if !resp.isInstanceOf[Err] => resp }

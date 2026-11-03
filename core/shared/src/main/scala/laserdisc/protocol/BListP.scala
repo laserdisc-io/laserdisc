@@ -43,10 +43,10 @@ trait BListBaseP extends Features {
     Protocol("BLMOVE", source *: destination *: from *: to *: seconds *: EmptyTuple).as[Bulk, Option[A]]
 
   final def blpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[A]]] =
-    Protocol("BLPOP", keys.value *: seconds *: EmptyTuple).as[Arr, Option[KV[A]]]
+    Protocol("BLPOP", keys.value *: seconds *: EmptyTuple).as[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Option[KV[A]]]
 
   final def brpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[A]]] =
-    Protocol("BRPOP", keys.value *: seconds *: EmptyTuple).as[Arr, Option[KV[A]]]
+    Protocol("BRPOP", keys.value *: seconds *: EmptyTuple).as[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Option[KV[A]]]
 
   final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Single.Aux[Option[A]] =
     Protocol("BRPOPLPUSH", source *: destination *: 0 *: EmptyTuple).as[Bulk, Option[A]]

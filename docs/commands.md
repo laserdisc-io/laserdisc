@@ -118,6 +118,21 @@ missing field is an error that names it.
 `hgetall` also reads a hash as a `Map`, like `hgetall[Map[Key, String]]`, or as
 a list of pairs, like `hgetall[Seq[(Key, Int)]]`.
 
+`hmget` reads the fields you name into a tuple, in the same order. Use an
+`Option` for a field that may be missing; any other missing field is an error
+that says which one:
+
+```scala mdoc:compile-only
+import laserdisc.*
+import laserdisc.all.*
+import laserdisc.auto.*
+
+val fields  = OneOrMoreKeys.unsafeFrom(List(Key("age"), Key("email")))
+val profile = hmget[Int *: Option[String] *: EmptyTuple]("user:1", fields)
+```
+
+`mget` works the same way for keys.
+
 ## Scripts
 
 A script can return anything, so `eval`, `evalsha` and `fcall` take two types:

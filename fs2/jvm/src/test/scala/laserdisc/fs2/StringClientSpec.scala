@@ -129,4 +129,14 @@ abstract class StringClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     )
     assertEquals(send(bitfieldro("s:f", OneOrMore.unsafeFrom(List(bf.u(8) -> bf.bit(0L), bf.u(4) -> bf.field(1L))))), Seq(255L, 15L))
   }
+
+  test(s"a $dest client reads keys that may be missing with mget") {
+    import laserdisc.redis_6_2.*
+
+    send(del("s:m1", "s:m2"))
+    send(set("s:m1", 1))
+    val keys = OneOrMoreKeys.unsafeFrom(List(Key("s:m1"), Key("s:m2")))
+    assertEquals(send(mget[Int *: Option[Int] *: EmptyTuple](keys)), 1 *: Option.empty[Int] *: EmptyTuple)
+    assertEquals(send(mget[Seq[Option[Int]]](keys)), Seq(Some(1), None))
+  }
 }

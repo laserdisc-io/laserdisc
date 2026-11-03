@@ -37,9 +37,6 @@ export protocol.{Arr, Bulk, Err, NilArr, NullBulk, Num, Protocol, RESP, RESPDecE
 final type NilArr   = protocol.NilArr.type
 final type NullBulk = protocol.NullBulk.type
 
-// Specialized type lambda
-final type ReadArrToSeq[A] = Read[Arr, Seq[A]]
-
 private final type NoControlChar = Not[ControlChar]
 private final type NoWhitespace  = Not[WhitespaceChar]
 

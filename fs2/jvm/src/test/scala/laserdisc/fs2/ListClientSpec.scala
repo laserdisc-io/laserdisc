@@ -90,4 +90,12 @@ abstract class ListClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     assertEquals(send(rpushx("l:none", OneOrMore.unsafeFrom(List("a", "b")))), None)
     assertEquals(send(lpushx("l:y", OneOrMore.unsafeFrom(List("b", "c")))).map(_.value), Some(4))
   }
+
+  test(s"a $dest client pops from the first list that has an element with blpop") {
+    import laserdisc.redis_6_2.*
+
+    send(del("l:b1", "l:b2"))
+    send(rpush("l:b2", OneOrMore.unsafeFrom(List("x"))))
+    assertEquals(send(blocking.blpop[String](OneOrMoreKeys.unsafeFrom(List(Key("l:b1"), Key("l:b2"))), 1)), Some(KV(Key("l:b2"), "x")))
+  }
 }

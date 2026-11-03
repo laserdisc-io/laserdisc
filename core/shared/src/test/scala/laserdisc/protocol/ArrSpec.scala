@@ -23,17 +23,6 @@ package laserdisc
 package protocol
 
 final class ArrSpec extends BaseSpec with EitherSyntax {
-  test("decoding the correct type Read[Arr(Bulk), Seq[A]] with the wrong encoding gives details about the decoding error") {
-    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr, Seq[Long]]
-    val request  = "id" *: EmptyTuple
-    val response = Arr(Num(1L), Num(2L), Num(3L), Num(4L))
-
-    assertLeftEquals(
-      protocol(request).decode(response).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Num(1),Num(2),Num(3),Num(4)) matched but failed to deserialize correctly with error Read[Arr(Bulk), Seq[A]] error at element 1: Unexpected for Bulk. Was Num(4)"
-    )
-  }
-
   test("decoding Arr.Of[Bulk] with the wrong encoding names the first element that fails") {
     def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Bulk], Seq[Long]]
     val request  = "id" *: EmptyTuple
@@ -111,6 +100,57 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
     assertLeftEquals(
       Read.record("thing")(_.get("a")).read(Arr(Bulk("b"), Num(1L))).leftMap(_.message),
       "Unexpected thing. Was Arr(Bulk(b),Num(1))"
+    )
+  }
+
+  test("decoding Arr.Tuple reads each element as the type at its position, with the null of an Option position as None") {
+    def protocol =
+      Protocol("CUSTOM", _: String *: EmptyTuple)
+        .as[Arr.Tuple[Bulk *: Option[Arr.Of[Bulk]] *: EmptyTuple], NonNegLong *: Option[Seq[Int]] *: EmptyTuple]
+    val request = "id" *: EmptyTuple
+
+    assertEquals(protocol(request).decode(Arr(Bulk("3"), Arr(Bulk("1"), Bulk("2")))), NonNegLong(3L) *: Option(Seq(1, 2)) *: EmptyTuple)
+    assertEquals(protocol(request).decode(Arr(Bulk("0"), NilArr)), NonNegLong(0L) *: Option.empty[Seq[Int]] *: EmptyTuple)
+  }
+
+  test("decoding Arr.Tuple with the wrong encoding names the element that fails, or says how many elements there were") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Tuple[Bulk *: Num *: EmptyTuple], String *: Long *: EmptyTuple]
+    val request  = "id" *: EmptyTuple
+
+    assertLeftEquals(
+      protocol(request).decode(Arr(Bulk("a"), Bulk("1"))).leftMap(_.getMessage),
+      "RESP type(s) of Arr(Bulk(a),Bulk(1)) matched but failed to deserialize correctly with error Read[Arr.Tuple] error at element 2: Unexpected element. Was Bulk(1)"
+    )
+    assertLeftEquals(
+      protocol(request).decode(Arr(Bulk("a"))).leftMap(_.getMessage),
+      "RESP type(s) of Arr(Bulk(a)) matched but failed to deserialize correctly with error Read[Arr.Tuple] error: expected 2 elements, got 1"
+    )
+    assertLeftEquals(
+      protocol(request).decode(Arr(Bulk("a"), NullBulk)).leftMap(_.getMessage.endsWith("error at element 2: missing value")),
+      true
+    )
+  }
+
+  test("decoding Arr.Of[Option[Bulk]] as a tuple reads a missing value as None at an Option position, and as an error anywhere else") {
+    def lenient = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Option[Bulk]], Int *: Option[String] *: EmptyTuple]
+    def strict  = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Option[Bulk]], Int *: String *: EmptyTuple]
+    val request = "id" *: EmptyTuple
+
+    assertEquals(lenient(request).decode(Arr(Bulk("36"), NullBulk)), 36 *: Option.empty[String] *: EmptyTuple)
+    assertEquals(lenient(request).decode(Arr(Bulk("36"), Bulk("ada"))), 36 *: Option("ada") *: EmptyTuple)
+    assertLeftEquals(
+      strict(request).decode(Arr(Bulk("36"), NullBulk)).leftMap(_.getMessage),
+      "RESP type(s) of Arr(Bulk(36),NullBulk) matched but failed to deserialize correctly with error Read[Arr.Of] error at element 2: missing value"
+    )
+    assertLeftEquals(
+      strict(request)
+        .decode(Arr(Bulk("x"), Bulk("ada")))
+        .leftMap(_.getMessage.endsWith("error at element 1: Read Error: expected Bulk(Int) but was Bulk(x)")),
+      true
+    )
+    assertLeftEquals(
+      strict(request).decode(Arr(Bulk("36"), Bulk("ada"), Bulk("extra"))).leftMap(_.getMessage.endsWith("expected 2 elements, got 3")),
+      true
     )
   }
 }

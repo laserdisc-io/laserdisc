@@ -66,7 +66,7 @@ abstract class LoopClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     assertEquals(run(scanAll("l:k:*", 10)).distinct.size, 50)
     assertEquals(run(hscanAll("l:h", 10)).map(_.value).toSet, members.toSet)
     assertEquals(run(sscanAll[String]("l:s", 10)).toSet, members.toSet)
-    assertEquals(run(zscanAll[String]("l:z", "m1*")).grouped(2).map(_.head).toSet, members.filter(_.startsWith("m1")).toSet)
+    assertEquals(run(zscanAll[String]("l:z", "m1*")).map(_._1).toSet, members.filter(_.startsWith("m1")).toSet)
   }
 
   test(s"a $dest client pages through a stream with xrangeAll and xrevrangeAll") {

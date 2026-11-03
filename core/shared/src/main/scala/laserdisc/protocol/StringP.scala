@@ -331,7 +331,11 @@ trait StringBaseP extends Features {
   final def incrbyfloat(key: Key, increment: NonZeroDouble): Single.Aux[Double] =
     Protocol("INCRBYFLOAT", key *: increment *: EmptyTuple).as[Bulk, Double]
 
-  final def mget[A: Read[Arr, _]](keys: OneOrMoreKeys): Single.Aux[A] = Protocol("MGET", keys.value).as[Arr, A]
+  /** The values of the keys, as a tuple of as many (a missing key is `None` where the tuple has an `Option`, and an error anywhere else),
+    * or as a `Seq` of `Option`s
+    */
+  final def mget[A: Read[Arr.Of[Option[Bulk]], _]](keys: OneOrMoreKeys): Single.Aux[A] =
+    Protocol("MGET", keys.value).as[Arr.Of[Option[Bulk]], A]
 
   final def mset[L <: NonEmptyTuple: RESPParamWrite: LUBConstraint[_, (Key, ?)]](l: L): Single.Aux[OK] =
     Protocol("MSET", l).as[Str, OK]

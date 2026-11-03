@@ -23,11 +23,11 @@ package laserdisc
 package protocol
 
 /** How a case class field is read from a reply made of fields, by its name: an `Option` field that's missing is `None` */
-private[protocol] sealed trait FieldRead[A] {
+sealed trait FieldRead[A] {
   def read(name: String, fields: Map[String, Bulk]): Either[RESPDecErr, A]
 }
 
-private[protocol] object FieldRead extends FieldReadLowPriority {
+object FieldRead extends FieldReadLowPriority {
   implicit final def optionFieldRead[A](implicit R: Read[Bulk, A]): FieldRead[Option[A]] = new FieldRead[Option[A]] {
     override final def read(name: String, fields: Map[String, Bulk]): Either[RESPDecErr, Option[A]] = fields.get(name) match {
       case Some(bulk) => FieldRead.read(name, bulk)(R).map(Some(_))
@@ -39,7 +39,7 @@ private[protocol] object FieldRead extends FieldReadLowPriority {
     R.read(bulk).left.map(e => RESPDecErr(s"field $name: ${e.message}"))
 }
 
-private[protocol] sealed trait FieldReadLowPriority {
+sealed trait FieldReadLowPriority {
   implicit final def fieldRead[A](implicit R: Read[Bulk, A]): FieldRead[A] = new FieldRead[A] {
     override final def read(name: String, fields: Map[String, Bulk]): Either[RESPDecErr, A] = fields.get(name) match {
       case Some(bulk) => FieldRead.read(name, bulk)(R)
@@ -49,17 +49,17 @@ private[protocol] sealed trait FieldReadLowPriority {
 }
 
 /** How a case class field is written: its name, then its value, or nothing at all for an `Option` field that's `None` */
-private[protocol] sealed trait FieldWrite[A] {
+sealed trait FieldWrite[A] {
   def write(name: String, a: A): Seq[GenBulk]
 }
 
-private[protocol] object FieldWrite extends FieldWriteLowPriority {
+object FieldWrite extends FieldWriteLowPriority {
   implicit final def optionFieldWrite[A](implicit W: RESPParamWrite[A]): FieldWrite[Option[A]] = new FieldWrite[Option[A]] {
     override final def write(name: String, a: Option[A]): Seq[GenBulk] = a.fold(Seq.empty[GenBulk])(Bulk(name) +: W.write(_))
   }
 }
 
-private[protocol] sealed trait FieldWriteLowPriority {
+sealed trait FieldWriteLowPriority {
   implicit final def fieldWrite[A](implicit W: RESPParamWrite[A]): FieldWrite[A] = new FieldWrite[A] {
     override final def write(name: String, a: A): Seq[GenBulk] = Bulk(name) +: W.write(a)
   }

@@ -163,8 +163,7 @@ object SortedSetP {
     })
 
   private[protocol] final def keyedScoredSeq[A](implicit R: Read[Bulk, A]): RESPRead.Aux[Arr, Option[KV[Seq[(A, Double)]]]] = {
-    implicit val pair: Read[Arr, (A, Double)] = Read.arr2Tuple2Read
-    val scored                                = Read.arrOfArr2Seq[(A, Double)]
+    val scored = Read.arrOf(Read.tuple[Bulk *: Bulk *: EmptyTuple, A *: Double *: EmptyTuple].map { case a *: d *: _ => a -> d })
     RESPRead.nullable(Read.instancePF("Arr(Key, Seq[(A, Double)])") { case Arr(Bulk(Key(k)) +: scored(Right(as)) +: Seq()) =>
       KV(k, as)
     })
@@ -431,21 +430,24 @@ trait SortedSetBaseP extends Features {
   final def zrevrank(key: Key, member: Key): Single.Aux[Option[NonNegInt]] =
     Protocol("ZREVRANK", key *: member *: EmptyTuple).as[Num, Option[NonNegInt]]
 
-  final def zscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong): Single.Aux[Scan[A]] =
-    Protocol("ZSCAN", key *: cursor *: EmptyTuple).as[Arr, Scan[A]]
-  final def zscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[A]] =
-    Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[Arr, Scan[A]]
-  final def zscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[A]] =
-    Protocol("ZSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[A]]
-  final def zscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[A]] =
-    Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[A]]
+  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong): Single.Aux[Scan[(A, Double)]] =
+    Protocol("ZSCAN", key *: cursor *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], Scan[(A, Double)]]
+  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[(A, Double)]] =
+    Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], Scan[(A, Double)]]
+  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[(A, Double)]] =
+    Protocol("ZSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], Scan[(A, Double)]]
+  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[(A, Double)]] =
+    Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple)
+      .as[ScanOf[Arr.Pairs[Bulk, Bulk]], Scan[(A, Double)]]
 
   /** ZSCAN from cursor 0 until the server is done, as a [[Loop]]. A member may come more than once */
-  final def zscanAll[A: ReadArrToSeq](key: Key): Loop[A]                       = Loop.cursor(zscan[A](key, _))(scanned[A])
-  final def zscanAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern): Loop[A] = Loop.cursor(zscan[A](key, _, pattern))(scanned[A])
-  final def zscanAll[A: ReadArrToSeq](key: Key, count: PosInt): Loop[A]        = Loop.cursor(zscan[A](key, _, count))(scanned[A])
-  final def zscanAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern, count: PosInt): Loop[A] =
-    Loop.cursor(zscan[A](key, _, pattern, count))(scanned[A])
+  final def zscanAll[A: Read[Bulk, _]](key: Key): Loop[(A, Double)] = Loop.cursor(zscan[A](key, _))(scanned[(A, Double)])
+  final def zscanAll[A: Read[Bulk, _]](key: Key, pattern: GlobPattern): Loop[(A, Double)] =
+    Loop.cursor(zscan[A](key, _, pattern))(scanned[(A, Double)])
+  final def zscanAll[A: Read[Bulk, _]](key: Key, count: PosInt): Loop[(A, Double)] =
+    Loop.cursor(zscan[A](key, _, count))(scanned[(A, Double)])
+  final def zscanAll[A: Read[Bulk, _]](key: Key, pattern: GlobPattern, count: PosInt): Loop[(A, Double)] =
+    Loop.cursor(zscan[A](key, _, pattern, count))(scanned[(A, Double)])
 
   final def zscore[A: Show](key: Key, member: A): Single.Aux[Option[Double]] =
     Protocol("ZSCORE", key *: member *: EmptyTuple).as[Bulk, Option[Double]]
@@ -541,21 +543,21 @@ trait SortedSetRankWithScoreP extends Features {
 trait SortedSetScanNoScoresP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("ZSCAN: NOSCORES")
 
-  final def zscannoscores[A: ReadArrToSeq](key: Key, cursor: NonNegLong): Single.Aux[Scan[A]] =
-    Protocol("ZSCAN", key *: cursor *: "NOSCORES" *: EmptyTuple).as[Arr, Scan[A]]
-  final def zscannoscores[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[A]] =
-    Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "NOSCORES" *: EmptyTuple).as[Arr, Scan[A]]
-  final def zscannoscores[A: ReadArrToSeq](key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[A]] =
-    Protocol("ZSCAN", key *: cursor *: "COUNT" *: count *: "NOSCORES" *: EmptyTuple).as[Arr, Scan[A]]
-  final def zscannoscores[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[A]] =
-    Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "NOSCORES" *: EmptyTuple).as[Arr, Scan[A]]
+  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong): Single.Aux[Scan[A]] =
+    Protocol("ZSCAN", key *: cursor *: "NOSCORES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
+  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[A]] =
+    Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "NOSCORES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
+  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[A]] =
+    Protocol("ZSCAN", key *: cursor *: "COUNT" *: count *: "NOSCORES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
+  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[A]] =
+    Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "NOSCORES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
 
   /** ZSCAN with NOSCORES from cursor 0 until the server is done, as a [[Loop]]. A member may come more than once */
-  final def zscannoscoresAll[A: ReadArrToSeq](key: Key): Loop[A]                       = Loop.cursor(zscannoscores[A](key, _))(scanned[A])
-  final def zscannoscoresAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern): Loop[A] =
+  final def zscannoscoresAll[A: Read[Bulk, _]](key: Key): Loop[A]                       = Loop.cursor(zscannoscores[A](key, _))(scanned[A])
+  final def zscannoscoresAll[A: Read[Bulk, _]](key: Key, pattern: GlobPattern): Loop[A] =
     Loop.cursor(zscannoscores[A](key, _, pattern))(scanned[A])
-  final def zscannoscoresAll[A: ReadArrToSeq](key: Key, count: PosInt): Loop[A] = Loop.cursor(zscannoscores[A](key, _, count))(scanned[A])
-  final def zscannoscoresAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern, count: PosInt): Loop[A] =
+  final def zscannoscoresAll[A: Read[Bulk, _]](key: Key, count: PosInt): Loop[A] = Loop.cursor(zscannoscores[A](key, _, count))(scanned[A])
+  final def zscannoscoresAll[A: Read[Bulk, _]](key: Key, pattern: GlobPattern, count: PosInt): Loop[A] =
     Loop.cursor(zscannoscores[A](key, _, pattern, count))(scanned[A])
 }
 

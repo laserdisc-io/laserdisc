@@ -108,9 +108,8 @@ object StreamP {
   final case class PendingEntry(id: Id, consumer: Key, idleMilliseconds: NonNegLong, deliveries: NonNegLong)
 
   private[protocol] final val pendingSummary: Read[Arr, PendingSummary] = {
-    val count                                           = Read.num2NonNegLongRead
-    implicit val consumer: Read[Arr, (Key, NonNegLong)] = Read.arr2Tuple2Read[Key, NonNegLong]
-    val consumers                                       = Read.arrOfArr2Seq[(Key, NonNegLong)]
+    val count     = Read.num2NonNegLongRead
+    val consumers = Read.arrOf(Read.tuple[Bulk *: Bulk *: EmptyTuple, Key *: NonNegLong *: EmptyTuple].map { case k *: n *: _ => k -> n })
     Read.instancePF("Arr(pending summary)") {
       case Arr(count(Right(n)) +: NullBulk +: NullBulk +: NilArr +: Seq()) => PendingSummary(n, None, None, Nil)
       case Arr(count(Right(n)) +: Id.bulk2IdRead(Right(smallest)) +: Id.bulk2IdRead(Right(largest)) +: consumers(Right(cs)) +: Seq()) =>
@@ -119,12 +118,12 @@ object StreamP {
   }
 
   private[protocol] final val pendingEntries: Read[Arr, Seq[PendingEntry]] = {
-    val number                                = Read.num2NonNegLongRead
-    implicit val one: Read[Arr, PendingEntry] = Read.instancePF("Arr(pending entry)") {
+    val number                       = Read.num2NonNegLongRead
+    val one: Read[Arr, PendingEntry] = Read.instancePF("Arr(pending entry)") {
       case Arr(Id.bulk2IdRead(Right(id)) +: Bulk(Key(consumer)) +: number(Right(idle)) +: number(Right(deliveries)) +: Seq()) =>
         PendingEntry(id, consumer, idle, deliveries)
     }
-    Read[Arr, Seq[PendingEntry]]
+    Read.arrOf(one)
   }
 
   /** IDLE, TIME, RETRYCOUNT, FORCE and LASTID, for XCLAIM: set how long the entries have been idle (or since when), how many times they
@@ -242,17 +241,14 @@ object StreamP {
     }
   }
 
-  private[protocol] final def entries[A: Read[Bulk, _]]: Read[Arr, Seq[Entry[A]]] = {
-    implicit val one: Read[Arr, Entry[A]] = entry[A]
-    Read[Arr, Seq[Entry[A]]]
-  }
+  private[protocol] final def entries[A: Read[Bulk, _]]: Read[Arr, Seq[Entry[A]]] = Read.arrOf(entry[A])
 
   private[protocol] final def streams[A: Read[Bulk, _]]: Read[Arr, Seq[KV[Seq[Entry[A]]]]] = {
-    val es                                         = entries[A]
-    implicit val one: Read[Arr, KV[Seq[Entry[A]]]] = Read.instancePF("Arr(stream)") { case Arr(Bulk(Key(k)) +: es(Right(read)) +: Seq()) =>
+    val es                                = entries[A]
+    val one: Read[Arr, KV[Seq[Entry[A]]]] = Read.instancePF("Arr(stream)") { case Arr(Bulk(Key(k)) +: es(Right(read)) +: Seq()) =>
       KV(k, read)
     }
-    Read[Arr, Seq[KV[Seq[Entry[A]]]]]
+    Read.arrOf(one)
   }
 
   // Redis 6.2 replies with nil for each deleted entry it claims; later versions leave them out
@@ -268,7 +264,7 @@ object StreamP {
     }
   }
 
-  private[protocol] final val ids: Read[Arr, Seq[Id]] = Read[Arr, Seq[Id]]
+  private[protocol] final val ids: Read[Arr, Seq[Id]] = Read.arrOf(Id.bulk2IdRead)
 
   private[protocol] final def autoClaimed[A](claims: Read[Arr, Seq[A]]): Read[Arr, AutoClaimed[A]] = Read.instancePF("Arr(auto claimed)") {
     case Arr(Id.bulk2IdRead(Right(next)) +: claims(Right(cs)) +: Seq())                        => AutoClaimed(next, cs, Nil)

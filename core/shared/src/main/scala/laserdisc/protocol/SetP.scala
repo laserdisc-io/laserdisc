@@ -67,12 +67,12 @@ trait SetBaseP extends Features {
 
   final def scard(key: Key): Single.Aux[Option[PosInt]] = Protocol("SCARD", key).using(zeroIsNone)
 
-  final def sdiff[A: ReadArrToSeq](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] = Protocol("SDIFF", keys.value).as[Arr, Seq[A]]
+  final def sdiff[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] = Protocol("SDIFF", keys.value).as[Arr.Of[Bulk], Seq[A]]
 
   final def sdiffstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
     Protocol("SDIFFSTORE", destinationKey :: keys.value).as[Num, NonNegInt]
 
-  final def sinter[A: ReadArrToSeq](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] = Protocol("SINTER", keys.value).as[Arr, Seq[A]]
+  final def sinter[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] = Protocol("SINTER", keys.value).as[Arr.Of[Bulk], Seq[A]]
 
   final def sinterstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
     Protocol("SINTERSTORE", destinationKey :: keys.value).as[Num, NonNegInt]
@@ -100,23 +100,23 @@ trait SetBaseP extends Features {
   final def srem[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[NonNegInt] =
     Protocol("SREM", key *: members.value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong): Single.Aux[Scan[A]] =
-    Protocol("SSCAN", key *: cursor *: EmptyTuple).as[Arr, Scan[A]]
-  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[A]] =
-    Protocol("SSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[Arr, Scan[A]]
-  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[A]] =
-    Protocol("SSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[A]]
-  final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[A]] =
-    Protocol("SSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[A]]
+  final def sscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong): Single.Aux[Scan[A]] =
+    Protocol("SSCAN", key *: cursor *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
+  final def sscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[A]] =
+    Protocol("SSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
+  final def sscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[A]] =
+    Protocol("SSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
+  final def sscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[A]] =
+    Protocol("SSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
 
   /** SSCAN from cursor 0 until the server is done, as a [[Loop]]. A member may come more than once */
-  final def sscanAll[A: ReadArrToSeq](key: Key): Loop[A]                       = Loop.cursor(sscan[A](key, _))(scanned[A])
-  final def sscanAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern): Loop[A] = Loop.cursor(sscan[A](key, _, pattern))(scanned[A])
-  final def sscanAll[A: ReadArrToSeq](key: Key, count: PosInt): Loop[A]        = Loop.cursor(sscan[A](key, _, count))(scanned[A])
-  final def sscanAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern, count: PosInt): Loop[A] =
+  final def sscanAll[A: Read[Bulk, _]](key: Key): Loop[A]                       = Loop.cursor(sscan[A](key, _))(scanned[A])
+  final def sscanAll[A: Read[Bulk, _]](key: Key, pattern: GlobPattern): Loop[A] = Loop.cursor(sscan[A](key, _, pattern))(scanned[A])
+  final def sscanAll[A: Read[Bulk, _]](key: Key, count: PosInt): Loop[A]        = Loop.cursor(sscan[A](key, _, count))(scanned[A])
+  final def sscanAll[A: Read[Bulk, _]](key: Key, pattern: GlobPattern, count: PosInt): Loop[A] =
     Loop.cursor(sscan[A](key, _, pattern, count))(scanned[A])
 
-  final def sunion[A: ReadArrToSeq](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] = Protocol("SUNION", keys.value).as[Arr, Seq[A]]
+  final def sunion[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] = Protocol("SUNION", keys.value).as[Arr.Of[Bulk], Seq[A]]
 
   final def sunionstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
     Protocol("SUNIONSTORE", destinationKey :: keys.value).as[Num, NonNegInt]

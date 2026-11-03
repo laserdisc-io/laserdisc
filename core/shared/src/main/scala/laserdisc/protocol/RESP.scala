@@ -164,6 +164,11 @@ object Arr {
     * `Arr.Pairs[Bulk, Bulk]`, or one made of names and values: `Arr.Pairs[Bulk, RESP]`
     */
   final class Pairs[A, B] private[protocol] (private[protocol] val elements: List[RESP])
+
+  /** An array of a fixed number of elements, each with a type of its own, to say how to read a reply like SCAN's cursor and keys:
+    * `Arr.Tuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]`. With `Option[A]` at a position, that element may also be the "null" of `A`
+    */
+  final class Tuple[T] private[protocol] (private[protocol] val elements: List[RESP])
 }
 
 private[protocol] final case class Repr[A](decoded: A, bits: BitVector)

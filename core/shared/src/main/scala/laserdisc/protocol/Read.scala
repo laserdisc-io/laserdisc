@@ -220,56 +220,33 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   implicit final val bulk2KeyRead: Read[Bulk, Key]         = instancePF("Bulk(Key)") { case Bulk(Key(k)) => k }
   implicit final val bulk2GeoHashRead: Read[Bulk, GeoHash] = instancePF("Bulk(GeoHash)") { case Bulk(GeoHash(gh)) => gh }
 
-  implicit final def arrOfBulk2Seq[A](implicit R: Read[Bulk, A]): Read[Arr, Seq[A]] = instance { case Arr(vector) =>
-    vector
-      .foldRight[Either[RESPDecErr, (List[A], Int)]](Right(Nil -> 0)) {
-        case (R(Right(a)), Right((as0, asl))) => Right((a :: as0) -> (asl + 1))
-        case (R(Left(e)), Right((_, asl)))    => Left(RESPDecErr(s"Read[Arr(Bulk), Seq[A]] error at element ${asl + 1}: ${e.message}"))
-        case (other, Right((_, asl)))         =>
-          Left(RESPDecErr(s"Read[Arr(Bulk), Seq[A]] error at element ${asl + 1}: Unexpected for Bulk. Was $other"))
-        case (_, left) => left
-      }
-      .map(_._1)
+  implicit final def arrTuple2Tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr.Tuple[T], L] =
+    instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements))
+
+  // a plain Arr read as an Arr.Tuple[T], for readers within others
+  private[protocol] final def tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr, L] =
+    instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements))
+
+  // an array of values that may be missing, like HMGET's, read position by position
+  implicit final def arrOfOption2Tuple[E, L <: Tuple](implicit R: NullableTupleRead[E, L]): Read[Arr.Of[Option[E]], L] = instance { arr =>
+    if (arr.elements.size != R.size) Left(RESPDecErr(s"Read[Arr.Of] error: expected ${R.size} elements, got ${arr.elements.size}"))
+    else R.read(arr.elements, 1).left.map(e => RESPDecErr(s"Read[Arr.Of] ${e.message}"))
   }
 
-  implicit final def arrOfArr2Seq[A](implicit R: Read[Arr, A]): Read[Arr, Seq[A]] = instance { case Arr(vector) =>
-    vector
-      .foldRight[Either[RESPDecErr, (List[A], Int)]](Right(Nil -> 0)) {
-        case (R(Right(a)), Right((as0, asl))) => Right((a :: as0) -> (asl + 1))
-        case (R(Left(e)), Right((_, asl)))    => Left(RESPDecErr(s"Read[Arr(Arr), Seq[A]] error at element ${asl + 1}: ${e.message}"))
-        case (other, Right((_, asl)))         =>
-          Left(RESPDecErr(s"Read[Arr(Arr), Seq[A]] error at element ${asl + 1}: Unexpected for Arr. Was $other"))
-        case (_, left) => left
-      }
-      .map(_._1)
+  // a cursor, then the values, if any
+  implicit final def arrTuple2Scan[E, A](
+      implicit R: TupleRead[Bulk *: Option[E] *: EmptyTuple, NonNegLong *: Option[Seq[A]] *: EmptyTuple]
+  ): Read[Arr.Tuple[Bulk *: Option[E] *: EmptyTuple], Scan[A]] = instance { arr =>
+    TupleRead.read(R, "Arr.Tuple")(arr.elements).map { case cursor *: values *: _ => Scan(cursor, values) }
   }
-  implicit final def arr2Tuple2Read[A, B](implicit RA: Read[Bulk, A], RB: Read[Bulk, B]): Read[Arr, (A, B)] = instancePF("Arr(A, B)") {
-    case Arr(RA(Right(a)) +: RB(Right(b)) +: Seq()) => a -> b
-  }
-  implicit final val arr2ScanKV: Read[Arr, ScanKV] = {
-    val kvs = pairs(bulk2KeyRead, bulk2StringRead).map(_.map { case (k, v) => KV(k, v) })
-    instance {
-      case Arr(Bulk(ToLong(NonNegLong(cursor))) +: NilArr +: Seq())     => Right(ScanKV(cursor, None))
-      case Arr(Bulk(ToLong(NonNegLong(cursor))) +: (arr: Arr) +: Seq()) => kvs.read(arr).map(vs => ScanKV(cursor, Some(vs)))
-      case Arr(any) => Left(RESPDecErr(s"Read[Arr, ScanKV] error. $any is not a valid encoding for ScanKV"))
+  implicit final val arrTuple2ScanKV: Read[Arr.Tuple[Bulk *: Option[Arr.Pairs[Bulk, Bulk]] *: EmptyTuple], ScanKV] =
+    Read[Arr.Tuple[Bulk *: Option[Arr.Pairs[Bulk, Bulk]] *: EmptyTuple], Scan[(Key, String)]].map { scan =>
+      ScanKV(scan.cursor, scan.values.map(_.map { case (k, v) => KV(k, v) }))
     }
-  }
-  implicit final def arr2KV[A](implicit R: Read[Bulk, A]): Read[Arr, KV[A]] = instancePF("Arr(KV[A])") {
-    case Arr(Bulk(Key(k)) +: R(Right(a)) +: Seq()) => KV(k, a)
-  }
-  implicit final def arr2Scan[A](implicit R: Read[Arr, Seq[A]]): Read[Arr, Scan[A]] = instancePF("Arr(Scan[A])") {
-    case Arr(Bulk(ToLong(NonNegLong(cursor))) +: NilArr +: Seq())       => Scan(cursor, None)
-    case Arr(Bulk(ToLong(NonNegLong(cursor))) +: R(Right(as)) +: Seq()) => Scan(cursor, Some(as))
-  }
-  implicit final val arr2TimeRead: Read[Arr, Time] = instancePF("Arr(Time)") {
-    case Arr(Bulk(ToLong(NonNegLong(ts))) +: Bulk(ToLong(NonNegLong(em))) +: Seq()) => Time(ts, em)
-  }
-  implicit final def arr2Tuple[H, T <: Tuple](
-      implicit RH: Read[Bulk, H],
-      RT: Read[Arr, T]
-  ): Read[Arr, H *: T] = instance {
-    case Arr(RH(Right(h)) +: rest) => RT.read(Arr(rest)).map(h *: _)
-    case Arr(other)                => Left(RESPDecErr(s"Read Error: expected `H *: T` but was $other"))
-  }
-  implicit final val arr2EmptyTuple: Read[Arr, EmptyTuple] = instancePF("Arr(Seq())") { case Arr(Seq()) => EmptyTuple }
+
+  implicit final def arrTuple2KV[A](implicit R: Read[Bulk, A]): Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], KV[A]] =
+    Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Key *: A *: EmptyTuple].map { case k *: a *: _ => KV(k, a) }
+
+  implicit final val arrTuple2Time: Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Time] =
+    Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], NonNegLong *: NonNegLong *: EmptyTuple].map { case ts *: em *: _ => Time(ts, em) }
 }

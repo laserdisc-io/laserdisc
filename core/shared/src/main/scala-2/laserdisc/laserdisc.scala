@@ -71,9 +71,6 @@ package object laserdisc {
   final type RESPDecErr = protocol.RESPDecErr
   final type Value      = protocol.Value
 
-  // Specialized type lambda
-  final type ReadArrToSeq[A] = Read[Arr, Seq[A]]
-
   // Object forwarders
   final val Arr        = protocol.Arr
   final val Bulk       = protocol.Bulk

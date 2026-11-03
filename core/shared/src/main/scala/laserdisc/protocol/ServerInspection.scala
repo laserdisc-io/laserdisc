@@ -27,7 +27,7 @@ import Protocol.Single
 /** The replies and options of the commands that inspect a server: SLOWLOG, LATENCY, MEMORY, COMMAND, MODULE, HOTKEYS and COMMANDLOG */
 object ServerInspection {
   private final val nonNegLong = Read.num2NonNegLongRead
-  private final val strings    = Read[Arr, Seq[String]]
+  private final val strings    = Read.arrOf(Read.bulk2StringRead)
 
   // the text of a Bulk or of a Str, as COMMAND INFO's flags and categories come as Str
   private final def text(resp: RESP): Option[String] = resp match {
@@ -51,29 +51,29 @@ object ServerInspection {
       clientAddress: String,
       clientName: String
   )
-  private implicit final val logEntry: Read[Arr, LogEntry] = Read.instancePF("Arr(log entry)") {
+  private final val logEntry: Read[Arr, LogEntry] = Read.instancePF("Arr(log entry)") {
     case Arr(
           nonNegLong(Right(id)) +: nonNegLong(Right(timestamp)) +: nonNegLong(Right(microseconds)) +: strings(Right(arguments)) +:
           Bulk(address) +: Bulk(name) +: _
         ) =>
       LogEntry(id, timestamp, microseconds, arguments, address, name)
   }
-  private[protocol] final val logEntries: Read[Arr, Seq[LogEntry]] = Read[Arr, Seq[LogEntry]]
+  private[protocol] final val logEntries: Read[Arr, Seq[LogEntry]] = Read.arrOf(logEntry)
 
   /** An event of LATENCY LATEST: when it last happened, how long it took then, and the longest it ever took */
   final case class LatencyEvent(name: String, timestamp: NonNegLong, latestMilliseconds: NonNegLong, maxMilliseconds: NonNegLong)
-  private implicit final val latencyEvent: Read[Arr, LatencyEvent] = Read.instancePF("Arr(latency event)") {
+  private final val latencyEvent: Read[Arr, LatencyEvent] = Read.instancePF("Arr(latency event)") {
     case Arr(Bulk(name) +: nonNegLong(Right(timestamp)) +: nonNegLong(Right(latest)) +: nonNegLong(Right(max)) +: _) =>
       LatencyEvent(name, timestamp, latest, max)
   }
-  private[protocol] final val latencyEvents: Read[Arr, Seq[LatencyEvent]] = Read[Arr, Seq[LatencyEvent]]
+  private[protocol] final val latencyEvents: Read[Arr, Seq[LatencyEvent]] = Read.arrOf(latencyEvent)
 
   /** A sample of LATENCY HISTORY */
   final case class LatencySample(timestamp: NonNegLong, milliseconds: NonNegLong)
-  private implicit final val latencySample: Read[Arr, LatencySample] = Read.instancePF("Arr(latency sample)") {
+  private final val latencySample: Read[Arr, LatencySample] = Read.instancePF("Arr(latency sample)") {
     case Arr(nonNegLong(Right(timestamp)) +: nonNegLong(Right(milliseconds)) +: Seq()) => LatencySample(timestamp, milliseconds)
   }
-  private[protocol] final val latencySamples: Read[Arr, Seq[LatencySample]] = Read[Arr, Seq[LatencySample]]
+  private[protocol] final val latencySamples: Read[Arr, Seq[LatencySample]] = Read.arrOf(latencySample)
 
   /** A command's LATENCY HISTOGRAM: how many calls it had, and for each bucket the number of calls that took at most that many microseconds
     */
@@ -220,8 +220,8 @@ object ServerInspection {
     */
   final case class HotKeys(values: Map[String, String], byCpuTime: Seq[(Key, NonNegLong)], byNetBytes: Seq[(Key, NonNegLong)])
   private[protocol] final val hotKeys: Read[Arr, Seq[HotKeys]] = {
-    val keysAndCounts                              = Read.pairs(Read.bulk2KeyRead, Read.num2NonNegLongRead)
-    implicit val hotKeysReport: Read[Arr, HotKeys] = Read.instance { arr =>
+    val keysAndCounts                     = Read.pairs(Read.bulk2KeyRead, Read.num2NonNegLongRead)
+    val hotKeysReport: Read[Arr, HotKeys] = Read.instance { arr =>
       Read.fields.read(arr).flatMap {
         _.foldLeft[Either[RESPDecErr, HotKeys]](Right(HotKeys(Map.empty, Nil, Nil))) {
           case (Right(h), ("by-cpu-time-us", keysAndCounts(Right(kns)))) => Right(h.copy(byCpuTime = kns))
@@ -234,7 +234,7 @@ object ServerInspection {
         }
       }
     }
-    Read[Arr, Seq[HotKeys]]
+    Read.arrOf(hotKeysReport)
   }
 
   private[protocol] final def argumentsOf(protocol: Single): List[String] =

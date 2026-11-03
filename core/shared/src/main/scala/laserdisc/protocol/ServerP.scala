@@ -140,7 +140,7 @@ object ServerP {
         case Bulk("connected")  => Right(connected)
         case Bulk(other)        => Left(RESPDecErr(s"Unexpected replica status. Was $other"))
       }
-      val MR: Read[Arr, Seq[Key]] = Read[Arr, Seq[Key]]
+      val MR: Read[Arr, Seq[Key]] = Read.arrOf(Read.bulk2KeyRead)
 
       Read.instance {
         case Arr(Bulk("master") +: Num(NonNegLong(offset)) +: Arr(v) +: Seq()) =>
@@ -548,7 +548,7 @@ trait ServerBaseP extends ServerInspectionBaseP {
 
   final val slaveofnoone: Single.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
-  final val time: Single.Aux[Time] = Protocol("TIME", EmptyTuple).as[Arr, Time]
+  final val time: Single.Aux[Time] = Protocol("TIME", EmptyTuple).as[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Time]
 }
 
 /** SHUTDOWN with NOW, FORCE and ABORT, and INFO with several sections: Redis 7.0 */

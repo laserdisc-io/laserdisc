@@ -201,8 +201,10 @@ trait HashBaseP extends Features {
 
   final def hlen(key: Key): Single.Aux[NonNegInt] = Protocol("HLEN", key).as[Num, NonNegInt]
 
-  final def hmget[L <: Tuple: Read[Arr, _]](key: Key, fields: OneOrMoreKeys): Single.Aux[L] =
-    Protocol("HMGET", key :: fields.value).as[Arr, L]
+  /** The values of the fields, as a tuple of as many: a missing field is `None` where the tuple has an `Option`, and an error anywhere else
+    */
+  final def hmget[L <: Tuple: Read[Arr.Of[Option[Bulk]], _]](key: Key, fields: OneOrMoreKeys): Single.Aux[L] =
+    Protocol("HMGET", key :: fields.value).as[Arr.Of[Option[Bulk]], L]
 
   final def hmset[L <: NonEmptyTuple: RESPParamWrite: LUBConstraint[_, (Key, ?)]](key: Key, l: L): Single.Aux[OK] =
     Protocol("HMSET", key *: l).as[Str, OK]
@@ -215,13 +217,14 @@ trait HashBaseP extends Features {
   final def hrandfieldswithvalues[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[(Key, A)]] =
     Protocol("HRANDFIELD", key *: count *: "WITHVALUES" *: EmptyTuple).as[Arr.Pairs[Bulk, Bulk], Seq[(Key, A)]]
 
-  final def hscan(key: Key, cursor: NonNegLong): Single.Aux[ScanKV] = Protocol("HSCAN", key *: cursor *: EmptyTuple).as[Arr, ScanKV]
+  final def hscan(key: Key, cursor: NonNegLong): Single.Aux[ScanKV] =
+    Protocol("HSCAN", key *: cursor *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], ScanKV]
   final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[ScanKV] =
-    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[Arr, ScanKV]
+    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], ScanKV]
   final def hscan(key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[ScanKV] =
-    Protocol("HSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[Arr, ScanKV]
+    Protocol("HSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], ScanKV]
   final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[ScanKV] =
-    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, ScanKV]
+    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], ScanKV]
 
   /** HSCAN from cursor 0 until the server is done, as a [[Loop]]. A field may come more than once */
   final def hscanAll(key: Key): Loop[KV[String]]                                      = Loop.cursor(hscan(key, _))(scannedKV)
@@ -244,7 +247,7 @@ trait HashBaseP extends Features {
 
   final def hstrlen(key: Key, field: Key): Single.Aux[NonNegInt] = Protocol("HSTRLEN", key :: field :: Nil).as[Num, NonNegInt]
 
-  final def hvals[L <: Tuple: Read[Arr, _]](key: Key): Single.Aux[L] = Protocol("HVALS", key).as[Arr, L]
+  final def hvals[L <: Tuple: Read[Arr.Of[Option[Bulk]], _]](key: Key): Single.Aux[L] = Protocol("HVALS", key).as[Arr.Of[Option[Bulk]], L]
 }
 
 /** HSCAN with NOVALUES: Redis 7.4, Valkey 8.0 */
@@ -252,13 +255,14 @@ trait HashScanNoValuesP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("HSCAN: NOVALUES")
 
   final def hscannovalues(key: Key, cursor: NonNegLong): Single.Aux[Scan[Key]] =
-    Protocol("HSCAN", key *: cursor *: "NOVALUES" *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("HSCAN", key *: cursor *: "NOVALUES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def hscannovalues(key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[Key]] =
-    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "NOVALUES" *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "NOVALUES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def hscannovalues(key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[Key]] =
-    Protocol("HSCAN", key *: cursor *: "COUNT" *: count *: "NOVALUES" *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("HSCAN", key *: cursor *: "COUNT" *: count *: "NOVALUES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def hscannovalues(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[Key]] =
-    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "NOVALUES" *: EmptyTuple).as[Arr, Scan[Key]]
+    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "NOVALUES" *: EmptyTuple)
+      .as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
 
   /** HSCAN with NOVALUES from cursor 0 until the server is done, as a [[Loop]]. A field may come more than once */
   final def hscannovaluesAll(key: Key): Loop[Key]                       = Loop.cursor(hscannovalues(key, _))(scanned)

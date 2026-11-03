@@ -91,4 +91,10 @@ abstract class ServerClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assert(!send(v.client.unblock(999999L)))
     assertEquals(send(v.client.unpause), OK)
   }
+
+  test(s"a $dest client reads the server's time") {
+    import laserdisc.redis_6_2.*
+
+    assert(send(time).timestamp.value > 0L)
+  }
 }

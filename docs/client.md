@@ -90,6 +90,56 @@ When it times out, the whole `send` fails with `RequestTimedOut`, which names
 the first command still without a reply. Commands that were still waiting to be
 sent aren't sent at all.
 
+## Loops
+
+Some commands are meant to be sent again and again. SCAN replies with a cursor
+to send back until the server is done, XRANGE reads a stream a page at a time,
+and XREAD can follow a stream as entries are added. For these there are loops:
+`scanAll`, `hscanAll`, `hscannovaluesAll`, `sscanAll`, `zscanAll`,
+`zscannoscoresAll`, `xrangeAll` and `xrevrangeAll`, and, with the blocking
+commands, `xreadFollow` and `xreadgroupFollow`. `stream` runs a loop and gives
+you its values as a `Stream`:
+
+```scala mdoc:compile-only
+import cats.effect.IO
+
+import laserdisc.*
+import laserdisc.all.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+def userKeys(client: RedisClient[IO]): Stream[IO, Key] =
+  client.stream(scanAll("user:*"))
+```
+
+Each command is sent once the reply to the one before it is in. A failed
+command fails the stream. Each command gets the same timeout as a `send`, or the
+one you pass after the loop, and for a blocking command its wait is added to it.
+
+To make your own loop, give `Loop` where to start, the command to send from
+there, and what to do with the reply: the values it gives, and where to go next,
+or `None` to stop. This one reads a list 100 items at a time:
+
+```scala mdoc:compile-only
+import laserdisc.*
+import laserdisc.all.*
+
+def wholeList(key: Key): Loop[String] =
+  Loop(0L)(start => lrange[String](key, Index.unsafeFrom(start), Index.unsafeFrom(start + 99))) { (start, page) =>
+    page -> (if (page.size < 100) None else Some(start + 100))
+  }
+```
+
+For blocking commands, use `Loop.blocking` with how long each one waits.
+
+## Blocking commands
+
+Blocking commands, under `blocking`, wait on the server for something to
+happen. While one waits, it holds the client's connection: commands sent after
+it on the same client, from anywhere in your program, only get their replies
+once it's done. Give blocking commands, and loops that follow streams, a client
+of their own.
+
 ## Logging
 
 The client logs through [log-effect](https://github.com/laserdisc-io/log-effect).

@@ -103,6 +103,13 @@ package object fs2 {
       override final def map[A, B](fa: F[A])(f: A => B): F[B] = F.map(fa)(f)
     }
 
+  // a failed step fails the stream with its error
+  implicit final def unfoldForFs2[F[_]](implicit F: cats.MonadThrow[F]): Unfold[F, Stream[F, _]] =
+    new Unfold[F, Stream[F, _]] {
+      override final def unfold[St, A](start: St)(next: St => F[Maybe[(Seq[A], Option[St])]]): Stream[F, A] =
+        Stream.unfoldChunkLoopEval(start)(next(_).rethrow.map { case (as, more) => _root_.fs2.Chunk.from(as) -> more })
+    }
+
   implicit final def showForCats[A](implicit S: cats.Show[A]): Show[A] =
     (a: A) => S.show(a)
 }

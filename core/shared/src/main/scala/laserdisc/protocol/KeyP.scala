@@ -412,6 +412,17 @@ trait KeyBaseP extends Features {
   final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt, keyType: KeyType): Single.Aux[Scan[Key]] =
     Protocol("SCAN", cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "TYPE" *: keyType *: EmptyTuple).as[Arr, Scan[Key]]
 
+  /** SCAN from cursor 0 until the server is done, as a [[Loop]]. A key may come more than once */
+  final def scanAll: Loop[Key]                                                        = Loop.cursor(scan(_))(scanned)
+  final def scanAll(pattern: GlobPattern): Loop[Key]                                  = Loop.cursor(scan(_, pattern))(scanned)
+  final def scanAll(count: PosInt): Loop[Key]                                         = Loop.cursor(scan(_, count))(scanned)
+  final def scanAll(pattern: GlobPattern, count: PosInt): Loop[Key]                   = Loop.cursor(scan(_, pattern, count))(scanned)
+  final def scanAll(keyType: KeyType): Loop[Key]                                      = Loop.cursor(scan(_, keyType))(scanned)
+  final def scanAll(pattern: GlobPattern, keyType: KeyType): Loop[Key]                = Loop.cursor(scan(_, pattern, keyType))(scanned)
+  final def scanAll(count: PosInt, keyType: KeyType): Loop[Key]                       = Loop.cursor(scan(_, count, keyType))(scanned)
+  final def scanAll(pattern: GlobPattern, count: PosInt, keyType: KeyType): Loop[Key] =
+    Loop.cursor(scan(_, pattern, count, keyType))(scanned)
+
   final def sort[A: Read[Bulk, _]](key: Key): Single.Aux[Seq[A]]                       = Protocol("SORT", key).as[Arr, Seq[A]]
   final def sort[A: Read[Bulk, _]](key: Key, pattern: GlobPattern): Single.Aux[Seq[A]] =
     Protocol("SORT", key *: "BY" *: pattern *: EmptyTuple).as[Arr, Seq[A]]

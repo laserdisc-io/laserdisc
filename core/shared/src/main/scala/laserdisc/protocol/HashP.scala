@@ -222,6 +222,13 @@ trait HashBaseP extends Features {
   final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[ScanKV] =
     Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, ScanKV]
 
+  /** HSCAN from cursor 0 until the server is done, as a [[Loop]]. A field may come more than once */
+  final def hscanAll(key: Key): Loop[KV[String]]                                      = Loop.cursor(hscan(key, _))(scannedKV)
+  final def hscanAll(key: Key, pattern: GlobPattern): Loop[KV[String]]                = Loop.cursor(hscan(key, _, pattern))(scannedKV)
+  final def hscanAll(key: Key, count: PosInt): Loop[KV[String]]                       = Loop.cursor(hscan(key, _, count))(scannedKV)
+  final def hscanAll(key: Key, pattern: GlobPattern, count: PosInt): Loop[KV[String]] =
+    Loop.cursor(hscan(key, _, pattern, count))(scannedKV)
+
   final def hset[A: Show](key: Key, field: Key, value: A): Single.Aux[Boolean] =
     Protocol("HSET", key *: field *: value *: EmptyTuple).as[Num, Boolean]
   final def hset[A: Show](key: Key, fieldValues: OneOrMore[(Key, A)]): Single.Aux[NonNegInt] =
@@ -247,6 +254,13 @@ trait HashScanNoValuesP extends Features {
     Protocol("HSCAN", key *: cursor *: "COUNT" *: count *: "NOVALUES" *: EmptyTuple).as[Arr, Scan[Key]]
   final def hscannovalues(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[Key]] =
     Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "NOVALUES" *: EmptyTuple).as[Arr, Scan[Key]]
+
+  /** HSCAN with NOVALUES from cursor 0 until the server is done, as a [[Loop]]. A field may come more than once */
+  final def hscannovaluesAll(key: Key): Loop[Key]                       = Loop.cursor(hscannovalues(key, _))(scanned)
+  final def hscannovaluesAll(key: Key, pattern: GlobPattern): Loop[Key] = Loop.cursor(hscannovalues(key, _, pattern))(scanned)
+  final def hscannovaluesAll(key: Key, count: PosInt): Loop[Key]        = Loop.cursor(hscannovalues(key, _, count))(scanned)
+  final def hscannovaluesAll(key: Key, pattern: GlobPattern, count: PosInt): Loop[Key] =
+    Loop.cursor(hscannovalues(key, _, pattern, count))(scanned)
 }
 
 /** Expiry of single fields: Redis 7.4, Valkey 9.0 */

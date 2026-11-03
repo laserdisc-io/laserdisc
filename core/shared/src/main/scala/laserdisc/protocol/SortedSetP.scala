@@ -438,6 +438,13 @@ trait SortedSetBaseP extends Features {
   final def zscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[A]] =
     Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[A]]
 
+  /** ZSCAN from cursor 0 until the server is done, as a [[Loop]]. A member may come more than once */
+  final def zscanAll[A: ReadArrToSeq](key: Key): Loop[A]                       = Loop.cursor(zscan[A](key, _))(scanned[A])
+  final def zscanAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern): Loop[A] = Loop.cursor(zscan[A](key, _, pattern))(scanned[A])
+  final def zscanAll[A: ReadArrToSeq](key: Key, count: PosInt): Loop[A]        = Loop.cursor(zscan[A](key, _, count))(scanned[A])
+  final def zscanAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern, count: PosInt): Loop[A] =
+    Loop.cursor(zscan[A](key, _, pattern, count))(scanned[A])
+
   final def zscore[A: Show](key: Key, member: A): Single.Aux[Option[Double]] =
     Protocol("ZSCORE", key *: member *: EmptyTuple).asOpt[Bulk, Double]
 
@@ -538,6 +545,14 @@ trait SortedSetScanNoScoresP extends Features {
     Protocol("ZSCAN", key *: cursor *: "COUNT" *: count *: "NOSCORES" *: EmptyTuple).as[Arr, Scan[A]]
   final def zscannoscores[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[A]] =
     Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "NOSCORES" *: EmptyTuple).as[Arr, Scan[A]]
+
+  /** ZSCAN with NOSCORES from cursor 0 until the server is done, as a [[Loop]]. A member may come more than once */
+  final def zscannoscoresAll[A: ReadArrToSeq](key: Key): Loop[A]                       = Loop.cursor(zscannoscores[A](key, _))(scanned[A])
+  final def zscannoscoresAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern): Loop[A] =
+    Loop.cursor(zscannoscores[A](key, _, pattern))(scanned[A])
+  final def zscannoscoresAll[A: ReadArrToSeq](key: Key, count: PosInt): Loop[A] = Loop.cursor(zscannoscores[A](key, _, count))(scanned[A])
+  final def zscannoscoresAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern, count: PosInt): Loop[A] =
+    Loop.cursor(zscannoscores[A](key, _, pattern, count))(scanned[A])
 }
 
 /** AGGREGATE COUNT for ZINTER, ZINTERSTORE, ZUNION and ZUNIONSTORE: Redis 8.8 */

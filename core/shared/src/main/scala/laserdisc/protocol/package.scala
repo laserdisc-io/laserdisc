@@ -22,6 +22,10 @@
 package laserdisc
 
 package object protocol {
+  // a SCAN reply's cursor and values, for Loop.cursor
+  private[protocol] final def scanned[A](scan: Scan[A]): (NonNegLong, Seq[A])        = scan.cursor -> scan.values.getOrElse(Nil)
+  private[protocol] final def scannedKV(scan: ScanKV): (NonNegLong, Seq[KV[String]]) = scan.cursor -> scan.maybeValues.getOrElse(Nil)
+
   // the key ends at the first colon, so values may have colons
   private[protocol] final val KVPairRegex = "([^:]*):(.*)".r
 

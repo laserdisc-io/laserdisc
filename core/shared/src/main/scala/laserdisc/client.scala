@@ -38,6 +38,21 @@ trait ClientBase[F[_], Env] {
       implicit F: Functor[F],
       ev: Handler.Aux[F, Env, Protocol.Aux[A1] *: EmptyTuple, Maybe[A1] *: EmptyTuple]
   ): F[Maybe[A1]] = send(protocolA1, defaultTimeout)
+
+  /** Runs the loop, sending each of its commands once the previous reply is in, as a stream of the values they give. Each command has
+    * `timeout`, plus the loop's wait when its commands block
+    */
+  final def stream[S[_], A](loop: Loop[A], timeout: FiniteDuration)(
+      implicit F: Functor[F],
+      U: Unfold[F, S],
+      ev: Handler.Aux[F, Env, Protocol.Aux[Loop.Step[A]] *: EmptyTuple, Maybe[Loop.Step[A]] *: EmptyTuple]
+  ): S[A] =
+    U.unfold(loop.first)(command => F.map(send(command, timeout + loop.waits))(_.map(step => step.values -> step.next)))
+  final def stream[S[_], A](loop: Loop[A])(
+      implicit F: Functor[F],
+      U: Unfold[F, S],
+      ev: Handler.Aux[F, Env, Protocol.Aux[Loop.Step[A]] *: EmptyTuple, Maybe[Loop.Step[A]] *: EmptyTuple]
+  ): S[A] = stream(loop, defaultTimeout)
 }
 
 trait Client[F[_], Env] extends ClientBase[F, Env] with ClientExt[F, Env]

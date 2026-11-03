@@ -109,6 +109,13 @@ trait SetBaseP extends Features {
   final def sscan[A: ReadArrToSeq](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[A]] =
     Protocol("SSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[Arr, Scan[A]]
 
+  /** SSCAN from cursor 0 until the server is done, as a [[Loop]]. A member may come more than once */
+  final def sscanAll[A: ReadArrToSeq](key: Key): Loop[A]                       = Loop.cursor(sscan[A](key, _))(scanned[A])
+  final def sscanAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern): Loop[A] = Loop.cursor(sscan[A](key, _, pattern))(scanned[A])
+  final def sscanAll[A: ReadArrToSeq](key: Key, count: PosInt): Loop[A]        = Loop.cursor(sscan[A](key, _, count))(scanned[A])
+  final def sscanAll[A: ReadArrToSeq](key: Key, pattern: GlobPattern, count: PosInt): Loop[A] =
+    Loop.cursor(sscan[A](key, _, pattern, count))(scanned[A])
+
   final def sunion[A: ReadArrToSeq](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] = Protocol("SUNION", keys.value).as[Arr, Seq[A]]
 
   final def sunionstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =

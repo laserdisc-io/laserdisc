@@ -425,6 +425,14 @@ trait StreamBaseP extends Features {
   final def xrange[A: Read[Bulk, _]](key: Key, start: Bound, end: Bound, count: PosLong): Single.Aux[Seq[Entry[A]]] =
     Protocol("XRANGE", key.value :: start.param :: end.param :: "COUNT" :: count.value.toString :: Nil).using(entries[A])
 
+  /** XRANGE in pages of `count` entries, as a [[Loop]]: each page starts after the last entry of the one before, until a page comes short
+    */
+  final def xrangeAll[A: Read[Bulk, _]](key: Key, count: PosLong): Loop[Entry[A]] = xrangeAll[A](key, Bound.min, Bound.max, count)
+  final def xrangeAll[A: Read[Bulk, _]](key: Key, start: Bound, end: Bound, count: PosLong): Loop[Entry[A]] =
+    Loop(start)(xrange[A](key, _, end, count)) { (_, page) =>
+      page -> (if (page.size < count.value) None else Some(Bound.exclusive(page.last.id)))
+    }
+
   /** The streams' entries after the given ids, by stream, or `None` when none of them has any */
   final def xread[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)]): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREAD", "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(_._2.param))
@@ -438,6 +446,15 @@ trait StreamBaseP extends Features {
     Protocol("XREVRANGE", key.value :: end.param :: start.param :: Nil).using(entries[A])
   final def xrevrange[A: Read[Bulk, _]](key: Key, end: Bound, start: Bound, count: PosLong): Single.Aux[Seq[Entry[A]]] =
     Protocol("XREVRANGE", key.value :: end.param :: start.param :: "COUNT" :: count.value.toString :: Nil).using(entries[A])
+
+  /** XREVRANGE in pages of `count` entries, as a [[Loop]]: each page starts before the last entry of the one before, until a page comes
+    * short
+    */
+  final def xrevrangeAll[A: Read[Bulk, _]](key: Key, count: PosLong): Loop[Entry[A]] = xrevrangeAll[A](key, Bound.max, Bound.min, count)
+  final def xrevrangeAll[A: Read[Bulk, _]](key: Key, end: Bound, start: Bound, count: PosLong): Loop[Entry[A]] =
+    Loop(end)(xrevrange[A](key, _, start, count)) { (_, page) =>
+      page -> (if (page.size < count.value) None else Some(Bound.exclusive(page.last.id)))
+    }
 
   /** Trims the stream, and replies how many entries it deleted */
   final def xtrim(key: Key, trim: Trim): Single.Aux[NonNegLong] = Protocol("XTRIM", key.value :: trim.params).as[Num, NonNegLong]

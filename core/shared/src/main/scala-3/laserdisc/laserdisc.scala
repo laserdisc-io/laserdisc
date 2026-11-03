@@ -33,9 +33,13 @@ import scala.util.NotGiven
 final type Maybe[A] = Either[Throwable, A]
 
 // Export all protocol
-export protocol.{Arr, Bulk, Err, NilArr, NullBulk, Num, Protocol, RESP, RESPDecErr, Read, Show, Str, Value}
+export protocol.{Arr, Bulk, Err, NilArr, NullBulk, Num, OneOf, Protocol, RESP, RESPDecErr, Read, Show, Str, Value}
 final type NilArr   = protocol.NilArr.type
 final type NullBulk = protocol.NullBulk.type
+
+// a value that may be missing, as RESP2 sends it: a null bulk string for a string, a number or a simple string, and a null array for an array
+final type OrNullBulk[A] = OneOf[NullBulk *: A *: EmptyTuple]
+final type OrNilArr[A]   = OneOf[NilArr *: A *: EmptyTuple]
 
 private final type NoControlChar = Not[ControlChar]
 private final type NoWhitespace  = Not[WhitespaceChar]

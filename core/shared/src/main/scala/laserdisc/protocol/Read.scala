@@ -220,6 +220,14 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   implicit final val bulk2KeyRead: Read[Bulk, Key]         = instancePF("Bulk(Key)") { case Bulk(Key(k)) => k }
   implicit final val bulk2GeoHashRead: Read[Bulk, GeoHash] = instancePF("Bulk(GeoHash)") { case Bulk(GeoHash(gh)) => gh }
 
+  // the first alternative that matches and reads, or what each one that matched said
+  implicit final def oneOf2Read[T <: Tuple, B](implicit R: AlternativesRead[T, B]): Read[OneOf[T], B] = instance { oneOf =>
+    R.read(oneOf.value, 1).left.map {
+      case Nil      => RESPDecErr(s"Read[OneOf] error: no alternative matched ${oneOf.value}")
+      case failures => RESPDecErr(s"Read[OneOf] error: ${failures.mkString("; ")}")
+    }
+  }
+
   implicit final def arrTuple2Tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr.Tuple[T], L] =
     instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements))
 

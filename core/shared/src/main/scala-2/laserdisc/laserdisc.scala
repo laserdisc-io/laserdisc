@@ -57,19 +57,20 @@ package object laserdisc {
   final type Maybe[A] = Either[Throwable, A]
 
   // Type forwarders
-  final type Arr        = protocol.Arr
-  final type Bulk       = protocol.Bulk
-  final type Err        = protocol.Err
-  final type NilArr     = protocol.NilArr.type
-  final type NullBulk   = protocol.NullBulk.type
-  final type Num        = protocol.Num
-  final type Str        = protocol.Str
-  final type Protocol   = protocol.Protocol
-  final type Read[A, B] = protocol.Read[A, B]
-  final type RESP       = protocol.RESP
-  final type Show[A]    = protocol.Show[A]
-  final type RESPDecErr = protocol.RESPDecErr
-  final type Value      = protocol.Value
+  final type Arr               = protocol.Arr
+  final type Bulk              = protocol.Bulk
+  final type Err               = protocol.Err
+  final type NilArr            = protocol.NilArr.type
+  final type NullBulk          = protocol.NullBulk.type
+  final type Num               = protocol.Num
+  final type OneOf[T <: Tuple] = protocol.OneOf[T]
+  final type Str               = protocol.Str
+  final type Protocol          = protocol.Protocol
+  final type Read[A, B]        = protocol.Read[A, B]
+  final type RESP              = protocol.RESP
+  final type Show[A]           = protocol.Show[A]
+  final type RESPDecErr        = protocol.RESPDecErr
+  final type Value             = protocol.Value
 
   // Object forwarders
   final val Arr        = protocol.Arr
@@ -84,6 +85,11 @@ package object laserdisc {
   final val Str        = protocol.Str
   final val RESPDecErr = protocol.RESPDecErr
   final val Value      = protocol.Value
+
+  // a value that may be missing, as RESP2 sends it: a null bulk string for a string, a number or a simple string, and a null array for an
+  // array
+  final type OrNullBulk[A] = OneOf[NullBulk *: A *: EmptyTuple]
+  final type OrNilArr[A]   = OneOf[NilArr *: A *: EmptyTuple]
 
   private final type NoControlChar = Not[ControlChar]
   private final type NoWhitespace  = Not[Whitespace]

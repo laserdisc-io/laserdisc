@@ -22,7 +22,7 @@
 package laserdisc
 package protocol
 
-import scala.annotation.implicitNotFound
+import scala.annotation.{implicitNotFound, nowarn}
 
 /** Evidence that `A` is one of the non-error [[RESP]] types Redis may reply with.
   *
@@ -35,7 +35,7 @@ import scala.annotation.implicitNotFound
 @implicitNotFound(
   """Implicit not found RESPSub[${A}].
 
-${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Arr.Tuple, Bulk, NilArr, NullBulk, Num or Str, or RESP for any of them
+${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Arr.Tuple, Bulk, NilArr, NullBulk, Num or Str, a OneOf of them, or RESP for any of them
   """
 ) sealed abstract class RESPSub[A](val nil: RESP) {
   def unapply(resp: RESP): Option[A]
@@ -64,6 +64,10 @@ object RESPSub {
 
   implicit final def arrTupleRESPSub[T]: RESPSub[Arr.Tuple[T]] = instance(NilArr) { case Arr(elements) => new Arr.Tuple[T](elements) }
 
+  implicit final def oneOfRESPSub[T <: Tuple](implicit A: Alternatives[T], @nowarn D: Distinct[T]): RESPSub[OneOf[T]] = instance(NullBulk) {
+    case resp if A.matches(resp) => new OneOf[T](resp)
+  }
+
   // any of the above, never Err
   implicit final val respRESPSub: RESPSub[RESP] = instance(NullBulk) { case resp if !resp.isInstanceOf[Err] => resp }
 }
@@ -81,9 +85,11 @@ You should not need to define one manually, as one will be derived for you autom
   def read(resp: RESP): Maybe[A]
 }
 
-// a Read to A gives a RESPRead to Option[A], with the "null" RESP as None, unless there's a Read to Option[A] itself
+// a Read to A gives a RESPRead to Option[A], with the "null" RESP as None, unless there's a Read to Option[A] itself, or A is a OneOf,
+// which reads its nulls as None on its own
 sealed trait RESPReadLowPriority {
-  implicit final def deriveOption[A: RESPSub, B](implicit R: Read[A, B]): RESPRead.Aux[A, Option[B]] = RESPRead.nullable(R)
+  implicit final def deriveOption[A: RESPSub, B](implicit R: Read[A, B], @nowarn ev: A <:!< OneOf[?]): RESPRead.Aux[A, Option[B]] =
+    RESPRead.nullable(R)
 }
 
 object RESPRead extends RESPReadLowPriority {

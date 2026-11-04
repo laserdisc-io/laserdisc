@@ -22,7 +22,7 @@
 package laserdisc
 package protocol
 
-final class ArrSpec extends BaseSpec with EitherSyntax {
+final class ArrSpec extends BaseSpec {
   test("decoding Arr.Of[Bulk] with the wrong encoding names the first element that fails") {
     def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[Bulk], Seq[Long]]
     val request  = "id" *: EmptyTuple

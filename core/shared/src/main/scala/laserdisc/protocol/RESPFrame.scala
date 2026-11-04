@@ -28,7 +28,7 @@ import scodec.bits.BitVector
 
 import scala.annotation.tailrec
 
-private[laserdisc] sealed trait RESPFrame extends Product with Serializable with EitherSyntax with BitVectorSyntax {
+private[laserdisc] sealed trait RESPFrame extends Product with Serializable with BitVectorSyntax {
   def append(bits: BitVector): Either[Exception, NonEmptyRESPFrame]                    = nextFrame(bits)
   protected final def nextFrame(bits: BitVector): Either[Exception, NonEmptyRESPFrame] =
     stateOf(bits) match {

@@ -21,7 +21,7 @@
 
 package laserdisc
 
-package object protocol {
+package object protocol extends protocol.EitherSyntax {
   // a reply made of names and values, and a list of them
   private[protocol] final type Record  = Arr.OfPairs[Bulk, RESP]
   private[protocol] final type Records = Arr.Of[Record]

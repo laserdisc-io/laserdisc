@@ -26,7 +26,7 @@ import org.scalacheck.Prop.forAll
 
 final case class HashPSpecUser(name: String, age: Int, email: Option[String])
 
-abstract class HashPSpec extends BaseSpec with HashP with EitherSyntax {
+abstract class HashPSpec extends BaseSpec with HashP {
   private final val scanKVToArr: ScanKV => Arr = scanKV =>
     Arr(
       Bulk(scanKV.cursor.value),

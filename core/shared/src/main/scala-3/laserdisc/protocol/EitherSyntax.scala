@@ -23,19 +23,16 @@ package laserdisc
 package protocol
 
 private[protocol] trait EitherSyntax {
-  implicit def eitherValuesSyntax[A](a: A): EitherValuesSyntaxOps[A]        = new EitherValuesSyntaxOps(a)
-  implicit def eitherSyntax[A, B](eab: Either[A, B]): EitherSyntaxOps[A, B] = new EitherSyntaxOps(eab)
-}
+  extension [A](a: A) {
+    private[protocol] def asLeft[B]: Either[A, B]  = Left(a)
+    private[protocol] def asRight[B]: Either[B, A] = Right(a)
+  }
 
-private[protocol] final class EitherValuesSyntaxOps[A](private val a: A) extends AnyVal {
-  def asLeft[B]: Either[A, B]  = Left(a)
-  def asRight[B]: Either[B, A] = Right(a)
-}
-
-private[protocol] final class EitherSyntaxOps[A, B](private val aOrB: Either[A, B]) extends AnyVal {
-  def leftMap[C](f: A => C): Either[C, B] =
-    aOrB match {
-      case Left(a) => Left(f(a))
-      case right   => right.coerceLeft[C, Either]
-    }
+  extension [A, B](aOrB: Either[A, B]) {
+    private[protocol] def leftMap[C](f: A => C): Either[C, B] =
+      aOrB match {
+        case Left(a) => Left(f(a))
+        case right   => right.coerceLeft[C, Either]
+      }
+  }
 }

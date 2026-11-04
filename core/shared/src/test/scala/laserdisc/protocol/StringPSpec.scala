@@ -22,7 +22,7 @@
 package laserdisc
 package protocol
 
-final class StringPSpec extends BaseSpec with EitherSyntax {
+final class StringPSpec extends BaseSpec {
   import laserdisc.auto.*
 
   test("The String protocol decoding the wrong type gives details about the decoding error") {

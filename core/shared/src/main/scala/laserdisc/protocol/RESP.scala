@@ -313,7 +313,7 @@ sealed trait RESPCodecs extends BitVectorSyntax {
 
 final case class RESPDecErr(message: String) extends RuntimeException(message, null, true, false)
 
-sealed trait RESPFunctions extends EitherSyntax { this: RESPCodecs =>
+sealed trait RESPFunctions { this: RESPCodecs =>
 
   import BitVectorDecoding.*
 

@@ -152,19 +152,15 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
       RB: Read[B, D]
   ): Read[Arr.OfPairs[A, B], Map[C, D]] = instance(arr => pairsOf(SA, RA, SB, RB)(arr.elements).map(_.toMap))
 
-  // a plain Arr read as an Arr.OfPairs[A, B], for readers within others
-  private[protocol] final def pairs[A, B, C, D](RA: Read[A, C], RB: Read[B, D])(
-      implicit SA: RESPSub[A],
-      SB: RESPSub[B]
-  ): Read[Arr, Seq[(C, D)]] = instance(arr => pairsOf(SA, RA, SB, RB)(arr.elements))
-
-  // the names and values of a plain Arr, for readers of replies made of fields
-  private[protocol] final lazy val fields: Read[Arr, Map[String, RESP]] =
-    pairs(bulk2StringRead, infallible[RESP, RESP](r => r)).map(_.toMap)
+  // the names and values of a reply made of fields
+  private[protocol] final lazy val fields: Read[Record, Map[String, RESP]] = {
+    implicit val resp: Read[RESP, RESP] = infallible(r => r)
+    arrOfPairs2Map[Bulk, RESP, String, RESP]
+  }
 
   // a reply made of names and values read field by field: a failure says which record, and which field
   private[protocol] final def record[A](name: String)(read: Fields => Either[RESPDecErr, A]): Read[Record, A] = instance { pairs =>
-    fields.read(Arr(pairs.elements)).flatMap(m => read(new Fields(m))).left.map(e => RESPDecErr(s"$name: ${e.message}"))
+    fields.read(pairs).flatMap(m => read(new Fields(m))).left.map(e => RESPDecErr(s"$name: ${e.message}"))
   }
 
   implicit final val num2BooleanRead: Read[Num, Boolean] = instancePF("0L or 1L") {
@@ -216,14 +212,14 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
     }
   }
 
-  implicit final def arrAsTuple2Tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr.AsTuple[T], L] =
+  implicit final def arrAsTuple2Tuple[T <: Tuple, L](implicit R: TupleRead[T, L]): Read[Arr.AsTuple[T], L] =
     instance(arr => TupleRead.read(R, "Arr.AsTuple")(arr.elements))
 
   private final def restPositions[T, L](R: TupleRead[T, L])(elements: List[RESP]): Either[RESPDecErr, L] =
     if (elements.size < R.size) Left(RESPDecErr(s"Read[Arr.AsTupleThen] error: expected at least ${R.size} elements, got ${elements.size}"))
     else R.read(elements, 1).left.map(e => RESPDecErr(s"Read[Arr.AsTupleThen] ${e.message}"))
 
-  implicit final def arrAsTupleThen2Tuple[T, E, L, B](
+  implicit final def arrAsTupleThen2Tuple[T <: Tuple, E, L, B](
       implicit R: TupleRead[T, L],
       S: RESPSub[E],
       RE: Read[E, B]
@@ -237,7 +233,7 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   }
 
   // what's at the positions alone, leaving out what follows
-  implicit final def arrAsTupleThen2Positions[T, L](implicit R: TupleRead[T, L]): Read[Arr.AsTupleThen[T, RESP], L] =
+  implicit final def arrAsTupleThen2Positions[T <: Tuple, L](implicit R: TupleRead[T, L]): Read[Arr.AsTupleThen[T, RESP], L] =
     instance(arr => restPositions(R)(arr.elements))
 
   // an array of values of one type, like HMGET's that may be missing, read position by position

@@ -172,6 +172,12 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
     )
   }
 
+  test("Arr.AsTuple and Arr.AsTupleThen only take tuples") {
+    assume(isScala3, "Scala 2 checks bounds only when the code is fully compiled, which compileErrors doesn't do")
+    assert(compileErrors("type Wrong = Arr.AsTuple[Int]").contains("upper bound"))
+    assert(compileErrors("type Wrong = Arr.AsTupleThen[Int, Bulk]").contains("upper bound"))
+  }
+
   test("decoding Arr.AsTupleThen reads the positions it names and then any number of the elements that follow") {
     def protocol =
       Protocol("CUSTOM", _: String *: EmptyTuple)

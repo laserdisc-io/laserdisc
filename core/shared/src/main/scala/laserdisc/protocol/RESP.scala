@@ -169,14 +169,14 @@ object Arr {
     * `Arr.AsTuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]`. With a [[OneOf]] at a position, like `OrNilArr[Arr.Of[Bulk]]`, that element may
     * also be missing
     */
-  final class AsTuple[T] private[protocol] (private[protocol] val elements: List[RESP])
+  final class AsTuple[T <: Tuple] private[protocol] (private[protocol] val elements: List[RESP])
 
   /** An array that starts like an [[AsTuple]] and goes on with any number of `E`s, to say how to read a reply like CLUSTER SLOTS' ranges,
     * with a first and last slot and a master, then the replicas: `Arr.AsTupleThen[Num *: Num *: Node *: EmptyTuple, Node]`. It's read as
     * what's at the positions and a `Seq` of the rest. With `RESP` as `E`, it can also be read as what's at the positions alone, leaving out
     * what follows, for replies that newer versions add to, like SLOWLOG's entries
     */
-  final class AsTupleThen[T, E] private[protocol] (private[protocol] val elements: List[RESP])
+  final class AsTupleThen[T <: Tuple, E] private[protocol] (private[protocol] val elements: List[RESP])
 }
 
 private[protocol] final case class Repr[A](decoded: A, bits: BitVector)

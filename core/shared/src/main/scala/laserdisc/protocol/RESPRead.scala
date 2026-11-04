@@ -60,8 +60,10 @@ object RESPSub {
     new Arr.OfPairs[A, B](elements)
   }
 
-  implicit final def arrAsTupleRESPSub[T]: RESPSub[Arr.AsTuple[T]] = instance { case Arr(elements) => new Arr.AsTuple[T](elements) }
-  implicit final def arrAsTupleThenRESPSub[T, E]: RESPSub[Arr.AsTupleThen[T, E]] = instance { case Arr(elements) =>
+  implicit final def arrAsTupleRESPSub[T <: Tuple]: RESPSub[Arr.AsTuple[T]] = instance { case Arr(elements) =>
+    new Arr.AsTuple[T](elements)
+  }
+  implicit final def arrAsTupleThenRESPSub[T <: Tuple, E]: RESPSub[Arr.AsTupleThen[T, E]] = instance { case Arr(elements) =>
     new Arr.AsTupleThen[T, E](elements)
   }
 

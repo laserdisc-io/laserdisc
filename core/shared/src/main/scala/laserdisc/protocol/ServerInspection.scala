@@ -79,13 +79,13 @@ object ServerInspection {
   /** MEMORY STATS: the figures for the whole server, and those of each database, as text since they mix whole and decimal numbers */
   final case class MemoryStats(values: Map[String, String], databases: Map[Int, Map[String, String]])
   private[protocol] final val memoryStats: Read[Record, MemoryStats] = {
-    val value    = Read.instancePF[RESP, String]("a number") { case Num(n) => n.toString; case Bulk(s) => s }
-    val database = Read.pairs(Read.bulk2StringRead, value).map(_.toMap)
-    val Db       = raw"db\.(\d+)".r
+    implicit val value: Read[RESP, String] = Read.instancePF("a number") { case Num(n) => n.toString; case Bulk(s) => s }
+    val database                           = Read[Record, Map[String, String]]
+    val Db                                 = raw"db\.(\d+)".r
     Read.record("memory stats") {
       _.others(Set.empty).foldLeft[Either[RESPDecErr, MemoryStats]](Right(MemoryStats(Map.empty, Map.empty))) {
         case (Right(stats), (k @ Db(n), fs: Arr)) =>
-          database.read(fs) match {
+          database.read(new Arr.OfPairs(fs.elements)) match {
             case Right(d) => Right(stats.copy(databases = stats.databases + (n.toInt -> d)))
             case Left(e)  => Left(RESPDecErr(s"field $k: ${e.message}"))
           }

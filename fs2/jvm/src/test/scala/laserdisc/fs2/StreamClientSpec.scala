@@ -25,6 +25,10 @@ package fs2
 import laserdisc.auto.*
 
 final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
+  test("a redis client reads the replies of Redis 7.0's import, which takes only what's replied from that version on")(
+    repliesFrom7_0(redis_8_10)
+  )
+
   test("a redis client deletes with reference policies and adds idempotently with the commands of Redis 8.10") {
     import laserdisc.redis_8_10.*
     import streamtypes.*
@@ -52,11 +56,43 @@ final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
   }
 }
 final class KeyDbStreamClientSpec  extends StreamClientSpec(6380, "keyDb")
-final class ValkeyStreamClientSpec extends StreamClientSpec(6381, "valkey")
+final class ValkeyStreamClientSpec extends StreamClientSpec(6381, "valkey") {
+  test("a valkey client reads the replies of Redis 7.0's import, which takes only what's replied from that version on")(
+    repliesFrom7_0(valkey_9_1)
+  )
+}
 
 abstract class StreamClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
+
+  // XCLAIM and XAUTOCLAIM's deleted entries, LPOP and RPOP with a count, ACL GETUSER: the replies that changed in Redis 7.0
+  protected final def repliesFrom7_0(version: Redis7_0): Unit = {
+    import version.{acl, del, lpop, rpop, xadd, xautoclaim, xautoclaimjustid, xclaim, xdel, xgroupcreate, xreadgroup}
+    import version.streamtypes.*
+
+    send(del("x:v", "x:none"))
+    send(xgroupcreate("x:v", "grp", StreamFrom.latest, StreamMkStream))
+    val first  = send(xadd("x:v", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
+    val second = send(xadd("x:v", OneOrMore.unsafeFrom(List(Key("a") -> 2))))
+    val third  = send(xadd("x:v", OneOrMore.unsafeFrom(List(Key("a") -> 3))))
+    send(xreadgroup[Int]("grp", "c1", OneOrMore.unsafeFrom(List(Key("x:v") -> StreamGroupFrom.newEntries))))
+    send(xdel("x:v", OneOrMore.unsafeFrom(List(second))))
+
+    assertEquals(send(xclaim[Int]("x:v", "grp", "c2", 0L, OneOrMore.unsafeFrom(List(first)))).map(_.id), Seq(first))
+    val auto = send(xautoclaim[Int]("x:v", "grp", "c3", 0L, StreamId(0L, 0L)))
+    assertEquals(auto.claimed.map(_.id), Seq(first, third))
+    assertEquals(auto.deleted, Seq(second))
+    assertEquals(send(xautoclaimjustid("x:v", "grp", "c4", 0L, StreamId(0L, 0L))).claimed, Seq(first, third))
+
+    assertEquals(send(lpop[String]("x:none", 1)), None)
+    assertEquals(send(rpop[String]("x:none", 1)), None)
+
+    val default = send(acl.getuser("default")).getOrElse(fail("no default user"))
+    assert(default.keys.startsWith("~"), default.keys)
+    assertEquals(default.selectors, Seq.empty)
+    assertEquals(send(acl.getuser("ld-none")), None)
+  }
 
   test(s"a $dest client adds to a stream, reads it by range and from ids, and trims it") {
     import laserdisc.redis_6_2.*

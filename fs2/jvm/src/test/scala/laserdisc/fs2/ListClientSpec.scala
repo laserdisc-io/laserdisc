@@ -98,4 +98,12 @@ abstract class ListClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     send(rpush("l:b2", OneOrMore.unsafeFrom(List("x"))))
     assertEquals(send(blocking.blpop[String](OneOrMoreKeys.unsafeFrom(List(Key("l:b1"), Key("l:b2"))), 1)), Some(KV(Key("l:b2"), "x")))
   }
+
+  test(s"a $dest client reads nothing to pop with a count, whichever null the server replies with") {
+    import laserdisc.redis_6_2.*
+
+    send(del("l:none"))
+    assertEquals(send(lpop[String]("l:none", 1)), None)
+    assertEquals(send(rpop[String]("l:none", 1)), None)
+  }
 }

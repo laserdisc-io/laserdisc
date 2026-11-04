@@ -160,8 +160,16 @@ abstract class ListPSpec extends BaseSpec with ListP {
       val protocol = lpop[String](k, c)
       assertEquals(protocol.encode, Arr(Bulk("LPOP"), Bulk(k), Bulk(c)))
       assertEquals(protocol.decode(oss.fold(NilArr: GenArr)(ss => Arr(ss.map(Bulk(_))))), oss)
-      assertEquals(protocol.decode(NullBulk), None)
     }
+  }
+
+  test("The List protocol using lpop and rpop with a count takes KeyDB's null bulk string on Redis 6.2's import only") {
+    val one = PosInt(1)
+    assertEquals(redis_6_2.lpop[String](Key("k"), one).decode(NullBulk), None)
+    assertEquals(redis_6_2.rpop[String](Key("k"), one).decode(NilArr), None)
+    assert(redis_7_0.lpop[String](Key("k"), one).decode(NullBulk).isLeft)
+    assert(redis_7_0.rpop[String](Key("k"), one).decode(NullBulk).isLeft)
+    assertEquals(redis_7_0.lpop[String](Key("k"), one).decode(NilArr), None)
   }
 
   property("The List protocol using lpos reads the position, or None") {

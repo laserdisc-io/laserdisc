@@ -101,10 +101,10 @@ object Acl {
       databases: Option[String]
   )
 
-  // what keys and channels hold: Redis 6.2 lists bare patterns, later versions reply with the rules themselves
+  // what keys and channels hold: Redis 6.2 lists bare patterns, Redis 7.0 replies with the rules themselves
   private final case class Patterns(withPrefix: String => String)
-  private implicit final val bulkPatterns: Read[Bulk, Patterns]  = Read.infallible(bulk => Patterns(_ => bulk.value))
-  private implicit final val barePatterns: Read[Texts, Patterns] = Read[Texts, Seq[String]].map { patterns =>
+  private implicit final val bulkPatterns: Read[Bulk, Patterns]         = Read.infallible(bulk => Patterns(_ => bulk.value))
+  private implicit final val barePatterns: Read[Arr.Of[Bulk], Patterns] = Read[Arr.Of[Bulk], Seq[String]].map { patterns =>
     Patterns(prefix => patterns.map(p => s"$prefix$p").mkString(" "))
   }
 
@@ -115,25 +115,37 @@ object Acl {
       channels <- f.bulk[String]("channels")
     } yield AclSelector(commands, keys, channels)
   }
-  private[protocol] final val user: Read[Record, AclUser] = Read.record("ACL user") { f =>
+  // no such user is a null bulk string
+  private final def maybeUser(read: Read[Record, AclUser]): RESPRead[Option[AclUser]] = {
+    implicit val user: Read[Record, AclUser] = read
+    RESPRead[OrNullBulk[Record], Option[AclUser]]
+  }
+
+  // what Redis 6.2 replies, which also takes what later versions reply, so that a server can be upgraded before the import moves on
+  private[protocol] final val maybeUser6_2: RESPRead[Option[AclUser]] = maybeUser(Read.record("ACL user") { f =>
     for {
-      flags     <- f[Texts, Seq[String]]("flags")
-      passwords <- f[Texts, Seq[String]]("passwords")
+      flags     <- f[Arr.Of[Bulk], Seq[String]]("flags")
+      passwords <- f[Arr.Of[Bulk], Seq[String]]("passwords")
       commands  <- f.bulk[String]("commands")
-      keys      <- f[OneOf[Bulk *: Texts *: EmptyTuple], Patterns]("keys")
-      channels  <- f.optional[OneOf[Bulk *: Texts *: EmptyTuple], Patterns]("channels")
+      keys      <- f[OneOf[Bulk *: Arr.Of[Bulk] *: EmptyTuple], Patterns]("keys")
+      channels  <- f[OneOf[Bulk *: Arr.Of[Bulk] *: EmptyTuple], Patterns]("channels")
       selectors <- f.optional[Records, Seq[AclSelector]]("selectors")
       databases <- f.optionalBulk[String]("databases")
-    } yield AclUser(
-      flags,
-      passwords,
-      commands,
-      keys.withPrefix("~"),
-      channels.fold("")(_.withPrefix("&")),
-      selectors.getOrElse(Nil),
-      databases
-    )
-  }
+    } yield AclUser(flags, passwords, commands, keys.withPrefix("~"), channels.withPrefix("&"), selectors.getOrElse(Nil), databases)
+  })
+
+  // Redis 7.0 replies with the rules, and with the selectors; Valkey 9.0 adds the databases
+  private[protocol] final val maybeUser7_0: RESPRead[Option[AclUser]] = maybeUser(Read.record("ACL user") { f =>
+    for {
+      flags     <- f[Arr.Of[Bulk], Seq[String]]("flags")
+      passwords <- f[Arr.Of[Bulk], Seq[String]]("passwords")
+      commands  <- f.bulk[String]("commands")
+      keys      <- f.bulk[String]("keys")
+      channels  <- f.bulk[String]("channels")
+      selectors <- f[Records, Seq[AclSelector]]("selectors")
+      databases <- f.optionalBulk[String]("databases")
+    } yield AclUser(flags, passwords, commands, keys, channels, selectors, databases)
+  })
 
   /** An entry of ACL LOG: what was denied (`reason` like `auth` or `command`, `object` the command, key or channel), to whom, how many
     * times and how long ago. Redis 7.2 adds the entry's id and when it was created and last updated, in milliseconds
@@ -200,7 +212,9 @@ trait AclCommands extends Features {
 
   /** The user's rules, or `None` when there's no such user */
   def getuser(user: Key): Single.Aux[Option[AclUser]] =
-    Protocol("ACL", "GETUSER" :: user.value :: Nil).using(RESPRead.orNilArrOrNullBulk(Acl.user))
+    Protocol("ACL", "GETUSER" :: user.value :: Nil).using(maybeUser)
+
+  protected def maybeUser: RESPRead[Option[AclUser]] = Acl.maybeUser6_2
 
   /** Every user's rules, as the lines of an ACL file */
   val list: Single.Aux[Seq[String]] = Protocol("ACL", "LIST").as[Arr.Of[Bulk], Seq[String]]
@@ -224,8 +238,10 @@ trait AclCommands extends Features {
 }
 
 /** ACL DRYRUN and ACL SETUSER with selectors: Redis 7.0 */
-trait AclSelectorCommands extends Features {
-  import Acl.AclRulesWithSelectors
+trait AclSelectorCommands extends AclCommands {
+  import Acl.{AclRulesWithSelectors, AclUser}
+
+  override protected def maybeUser: RESPRead[Option[AclUser]] = Acl.maybeUser7_0
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("ACL DRYRUN")
 

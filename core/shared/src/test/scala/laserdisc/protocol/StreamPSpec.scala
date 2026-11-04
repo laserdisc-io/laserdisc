@@ -132,7 +132,7 @@ final class StreamPSpec extends BaseSpec with StreamP {
 
   private def id(ms: Long): StreamId = StreamId(NonNegLong.unsafeFrom(ms), NonNegLong(1L))
 
-  test("The Stream protocol using xclaim sends the options and reads the claimed entries, leaving out Redis 6.2's nils") {
+  test("The Stream protocol using xclaim sends the options and reads the claimed entries, leaving out nils on Redis 6.2's import only") {
     val ids = OneOrMore.unsafeFrom(List(id(1L), id(2L)))
     assertEquals(
       xclaim[Int](
@@ -145,8 +145,14 @@ final class StreamPSpec extends BaseSpec with StreamP {
       ).encode,
       bulks("XCLAIM", "s", "g", "c", "0", "1-1", "2-1", "IDLE", "5", "RETRYCOUNT", "2", "FORCE")
     )
+    val withNil = Arr(Arr(Bulk("1-1"), bulks("a", "1")), NullBulk)
     assertEquals(
-      xclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), ids).decode(Arr(Arr(Bulk("1-1"), bulks("a", "1")), NullBulk)),
+      redis_6_2.xclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), ids).decode(withNil),
+      Seq(StreamEntry(id(1L), Seq(Key("a") -> 1)))
+    )
+    assert(redis_7_0.xclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), ids).decode(withNil).isLeft)
+    assertEquals(
+      redis_7_0.xclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), ids).decode(Arr(Arr(Bulk("1-1"), bulks("a", "1")))),
       Seq(StreamEntry(id(1L), Seq(Key("a") -> 1)))
     )
     assertEquals(
@@ -156,18 +162,29 @@ final class StreamPSpec extends BaseSpec with StreamP {
     assertEquals(xclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), ids).decode(bulks("3-1")), Seq(id(3L)))
   }
 
-  test("The Stream protocol using xautoclaim reads Redis 6.2's reply and Redis 7.0's, which lists the deleted ids") {
+  test(
+    "The Stream protocol using xautoclaim reads either reply on Redis 6.2's import, and only the one with the deleted ids from Redis 7.0"
+  ) {
     val start   = StreamId(NonNegLong(0L), NonNegLong(0L))
     val redis62 = Arr(Bulk("0-0"), Arr(Arr(Bulk("1-1"), bulks("a", "1")), NullBulk))
     val redis70 = Arr(Bulk("0-0"), Arr(Arr(Bulk("1-1"), bulks("a", "1"))), bulks("2-1"))
-    val claim   = xautoclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), start, PosLong(10L))
-    assertEquals(claim.encode, bulks("XAUTOCLAIM", "s", "g", "c", "0", "0-0", "COUNT", "10"))
-    assertEquals(claim.decode(redis62), StreamP.AutoClaimed(start, Seq(StreamEntry(id(1L), Seq(Key("a") -> 1))), Nil))
-    assertEquals(claim.decode(redis70), StreamP.AutoClaimed(start, Seq(StreamEntry(id(1L), Seq(Key("a") -> 1))), Seq(id(2L))))
+    val older   = redis_6_2.xautoclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), start, PosLong(10L))
+    val newer   = redis_7_0.xautoclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), start, PosLong(10L))
+    assertEquals(newer.encode, bulks("XAUTOCLAIM", "s", "g", "c", "0", "0-0", "COUNT", "10"))
+    assertEquals(older.decode(redis62), StreamP.AutoClaimed(start, Seq(StreamEntry(id(1L), Seq(Key("a") -> 1))), Nil))
+    assertEquals(older.decode(redis70), StreamP.AutoClaimed(start, Seq(StreamEntry(id(1L), Seq(Key("a") -> 1))), Seq(id(2L))))
+    assertEquals(newer.decode(redis70), StreamP.AutoClaimed(start, Seq(StreamEntry(id(1L), Seq(Key("a") -> 1))), Seq(id(2L))))
+    assert(newer.decode(redis62).isLeft)
+    val justIds = Arr(Bulk("0-0"), bulks("1-1", "3-1"), Arr(Nil))
     assertEquals(
-      xautoclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), start).decode(Arr(Bulk("0-0"), bulks("1-1", "3-1"), Arr(Nil))),
+      redis_7_0.xautoclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), start).decode(justIds),
       StreamP.AutoClaimed(start, Seq(id(1L), id(3L)), Nil)
     )
+    assertEquals(
+      redis_6_2.xautoclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), start).decode(justIds),
+      StreamP.AutoClaimed(start, Seq(id(1L), id(3L)), Nil)
+    )
+    assert(redis_7_0.xautoclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), start).decode(Arr(Bulk("0-0"), bulks("1-1"))).isLeft)
   }
 
   test("The Stream protocol using xinfo reads the stream, its groups and its consumers, with the newer fields when there") {
@@ -177,7 +194,7 @@ final class StreamPSpec extends BaseSpec with StreamP {
           Bulk("1-1"),
           bulks("a", "1")
         ) ::
-        Bulk("last-entry") :: NilArr :: Nil
+        Bulk("last-entry") :: NullBulk :: Nil
     )
     assertEquals(
       xinfostream[Int](Key("s")).decode(stream),

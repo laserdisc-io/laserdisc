@@ -108,7 +108,7 @@ object Protocol {
       */
     final def as[A, B](implicit R: RESPRead.Aux[A, B]): Single.Aux[B] = using(R)
 
-    final def using[A, B](R: RESPRead.Aux[A, B]): Single.Aux[B] =
+    final def using[B](R: RESPRead[B]): Single.Aux[B] =
       new Single {
         override final type A = B
         override final val command: String              = self.command

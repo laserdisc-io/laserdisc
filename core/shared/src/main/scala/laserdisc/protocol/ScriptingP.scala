@@ -59,8 +59,8 @@ object ScriptingP {
     for {
       name        <- f.bulk[Key]("name")
       description <- f[OrNullBulk[Bulk], Option[String]]("description")
-      flags       <- f[OrNilArr[Texts], Option[Seq[String]]]("flags")
-    } yield Function(name, description, flags.getOrElse(Nil))
+      flags       <- f[Arr.Of[Str], Seq[String]]("flags")
+    } yield Function(name, description, flags)
   }
 
   private implicit final val library: Read[Record, Library] = Read.record("function library") { f =>
@@ -91,7 +91,7 @@ object ScriptingP {
 
   private[protocol] final val stats: Read[Record, Stats] = Read.record("function stats") { f =>
     for {
-      running <- f[OneOf[NilArr *: NullBulk *: Record *: EmptyTuple], Option[Running]]("running_script")
+      running <- f[OrNullBulk[Record], Option[Running]]("running_script")
       engines <- f[Arr.Pairs[Bulk, Record], Seq[(String, (NonNegLong, NonNegLong))]]("engines")
     } yield Stats(running, engines.map { case (name, (libraries, functions)) => Engine(name, libraries, functions) })
   }

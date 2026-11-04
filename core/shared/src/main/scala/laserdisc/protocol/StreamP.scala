@@ -241,26 +241,34 @@ object StreamP {
   ]: Read[Arr.Of[Arr.Tuple[Bulk *: Arr.Of[EntryReply] *: EmptyTuple]], Seq[KV[Seq[Entry[A]]]]] =
     Read[Arr.Of[Arr.Tuple[Bulk *: Arr.Of[EntryReply] *: EmptyTuple]], Seq[KV[Seq[Entry[A]]]]]
 
-  // Redis 6.2 replies with nil for each deleted entry it claims; later versions leave them out
-  private[protocol] final def claimed[
-      A: Read[Bulk, _]
-  ]: Read[Arr.Of[OneOf[NilArr *: NullBulk *: EntryReply *: EmptyTuple]], Seq[Entry[A]]] =
-    Read[Arr.Of[OneOf[NilArr *: NullBulk *: EntryReply *: EmptyTuple]], Seq[Option[Entry[A]]]].map(_.flatten)
+  // the streams' entries, or nil when there are none
+  private[protocol] final def maybeStreams[A: Read[Bulk, _]]: RESPRead[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    RESPRead[OrNilArr[Arr.Of[Arr.Tuple[Bulk *: Arr.Of[EntryReply] *: EmptyTuple]]], Option[Seq[KV[Seq[Entry[A]]]]]]
+
+  // Redis 6.2 replies with nil for each deleted entry it claims; Redis 7.0 leaves them out
+  private[protocol] final def claimedOrNil[A: Read[Bulk, _]]: Read[Arr.Of[OrNullBulk[EntryReply]], Seq[Entry[A]]] =
+    Read[Arr.Of[OrNullBulk[EntryReply]], Seq[Option[Entry[A]]]].map(_.flatten)
 
   private[protocol] final val ids: Read[Arr.Of[Bulk], Seq[Id]] = Read[Arr.Of[Bulk], Seq[Id]]
 
   // Redis 7.0 adds the ids of the entries it found deleted
-  private[protocol] final def autoClaimed[E, A](claims: Read[E, Seq[A]])(
-      implicit S: RESPSub[E]
+  private[protocol] final def autoClaimedWithDeleted[E: RESPSub, A](
+      claims: Read[E, Seq[A]]
+  ): Read[Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], AutoClaimed[A]] = {
+    implicit val read: Read[E, Seq[A]] = claims
+    Read[Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], Id *: Seq[A] *: Seq[Id] *: EmptyTuple].map { case next *: cs *: deleted *: _ =>
+      AutoClaimed(next, cs, deleted)
+    }
+  }
+
+  // either reply, for Redis 6.2 and for a newer server that hasn't had its import moved on yet
+  private[protocol] final def autoClaimed[E: RESPSub, A](
+      claims: Read[E, Seq[A]]
   ): Read[OneOf[Arr.Tuple[Bulk *: E *: EmptyTuple] *: Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple] *: EmptyTuple], AutoClaimed[A]] = {
     implicit val read: Read[E, Seq[A]]                                            = claims
     implicit val before: Read[Arr.Tuple[Bulk *: E *: EmptyTuple], AutoClaimed[A]] =
       Read[Arr.Tuple[Bulk *: E *: EmptyTuple], Id *: Seq[A] *: EmptyTuple].map { case next *: cs *: _ => AutoClaimed(next, cs, Nil) }
-    implicit val since: Read[Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], AutoClaimed[A]] =
-      Read[Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], Id *: Seq[A] *: Seq[Id] *: EmptyTuple].map {
-        case next *: cs *: deleted *: _ =>
-          AutoClaimed(next, cs, deleted)
-      }
+    implicit val since: Read[Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], AutoClaimed[A]] = autoClaimedWithDeleted(claims)
     Read[OneOf[Arr.Tuple[Bulk *: E *: EmptyTuple] *: Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple] *: EmptyTuple], AutoClaimed[A]]
   }
 
@@ -273,14 +281,14 @@ object StreamP {
         nodes  <- f.num[NonNegLong]("radix-tree-nodes")
         last   <- f.bulk[Id]("last-generated-id")
         groups <- f.num[NonNegLong]("groups")
-        first  <- f.optional[OneOf[NilArr *: NullBulk *: EntryReply *: EmptyTuple], Option[Entry[A]]]("first-entry")
-        lastE  <- f.optional[OneOf[NilArr *: NullBulk *: EntryReply *: EmptyTuple], Option[Entry[A]]]("last-entry")
+        first  <- f[OrNullBulk[EntryReply], Option[Entry[A]]]("first-entry")
+        lastE  <- f[OrNullBulk[EntryReply], Option[Entry[A]]]("last-entry")
       } yield {
         val others = f.others(typed).collect {
           case (k, Bulk(v)) => k -> v
           case (k, Num(v))  => k -> v.toString
         }
-        StreamInfo(length, keys, nodes, last, groups, first.flatten, lastE.flatten, others)
+        StreamInfo(length, keys, nodes, last, groups, first, lastE, others)
       }
     }
   }
@@ -405,10 +413,10 @@ trait StreamBaseP extends Features {
   /** The streams' entries after the given ids, by stream, or `None` when none of them has any */
   final def xread[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)]): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREAD", "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(_._2.param))
-      .using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
+      .using(StreamP.maybeStreams[A])
   final def xread[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)], count: PosLong): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREAD", "COUNT" :: count.value.toString :: "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(_._2.param))
-      .using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
+      .using(StreamP.maybeStreams[A])
 
   /** XRANGE from the end: `end` is the larger bound */
   final def xrevrange[A: Read[Bulk, _]](key: Key, end: Bound, start: Bound): Single.Aux[Seq[Entry[A]]] =
@@ -521,7 +529,7 @@ trait StreamGroupBaseP extends Features {
       streams: OneOrMore[(Key, GroupFrom)]
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: groupStreams(streams))
-      .using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
+      .using(StreamP.maybeStreams[A])
   final def xreadgroup[A: Read[Bulk, _]](
       group: Key,
       consumer: Key,
@@ -529,7 +537,7 @@ trait StreamGroupBaseP extends Features {
       count: PosLong
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: "COUNT" :: count.value.toString :: groupStreams(streams))
-      .using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
+      .using(StreamP.maybeStreams[A])
   final def xreadgroup[A: Read[Bulk, _]](
       group: Key,
       consumer: Key,
@@ -537,7 +545,7 @@ trait StreamGroupBaseP extends Features {
       noAck: NoAck
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: Show[NoAck].show(noAck) :: groupStreams(streams))
-      .using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
+      .using(StreamP.maybeStreams[A])
   final def xreadgroup[A: Read[Bulk, _]](
       group: Key,
       consumer: Key,
@@ -548,11 +556,18 @@ trait StreamGroupBaseP extends Features {
     Protocol(
       "XREADGROUP",
       "GROUP" :: group.value :: consumer.value :: "COUNT" :: count.value.toString :: Show[NoAck].show(noAck) :: groupStreams(streams)
-    ).using(RESPRead.orNilArrOrNullBulk(StreamP.streams[A]))
+    ).using(StreamP.maybeStreams[A])
 }
 
 /** XCLAIM, XAUTOCLAIM, XINFO and XSETID: Redis 6.2 */
 trait StreamClaimAndInfoBaseP extends Features {
+  // what XCLAIM and XAUTOCLAIM reply with on Redis 6.2, which also takes what later versions reply with, so that a server can be upgraded
+  // before the import moves on
+  protected def claimedEntries[A: Read[Bulk, _]]: RESPRead[Seq[StreamP.Entry[A]]] = RESPRead.instance(StreamP.claimedOrNil[A])
+  protected def autoClaimedEntries[A: Read[Bulk, _]]: RESPRead[StreamP.AutoClaimed[StreamP.Entry[A]]] =
+    RESPRead.instance(StreamP.autoClaimed(StreamP.claimedOrNil[A]))
+  protected def autoClaimedIds: RESPRead[StreamP.AutoClaimed[StreamP.Id]] = RESPRead.instance(StreamP.autoClaimed(StreamP.ids))
+
   import StreamP.{AutoClaimed, ClaimOptions, ConsumerInfo, Entry, GroupInfo, Id, StreamInfo}
 
   override private[laserdisc] def supported: List[String] =
@@ -576,7 +591,7 @@ trait StreamClaimAndInfoBaseP extends Features {
       minIdleMilliseconds: NonNegLong,
       ids: OneOrMore[Id]
   ): Single.Aux[Seq[Entry[A]]] =
-    Protocol("XCLAIM", claim(key, group, consumer, minIdleMilliseconds, ids)).using(RESPRead.instance(StreamP.claimed[A]))
+    Protocol("XCLAIM", claim(key, group, consumer, minIdleMilliseconds, ids)).using(claimedEntries[A])
   final def xclaim[A: Read[Bulk, _]](
       key: Key,
       group: Key,
@@ -585,7 +600,7 @@ trait StreamClaimAndInfoBaseP extends Features {
       ids: OneOrMore[Id],
       options: ClaimOptions
   ): Single.Aux[Seq[Entry[A]]] =
-    Protocol("XCLAIM", claim(key, group, consumer, minIdleMilliseconds, ids) ++ options.params).using(RESPRead.instance(StreamP.claimed[A]))
+    Protocol("XCLAIM", claim(key, group, consumer, minIdleMilliseconds, ids) ++ options.params).using(claimedEntries[A])
 
   /** XCLAIM that replies with the ids only */
   final def xclaimjustid(key: Key, group: Key, consumer: Key, minIdleMilliseconds: NonNegLong, ids: OneOrMore[Id]): Single.Aux[Seq[Id]] =
@@ -613,7 +628,7 @@ trait StreamClaimAndInfoBaseP extends Features {
       start: Id
   ): Single.Aux[AutoClaimed[Entry[A]]] =
     Protocol("XAUTOCLAIM", autoclaim(key, group, consumer, minIdleMilliseconds, start))
-      .using(RESPRead.instance(StreamP.autoClaimed(StreamP.claimed[A])))
+      .using(autoClaimedEntries[A])
   final def xautoclaim[A: Read[Bulk, _]](
       key: Key,
       group: Key,
@@ -623,12 +638,12 @@ trait StreamClaimAndInfoBaseP extends Features {
       count: PosLong
   ): Single.Aux[AutoClaimed[Entry[A]]] =
     Protocol("XAUTOCLAIM", autoclaim(key, group, consumer, minIdleMilliseconds, start) ++ List("COUNT", count.value.toString))
-      .using(RESPRead.instance(StreamP.autoClaimed(StreamP.claimed[A])))
+      .using(autoClaimedEntries[A])
 
   /** XAUTOCLAIM that replies with the ids only */
   final def xautoclaimjustid(key: Key, group: Key, consumer: Key, minIdleMilliseconds: NonNegLong, start: Id): Single.Aux[AutoClaimed[Id]] =
     Protocol("XAUTOCLAIM", autoclaim(key, group, consumer, minIdleMilliseconds, start) :+ "JUSTID")
-      .using(RESPRead.instance(StreamP.autoClaimed(StreamP.ids)))
+      .using(autoClaimedIds)
   final def xautoclaimjustid(
       key: Key,
       group: Key,
@@ -638,7 +653,7 @@ trait StreamClaimAndInfoBaseP extends Features {
       count: PosLong
   ): Single.Aux[AutoClaimed[Id]] =
     Protocol("XAUTOCLAIM", autoclaim(key, group, consumer, minIdleMilliseconds, start) ++ List("COUNT", count.value.toString, "JUSTID"))
-      .using(RESPRead.instance(StreamP.autoClaimed(StreamP.ids)))
+      .using(autoClaimedIds)
 
   final def xinfoconsumers(key: Key, group: Key): Single.Aux[Seq[ConsumerInfo]] =
     Protocol("XINFO", "CONSUMERS" :: key.value :: group.value :: Nil).using(RESPRead.instance(StreamP.consumerInfos))
@@ -758,10 +773,20 @@ trait StreamGroupEntriesReadP extends Features {
     Protocol("XGROUP", "SETID" :: key.value :: group.value :: from.param :: "ENTRIESREAD" :: entriesRead.value.toString :: Nil).as[Str, OK]
 }
 
+/** XCLAIM and XAUTOCLAIM as they reply from Redis 7.0: deleted entries are left out, and XAUTOCLAIM also lists their ids */
+trait StreamClaimDeletedP extends StreamClaimAndInfoBaseP {
+  override protected def claimedEntries[A: Read[Bulk, _]]: RESPRead[Seq[StreamP.Entry[A]]] = RESPRead.instance(StreamP.entries[A])
+  override protected def autoClaimedEntries[A: Read[Bulk, _]]: RESPRead[StreamP.AutoClaimed[StreamP.Entry[A]]] =
+    RESPRead.instance(StreamP.autoClaimedWithDeleted(StreamP.entries[A]))
+  override protected def autoClaimedIds: RESPRead[StreamP.AutoClaimed[StreamP.Id]] =
+    RESPRead.instance(StreamP.autoClaimedWithDeleted(StreamP.ids))
+}
+
 trait StreamP
     extends StreamBaseP
     with StreamGroupBaseP
     with StreamClaimAndInfoBaseP
+    with StreamClaimDeletedP
     with StreamGroupEntriesReadP
     with StreamSetIdEntriesP
     with StreamRefPolicyP

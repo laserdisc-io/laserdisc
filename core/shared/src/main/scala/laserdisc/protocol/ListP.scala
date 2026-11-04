@@ -89,6 +89,10 @@ object ListP {
 }
 
 trait ListBaseP extends Features {
+  // LPOP and RPOP with a count, when there's nothing to pop: a null array, except on KeyDB, which replies with a null bulk string
+  protected def popped[A: Read[Bulk, _]]: RESPRead[Option[Seq[A]]] =
+    RESPRead[OneOf[NilArr *: NullBulk *: Arr.Of[Bulk] *: EmptyTuple], Option[Seq[A]]]
+
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "LINDEX",
@@ -141,7 +145,7 @@ trait ListBaseP extends Features {
 
   final def lpop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("LPOP", key).as[OrNullBulk[Bulk], Option[A]]
   final def lpop[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Option[Seq[A]]] =
-    Protocol("LPOP", key *: count *: EmptyTuple).as[OneOf[NilArr *: NullBulk *: Arr.Of[Bulk] *: EmptyTuple], Option[Seq[A]]]
+    Protocol("LPOP", key *: count *: EmptyTuple).using(popped[A])
 
   final def lpos[A: Show](key: Key, element: A): Single.Aux[Option[NonNegInt]] =
     Protocol("LPOS", key *: element *: EmptyTuple).as[OrNullBulk[Num], Option[NonNegInt]]
@@ -174,7 +178,7 @@ trait ListBaseP extends Features {
 
   final def rpop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("RPOP", key).as[OrNullBulk[Bulk], Option[A]]
   final def rpop[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Option[Seq[A]]] =
-    Protocol("RPOP", key *: count *: EmptyTuple).as[OneOf[NilArr *: NullBulk *: Arr.Of[Bulk] *: EmptyTuple], Option[Seq[A]]]
+    Protocol("RPOP", key *: count *: EmptyTuple).using(popped[A])
 
   final def rpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Single.Aux[Option[A]] =
     Protocol("RPOPLPUSH", source :: destination :: Nil).as[OrNullBulk[Bulk], Option[A]]
@@ -218,4 +222,9 @@ trait ListMoveManyP extends Features {
       .as[OrNilArr[Arr.Of[Bulk]], Option[Seq[A]]]
 }
 
-trait ListP extends ListBaseP with ListExtP with ListMPopP with ListMoveManyP
+/** LPOP and RPOP with a count, with only the null array: Redis 7.0 */
+trait ListPopNilArrP extends ListBaseP {
+  override protected def popped[A: Read[Bulk, _]]: RESPRead[Option[Seq[A]]] = RESPRead[OrNilArr[Arr.Of[Bulk]], Option[Seq[A]]]
+}
+
+trait ListP extends ListBaseP with ListExtP with ListPopNilArrP with ListMPopP with ListMoveManyP

@@ -41,7 +41,9 @@ final class AclPSpec extends BaseSpec with ServerP {
     assertEquals(acl.setuser(Key("u"), withSelectors).encode, bulks("ACL", "SETUSER", "u", "on", "%R~r:*", "(~b:* +set)"))
   }
 
-  test("The ACL protocol using getuser reads Redis 6.2's patterns as rules, and Redis 7.0's and Valkey's selectors and databases") {
+  test(
+    "The ACL protocol using getuser reads patterns as rules on Redis 6.2's import only, and Redis 7.0's and Valkey's selectors and databases"
+  ) {
     val redis62 = Arr(
       Bulk("flags"),
       bulks("on", "allchannels"),
@@ -54,9 +56,10 @@ final class AclPSpec extends BaseSpec with ServerP {
       Bulk("channels"),
       bulks("*")
     )
-    acl.getuser(Key("u")).decode(redis62).onRight {
+    redis_6_2.acl.getuser(Key("u")).decode(redis62).onRight {
       _ == Some(AclUser(Seq("on", "allchannels"), Seq(hash), "-@all +get +set", "~app:* ~other:*", "&*", Nil, None))
     }
+    assert(acl.getuser(Key("u")).decode(redis62).isLeft)
     val valkey = Arr(
       Bulk("flags"),
       bulks("on"),
@@ -76,7 +79,11 @@ final class AclPSpec extends BaseSpec with ServerP {
     acl.getuser(Key("u")).decode(valkey).onRight {
       _ == Some(AclUser(Seq("on"), Seq(hash), "-@all +get", "~a:*", "&c:*", Seq(AclSelector("-@all +set", "~b:*", "")), Some("alldbs")))
     }
+    redis_6_2.acl.getuser(Key("u")).decode(valkey).onRight {
+      _ == Some(AclUser(Seq("on"), Seq(hash), "-@all +get", "~a:*", "&c:*", Seq(AclSelector("-@all +set", "~b:*", "")), Some("alldbs")))
+    }
     assertEquals(acl.getuser(Key("nosuch")).decode(NullBulk), None)
+    assert(acl.getuser(Key("nosuch")).decode(NilArr).isLeft)
   }
 
   test("The ACL protocol using log reads Redis 6.2's entries and Redis 7.2's, which have an id and timestamps") {

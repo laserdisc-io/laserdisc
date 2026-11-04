@@ -39,7 +39,7 @@ trait BStreamBaseP extends Features {
   private final def streamsParams[K](streams: OneOrMore[(Key, K)])(param: K => String): List[String] =
     "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(s => param(s._2))
 
-  private final def entries[A: Read[Bulk, _]] = RESPRead.orNilArrOrNullBulk(StreamP.streams[A])
+  private final def entries[A: Read[Bulk, _]] = StreamP.maybeStreams[A]
 
   /** The streams' entries after the given ids, by stream, or `None` when none came within the wait */
   final def xread[A: Read[Bulk, _]](

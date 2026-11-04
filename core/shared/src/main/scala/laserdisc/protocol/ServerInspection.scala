@@ -140,10 +140,12 @@ object ServerInspection {
 
   /** A key of COMMAND GETKEYSANDFLAGS, with what the command does to it */
   final case class KeyAndFlags(key: Key, flags: Seq[String])
-  private implicit final val keyAndFlags: Read[Arr.Tuple[Bulk *: Texts *: EmptyTuple], KeyAndFlags] =
-    Read[Arr.Tuple[Bulk *: Texts *: EmptyTuple], Key *: Seq[String] *: EmptyTuple].map { case key *: flags *: _ => KeyAndFlags(key, flags) }
-  private[protocol] final val keysAndFlags: Read[Arr.Of[Arr.Tuple[Bulk *: Texts *: EmptyTuple]], Seq[KeyAndFlags]] =
-    Read[Arr.Of[Arr.Tuple[Bulk *: Texts *: EmptyTuple]], Seq[KeyAndFlags]]
+  private implicit final val keyAndFlags: Read[Arr.Tuple[Bulk *: Arr.Of[Str] *: EmptyTuple], KeyAndFlags] =
+    Read[Arr.Tuple[Bulk *: Arr.Of[Str] *: EmptyTuple], Key *: Seq[String] *: EmptyTuple].map { case key *: flags *: _ =>
+      KeyAndFlags(key, flags)
+    }
+  private[protocol] final val keysAndFlags: Read[Arr.Of[Arr.Tuple[Bulk *: Arr.Of[Str] *: EmptyTuple]], Seq[KeyAndFlags]] =
+    Read[Arr.Of[Arr.Tuple[Bulk *: Arr.Of[Str] *: EmptyTuple]], Seq[KeyAndFlags]]
 
   /** FILTERBY, for COMMAND LIST: the commands of a module, of an ACL category, or whose names match a pattern */
   sealed trait CommandFilter { def params: List[String] }
@@ -229,7 +231,7 @@ object ServerInspection {
       }
     } yield HotKeys(values, cpu.getOrElse(Nil), net.getOrElse(Nil))
   }
-  private[protocol] final val hotKeys: Read[Records, Seq[HotKeys]] = Read[Records, Seq[HotKeys]]
+  private[protocol] final val maybeHotKeys: RESPRead[Option[Seq[HotKeys]]] = RESPRead[OrNullBulk[Records], Option[Seq[HotKeys]]]
 
   private[protocol] final def argumentsOf(protocol: Single): List[String] =
     protocol.command :: protocol.parameters.toList.collect { case Bulk(s) => s }
@@ -370,7 +372,7 @@ trait HotKeysCommands extends Features {
   val stop: Single.Aux[OK] = Protocol("HOTKEYS", "STOP").as[Str, OK]
 
   /** The reports of the tracking, or `None` when there's none to report */
-  val get: Single.Aux[Option[Seq[HotKeys]]] = Protocol("HOTKEYS", "GET").using(RESPRead.orNilArrOrNullBulk(ServerInspection.hotKeys))
+  val get: Single.Aux[Option[Seq[HotKeys]]] = Protocol("HOTKEYS", "GET").using(ServerInspection.maybeHotKeys)
 
   /** Frees what the tracking used */
   val reset: Single.Aux[OK] = Protocol("HOTKEYS", "RESET").as[Str, OK]

@@ -84,11 +84,13 @@ trait Redis7_0
     with KeyExpireConditionP
     with KeySortReadOnlyP
     with ListMPopP
+    with ListPopNilArrP
     with SetInterCardP
     with SortedSetInterCardP
     with SortedSetMPopP
     with ServerShutdownAndInfoP
     with ClusterShardsP
+    with StreamClaimDeletedP
     with StreamGroupEntriesReadP
     with StreamSetIdEntriesP
     with ScriptingFunctionsP {

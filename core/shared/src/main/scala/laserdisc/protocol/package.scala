@@ -26,7 +26,7 @@ package object protocol {
   private[protocol] final type Record  = Arr.Pairs[Bulk, RESP]
   private[protocol] final type Records = Arr.Of[Record]
 
-  // text that some versions send as a Bulk and others as a Str, like FUNCTION LIST's flags
+  // text that may come as a Bulk or as a Str
   private[protocol] final type Texts = Arr.Of[OneOf[Bulk *: Str *: EmptyTuple]]
 
   // a SCAN reply: the cursor, then the values, if any, as `E`

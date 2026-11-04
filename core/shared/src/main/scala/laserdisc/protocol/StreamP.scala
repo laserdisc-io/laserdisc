@@ -281,7 +281,7 @@ object StreamP {
       case Some(one(Right(e)))            => Some(Some(e))
       case _                              => None
     }
-    Read.record("stream info") { m =>
+    Read.untypedRecord("stream info") { m =>
       for {
         length <- number(m.get("length"))
         keys   <- number(m.get("radix-tree-keys"))
@@ -300,24 +300,27 @@ object StreamP {
     }
   }
 
-  private final val groupInfo: Read[Arr, GroupInfo] = Read.record("group info") { m =>
+  private implicit final val groupInfo: Read[Record, GroupInfo] = Read.record("group info") { f =>
     for {
-      name      <- m.get("name").collect { case Bulk(Key(k)) => k }
-      consumers <- number(m.get("consumers"))
-      pending   <- number(m.get("pending"))
-      last      <- m.get("last-delivered-id").collect { case Id.bulk2IdRead(Right(id)) => id }
-    } yield GroupInfo(name, consumers, pending, last, number(m.get("entries-read")), number(m.get("lag")))
+      name        <- f.bulk[Key]("name")
+      consumers   <- f.num[NonNegLong]("consumers")
+      pending     <- f.num[NonNegLong]("pending")
+      last        <- f.bulk[Id]("last-delivered-id")
+      entriesRead <- f.optional[OrNullBulk[Num], Option[NonNegLong]]("entries-read") // from Redis 7.0, and nil when unknown
+      lag         <- f.optional[OrNullBulk[Num], Option[NonNegLong]]("lag")
+    } yield GroupInfo(name, consumers, pending, last, entriesRead.flatten, lag.flatten)
   }
-  private[protocol] final val groupInfos: Read[Arr, Seq[GroupInfo]] = Read.arrOf(groupInfo)
+  private[protocol] final val groupInfos: Read[Records, Seq[GroupInfo]] = Read[Records, Seq[GroupInfo]]
 
-  private final val consumerInfo: Read[Arr, ConsumerInfo] = Read.record("consumer info") { m =>
+  private implicit final val consumerInfo: Read[Record, ConsumerInfo] = Read.record("consumer info") { f =>
     for {
-      name    <- m.get("name").collect { case Bulk(Key(k)) => k }
-      pending <- number(m.get("pending"))
-      idle    <- number(m.get("idle"))
-    } yield ConsumerInfo(name, pending, idle, m.get("inactive").collect { case Num(n) => n })
+      name     <- f.bulk[Key]("name")
+      pending  <- f.num[NonNegLong]("pending")
+      idle     <- f.num[NonNegLong]("idle")
+      inactive <- f.optionalNum[Long]("inactive")
+    } yield ConsumerInfo(name, pending, idle, inactive)
   }
-  private[protocol] final val consumerInfos: Read[Arr, Seq[ConsumerInfo]] = Read.arrOf(consumerInfo)
+  private[protocol] final val consumerInfos: Read[Records, Seq[ConsumerInfo]] = Read[Records, Seq[ConsumerInfo]]
 
   private[protocol] final def fieldsParams[A: Show](fields: OneOrMore[(Key, A)]): List[String] =
     fields.value.flatMap { case (k, v) => List(k.value, Show[A].show(v)) }

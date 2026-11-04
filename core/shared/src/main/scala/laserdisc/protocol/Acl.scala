@@ -115,17 +115,16 @@ object Acl {
     case _        => None
   }
 
-  private final val selector: Read[Arr, AclSelector] = Read.record("ACL selector") { m =>
-    def text(k: String) = m.get(k).collect { case Bulk(s) => s }
+  private final val selector: Read[Record, AclSelector] = Read.record("ACL selector") { f =>
     for {
-      c  <- text("commands")
-      k  <- text("keys")
-      ch <- text("channels")
-    } yield AclSelector(c, k, ch)
+      commands <- f.bulk[String]("commands")
+      keys     <- f.bulk[String]("keys")
+      channels <- f.bulk[String]("channels")
+    } yield AclSelector(commands, keys, channels)
   }
   private final val selectors: Read[Arr, Seq[AclSelector]] = Read.arrOf(selector)
 
-  private[protocol] final val user: Read[Arr, AclUser] = Read.record("ACL user") { m =>
+  private[protocol] final val user: Read[Arr, AclUser] = Read.untypedRecord("ACL user") { m =>
     for {
       flags     <- m.get("flags").flatMap(texts)
       passwords <- m.get("passwords").flatMap(texts)
@@ -152,31 +151,21 @@ object Acl {
       updatedAt: Option[Long]
   )
 
-  private final val logEntry: Read[Arr, AclLogEntry] = Read.record("ACL log entry") { m =>
-    def text(k: String)   = m.get(k).collect { case Bulk(s) => s }
-    def number(k: String) = m.get(k).collect { case Num(n) => n }
+  private implicit final val logEntry: Read[Record, AclLogEntry] = Read.record("ACL log entry") { f =>
     for {
-      count    <- number("count")
-      reason   <- text("reason")
-      context  <- text("context")
-      denied   <- text("object")
-      username <- text("username")
-      age      <- text("age-seconds").collect { case ToDouble(d) => d }
-      info     <- text("client-info")
-    } yield AclLogEntry(
-      count,
-      reason,
-      context,
-      denied,
-      username,
-      age,
-      info,
-      number("entry-id"),
-      number("timestamp-created"),
-      number("timestamp-last-updated")
-    )
+      count     <- f.num[Long]("count")
+      reason    <- f.bulk[String]("reason")
+      context   <- f.bulk[String]("context")
+      denied    <- f.bulk[String]("object")
+      username  <- f.bulk[String]("username")
+      age       <- f.bulk[Double]("age-seconds")
+      info      <- f.bulk[String]("client-info")
+      entryId   <- f.optionalNum[Long]("entry-id")
+      createdAt <- f.optionalNum[Long]("timestamp-created")
+      updatedAt <- f.optionalNum[Long]("timestamp-last-updated")
+    } yield AclLogEntry(count, reason, context, denied, username, age, info, entryId, createdAt, updatedAt)
   }
-  private[protocol] final val logEntries: Read[Arr, Seq[AclLogEntry]] = Read.arrOf(logEntry)
+  private[protocol] final val logEntries: Read[Records, Seq[AclLogEntry]] = Read[Records, Seq[AclLogEntry]]
 }
 
 /** ACL: Redis 6.2 */

@@ -76,7 +76,7 @@ object ClusterManagement {
     }
     val nodes = Read.arrOf(node)
     val slots = Read.pairs(Read.num2SlotRead, Read.num2SlotRead)
-    val shard = Read.record("shard") { m =>
+    val shard = Read.untypedRecord("shard") { m =>
       for {
         ranges <- m.get("slots").collect { case slots(Right(rs)) => rs }
         ns     <- m.get("nodes").collect { case nodes(Right(ns)) => ns }
@@ -94,18 +94,17 @@ object ClusterManagement {
       sendBufferAllocated: Long,
       sendBufferUsed: Long
   )
-  private[protocol] final val links: Read[Arr, Seq[ClusterLink]] = Read.arrOf(
-    textRecord("cluster link") { m =>
-      for {
-        direction <- m.get("direction")
-        node      <- m.get("node")
-        created   <- m.get("create-time").flatMap(long)
-        events    <- m.get("events")
-        allocated <- m.get("send-buffer-allocated").flatMap(long)
-        used      <- m.get("send-buffer-used").flatMap(long)
-      } yield ClusterLink(direction, node, created, events, allocated, used)
-    }
-  )
+  private implicit final val link: Read[Record, ClusterLink] = Read.record("cluster link") { f =>
+    for {
+      direction <- f.bulk[String]("direction")
+      node      <- f.bulk[String]("node")
+      created   <- f.num[Long]("create-time")
+      events    <- f.bulk[String]("events")
+      allocated <- f.num[Long]("send-buffer-allocated")
+      used      <- f.num[Long]("send-buffer-used")
+    } yield ClusterLink(direction, node, created, events, allocated, used)
+  }
+  private[protocol] final val links: Read[Records, Seq[ClusterLink]] = Read[Records, Seq[ClusterLink]]
 
   /** The figures of a slot of CLUSTER SLOT-STATS, by metric name, like `key-count` */
   final case class SlotStats(slot: Slot, metrics: Map[String, Long])
@@ -154,12 +153,12 @@ object ClusterManagement {
 
   /** BACKUP STATUS: the state (like `idle` or `snapshotting`), the last error, and when the backup started and ended */
   final case class BackupStatus(state: String, error: String, startTime: Long, endTime: Long)
-  private[protocol] final val backupStatus: Read[Arr, BackupStatus] = textRecord("backup status") { m =>
+  private[protocol] final val backupStatus: Read[Record, BackupStatus] = Read.record("backup status") { f =>
     for {
-      state <- m.get("state")
-      error <- m.get("error")
-      start <- m.get("start_time").flatMap(long)
-      end   <- m.get("end_time").flatMap(long)
+      state <- f.bulk[String]("state")
+      error <- f.bulk[String]("error")
+      start <- f.num[Long]("start_time")
+      end   <- f.num[Long]("end_time")
     } yield BackupStatus(state, error, start, end)
   }
 

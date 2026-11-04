@@ -167,8 +167,13 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   private[protocol] final lazy val fields: Read[Arr, Map[String, RESP]] =
     pairs(bulk2StringRead, infallible[RESP, RESP](r => r)).map(_.toMap)
 
-  // a reply made of fields read as one value, or failing with the reply when a field is missing or isn't what's expected
-  private[protocol] final def record[A](name: String)(f: Map[String, RESP] => Option[A]): Read[Arr, A] = instance { arr =>
+  // a reply made of names and values read field by field: a failure says which record, and which field
+  private[protocol] final def record[A](name: String)(read: Fields => Either[RESPDecErr, A]): Read[Record, A] = instance { pairs =>
+    fields.read(Arr(pairs.elements)).flatMap(m => read(new Fields(m))).left.map(e => RESPDecErr(s"$name: ${e.message}"))
+  }
+
+  // as above, for the records with computed fields, which take the fields as they are
+  private[protocol] final def untypedRecord[A](name: String)(f: Map[String, RESP] => Option[A]): Read[Arr, A] = instance { arr =>
     fields.read(arr).flatMap(f(_).toRight(RESPDecErr(s"Unexpected $name. Was $arr")))
   }
 

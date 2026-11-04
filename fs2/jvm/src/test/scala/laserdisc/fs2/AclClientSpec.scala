@@ -70,7 +70,11 @@ abstract class AclClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
     assert(send(acl.cat).contains("string"))
     assert(send(acl.cat("string")).contains("get"))
     assertEquals(send(acl.genpass(32)).length, 8)
-    assert(send(acl.log(5)).size <= 5)
+    // a failed AUTH is what writes an entry to the log
+    assert(this.client.send(Protocol("AUTH", "ld-acl-none" *: "wrong" *: EmptyTuple).as[Str, OK]).unsafeRunSync()(using runtime).isLeft)
+    val entries = send(acl.log(5))
+    assert(entries.size <= 5)
+    assert(entries.exists(e => e.reason == "auth" && e.denied == "AUTH" && e.username == "ld-acl-none"), entries.toString)
     assertEquals(send(acl.getuser("ld-acl-none")), None)
     assertEquals(send(acl.deluser(OneOrMoreKeys.unsafeFrom(List(Key("ld-acl"), Key("ld-acl-none"))))).value, 1L)
   }

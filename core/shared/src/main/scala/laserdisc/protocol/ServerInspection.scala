@@ -163,14 +163,15 @@ object ServerInspection {
 
   /** A module of MODULE LIST. Redis 7.0 also replies with its path and arguments */
   final case class ModuleInfo(name: String, version: Long, path: Option[String], arguments: Seq[String])
-  private[protocol] final val moduleInfos: Read[Arr, Seq[ModuleInfo]] = Read.arrOf(
-    Read.record("module") { m =>
-      for {
-        name    <- m.get("name").collect { case Bulk(n) => n }
-        version <- m.get("ver").collect { case Num(v) => v }
-      } yield ModuleInfo(name, version, m.get("path").collect { case Bulk(p) => p }, m.get("args").flatMap(texts).getOrElse(Nil))
-    }
-  )
+  private implicit final val moduleInfo: Read[Record, ModuleInfo] = Read.record("module") { f =>
+    for {
+      name      <- f.bulk[String]("name")
+      version   <- f.num[Long]("ver")
+      path      <- f.optionalBulk[String]("path")
+      arguments <- f.optional[Texts, Seq[String]]("args")
+    } yield ModuleInfo(name, version, path, arguments.getOrElse(Nil))
+  }
+  private[protocol] final val moduleInfos: Read[Records, Seq[ModuleInfo]] = Read[Records, Seq[ModuleInfo]]
 
   /** SLOW, LARGE-REQUEST and LARGE-REPLY, for COMMANDLOG: Valkey 8.1 */
   sealed trait CommandLogType

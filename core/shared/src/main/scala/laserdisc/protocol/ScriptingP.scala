@@ -64,25 +64,25 @@ object ScriptingP {
 
   private final def number(resp: Option[RESP]): Option[NonNegLong] = resp.collect { case Num(NonNegLong(n)) => n }
 
-  private final val function: Read[Arr, Function] = Read.record("function") { m =>
+  private implicit final val function: Read[Record, Function] = Read.record("function") { f =>
     for {
-      name        <- m.get("name").collect { case Bulk(Key(k)) => k }
-      description <- m.get("description").collect { case Bulk(d) => Some(d); case NullBulk => None }
-      flags       <- m.get("flags").flatMap(texts)
-    } yield Function(name, description, flags)
+      name        <- f.bulk[Key]("name")
+      description <- f[OrNullBulk[Bulk], Option[String]]("description")
+      flags       <- f[OrNilArr[Texts], Option[Seq[String]]]("flags")
+    } yield Function(name, description, flags.getOrElse(Nil))
   }
-  private final val functions: Read[Arr, Seq[Function]] = Read.arrOf(function)
 
-  private final val library: Read[Arr, Library] = Read.record("function library") { m =>
+  private implicit final val library: Read[Record, Library] = Read.record("function library") { f =>
     for {
-      name   <- m.get("library_name").collect { case Bulk(Key(k)) => k }
-      engine <- m.get("engine").collect { case Bulk(e) => e }
-      fs     <- m.get("functions").collect { case functions(Right(fs)) => fs }
-    } yield Library(name, engine, fs, m.get("library_code").collect { case Bulk(code) => code })
+      name      <- f.bulk[Key]("library_name")
+      engine    <- f.bulk[String]("engine")
+      functions <- f[Records, Seq[Function]]("functions")
+      code      <- f.optionalBulk[String]("library_code")
+    } yield Library(name, engine, functions, code)
   }
-  private[protocol] final val libraries: Read[Arr, Seq[Library]] = Read.arrOf(library)
+  private[protocol] final val libraries: Read[Records, Seq[Library]] = Read[Records, Seq[Library]]
 
-  private final val running: Read[Arr, Running] = Read.record("running function") { m =>
+  private final val running: Read[Arr, Running] = Read.untypedRecord("running function") { m =>
     for {
       name     <- m.get("name").collect { case Bulk(Key(k)) => k }
       command  <- m.get("command").flatMap(texts)
@@ -90,7 +90,7 @@ object ScriptingP {
     } yield Running(name, command, duration)
   }
 
-  private final val counts: Read[Arr, (NonNegLong, NonNegLong)] = Read.record("engine") { m =>
+  private final val counts: Read[Arr, (NonNegLong, NonNegLong)] = Read.untypedRecord("engine") { m =>
     for {
       libraries <- number(m.get("libraries_count"))
       functions <- number(m.get("functions_count"))
@@ -99,7 +99,7 @@ object ScriptingP {
   private final val engines: Read[Arr, Seq[Engine]] =
     Read.pairs(Read.bulk2StringRead, counts).map(_.map { case (name, (ls, fs)) => Engine(name, ls, fs) })
 
-  private[protocol] final val stats: Read[Arr, Stats] = Read.record("function stats") { m =>
+  private[protocol] final val stats: Read[Arr, Stats] = Read.untypedRecord("function stats") { m =>
     for {
       r  <- m.get("running_script").collect { case NullBulk | NilArr => None; case running(Right(r)) => Some(r) }
       es <- m.get("engines").collect { case engines(Right(es)) => es }

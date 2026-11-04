@@ -84,8 +84,8 @@ object ListP {
 
   private[protocol] final def keyedSeq[
       A: Read[Bulk, _]
-  ]: RESPRead.Aux[OrNilArr[Arr.Tuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]], Option[KV[Seq[A]]]] =
-    RESPRead[OrNilArr[Arr.Tuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]], Option[KV[Seq[A]]]]
+  ]: RESPRead.Aux[OrNilArr[Arr.AsTuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]], Option[KV[Seq[A]]]] =
+    RESPRead[OrNilArr[Arr.AsTuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]], Option[KV[Seq[A]]]]
 }
 
 trait ListBaseP extends Features {

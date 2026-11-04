@@ -122,8 +122,8 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
       elements: List[RESP]
   ): Either[RESPDecErr, Seq[(C, D)]] = {
     def element[X, Y](resp: RESP, i: Int, which: String)(S: RESPSub[X], R: Read[X, Y]): Either[RESPDecErr, Y] = S.unapply(resp) match {
-      case Some(x) => R.read(x).left.map(e => RESPDecErr(s"Read[Arr.Pairs, Seq] error in the $which element of pair $i: ${e.message}"))
-      case None    => Left(RESPDecErr(s"Read[Arr.Pairs, Seq] error in the $which element of pair $i: Unexpected element. Was $resp"))
+      case Some(x) => R.read(x).left.map(e => RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: ${e.message}"))
+      case None    => Left(RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: Unexpected element. Was $resp"))
     }
     @scala.annotation.tailrec
     def go(rest: List[RESP], i: Int, acc: List[(C, D)]): Either[RESPDecErr, Seq[(C, D)]] = rest match {
@@ -133,26 +133,26 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
           case Right(cd) => go(tail, i + 1, cd :: acc)
           case Left(e)   => Left(e)
         }
-      case last :: Nil => Left(RESPDecErr(s"Read[Arr.Pairs, Seq] error: odd number of elements, the last being $last"))
+      case last :: Nil => Left(RESPDecErr(s"Read[Arr.OfPairs, Seq] error: odd number of elements, the last being $last"))
     }
     go(elements, 1, Nil)
   }
 
-  implicit final def arrPairs2Seq[A, B, C, D](
+  implicit final def arrOfPairs2Seq[A, B, C, D](
       implicit SA: RESPSub[A],
       RA: Read[A, C],
       SB: RESPSub[B],
       RB: Read[B, D]
-  ): Read[Arr.Pairs[A, B], Seq[(C, D)]] = instance(arr => pairsOf(SA, RA, SB, RB)(arr.elements))
+  ): Read[Arr.OfPairs[A, B], Seq[(C, D)]] = instance(arr => pairsOf(SA, RA, SB, RB)(arr.elements))
 
-  implicit final def arrPairs2Map[A, B, C, D](
+  implicit final def arrOfPairs2Map[A, B, C, D](
       implicit SA: RESPSub[A],
       RA: Read[A, C],
       SB: RESPSub[B],
       RB: Read[B, D]
-  ): Read[Arr.Pairs[A, B], Map[C, D]] = instance(arr => pairsOf(SA, RA, SB, RB)(arr.elements).map(_.toMap))
+  ): Read[Arr.OfPairs[A, B], Map[C, D]] = instance(arr => pairsOf(SA, RA, SB, RB)(arr.elements).map(_.toMap))
 
-  // a plain Arr read as an Arr.Pairs[A, B], for readers within others
+  // a plain Arr read as an Arr.OfPairs[A, B], for readers within others
   private[protocol] final def pairs[A, B, C, D](RA: Read[A, C], RB: Read[B, D])(
       implicit SA: RESPSub[A],
       SB: RESPSub[B]
@@ -216,28 +216,28 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
     }
   }
 
-  implicit final def arrTuple2Tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr.Tuple[T], L] =
-    instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements))
+  implicit final def arrAsTuple2Tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr.AsTuple[T], L] =
+    instance(arr => TupleRead.read(R, "Arr.AsTuple")(arr.elements))
 
   private final def restPositions[T, L](R: TupleRead[T, L])(elements: List[RESP]): Either[RESPDecErr, L] =
-    if (elements.size < R.size) Left(RESPDecErr(s"Read[Arr.Rest] error: expected at least ${R.size} elements, got ${elements.size}"))
-    else R.read(elements, 1).left.map(e => RESPDecErr(s"Read[Arr.Rest] ${e.message}"))
+    if (elements.size < R.size) Left(RESPDecErr(s"Read[Arr.AsTupleThen] error: expected at least ${R.size} elements, got ${elements.size}"))
+    else R.read(elements, 1).left.map(e => RESPDecErr(s"Read[Arr.AsTupleThen] ${e.message}"))
 
-  implicit final def arrRest2Tuple[T, E, L, B](
+  implicit final def arrAsTupleThen2Tuple[T, E, L, B](
       implicit R: TupleRead[T, L],
       S: RESPSub[E],
       RE: Read[E, B]
-  ): Read[Arr.Rest[T, E], (L, Seq[B])] = instance { arr =>
+  ): Read[Arr.AsTupleThen[T, E], (L, Seq[B])] = instance { arr =>
     restPositions(R)(arr.elements).flatMap { l =>
       elements(new Arr.Of[E](arr.elements.drop(R.size)))(resp => S.unapply(resp).map(RE.read)) match {
         case Right(bs) => Right(l -> bs)
-        case Left(e)   => Left(RESPDecErr(s"Read[Arr.Rest] after the first ${R.size} elements: ${e.message}"))
+        case Left(e)   => Left(RESPDecErr(s"Read[Arr.AsTupleThen] after the first ${R.size} elements: ${e.message}"))
       }
     }
   }
 
   // what's at the positions alone, leaving out what follows
-  implicit final def arrRest2Positions[T, L](implicit R: TupleRead[T, L]): Read[Arr.Rest[T, RESP], L] =
+  implicit final def arrAsTupleThen2Positions[T, L](implicit R: TupleRead[T, L]): Read[Arr.AsTupleThen[T, RESP], L] =
     instance(arr => restPositions(R)(arr.elements))
 
   // an array of values of one type, like HMGET's that may be missing, read position by position
@@ -247,22 +247,22 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   }
 
   // a cursor, then the values, if any
-  implicit final def arrTuple2Scan[E, A](
+  implicit final def arrAsTuple2Scan[E, A](
       implicit R: TupleRead[Bulk *: OrNilArr[E] *: EmptyTuple, NonNegLong *: Option[Seq[A]] *: EmptyTuple]
-  ): Read[Arr.Tuple[Bulk *: OrNilArr[E] *: EmptyTuple], Scan[A]] = instance { arr =>
-    TupleRead.read(R, "Arr.Tuple")(arr.elements).map { case cursor *: values *: _ => Scan(cursor, values) }
+  ): Read[Arr.AsTuple[Bulk *: OrNilArr[E] *: EmptyTuple], Scan[A]] = instance { arr =>
+    TupleRead.read(R, "Arr.AsTuple")(arr.elements).map { case cursor *: values *: _ => Scan(cursor, values) }
   }
-  implicit final val arrTuple2ScanKV: Read[Arr.Tuple[Bulk *: OrNilArr[Arr.Pairs[Bulk, Bulk]] *: EmptyTuple], ScanKV] =
-    Read[Arr.Tuple[Bulk *: OrNilArr[Arr.Pairs[Bulk, Bulk]] *: EmptyTuple], Scan[(Key, String)]].map { scan =>
+  implicit final val arrAsTuple2ScanKV: Read[Arr.AsTuple[Bulk *: OrNilArr[Arr.OfPairs[Bulk, Bulk]] *: EmptyTuple], ScanKV] =
+    Read[Arr.AsTuple[Bulk *: OrNilArr[Arr.OfPairs[Bulk, Bulk]] *: EmptyTuple], Scan[(Key, String)]].map { scan =>
       ScanKV(scan.cursor, scan.values.map(_.map { case (k, v) => KV(k, v) }))
     }
 
   // a key, and what's under it
-  implicit final def arrTuple2KV[E, A](
+  implicit final def arrAsTuple2KV[E, A](
       implicit R: TupleRead[Bulk *: E *: EmptyTuple, Key *: A *: EmptyTuple]
-  ): Read[Arr.Tuple[Bulk *: E *: EmptyTuple], KV[A]] =
-    instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements).map { case k *: a *: _ => KV(k, a) })
+  ): Read[Arr.AsTuple[Bulk *: E *: EmptyTuple], KV[A]] =
+    instance(arr => TupleRead.read(R, "Arr.AsTuple")(arr.elements).map { case k *: a *: _ => KV(k, a) })
 
-  implicit final val arrTuple2Time: Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Time] =
-    Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], NonNegLong *: NonNegLong *: EmptyTuple].map { case ts *: em *: _ => Time(ts, em) }
+  implicit final val arrAsTuple2Time: Read[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], Time] =
+    Read[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], NonNegLong *: NonNegLong *: EmptyTuple].map { case ts *: em *: _ => Time(ts, em) }
 }

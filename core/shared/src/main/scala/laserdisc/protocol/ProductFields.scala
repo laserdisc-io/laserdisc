@@ -67,8 +67,8 @@ sealed trait FieldWriteLowPriority {
 
 /** Reads a reply made of fields as a case class, by the names of its fields, whatever order they come in; other fields are left out */
 private[protocol] object ProductRead {
-  private final val fields = Read[Arr.Pairs[Bulk, Bulk], Map[String, Bulk]]
+  private final val fields = Read[Arr.OfPairs[Bulk, Bulk], Map[String, Bulk]]
 
-  final def apply[P](read: Map[String, Bulk] => Either[RESPDecErr, P]): Read[Arr.Pairs[Bulk, Bulk], P] =
+  final def apply[P](read: Map[String, Bulk] => Either[RESPDecErr, P]): Read[Arr.OfPairs[Bulk, Bulk], P] =
     Read.instance(pairs => fields.read(pairs).flatMap(read))
 }

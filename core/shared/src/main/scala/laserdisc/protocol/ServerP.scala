@@ -136,10 +136,10 @@ object ServerP {
     ) extends Role
     final case class Sentinel(masterNames: Seq[Key]) extends Role
 
-    private type ClientReply   = Arr.Tuple[Bulk *: Bulk *: Bulk *: EmptyTuple]
-    private type MasterReply   = Arr.Tuple[Bulk *: Num *: Arr.Of[ClientReply] *: EmptyTuple]
-    private type SlaveReply    = Arr.Tuple[Bulk *: Bulk *: Num *: Bulk *: Num *: EmptyTuple]
-    private type SentinelReply = Arr.Tuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]
+    private type ClientReply   = Arr.AsTuple[Bulk *: Bulk *: Bulk *: EmptyTuple]
+    private type MasterReply   = Arr.AsTuple[Bulk *: Num *: Arr.Of[ClientReply] *: EmptyTuple]
+    private type SlaveReply    = Arr.AsTuple[Bulk *: Bulk *: Num *: Bulk *: Num *: EmptyTuple]
+    private type SentinelReply = Arr.AsTuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]
 
     private implicit final val hostRead: Read[Bulk, Host]                = Read.instancePF("Bulk(Host)") { case Bulk(Host(h)) => h }
     private implicit final val bulkPortRead: Read[Bulk, Port]            = Read.instancePF("Bulk(Port)") { case Bulk(ToInt(Port(p))) => p }
@@ -202,8 +202,8 @@ object ServerP {
 
   final case class Configuration(parameters: Parameters)
   object Configuration {
-    implicit val configRead: Read[Arr.Pairs[Bulk, Bulk], Configuration] =
-      Read[Arr.Pairs[Bulk, Bulk], Map[String, String]].map(kvs => Configuration(new Parameters(kvs)))
+    implicit val configRead: Read[Arr.OfPairs[Bulk, Bulk], Configuration] =
+      Read[Arr.OfPairs[Bulk, Bulk], Map[String, String]].map(kvs => Configuration(new Parameters(kvs)))
   }
 
   final case class Info(sections: Map[InfoSectionKey, Parameters])
@@ -436,7 +436,7 @@ trait ConfigCommands extends Features {
     super.supported ++ List("CONFIG GET", "CONFIG RESETSTAT", "CONFIG REWRITE", "CONFIG SET")
 
   def get(parameter: GlobPattern): Single.Aux[Configuration] =
-    Protocol("CONFIG", "GET" :: parameter.value :: Nil).as[Arr.Pairs[Bulk, Bulk], Configuration]
+    Protocol("CONFIG", "GET" :: parameter.value :: Nil).as[Arr.OfPairs[Bulk, Bulk], Configuration]
 
   val resetstat: Single.Aux[OK] = Protocol("CONFIG", "RESETSTAT").as[Str, OK]
 
@@ -450,7 +450,7 @@ trait ConfigManyCommands extends Features {
   import ServerP.Configuration
 
   def get(parameters: OneOrMore[GlobPattern]): Single.Aux[Configuration] =
-    Protocol("CONFIG", "GET" :: parameters.value.map(_.value)).as[Arr.Pairs[Bulk, Bulk], Configuration]
+    Protocol("CONFIG", "GET" :: parameters.value.map(_.value)).as[Arr.OfPairs[Bulk, Bulk], Configuration]
 
   /** Sets every parameter, or none of them if one can't be set */
   def set[A: Show](parameters: OneOrMore[(Key, A)]): Single.Aux[OK] =
@@ -564,7 +564,7 @@ trait ServerBaseP extends ServerInspectionBaseP {
 
   final val slaveofnoone: Single.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
-  final val time: Single.Aux[Time] = Protocol("TIME", EmptyTuple).as[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Time]
+  final val time: Single.Aux[Time] = Protocol("TIME", EmptyTuple).as[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], Time]
 }
 
 /** SHUTDOWN with NOW, FORCE and ABORT, and INFO with several sections: Redis 7.0 */

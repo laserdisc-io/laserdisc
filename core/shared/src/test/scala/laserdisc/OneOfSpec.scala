@@ -71,7 +71,7 @@ final class OneOfSpec extends BaseSpec {
   test("as the elements of an array, and as a position of a tuple") {
     def elements = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[Int]]]
     def scan     = Protocol("CUSTOM", _: String *: EmptyTuple)
-      .as[Arr.Tuple[Bulk *: OrNilArr[Arr.Of[Bulk]] *: EmptyTuple], NonNegLong *: Option[Seq[String]] *: EmptyTuple]
+      .as[Arr.AsTuple[Bulk *: OrNilArr[Arr.Of[Bulk]] *: EmptyTuple], NonNegLong *: Option[Seq[String]] *: EmptyTuple]
 
     assertEquals(elements(request).decode(Arr(Bulk("1"), NullBulk, Bulk("3"))), Seq(Some(1), None, Some(3)))
     assertEquals(scan(request).decode(Arr(Bulk("7"), Arr(Bulk("a")))), NonNegLong(7L) *: Option(Seq("a")) *: EmptyTuple)
@@ -79,20 +79,20 @@ final class OneOfSpec extends BaseSpec {
   }
 
   test("alternatives of the same RESP type are told apart by what they hold: the first that matches and reads wins") {
-    implicit val master: Read[Arr.Tuple[Bulk *: Num *: EmptyTuple], OneOfSpecRole] = Read.instance { arr =>
-      Read[Arr.Tuple[Bulk *: Num *: EmptyTuple], String *: Long *: EmptyTuple].read(arr).flatMap {
+    implicit val master: Read[Arr.AsTuple[Bulk *: Num *: EmptyTuple], OneOfSpecRole] = Read.instance { arr =>
+      Read[Arr.AsTuple[Bulk *: Num *: EmptyTuple], String *: Long *: EmptyTuple].read(arr).flatMap {
         case "master" *: offset *: _ => Right(OneOfSpecMaster(offset))
         case other *: _              => Left(RESPDecErr(s"not a master: $other"))
       }
     }
-    implicit val replica: Read[Arr.Tuple[Bulk *: Bulk *: Num *: EmptyTuple], OneOfSpecRole] = Read.instance { arr =>
-      Read[Arr.Tuple[Bulk *: Bulk *: Num *: EmptyTuple], String *: String *: Long *: EmptyTuple].read(arr).flatMap {
+    implicit val replica: Read[Arr.AsTuple[Bulk *: Bulk *: Num *: EmptyTuple], OneOfSpecRole] = Read.instance { arr =>
+      Read[Arr.AsTuple[Bulk *: Bulk *: Num *: EmptyTuple], String *: String *: Long *: EmptyTuple].read(arr).flatMap {
         case "slave" *: host *: port *: _ => Right(OneOfSpecReplica(host, port))
         case other *: _                   => Left(RESPDecErr(s"not a replica: $other"))
       }
     }
     def protocol = Protocol("CUSTOM", _: String *: EmptyTuple)
-      .as[OneOf[Arr.Tuple[Bulk *: Num *: EmptyTuple] *: Arr.Tuple[Bulk *: Bulk *: Num *: EmptyTuple] *: EmptyTuple], OneOfSpecRole]
+      .as[OneOf[Arr.AsTuple[Bulk *: Num *: EmptyTuple] *: Arr.AsTuple[Bulk *: Bulk *: Num *: EmptyTuple] *: EmptyTuple], OneOfSpecRole]
 
     assertEquals(protocol(request).decode(Arr(Bulk("master"), Num(3129659L))), OneOfSpecMaster(3129659L): OneOfSpecRole)
     assertEquals(
@@ -101,7 +101,7 @@ final class OneOfSpec extends BaseSpec {
     )
     assertLeftEquals(
       message(protocol(request).decode(Arr(Bulk("sentinel"), Num(1L)))),
-      "RESP type(s) of Arr(Bulk(sentinel),Num(1)) matched but failed to deserialize correctly with error Read[OneOf] error: alternative 1: not a master: sentinel; alternative 2: Read[Arr.Tuple] error: expected 3 elements, got 2"
+      "RESP type(s) of Arr(Bulk(sentinel),Num(1)) matched but failed to deserialize correctly with error Read[OneOf] error: alternative 1: not a master: sentinel; alternative 2: Read[Arr.AsTuple] error: expected 3 elements, got 2"
     )
   }
 

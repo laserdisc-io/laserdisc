@@ -33,7 +33,7 @@ import scala.annotation.{implicitNotFound, nowarn}
 @implicitNotFound(
   """Implicit not found RESPSub[${A}].
 
-${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Arr.Rest, Arr.Tuple, Bulk, NilArr, NullBulk, Num or Str, a OneOf of them, or RESP for any of them
+${A} must be one of the RESP types Arr, Arr.Of, Arr.OfPairs, Arr.AsTupleThen, Arr.AsTuple, Bulk, NilArr, NullBulk, Num or Str, a OneOf of them, or RESP for any of them
   """
 ) sealed abstract class RESPSub[A] {
   def unapply(resp: RESP): Option[A]
@@ -55,13 +55,15 @@ object RESPSub {
   implicit final val strRESPSub: RESPSub[Str]           = instance { case str: Str => str }
 
   // any array: its elements are checked as they're read
-  implicit final def arrOfRESPSub[A]: RESPSub[Arr.Of[A]]             = instance { case Arr(elements) => new Arr.Of[A](elements) }
-  implicit final def arrPairsRESPSub[A, B]: RESPSub[Arr.Pairs[A, B]] = instance { case Arr(elements) =>
-    new Arr.Pairs[A, B](elements)
+  implicit final def arrOfRESPSub[A]: RESPSub[Arr.Of[A]]                 = instance { case Arr(elements) => new Arr.Of[A](elements) }
+  implicit final def arrOfPairsRESPSub[A, B]: RESPSub[Arr.OfPairs[A, B]] = instance { case Arr(elements) =>
+    new Arr.OfPairs[A, B](elements)
   }
 
-  implicit final def arrTupleRESPSub[T]: RESPSub[Arr.Tuple[T]]     = instance { case Arr(elements) => new Arr.Tuple[T](elements) }
-  implicit final def arrRestRESPSub[T, E]: RESPSub[Arr.Rest[T, E]] = instance { case Arr(elements) => new Arr.Rest[T, E](elements) }
+  implicit final def arrAsTupleRESPSub[T]: RESPSub[Arr.AsTuple[T]] = instance { case Arr(elements) => new Arr.AsTuple[T](elements) }
+  implicit final def arrAsTupleThenRESPSub[T, E]: RESPSub[Arr.AsTupleThen[T, E]] = instance { case Arr(elements) =>
+    new Arr.AsTupleThen[T, E](elements)
+  }
 
   implicit final def oneOfRESPSub[T <: Tuple](implicit A: Alternatives[T], @nowarn D: Distinct[T]): RESPSub[OneOf[T]] = instance {
     case resp if A.matches(resp) => new OneOf[T](resp)

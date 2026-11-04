@@ -163,8 +163,8 @@ object KeyP {
     }
   }
 
-  private[protocol] final val localAndReplicas: Read[Arr.Tuple[Num *: Num *: EmptyTuple], (NonNegInt, NonNegInt)] =
-    Read[Arr.Tuple[Num *: Num *: EmptyTuple], (NonNegInt, NonNegInt)]
+  private[protocol] final val localAndReplicas: Read[Arr.AsTuple[Num *: Num *: EmptyTuple], (NonNegInt, NonNegInt)] =
+    Read[Arr.AsTuple[Num *: Num *: EmptyTuple], (NonNegInt, NonNegInt)]
 
   object ExpireTimeResponse {
     final case class ExpireAt(timestamp: NonNegLong) extends ExpireTimeResponse

@@ -45,34 +45,34 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
     )
   }
 
-  test("decoding Arr.Pairs[Bulk, Bulk] reads the pairs in order") {
-    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Pairs[Bulk, Bulk], Seq[(String, Long)]]
+  test("decoding Arr.OfPairs[Bulk, Bulk] reads the pairs in order") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(String, Long)]]
     val request  = "id" *: EmptyTuple
 
     assertEquals(protocol(request).decode(Arr(Bulk("a"), Bulk("1"), Bulk("b"), Bulk("2"))), Seq("a" -> 1L, "b" -> 2L))
     assertEquals(protocol(request).decode(Arr(Nil)), Seq.empty[(String, Long)])
   }
 
-  test("decoding Arr.Pairs[Bulk, Bulk] with the wrong encoding names the pair, and which of its elements, that fails") {
-    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Pairs[Bulk, Bulk], Seq[(String, Long)]]
+  test("decoding Arr.OfPairs[Bulk, Bulk] with the wrong encoding names the pair, and which of its elements, that fails") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(String, Long)]]
     val request  = "id" *: EmptyTuple
 
     assertLeftEquals(
       protocol(request).decode(Arr(Bulk("a"), Bulk("1"), Bulk("b"), Bulk("x"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(a),Bulk(1),Bulk(b),Bulk(x)) matched but failed to deserialize correctly with error Read[Arr.Pairs, Seq] error in the second element of pair 2: Read Error: expected Bulk(Long) but was Bulk(x)"
+      "RESP type(s) of Arr(Bulk(a),Bulk(1),Bulk(b),Bulk(x)) matched but failed to deserialize correctly with error Read[Arr.OfPairs, Seq] error in the second element of pair 2: Read Error: expected Bulk(Long) but was Bulk(x)"
     )
     assertLeftEquals(
       protocol(request).decode(Arr(Num(1L), Bulk("1"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Num(1),Bulk(1)) matched but failed to deserialize correctly with error Read[Arr.Pairs, Seq] error in the first element of pair 1: Unexpected element. Was Num(1)"
+      "RESP type(s) of Arr(Num(1),Bulk(1)) matched but failed to deserialize correctly with error Read[Arr.OfPairs, Seq] error in the first element of pair 1: Unexpected element. Was Num(1)"
     )
     assertLeftEquals(
       protocol(request).decode(Arr(Bulk("a"), Bulk("1"), Bulk("b"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(a),Bulk(1),Bulk(b)) matched but failed to deserialize correctly with error Read[Arr.Pairs, Seq] error: odd number of elements, the last being Bulk(b)"
+      "RESP type(s) of Arr(Bulk(a),Bulk(1),Bulk(b)) matched but failed to deserialize correctly with error Read[Arr.OfPairs, Seq] error: odd number of elements, the last being Bulk(b)"
     )
   }
 
-  test("decoding Arr.Pairs[Bulk, RESP] as a Map takes values of any type, but never an error") {
-    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Pairs[Bulk, RESP], Map[String, RESP]]
+  test("decoding Arr.OfPairs[Bulk, RESP] as a Map takes values of any type, but never an error") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.OfPairs[Bulk, RESP], Map[String, RESP]]
     val request  = "id" *: EmptyTuple
 
     assertEquals(
@@ -89,7 +89,7 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
 
   test("a record reads its fields by name, in any order, with what each one is") {
     val record                 = Read.record("thing")(f => f.num[Long]("a").flatMap(a => f.optionalBulk[String]("b").map(a -> _)))
-    def pairs(elements: RESP*) = new Arr.Pairs[Bulk, RESP](elements.toList)
+    def pairs(elements: RESP*) = new Arr.OfPairs[Bulk, RESP](elements.toList)
 
     assertEquals(record.read(pairs(Bulk("b"), Bulk("x"), Bulk("a"), Num(1L))), 1L -> Option("x"))
     assertEquals(record.read(pairs(Bulk("a"), Num(1L))), 1L                       -> Option.empty[String])
@@ -115,33 +115,33 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
 
   test("a record fails when its names and values don't pair up, rather than dropping them") {
     val record                 = Read.record("thing")(_.num[Long]("a"))
-    def pairs(elements: RESP*) = new Arr.Pairs[Bulk, RESP](elements.toList)
+    def pairs(elements: RESP*) = new Arr.OfPairs[Bulk, RESP](elements.toList)
 
     assertLeftEquals(record.read(pairs(Bulk("a"), Num(1L), Bulk("b"))).leftMap(_.message.contains("odd number")), true)
     assertLeftEquals(record.read(pairs(Num(1L), Bulk("a"))).leftMap(_.message.contains("first element of pair 1")), true)
   }
 
-  test("decoding Arr.Tuple reads each element as the type at its position, with the null of a OneOf position as None") {
+  test("decoding Arr.AsTuple reads each element as the type at its position, with the null of a OneOf position as None") {
     def protocol =
       Protocol("CUSTOM", _: String *: EmptyTuple)
-        .as[Arr.Tuple[Bulk *: OrNilArr[Arr.Of[Bulk]] *: EmptyTuple], NonNegLong *: Option[Seq[Int]] *: EmptyTuple]
+        .as[Arr.AsTuple[Bulk *: OrNilArr[Arr.Of[Bulk]] *: EmptyTuple], NonNegLong *: Option[Seq[Int]] *: EmptyTuple]
     val request = "id" *: EmptyTuple
 
     assertEquals(protocol(request).decode(Arr(Bulk("3"), Arr(Bulk("1"), Bulk("2")))), NonNegLong(3L) *: Option(Seq(1, 2)) *: EmptyTuple)
     assertEquals(protocol(request).decode(Arr(Bulk("0"), NilArr)), NonNegLong(0L) *: Option.empty[Seq[Int]] *: EmptyTuple)
   }
 
-  test("decoding Arr.Tuple with the wrong encoding names the element that fails, or says how many elements there were") {
-    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Tuple[Bulk *: Num *: EmptyTuple], String *: Long *: EmptyTuple]
+  test("decoding Arr.AsTuple with the wrong encoding names the element that fails, or says how many elements there were") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.AsTuple[Bulk *: Num *: EmptyTuple], String *: Long *: EmptyTuple]
     val request  = "id" *: EmptyTuple
 
     assertLeftEquals(
       protocol(request).decode(Arr(Bulk("a"), Bulk("1"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(a),Bulk(1)) matched but failed to deserialize correctly with error Read[Arr.Tuple] error at element 2: Unexpected element. Was Bulk(1)"
+      "RESP type(s) of Arr(Bulk(a),Bulk(1)) matched but failed to deserialize correctly with error Read[Arr.AsTuple] error at element 2: Unexpected element. Was Bulk(1)"
     )
     assertLeftEquals(
       protocol(request).decode(Arr(Bulk("a"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(a)) matched but failed to deserialize correctly with error Read[Arr.Tuple] error: expected 2 elements, got 1"
+      "RESP type(s) of Arr(Bulk(a)) matched but failed to deserialize correctly with error Read[Arr.AsTuple] error: expected 2 elements, got 1"
     )
     assertLeftEquals(
       protocol(request)
@@ -151,29 +151,31 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
     )
   }
 
-  test("decoding Arr.Rest of RESP as the positions alone reads what they name and leaves out what follows, but not fewer") {
-    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Rest[Bulk *: Num *: EmptyTuple, RESP], String *: Long *: EmptyTuple]
-    val request  = "id" *: EmptyTuple
+  test("decoding Arr.AsTupleThen of RESP as the positions alone reads what they name and leaves out what follows, but not fewer") {
+    def protocol =
+      Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.AsTupleThen[Bulk *: Num *: EmptyTuple, RESP], String *: Long *: EmptyTuple]
+    val request = "id" *: EmptyTuple
 
     assertEquals(protocol(request).decode(Arr(Bulk("a"), Num(1L))), "a" *: 1L *: EmptyTuple)
     assertEquals(protocol(request).decode(Arr(Bulk("a"), Num(1L), Bulk("newer"), Num(2L))), "a" *: 1L *: EmptyTuple)
     assertLeftEquals(
       protocol(request)
         .decode(Arr(Bulk("a")))
-        .leftMap(_.getMessage.endsWith("Read[Arr.Rest] error: expected at least 2 elements, got 1")),
+        .leftMap(_.getMessage.endsWith("Read[Arr.AsTupleThen] error: expected at least 2 elements, got 1")),
       true
     )
     assertLeftEquals(
       protocol(request)
         .decode(Arr(Bulk("a"), Bulk("1"), Num(2L)))
-        .leftMap(_.getMessage.endsWith("Read[Arr.Rest] error at element 2: Unexpected element. Was Bulk(1)")),
+        .leftMap(_.getMessage.endsWith("Read[Arr.AsTupleThen] error at element 2: Unexpected element. Was Bulk(1)")),
       true
     )
   }
 
-  test("decoding Arr.Rest reads the positions it names and then any number of the elements that follow") {
+  test("decoding Arr.AsTupleThen reads the positions it names and then any number of the elements that follow") {
     def protocol =
-      Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Rest[Bulk *: Num *: EmptyTuple, Num], (String *: Long *: EmptyTuple, Seq[Long])]
+      Protocol("CUSTOM", _: String *: EmptyTuple)
+        .as[Arr.AsTupleThen[Bulk *: Num *: EmptyTuple, Num], (String *: Long *: EmptyTuple, Seq[Long])]
     val request = "id" *: EmptyTuple
 
     assertEquals(protocol(request).decode(Arr(Bulk("a"), Num(1L))), ("a" *: 1L *: EmptyTuple, Seq.empty[Long]))
@@ -181,7 +183,7 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
     assertLeftEquals(
       protocol(request)
         .decode(Arr(Bulk("a")))
-        .leftMap(_.getMessage.endsWith("Read[Arr.Rest] error: expected at least 2 elements, got 1")),
+        .leftMap(_.getMessage.endsWith("Read[Arr.AsTupleThen] error: expected at least 2 elements, got 1")),
       true
     )
     assertLeftEquals(
@@ -189,14 +191,17 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
         .decode(Arr(Bulk("a"), Num(1L), Num(2L), Bulk("x")))
         .leftMap(
           _.getMessage
-            .endsWith("Read[Arr.Rest] after the first 2 elements: Read[Arr.Of, Seq] error at element 2: Unexpected element. Was Bulk(x)")
+            .endsWith(
+              "Read[Arr.AsTupleThen] after the first 2 elements: Read[Arr.Of, Seq] error at element 2: Unexpected element. Was Bulk(x)"
+            )
         ),
       true
     )
   }
 
-  test("decoding Arr.Rest of RESP reads what follows as it is, when asked for it") {
-    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Rest[Bulk *: EmptyTuple, RESP], (String *: EmptyTuple, Seq[RESP])]
+  test("decoding Arr.AsTupleThen of RESP reads what follows as it is, when asked for it") {
+    def protocol =
+      Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.AsTupleThen[Bulk *: EmptyTuple, RESP], (String *: EmptyTuple, Seq[RESP])]
 
     assertEquals(
       protocol("id" *: EmptyTuple).decode(Arr(Bulk("a"), Num(1L), Bulk("b"))),

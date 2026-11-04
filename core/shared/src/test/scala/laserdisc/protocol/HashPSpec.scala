@@ -89,8 +89,8 @@ abstract class HashPSpec extends BaseSpec with HashP with EitherSyntax {
   test("The Hash protocol using hgetall fails to compile given key but missing read instance") {
     assertCompileErrorsContain(
       compileErrors("""hgetall[Seq[Long]](Key("a"))"""),
-      "Implicit not found Read[laserdisc.protocol.Arr.Pairs[laserdisc.protocol.Bulk,laserdisc.protocol.Bulk], Seq[Long]].",
-      "Implicit not found Read[laserdisc.protocol.Arr.Pairs[laserdisc.protocol.Bulk, laserdisc.protocol.Bulk], Seq[Long]]."
+      "Implicit not found Read[laserdisc.protocol.Arr.OfPairs[laserdisc.protocol.Bulk,laserdisc.protocol.Bulk], Seq[Long]].",
+      "Implicit not found Read[laserdisc.protocol.Arr.OfPairs[laserdisc.protocol.Bulk, laserdisc.protocol.Bulk], Seq[Long]]."
     )
   }
 

@@ -108,13 +108,13 @@ object StreamP {
   final case class PendingEntry(id: Id, consumer: Key, idleMilliseconds: NonNegLong, deliveries: NonNegLong)
 
   private final type PendingSummaryReply =
-    Arr.Tuple[Num *: OrNullBulk[Bulk] *: OrNullBulk[Bulk] *: OrNilArr[Arr.Of[Arr.Tuple[Bulk *: Bulk *: EmptyTuple]]] *: EmptyTuple]
+    Arr.AsTuple[Num *: OrNullBulk[Bulk] *: OrNullBulk[Bulk] *: OrNilArr[Arr.Of[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]]] *: EmptyTuple]
   private[protocol] final val pendingSummary: Read[PendingSummaryReply, PendingSummary] =
     Read[PendingSummaryReply, NonNegLong *: Option[Id] *: Option[Id] *: Option[Seq[(Key, NonNegLong)]] *: EmptyTuple].map {
       case count *: smallest *: largest *: consumers *: _ => PendingSummary(count, smallest, largest, consumers.getOrElse(Nil))
     }
 
-  private final type PendingEntryReply = Arr.Tuple[Bulk *: Bulk *: Num *: Num *: EmptyTuple]
+  private final type PendingEntryReply = Arr.AsTuple[Bulk *: Bulk *: Num *: Num *: EmptyTuple]
   private implicit final val pendingEntry: Read[PendingEntryReply, PendingEntry] =
     Read[PendingEntryReply, Id *: Key *: NonNegLong *: NonNegLong *: EmptyTuple].map { case id *: consumer *: idle *: deliveries *: _ =>
       PendingEntry(id, consumer, idle, deliveries)
@@ -230,7 +230,7 @@ object StreamP {
   }
 
   // an entry's id and its fields
-  private[protocol] final type EntryReply = Arr.Tuple[Bulk *: OrNilArr[Arr.Pairs[Bulk, Bulk]] *: EmptyTuple]
+  private[protocol] final type EntryReply = Arr.AsTuple[Bulk *: OrNilArr[Arr.OfPairs[Bulk, Bulk]] *: EmptyTuple]
   private implicit final def entry[A: Read[Bulk, _]]: Read[EntryReply, Entry[A]] =
     Read[EntryReply, Id *: Option[Seq[(Key, A)]] *: EmptyTuple].map { case id *: fields *: _ => Entry(id, fields.getOrElse(Nil)) }
 
@@ -238,12 +238,12 @@ object StreamP {
 
   private[protocol] final def streams[
       A: Read[Bulk, _]
-  ]: Read[Arr.Of[Arr.Tuple[Bulk *: Arr.Of[EntryReply] *: EmptyTuple]], Seq[KV[Seq[Entry[A]]]]] =
-    Read[Arr.Of[Arr.Tuple[Bulk *: Arr.Of[EntryReply] *: EmptyTuple]], Seq[KV[Seq[Entry[A]]]]]
+  ]: Read[Arr.Of[Arr.AsTuple[Bulk *: Arr.Of[EntryReply] *: EmptyTuple]], Seq[KV[Seq[Entry[A]]]]] =
+    Read[Arr.Of[Arr.AsTuple[Bulk *: Arr.Of[EntryReply] *: EmptyTuple]], Seq[KV[Seq[Entry[A]]]]]
 
   // the streams' entries, or nil when there are none
   private[protocol] final def maybeStreams[A: Read[Bulk, _]]: RESPRead[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    RESPRead[OrNilArr[Arr.Of[Arr.Tuple[Bulk *: Arr.Of[EntryReply] *: EmptyTuple]]], Option[Seq[KV[Seq[Entry[A]]]]]]
+    RESPRead[OrNilArr[Arr.Of[Arr.AsTuple[Bulk *: Arr.Of[EntryReply] *: EmptyTuple]]], Option[Seq[KV[Seq[Entry[A]]]]]]
 
   // Redis 6.2 replies with nil for each deleted entry it claims; Redis 7.0 leaves them out
   private[protocol] final def claimedOrNil[A: Read[Bulk, _]]: Read[Arr.Of[OrNullBulk[EntryReply]], Seq[Entry[A]]] =
@@ -254,22 +254,23 @@ object StreamP {
   // Redis 7.0 adds the ids of the entries it found deleted
   private[protocol] final def autoClaimedWithDeleted[E: RESPSub, A](
       claims: Read[E, Seq[A]]
-  ): Read[Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], AutoClaimed[A]] = {
+  ): Read[Arr.AsTuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], AutoClaimed[A]] = {
     implicit val read: Read[E, Seq[A]] = claims
-    Read[Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], Id *: Seq[A] *: Seq[Id] *: EmptyTuple].map { case next *: cs *: deleted *: _ =>
-      AutoClaimed(next, cs, deleted)
+    Read[Arr.AsTuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], Id *: Seq[A] *: Seq[Id] *: EmptyTuple].map {
+      case next *: cs *: deleted *: _ =>
+        AutoClaimed(next, cs, deleted)
     }
   }
 
   // either reply, for Redis 6.2 and for a newer server that hasn't had its import moved on yet
   private[protocol] final def autoClaimed[E: RESPSub, A](
       claims: Read[E, Seq[A]]
-  ): Read[OneOf[Arr.Tuple[Bulk *: E *: EmptyTuple] *: Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple] *: EmptyTuple], AutoClaimed[A]] = {
-    implicit val read: Read[E, Seq[A]]                                            = claims
-    implicit val before: Read[Arr.Tuple[Bulk *: E *: EmptyTuple], AutoClaimed[A]] =
-      Read[Arr.Tuple[Bulk *: E *: EmptyTuple], Id *: Seq[A] *: EmptyTuple].map { case next *: cs *: _ => AutoClaimed(next, cs, Nil) }
-    implicit val since: Read[Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], AutoClaimed[A]] = autoClaimedWithDeleted(claims)
-    Read[OneOf[Arr.Tuple[Bulk *: E *: EmptyTuple] *: Arr.Tuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple] *: EmptyTuple], AutoClaimed[A]]
+  ): Read[OneOf[Arr.AsTuple[Bulk *: E *: EmptyTuple] *: Arr.AsTuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple] *: EmptyTuple], AutoClaimed[A]] = {
+    implicit val read: Read[E, Seq[A]]                                              = claims
+    implicit val before: Read[Arr.AsTuple[Bulk *: E *: EmptyTuple], AutoClaimed[A]] =
+      Read[Arr.AsTuple[Bulk *: E *: EmptyTuple], Id *: Seq[A] *: EmptyTuple].map { case next *: cs *: _ => AutoClaimed(next, cs, Nil) }
+    implicit val since: Read[Arr.AsTuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple], AutoClaimed[A]] = autoClaimedWithDeleted(claims)
+    Read[OneOf[Arr.AsTuple[Bulk *: E *: EmptyTuple] *: Arr.AsTuple[Bulk *: E *: Arr.Of[Bulk] *: EmptyTuple] *: EmptyTuple], AutoClaimed[A]]
   }
 
   private[protocol] final def streamInfo[A: Read[Bulk, _]]: Read[Record, StreamInfo[A]] = {

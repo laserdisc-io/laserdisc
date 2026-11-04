@@ -36,7 +36,7 @@ object ServerInspection {
       clientAddress: String,
       clientName: String
   )
-  private final type LogEntryReply = Arr.Rest[Num *: Num *: Num *: Arr.Of[Bulk] *: Bulk *: Bulk *: EmptyTuple, RESP]
+  private final type LogEntryReply = Arr.AsTupleThen[Num *: Num *: Num *: Arr.Of[Bulk] *: Bulk *: Bulk *: EmptyTuple, RESP]
   private implicit final val logEntry: Read[LogEntryReply, LogEntry] =
     Read[LogEntryReply, NonNegLong *: NonNegLong *: NonNegLong *: Seq[String] *: String *: String *: EmptyTuple].map {
       case id *: timestamp *: microseconds *: arguments *: address *: name *: _ =>
@@ -46,7 +46,7 @@ object ServerInspection {
 
   /** An event of LATENCY LATEST: when it last happened, how long it took then, and the longest it ever took */
   final case class LatencyEvent(name: String, timestamp: NonNegLong, latestMilliseconds: NonNegLong, maxMilliseconds: NonNegLong)
-  private final type LatencyEventReply = Arr.Rest[Bulk *: Num *: Num *: Num *: EmptyTuple, RESP]
+  private final type LatencyEventReply = Arr.AsTupleThen[Bulk *: Num *: Num *: Num *: EmptyTuple, RESP]
   private implicit final val latencyEvent: Read[LatencyEventReply, LatencyEvent] =
     Read[LatencyEventReply, String *: NonNegLong *: NonNegLong *: NonNegLong *: EmptyTuple].map {
       case name *: timestamp *: latest *: max *: _ =>
@@ -57,12 +57,12 @@ object ServerInspection {
 
   /** A sample of LATENCY HISTORY */
   final case class LatencySample(timestamp: NonNegLong, milliseconds: NonNegLong)
-  private implicit final val latencySample: Read[Arr.Tuple[Num *: Num *: EmptyTuple], LatencySample] =
-    Read[Arr.Tuple[Num *: Num *: EmptyTuple], NonNegLong *: NonNegLong *: EmptyTuple].map { case timestamp *: milliseconds *: _ =>
+  private implicit final val latencySample: Read[Arr.AsTuple[Num *: Num *: EmptyTuple], LatencySample] =
+    Read[Arr.AsTuple[Num *: Num *: EmptyTuple], NonNegLong *: NonNegLong *: EmptyTuple].map { case timestamp *: milliseconds *: _ =>
       LatencySample(timestamp, milliseconds)
     }
-  private[protocol] final val latencySamples: Read[Arr.Of[Arr.Tuple[Num *: Num *: EmptyTuple]], Seq[LatencySample]] =
-    Read[Arr.Of[Arr.Tuple[Num *: Num *: EmptyTuple]], Seq[LatencySample]]
+  private[protocol] final val latencySamples: Read[Arr.Of[Arr.AsTuple[Num *: Num *: EmptyTuple]], Seq[LatencySample]] =
+    Read[Arr.Of[Arr.AsTuple[Num *: Num *: EmptyTuple]], Seq[LatencySample]]
 
   /** A command's LATENCY HISTOGRAM: how many calls it had, and for each bucket the number of calls that took at most that many microseconds
     */
@@ -70,11 +70,11 @@ object ServerInspection {
   private implicit final val latencyHistogram: Read[Record, LatencyHistogram] = Read.record("latency histogram") { f =>
     for {
       calls   <- f.num[NonNegLong]("calls")
-      buckets <- f[Arr.Pairs[Num, Num], Seq[(NonNegLong, NonNegLong)]]("histogram_usec")
+      buckets <- f[Arr.OfPairs[Num, Num], Seq[(NonNegLong, NonNegLong)]]("histogram_usec")
     } yield LatencyHistogram(calls, buckets)
   }
-  private[protocol] final val latencyHistograms: Read[Arr.Pairs[Bulk, Record], Map[String, LatencyHistogram]] =
-    Read[Arr.Pairs[Bulk, Record], Map[String, LatencyHistogram]]
+  private[protocol] final val latencyHistograms: Read[Arr.OfPairs[Bulk, Record], Map[String, LatencyHistogram]] =
+    Read[Arr.OfPairs[Bulk, Record], Map[String, LatencyHistogram]]
 
   /** MEMORY STATS: the figures for the whole server, and those of each database, as text since they mix whole and decimal numbers */
   final case class MemoryStats(values: Map[String, String], databases: Map[Int, Map[String, String]])
@@ -111,7 +111,7 @@ object ServerInspection {
       step: Int,
       aclCategories: Seq[String]
   )
-  private type CommandInfoReply = Arr.Rest[Bulk *: Num *: Arr.Of[Str] *: Num *: Num *: Num *: Arr.Of[Str] *: EmptyTuple, RESP]
+  private type CommandInfoReply = Arr.AsTupleThen[Bulk *: Num *: Arr.Of[Str] *: Num *: Num *: Num *: Arr.Of[Str] *: EmptyTuple, RESP]
   private implicit final val commandInfo: Read[CommandInfoReply, CommandInfo] =
     Read[CommandInfoReply, String *: Int *: Seq[String] *: Int *: Int *: Int *: Seq[String] *: EmptyTuple].map {
       case name *: arity *: flags *: first *: last *: step *: categories *: _ =>
@@ -122,12 +122,12 @@ object ServerInspection {
 
   /** A key of COMMAND GETKEYSANDFLAGS, with what the command does to it */
   final case class KeyAndFlags(key: Key, flags: Seq[String])
-  private implicit final val keyAndFlags: Read[Arr.Tuple[Bulk *: Arr.Of[Str] *: EmptyTuple], KeyAndFlags] =
-    Read[Arr.Tuple[Bulk *: Arr.Of[Str] *: EmptyTuple], Key *: Seq[String] *: EmptyTuple].map { case key *: flags *: _ =>
+  private implicit final val keyAndFlags: Read[Arr.AsTuple[Bulk *: Arr.Of[Str] *: EmptyTuple], KeyAndFlags] =
+    Read[Arr.AsTuple[Bulk *: Arr.Of[Str] *: EmptyTuple], Key *: Seq[String] *: EmptyTuple].map { case key *: flags *: _ =>
       KeyAndFlags(key, flags)
     }
-  private[protocol] final val keysAndFlags: Read[Arr.Of[Arr.Tuple[Bulk *: Arr.Of[Str] *: EmptyTuple]], Seq[KeyAndFlags]] =
-    Read[Arr.Of[Arr.Tuple[Bulk *: Arr.Of[Str] *: EmptyTuple]], Seq[KeyAndFlags]]
+  private[protocol] final val keysAndFlags: Read[Arr.Of[Arr.AsTuple[Bulk *: Arr.Of[Str] *: EmptyTuple]], Seq[KeyAndFlags]] =
+    Read[Arr.Of[Arr.AsTuple[Bulk *: Arr.Of[Str] *: EmptyTuple]], Seq[KeyAndFlags]]
 
   /** FILTERBY, for COMMAND LIST: the commands of a module, of an ACL category, or whose names match a pattern */
   sealed trait CommandFilter { def params: List[String] }
@@ -202,8 +202,8 @@ object ServerInspection {
     val byCpuTime  = "by-cpu-time-us"
     val byNetBytes = "by-net-bytes"
     for {
-      cpu    <- f.optional[Arr.Pairs[Bulk, Num], Seq[(Key, NonNegLong)]](byCpuTime)
-      net    <- f.optional[Arr.Pairs[Bulk, Num], Seq[(Key, NonNegLong)]](byNetBytes)
+      cpu    <- f.optional[Arr.OfPairs[Bulk, Num], Seq[(Key, NonNegLong)]](byCpuTime)
+      net    <- f.optional[Arr.OfPairs[Bulk, Num], Seq[(Key, NonNegLong)]](byNetBytes)
       values <- f.others(Set(byCpuTime, byNetBytes)).foldLeft[Either[RESPDecErr, Map[String, String]]](Right(Map.empty)) {
         case (Right(vs), (k, Num(n)))  => Right(vs + (k -> n.toString))
         case (Right(vs), (k, Bulk(v))) => Right(vs + (k -> v))

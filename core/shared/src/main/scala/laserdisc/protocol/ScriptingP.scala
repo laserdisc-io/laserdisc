@@ -92,7 +92,7 @@ object ScriptingP {
   private[protocol] final val stats: Read[Record, Stats] = Read.record("function stats") { f =>
     for {
       running <- f[OrNullBulk[Record], Option[Running]]("running_script")
-      engines <- f[Arr.Pairs[Bulk, Record], Seq[(String, (NonNegLong, NonNegLong))]]("engines")
+      engines <- f[Arr.OfPairs[Bulk, Record], Seq[(String, (NonNegLong, NonNegLong))]]("engines")
     } yield Stats(running, engines.map { case (name, (libraries, functions)) => Engine(name, libraries, functions) })
   }
 

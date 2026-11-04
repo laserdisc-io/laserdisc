@@ -232,11 +232,11 @@ object ClusterP {
     import SlotType.Range
 
     // the node of Redis 6.2 and KeyDB: host, port and node id
-    private type Node6_2 = Arr.Tuple[Bulk *: Num *: Bulk *: EmptyTuple]
+    private type Node6_2 = Arr.AsTuple[Bulk *: Num *: Bulk *: EmptyTuple]
     // the node of Redis 7.0 and Valkey: also its metadata, with a null host when the server says to use the one you connected to
-    private type Node7_0 = Arr.Tuple[OrNullBulk[Bulk] *: Num *: Bulk *: Arr.Pairs[Bulk, Bulk] *: EmptyTuple]
+    private type Node7_0 = Arr.AsTuple[OrNullBulk[Bulk] *: Num *: Bulk *: Arr.OfPairs[Bulk, Bulk] *: EmptyTuple]
     // the first and last slot and the master, then the replicas
-    private type Assigned[N] = Arr.Rest[Num *: Num *: N *: EmptyTuple, N]
+    private type Assigned[N] = Arr.AsTupleThen[Num *: Num *: N *: EmptyTuple, N]
 
     // an empty host, like a null one, means the server doesn't know it, so use the one you connected to
     private implicit final val hostRead: Read[Bulk, Option[Host]] = Read.instancePF("Bulk(Host)") {

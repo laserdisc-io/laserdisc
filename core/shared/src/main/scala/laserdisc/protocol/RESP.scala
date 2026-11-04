@@ -161,22 +161,22 @@ object Arr {
   final class Of[A] private[protocol] (private[protocol] val elements: List[RESP])
 
   /** An array of pairs laid out flat, `[a, b, a, b…]`, to say how to read a reply like ZRANGE's members and scores:
-    * `Arr.Pairs[Bulk, Bulk]`, or one made of names and values: `Arr.Pairs[Bulk, RESP]`
+    * `Arr.OfPairs[Bulk, Bulk]`, or one made of names and values: `Arr.OfPairs[Bulk, RESP]`
     */
-  final class Pairs[A, B] private[protocol] (private[protocol] val elements: List[RESP])
+  final class OfPairs[A, B] private[protocol] (private[protocol] val elements: List[RESP])
 
   /** An array of a fixed number of elements, each with a type of its own, to say how to read a reply like SCAN's cursor and keys:
-    * `Arr.Tuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]`. With a [[OneOf]] at a position, like `OrNilArr[Arr.Of[Bulk]]`, that element may also
-    * be missing
+    * `Arr.AsTuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]`. With a [[OneOf]] at a position, like `OrNilArr[Arr.Of[Bulk]]`, that element may
+    * also be missing
     */
-  final class Tuple[T] private[protocol] (private[protocol] val elements: List[RESP])
+  final class AsTuple[T] private[protocol] (private[protocol] val elements: List[RESP])
 
-  /** An array that starts like a [[Tuple]] and goes on with any number of `E`s, to say how to read a reply like CLUSTER SLOTS' ranges, with
-    * a first and last slot and a master, then the replicas: `Arr.Rest[Num *: Num *: Node *: EmptyTuple, Node]`. It's read as what's at the
-    * positions and a `Seq` of the rest. With `RESP` as `E`, it can also be read as what's at the positions alone, leaving out what follows,
-    * for replies that newer versions add to, like SLOWLOG's entries
+  /** An array that starts like an [[AsTuple]] and goes on with any number of `E`s, to say how to read a reply like CLUSTER SLOTS' ranges,
+    * with a first and last slot and a master, then the replicas: `Arr.AsTupleThen[Num *: Num *: Node *: EmptyTuple, Node]`. It's read as
+    * what's at the positions and a `Seq` of the rest. With `RESP` as `E`, it can also be read as what's at the positions alone, leaving out
+    * what follows, for replies that newer versions add to, like SLOWLOG's entries
     */
-  final class Rest[T, E] private[protocol] (private[protocol] val elements: List[RESP])
+  final class AsTupleThen[T, E] private[protocol] (private[protocol] val elements: List[RESP])
 }
 
 private[protocol] final case class Repr[A](decoded: A, bits: BitVector)

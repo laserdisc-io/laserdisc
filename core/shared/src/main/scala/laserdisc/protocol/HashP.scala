@@ -190,7 +190,7 @@ trait HashBaseP extends Features {
     Protocol("HGET", key :: field :: Nil).as[OrNullBulk[Bulk], Option[A]]
 
   /** All the fields of a hash, as a `Map`, a `Seq` of pairs, or a case class, whose fields are read by name */
-  final def hgetall[A: Read[Arr.Pairs[Bulk, Bulk], _]](key: Key): Single.Aux[A] = Protocol("HGETALL", key).as[Arr.Pairs[Bulk, Bulk], A]
+  final def hgetall[A: Read[Arr.OfPairs[Bulk, Bulk], _]](key: Key): Single.Aux[A] = Protocol("HGETALL", key).as[Arr.OfPairs[Bulk, Bulk], A]
 
   final def hincrby(key: Key, field: Key, increment: NonZeroLong): Single.Aux[Long] =
     Protocol("HINCRBY", key *: field *: increment *: EmptyTuple).as[Num, Long]
@@ -215,16 +215,16 @@ trait HashBaseP extends Features {
   final def hrandfields(key: Key, count: NonZeroInt): Single.Aux[Seq[Key]] =
     Protocol("HRANDFIELD", key *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
   final def hrandfieldswithvalues[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[(Key, A)]] =
-    Protocol("HRANDFIELD", key *: count *: "WITHVALUES" *: EmptyTuple).as[Arr.Pairs[Bulk, Bulk], Seq[(Key, A)]]
+    Protocol("HRANDFIELD", key *: count *: "WITHVALUES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(Key, A)]]
 
   final def hscan(key: Key, cursor: NonNegLong): Single.Aux[ScanKV] =
-    Protocol("HSCAN", key *: cursor *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], ScanKV]
+    Protocol("HSCAN", key *: cursor *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], ScanKV]
   final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[ScanKV] =
-    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], ScanKV]
+    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], ScanKV]
   final def hscan(key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[ScanKV] =
-    Protocol("HSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], ScanKV]
+    Protocol("HSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], ScanKV]
   final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[ScanKV] =
-    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Pairs[Bulk, Bulk]], ScanKV]
+    Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], ScanKV]
 
   /** HSCAN from cursor 0 until the server is done, as a [[Loop]]. A field may come more than once */
   final def hscanAll(key: Key): Loop[KV[String]]                                      = Loop.cursor(hscan(key, _))(scannedKV)

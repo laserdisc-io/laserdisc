@@ -23,14 +23,14 @@ package laserdisc
 
 package object protocol {
   // a reply made of names and values, and a list of them
-  private[protocol] final type Record  = Arr.Pairs[Bulk, RESP]
+  private[protocol] final type Record  = Arr.OfPairs[Bulk, RESP]
   private[protocol] final type Records = Arr.Of[Record]
 
   // text that may come as a Bulk or as a Str
   private[protocol] final type Texts = Arr.Of[OneOf[Bulk *: Str *: EmptyTuple]]
 
   // a SCAN reply: the cursor, then the values, if any, as `E`
-  private[protocol] final type ScanOf[E] = Arr.Tuple[Bulk *: OrNilArr[E] *: EmptyTuple]
+  private[protocol] final type ScanOf[E] = Arr.AsTuple[Bulk *: OrNilArr[E] *: EmptyTuple]
 
   // a SCAN reply's cursor and values, for Loop.cursor
   private[protocol] final def scanned[A](scan: Scan[A]): (NonNegLong, Seq[A])        = scan.cursor -> scan.values.getOrElse(Nil)

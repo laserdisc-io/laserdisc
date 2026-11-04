@@ -135,12 +135,12 @@ object StringP {
   /** The reply of INCREX: the value now, and the increment that was applied, which is 0 when a bound refused it */
   final case class Incremented[A](value: A, increment: A)
 
-  private[protocol] final val incrementedLong: Read[Arr.Tuple[Num *: Num *: EmptyTuple], Incremented[Long]] =
-    Read[Arr.Tuple[Num *: Num *: EmptyTuple], Long *: Long *: EmptyTuple].map { case value *: increment *: _ =>
+  private[protocol] final val incrementedLong: Read[Arr.AsTuple[Num *: Num *: EmptyTuple], Incremented[Long]] =
+    Read[Arr.AsTuple[Num *: Num *: EmptyTuple], Long *: Long *: EmptyTuple].map { case value *: increment *: _ =>
       Incremented(value, increment)
     }
-  private[protocol] final val incrementedDouble: Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Incremented[Double]] =
-    Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Double *: Double *: EmptyTuple].map { case value *: increment *: _ =>
+  private[protocol] final val incrementedDouble: Read[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], Incremented[Double]] =
+    Read[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], Double *: Double *: EmptyTuple].map { case value *: increment *: _ =>
       Incremented(value, increment)
     }
 
@@ -152,17 +152,19 @@ object StringP {
   private[protocol] final val bitFieldResults: Read[Arr.Of[OrNullBulk[Num]], Seq[Option[Long]]] =
     Read[Arr.Of[OrNullBulk[Num]], Seq[Option[Long]]]
 
-  private implicit final val lcsRange: Read[Arr.Tuple[Num *: Num *: EmptyTuple], LcsRange] =
-    Read[Arr.Tuple[Num *: Num *: EmptyTuple], NonNegInt *: NonNegInt *: EmptyTuple].map { case start *: end *: _ => LcsRange(start, end) }
-  private implicit final val lcsMatch: Read[Arr.Tuple[Arr.Tuple[Num *: Num *: EmptyTuple] *: Arr.Tuple[Num *: Num *: EmptyTuple] *: Num *: EmptyTuple], LcsMatch] =
-    Read[Arr.Tuple[
-      Arr.Tuple[Num *: Num *: EmptyTuple] *: Arr.Tuple[Num *: Num *: EmptyTuple] *: Num *: EmptyTuple
+  private implicit final val lcsRange: Read[Arr.AsTuple[Num *: Num *: EmptyTuple], LcsRange] =
+    Read[Arr.AsTuple[Num *: Num *: EmptyTuple], NonNegInt *: NonNegInt *: EmptyTuple].map { case start *: end *: _ => LcsRange(start, end) }
+  private implicit final val lcsMatch: Read[Arr.AsTuple[Arr.AsTuple[Num *: Num *: EmptyTuple] *: Arr.AsTuple[Num *: Num *: EmptyTuple] *: Num *: EmptyTuple], LcsMatch] =
+    Read[Arr.AsTuple[
+      Arr.AsTuple[Num *: Num *: EmptyTuple] *: Arr.AsTuple[Num *: Num *: EmptyTuple] *: Num *: EmptyTuple
     ], LcsRange *: LcsRange *: NonNegInt *: EmptyTuple]
       .map { case first *: second *: length *: _ => LcsMatch(first, second, length) }
 
   private[protocol] final val lcsMatches: Read[Record, LcsMatches] = Read.record("LCS matches") { f =>
     for {
-      matches <- f[Arr.Of[Arr.Tuple[Arr.Tuple[Num *: Num *: EmptyTuple] *: Arr.Tuple[Num *: Num *: EmptyTuple] *: Num *: EmptyTuple]], Seq[
+      matches <- f[Arr.Of[
+        Arr.AsTuple[Arr.AsTuple[Num *: Num *: EmptyTuple] *: Arr.AsTuple[Num *: Num *: EmptyTuple] *: Num *: EmptyTuple]
+      ], Seq[
         LcsMatch
       ]]("matches")
       length <- f.num[NonNegInt]("len")

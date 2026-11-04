@@ -33,8 +33,8 @@ object GeoP {
     private implicit final val latitude: Read[Bulk, Latitude] = Read.instancePF("Bulk(Latitude)") { case Bulk(ToDouble(Latitude(l))) => l }
 
     /** Longitude first, as servers reply */
-    implicit final val coordinatesRead: Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Coordinates] =
-      Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Longitude *: Latitude *: EmptyTuple].map { case long *: lat *: _ =>
+    implicit final val coordinatesRead: Read[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], Coordinates] =
+      Read[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], Longitude *: Latitude *: EmptyTuple].map { case long *: lat *: _ =>
         Coordinates(lat, long)
       }
   }
@@ -49,7 +49,7 @@ object GeoP {
   final case class KeyDistanceAndHash(key: Key, distance: NonNegDouble, hash: NonNegLong)
   final case class KeyCoordinatesDistanceAndHash(key: Key, coordinates: Coordinates, distance: NonNegDouble, hash: NonNegLong)
 
-  private[protocol] final type CoordinatesReply = Arr.Tuple[Bulk *: Bulk *: EmptyTuple]
+  private[protocol] final type CoordinatesReply = Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]
 
   /** What GEORADIUS and GEOSEARCH reply with for each member: `Reply` as it's sent, and `Res` as it's read */
   sealed trait RadiusMode {
@@ -62,7 +62,7 @@ object GeoP {
   }
   object RadiusMode {
     object coordinates extends RadiusMode {
-      override final type Reply = Arr.Tuple[Bulk *: CoordinatesReply *: EmptyTuple]
+      override final type Reply = Arr.AsTuple[Bulk *: CoordinatesReply *: EmptyTuple]
       override final type Res   = KeyAndCoordinates
       override final val params: List[String]                     = List("WITHCOORD")
       override final val r: RESPRead.Aux[Arr.Of[Reply], Seq[Res]] = RESPRead[Arr.Of[Reply], Seq[Res]]
@@ -71,7 +71,7 @@ object GeoP {
       def &(h: hash.type): coordinatesAndHash.type         = { val _ = h; coordinatesAndHash }
     }
     object distance extends RadiusMode {
-      override final type Reply = Arr.Tuple[Bulk *: Bulk *: EmptyTuple]
+      override final type Reply = Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]
       override final type Res   = KeyAndDistance
       override final val params: List[String]                     = List("WITHDIST")
       override final val r: RESPRead.Aux[Arr.Of[Reply], Seq[Res]] = RESPRead[Arr.Of[Reply], Seq[Res]]
@@ -80,7 +80,7 @@ object GeoP {
       def &(h: hash.type): distanceAndHash.type               = { val _ = h; distanceAndHash }
     }
     object hash extends RadiusMode {
-      override final type Reply = Arr.Tuple[Bulk *: Num *: EmptyTuple]
+      override final type Reply = Arr.AsTuple[Bulk *: Num *: EmptyTuple]
       override final type Res   = KeyAndHash
       override final val params: List[String]                     = List("WITHHASH")
       override final val r: RESPRead.Aux[Arr.Of[Reply], Seq[Res]] = RESPRead[Arr.Of[Reply], Seq[Res]]
@@ -89,7 +89,7 @@ object GeoP {
       def &(c: distance.type): distanceAndHash.type       = { val _ = c; distanceAndHash }
     }
     object coordinatesAndDistance extends RadiusMode {
-      override final type Reply = Arr.Tuple[Bulk *: Bulk *: CoordinatesReply *: EmptyTuple]
+      override final type Reply = Arr.AsTuple[Bulk *: Bulk *: CoordinatesReply *: EmptyTuple]
       override final type Res   = KeyCoordinatesAndDistance
       override final val params: List[String]                     = List("WITHCOORD", "WITHDIST")
       override final val r: RESPRead.Aux[Arr.Of[Reply], Seq[Res]] = RESPRead[Arr.Of[Reply], Seq[Res]]
@@ -97,7 +97,7 @@ object GeoP {
       def &(h: hash.type): all.type = { val _ = h; all }
     }
     object coordinatesAndHash extends RadiusMode {
-      override final type Reply = Arr.Tuple[Bulk *: Num *: CoordinatesReply *: EmptyTuple]
+      override final type Reply = Arr.AsTuple[Bulk *: Num *: CoordinatesReply *: EmptyTuple]
       override final type Res   = KeyCoordinatesAndHash
       override final val params: List[String]                     = List("WITHCOORD", "WITHHASH")
       override final val r: RESPRead.Aux[Arr.Of[Reply], Seq[Res]] = RESPRead[Arr.Of[Reply], Seq[Res]]
@@ -105,7 +105,7 @@ object GeoP {
       def &(d: distance.type): all.type = { val _ = d; all }
     }
     object distanceAndHash extends RadiusMode {
-      override final type Reply = Arr.Tuple[Bulk *: Bulk *: Num *: EmptyTuple]
+      override final type Reply = Arr.AsTuple[Bulk *: Bulk *: Num *: EmptyTuple]
       override final type Res   = KeyDistanceAndHash
       override final val params: List[String]                     = List("WITHDIST", "WITHHASH")
       override final val r: RESPRead.Aux[Arr.Of[Reply], Seq[Res]] = RESPRead[Arr.Of[Reply], Seq[Res]]
@@ -113,7 +113,7 @@ object GeoP {
       def &(c: coordinates.type): all.type = { val _ = c; all }
     }
     object all extends RadiusMode {
-      override final type Reply = Arr.Tuple[Bulk *: Bulk *: Num *: CoordinatesReply *: EmptyTuple]
+      override final type Reply = Arr.AsTuple[Bulk *: Bulk *: Num *: CoordinatesReply *: EmptyTuple]
       override final type Res   = KeyCoordinatesDistanceAndHash
       override final val params: List[String]                     = List("WITHCOORD", "WITHDIST", "WITHHASH")
       override final val r: RESPRead.Aux[Arr.Of[Reply], Seq[Res]] = RESPRead[Arr.Of[Reply], Seq[Res]]

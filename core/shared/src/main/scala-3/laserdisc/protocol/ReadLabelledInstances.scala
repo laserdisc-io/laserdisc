@@ -33,7 +33,7 @@ private[protocol] trait ReadLabelledInstances {
   inline implicit final def productRead[P <: Product](
       implicit m: Mirror.ProductOf[P],
       @nowarn ev: NotGiven[P <:< Tuple]
-  ): Read[Arr.Pairs[Bulk, Bulk], P] = {
+  ): Read[Arr.OfPairs[Bulk, Bulk], P] = {
     val labels  = constValueTuple[m.MirroredElemLabels].toList.asInstanceOf[List[String]]
     val readers = summonAll[Tuple.Map[m.MirroredElemTypes, FieldRead]].toList.asInstanceOf[List[FieldRead[Any]]]
 

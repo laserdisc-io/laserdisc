@@ -25,7 +25,7 @@ package protocol
 import org.scalacheck.Prop.forAll
 
 final class ServerPSpec extends BaseSpec with ServerP {
-  import ServerP.{ClientInfo, Info, InfoSection, InfoSectionKey}
+  import ServerP.{ClientInfo, Info, InfoSection, InfoSectionKey, Role}
 
   test("The Server protocol using info reads the sections a server sends, including ones laserdisc has no name for, like a module's") {
     val reply = List(
@@ -143,5 +143,31 @@ final class ServerPSpec extends BaseSpec with ServerP {
     )
     assertEquals(flushallsync.encode, Arr(Bulk("FLUSHALL"), Bulk("SYNC")))
     assertEquals(replicafailoverabort.encode, Arr(Bulk("FAILOVER"), Bulk("ABORT")))
+  }
+
+  test("The Server protocol using role reads a master, with its replicas") {
+    assertEquals(role.encode, Arr(Bulk("ROLE")))
+    assertEquals(role.decode(Arr(Bulk("master"), Num(0L), Arr(Nil))), Role.Master(NonNegLong(0L), Nil): Role)
+    assertEquals(
+      role.decode(Arr(Bulk("master"), Num(14L), Arr(Arr(Bulk("172.18.0.3"), Bulk("6379"), Bulk("14"))))),
+      Role.Master(NonNegLong(14L), Seq(Role.Client(Host.unsafeFrom("172.18.0.3"), Port.unsafeFrom(6379), NonNegLong(14L)))): Role
+    )
+  }
+
+  test("The Server protocol using role reads a replica, with no offset until it has synced") {
+    def replica(status: String, offset: Long) = Arr(Bulk("slave"), Bulk("10.0.0.1"), Num(6379L), Bulk(status), Num(offset))
+    val host                                  = Host.unsafeFrom("10.0.0.1")
+    val port                                  = Port.unsafeFrom(6379)
+    assertEquals(role.decode(replica("connected", 14L)), Role.Slave(host, port, Role.connected, Some(NonNegLong(14L))): Role)
+    assertEquals(role.decode(replica("handshake", -1L)), Role.Slave(host, port, Role.handshake, None): Role)
+    assertEquals(role.decode(replica("connecting", -1L)), Role.Slave(host, port, Role.connecting, None): Role)
+    assert(role.decode(replica("nope", 0L)).isLeft)
+  }
+
+  test("The Server protocol using role reads a sentinel, and rejects a reply naming another role") {
+    assertEquals(role.decode(Arr(Bulk("sentinel"), Arr(Bulk("mymaster")))), Role.Sentinel(Seq(Key("mymaster"))): Role)
+    assert(role.decode(Arr(Bulk("nope"), Num(0L), Arr(Nil))).isLeft)
+    assert(role.decode(Arr(Bulk("sentinel"), Num(0L), Arr(Nil))).isLeft)
+    assert(role.decode(Arr(Bulk("master"), Num(0L))).isLeft)
   }
 }

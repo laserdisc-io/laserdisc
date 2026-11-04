@@ -69,7 +69,7 @@ trait Streams8_2 extends Streams7_0 with StreamRefPolicyP
 trait Streams8_6 extends Streams8_2 with StreamIdmpP
 
 trait Cluster6_2       extends ClusterBaseP
-trait Cluster7_0       extends Cluster6_2 with ClusterShardsP
+trait Cluster7_0       extends Cluster6_2 with ClusterSlotsMetadataP with ClusterShardsP
 trait Cluster7_2       extends Cluster7_0 with ClusterMyShardIdP
 trait Cluster8_2       extends Cluster7_2 with ClusterSlotStatsP
 trait Cluster8_4       extends Cluster8_2 with ClusterMigrationP

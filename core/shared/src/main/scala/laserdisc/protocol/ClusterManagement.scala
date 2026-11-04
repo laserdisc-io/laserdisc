@@ -34,12 +34,6 @@ object ClusterManagement {
     List(from.value.toString, to.value.toString)
   }
 
-  // the names and values of a reply made of fields, with values that are text or whole numbers kept as text
-  private final val texts: Read[Arr, Map[String, String]] = {
-    val text = Read.instancePF[RESP, String]("text or a whole number") { case Bulk(v) => v; case Num(v) => v.toString; case Str(v) => v }
-    Read.pairs(Read.bulk2StringRead, text).map(_.toMap)
-  }
-
   /** A node of CLUSTER SHARDS. A node may have a port, a TLS port or both, and a hostname */
   final case class ShardNode(
       id: String,
@@ -128,7 +122,15 @@ object ClusterManagement {
 
   /** A slot migration of CLUSTER MIGRATION STATUS (Redis) or CLUSTER GETSLOTMIGRATIONS (Valkey), by field name */
   final case class SlotMigration(fields: Map[String, String])
-  private[protocol] final val slotMigrations: Read[Arr, Seq[SlotMigration]] = Read.arrOf(texts.map(SlotMigration(_)))
+  private[protocol] final val slotMigrations: Read[Records, Seq[SlotMigration]] = {
+    implicit val text: Read[RESP, String] = Read.instancePF("text or a whole number") {
+      case Bulk(v) => v
+      case Num(v)  => v.toString
+      case Str(v)  => v
+    }
+    implicit val migration: Read[Record, SlotMigration] = Read[Record, Map[String, String]].map(SlotMigration(_))
+    Read[Records, Seq[SlotMigration]]
+  }
 
   /** ASYNC and SYNC, for CLUSTER FLUSHSLOT */
   sealed trait FlushMode

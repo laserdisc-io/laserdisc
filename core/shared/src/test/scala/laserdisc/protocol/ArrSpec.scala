@@ -151,8 +151,8 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
     )
   }
 
-  test("decoding Arr.Prefix reads the positions it names and ignores what follows, but not fewer") {
-    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Prefix[Bulk *: Num *: EmptyTuple], String *: Long *: EmptyTuple]
+  test("decoding Arr.Rest of RESP as the positions alone reads what they name and leaves out what follows, but not fewer") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Rest[Bulk *: Num *: EmptyTuple, RESP], String *: Long *: EmptyTuple]
     val request  = "id" *: EmptyTuple
 
     assertEquals(protocol(request).decode(Arr(Bulk("a"), Num(1L))), "a" *: 1L *: EmptyTuple)
@@ -160,14 +160,47 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
     assertLeftEquals(
       protocol(request)
         .decode(Arr(Bulk("a")))
-        .leftMap(_.getMessage.endsWith("Read[Arr.Prefix] error: expected at least 2 elements, got 1")),
+        .leftMap(_.getMessage.endsWith("Read[Arr.Rest] error: expected at least 2 elements, got 1")),
       true
     )
     assertLeftEquals(
       protocol(request)
         .decode(Arr(Bulk("a"), Bulk("1"), Num(2L)))
-        .leftMap(_.getMessage.endsWith("Read[Arr.Prefix] error at element 2: Unexpected element. Was Bulk(1)")),
+        .leftMap(_.getMessage.endsWith("Read[Arr.Rest] error at element 2: Unexpected element. Was Bulk(1)")),
       true
+    )
+  }
+
+  test("decoding Arr.Rest reads the positions it names and then any number of the elements that follow") {
+    def protocol =
+      Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Rest[Bulk *: Num *: EmptyTuple, Num], (String *: Long *: EmptyTuple, Seq[Long])]
+    val request = "id" *: EmptyTuple
+
+    assertEquals(protocol(request).decode(Arr(Bulk("a"), Num(1L))), ("a" *: 1L *: EmptyTuple, Seq.empty[Long]))
+    assertEquals(protocol(request).decode(Arr(Bulk("a"), Num(1L), Num(2L), Num(3L))), ("a" *: 1L *: EmptyTuple, Seq(2L, 3L)))
+    assertLeftEquals(
+      protocol(request)
+        .decode(Arr(Bulk("a")))
+        .leftMap(_.getMessage.endsWith("Read[Arr.Rest] error: expected at least 2 elements, got 1")),
+      true
+    )
+    assertLeftEquals(
+      protocol(request)
+        .decode(Arr(Bulk("a"), Num(1L), Num(2L), Bulk("x")))
+        .leftMap(
+          _.getMessage
+            .endsWith("Read[Arr.Rest] after the first 2 elements: Read[Arr.Of, Seq] error at element 2: Unexpected element. Was Bulk(x)")
+        ),
+      true
+    )
+  }
+
+  test("decoding Arr.Rest of RESP reads what follows as it is, when asked for it") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Rest[Bulk *: EmptyTuple, RESP], (String *: EmptyTuple, Seq[RESP])]
+
+    assertEquals(
+      protocol("id" *: EmptyTuple).decode(Arr(Bulk("a"), Num(1L), Bulk("b"))),
+      ("a" *: EmptyTuple, Seq[RESP](Num(1L), Bulk("b")))
     )
   }
 

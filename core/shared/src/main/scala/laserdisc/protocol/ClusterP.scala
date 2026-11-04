@@ -171,8 +171,10 @@ object ClusterP {
     }
   }
 
-  final case class HostPort(host: Host, port: Port)
-  final case class HostPortNodeId(host: Host, port: Port, nodeId: NodeId)
+  /** A node of CLUSTER SLOTS. `host` is `None` when the server says to use the host you connected to, and `metadata` has what else the
+    * server knows of the node, like its hostname or IP, from Redis 7.0
+    */
+  final case class SlotNode(host: Option[Host], port: Port, nodeId: NodeId, metadata: Map[String, String])
 
   sealed trait LinkState
   object LinkState {
@@ -208,11 +210,7 @@ object ClusterP {
     }
   }
 
-  sealed trait SlotInfo
-  object SlotInfo {
-    final case class NewSlotInfo(master: HostPortNodeId, replicas: Seq[HostPortNodeId]) extends SlotInfo
-    final case class OldSlotInfo(master: HostPort, replicas: Seq[HostPort])             extends SlotInfo
-  }
+  final case class SlotInfo(master: SlotNode, replicas: Seq[SlotNode])
 
   sealed trait SlotType
   object SlotType {
@@ -231,71 +229,46 @@ object ClusterP {
         .map { case (_, value) => value }
   }
   object Slots {
-    import SlotInfo.*
     import SlotType.Range
-    private val H: Read[Bulk, Host] = Read.instance {
-      case Bulk("")      => Right(LoopbackHost)
-      case Bulk(Host(h)) => Right(h)
-      case Bulk(other)   => Left(RESPDecErr(s"Wrong host encoding. Was $other"))
-    }
 
-    private val SI: Read[Seq[RESP], SlotInfo] = {
-      val HPNIs: Read[Seq[RESP], Seq[HostPortNodeId]] = Read.instance {
-        _.foldRight[Either[RESPDecErr, Seq[HostPortNodeId]]](Right(Seq.empty)) {
-          case (Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Bulk(NodeId(id)) :: Nil), Right(hsts)) =>
-            Right(HostPortNodeId(h, p, id) +: hsts)
-          case (Arr(H(Left(e)) :: _), Right(_)) => Left(RESPDecErr(s"Unexpected new replica's host encoding with error ${e.message}"))
-          case (Arr(other), Right(_)) => Left(RESPDecErr(s"Unexpected new replica encoding. Expected [host, port, node id] but was $other"))
-          case (_, left)              => left
-        }
-      }
-      val HPs: Read[Seq[RESP], Seq[HostPort]] = Read.instance {
-        _.foldRight[Either[RESPDecErr, Seq[HostPort]]](Right(Seq.empty)) {
-          case (Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Nil), Right(hsts)) =>
-            Right(HostPort(h, p) +: hsts)
-          case (Arr(H(Left(e)) :: _), Right(_)) => Left(RESPDecErr(s"Unexpected old replica's host encoding with error ${e.message}"))
-          case (Arr(other), Right(_)) => Left(RESPDecErr(s"Unexpected old replica encoding. Expected [host, port] but was $other"))
-          case (_, left)              => left
-        }
+    // the node of Redis 6.2 and KeyDB: host, port and node id
+    private type Node6_2 = Arr.Tuple[Bulk *: Num *: Bulk *: EmptyTuple]
+    // the node of Redis 7.0 and Valkey: also its metadata, with a null host when the server says to use the one you connected to
+    private type Node7_0 = Arr.Tuple[OrNullBulk[Bulk] *: Num *: Bulk *: Arr.Pairs[Bulk, Bulk] *: EmptyTuple]
+    // the first and last slot and the master, then the replicas
+    private type Assigned[N] = Arr.Rest[Num *: Num *: N *: EmptyTuple, N]
+
+    private implicit final val hostRead: Read[Bulk, Host] = Read.instancePF("Bulk(Host)") {
+      case Bulk("")      => LoopbackHost
+      case Bulk(Host(h)) => h
+    }
+    private implicit final val portRead: Read[Num, Port]            = Read.instancePF("Num(Port)") { case Num(ToInt(Port(p))) => p }
+    private implicit final val nodeIdRead: Read[Bulk, NodeId]       = ClusterManagement.nodeId
+    private implicit final val node6_2Read: Read[Node6_2, SlotNode] =
+      Read[Node6_2, Host *: Port *: NodeId *: EmptyTuple].map { case host *: port *: id *: _ => SlotNode(Some(host), port, id, Map.empty) }
+    private implicit final val node7_0Read: Read[Node7_0, SlotNode] =
+      Read[Node7_0, Option[Host] *: Port *: NodeId *: Map[String, String] *: EmptyTuple].map { case host *: port *: id *: metadata *: _ =>
+        SlotNode(host, port, id, metadata)
       }
 
-      Read.instance {
-        case Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Nil) +: HPs(Right(rs)) =>
-          Right(OldSlotInfo(HostPort(h, p), rs))
-        case Arr(H(Right(h)) :: Num(ToInt(Port(p))) :: Bulk(NodeId(id)) :: Nil) +: HPNIs(Right(rs)) =>
-          Right(NewSlotInfo(HostPortNodeId(h, p, id), rs))
-        case Arr(H(Left(e)) :: _) +: _ => Left(RESPDecErr(s"Unexpected host encoding in the slot info. ${e.message}"))
-        case Arr(_ :: otherPort) +: _  => Left(RESPDecErr(s"Unexpected port encoding in the slot info. Was $otherPort"))
-        case other                     =>
-          Left(
-            RESPDecErr(
-              s"Unexpected slot info encoding. Expected [[host, port, node id], replicas]] or [[host, port], replicas] but was $other"
-            )
-          )
-      }
+    private final def slotsRead[N](implicit S: RESPSub[N], R: Read[N, SlotNode]): Read[Arr.Of[Assigned[N]], Slots] = {
+      implicit val assigned: Read[Assigned[N], (Range, SlotInfo)] =
+        Read[Assigned[N], (Slot *: Slot *: SlotNode *: EmptyTuple, Seq[SlotNode])].map { case (from *: to *: master *: _, replicas) =>
+          Range(from, to) -> SlotInfo(master, replicas)
+        }
+      Read[Arr.Of[Assigned[N]], Seq[(Range, SlotInfo)]].map(all => Slots(all.toMap))
     }
 
-    implicit final val slotsRead: Read[Arr, Slots] = Read.instance { case Arr(arrays) =>
-      arrays
-        .foldRight[Either[RESPDecErr, (Map[SlotType.Range, SlotInfo], Int)]](Right(Map.empty -> 0)) {
-          case (Arr(Num(ToInt(Slot(from))) :: Num(ToInt(Slot(to))) :: Arr(SI(Right(si))) :: Nil), Right((sts, stsl))) =>
-            Right((sts + (Range(from, to) -> si)) -> (stsl + 1))
-          case (Arr(Num(ToInt(Slot(_))) :: Num(ToInt(Slot(_))) :: Arr(Nil) :: Nil), Right((_, stsl))) =>
-            Left(RESPDecErr(s"Unexpected slot assignment encoding at element ${stsl + 1}. The assignment list was empty"))
-          case (Arr(other), Right((_, stsl))) =>
-            Left(
-              RESPDecErr(
-                s"Read[Arr, Slots] unexpected slot encoding at element ${stsl + 1}. Expected [from, to, [[host, port], node id, replicas]] or [from, to, [[host, port], replicas]] but was $other"
-              )
-            )
-          case (_, left) => left
-        }
-        .map(r => Slots(r._1))
-    }
+    private[protocol] final val anyNodes: Read[Arr.Of[Assigned[OneOf[Node6_2 *: Node7_0 *: EmptyTuple]]], Slots] =
+      slotsRead[OneOf[Node6_2 *: Node7_0 *: EmptyTuple]]
+    private[protocol] final val nodesWithMetadata: Read[Arr.Of[Assigned[Node7_0]], Slots] = slotsRead[Node7_0]
   }
 }
 
 trait ClusterBaseP extends Features {
+  // the nodes of CLUSTER SLOTS as Redis 6.2 and KeyDB send them, or with the metadata servers send from Redis 7.0
+  protected def slotsRead: RESPRead[ClusterP.Slots] = RESPRead.instance(ClusterP.Slots.anyNodes)
+
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "CLUSTER ADDSLOTS",
@@ -328,38 +301,34 @@ trait ClusterBaseP extends Features {
     final type ClusterAddress           = ClusterP.Address
     final type ClusterFailoverMode      = ClusterP.FailoverMode
     final type ClusterFlag              = ClusterP.Flag
-    final type ClusterHostPort          = ClusterP.HostPort
-    final type ClusterHostPortNodeId    = ClusterP.HostPortNodeId
     final type ClusterImportingSlotType = ClusterP.SlotType.ImportingSlot
     final type ClusterInfo              = ClusterP.Info
     final type ClusterLinkState         = ClusterP.LinkState
     final type ClusterMigratingSlotType = ClusterP.SlotType.MigratingSlot
-    final type ClusterNewSlotInfo       = ClusterP.SlotInfo.NewSlotInfo
     final type ClusterNode              = ClusterP.Node
     final type ClusterNodes             = ClusterP.Nodes
-    final type ClusterOldSlotInfo       = ClusterP.SlotInfo.OldSlotInfo
     final type ClusterRangeSlotType     = ClusterP.SlotType.Range
     final type ClusterResetMode         = ClusterP.ResetMode
     final type ClusterSetSlotMode       = ClusterP.SetSlotMode
     final type ClusterSingleSlotType    = ClusterP.SlotType.Single
+    final type ClusterSlotInfo          = ClusterP.SlotInfo
+    final type ClusterSlotNode          = ClusterP.SlotNode
     final type ClusterSlots             = ClusterP.Slots
 
     final val ClusterAddress           = ClusterP.Address
     final val ClusterFailoverMode      = ClusterP.FailoverMode
     final val ClusterFlag              = ClusterP.Flag
-    final val ClusterHostPort          = ClusterP.HostPort
-    final val ClusterHostPortNodeId    = ClusterP.HostPortNodeId
     final val ClusterImportingSlotType = ClusterP.SlotType.ImportingSlot
     final val ClusterInfo              = ClusterP.Info
     final val ClusterLinkState         = ClusterP.LinkState
     final val ClusterMigratingSlotType = ClusterP.SlotType.MigratingSlot
-    final val ClusterNewSlotInfo       = ClusterP.SlotInfo.NewSlotInfo
     final val ClusterNode              = ClusterP.Node
     final val ClusterNodes             = ClusterP.Nodes
-    final val ClusterOldSlotInfo       = ClusterP.SlotInfo.OldSlotInfo
     final val ClusterRangeSlotType     = ClusterP.SlotType.Range
     final val ClusterResetMode         = ClusterP.ResetMode
     final val ClusterSetSlotMode       = ClusterP.SetSlotMode
+    final val ClusterSlotInfo          = ClusterP.SlotInfo
+    final val ClusterSlotNode          = ClusterP.SlotNode
     final val ClusterSingleSlotType    = ClusterP.SlotType.Single
     final val ClusterSlots             = ClusterP.Slots
   }
@@ -416,7 +385,7 @@ trait ClusterBaseP extends Features {
   final def slaves(nodeId: NodeId): Single.Aux[ClusterNodes] =
     Protocol("CLUSTER", "SLAVES" *: nodeId *: EmptyTuple).as[Bulk, ClusterNodes]
 
-  final val slots: Single.Aux[ClusterSlots] = Protocol("CLUSTER", "SLOTS").as[Arr, ClusterSlots]
+  final val slots: Single.Aux[ClusterSlots] = Protocol("CLUSTER", "SLOTS").using(slotsRead)
 
   /** Gives this node a new config epoch, and replies with the server's message: BUMPED or STILL, with the epoch */
   final val bumpepoch: Single.Aux[String] = Protocol("CLUSTER", "BUMPEPOCH").as[Str, String]
@@ -427,8 +396,14 @@ trait ClusterBaseP extends Features {
   final val myid: Single.Aux[NodeId] = Protocol("CLUSTER", "MYID").using(RESPRead.instance(ClusterManagement.nodeId))
 }
 
+/** CLUSTER SLOTS with the metadata of each node: Redis 7.0 and Valkey */
+trait ClusterSlotsMetadataP extends ClusterBaseP {
+  override protected def slotsRead: RESPRead[ClusterP.Slots] = RESPRead.instance(ClusterP.Slots.nodesWithMetadata)
+}
+
 trait ClusterP
     extends ClusterBaseP
+    with ClusterSlotsMetadataP
     with ClusterShardsP
     with ClusterMyShardIdP
     with ClusterSlotStatsP

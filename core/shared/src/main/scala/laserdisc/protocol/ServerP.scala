@@ -117,47 +117,63 @@ object ServerP {
     final case class Client(host: Host, port: Port, lastAcknowledgedReplicationOffset: NonNegLong)
 
     sealed trait ReplicaStatus
+    case object none       extends ReplicaStatus
     case object connect    extends ReplicaStatus
     case object connecting extends ReplicaStatus
+    case object handshake  extends ReplicaStatus
     case object sync       extends ReplicaStatus
     case object connected  extends ReplicaStatus
+    case object unknown    extends ReplicaStatus
 
     final case class Master(currentReplicationOffset: NonNegLong, clients: Seq[Client]) extends Role
-    final case class Slave(masterHost: Host, masterPort: Port, masterViewReplicaStatus: ReplicaStatus, masterReplicationOffset: NonNegLong)
-        extends Role
+
+    /** `masterReplicationOffset` is `None` until the replica has synced with its master */
+    final case class Slave(
+        masterHost: Host,
+        masterPort: Port,
+        masterViewReplicaStatus: ReplicaStatus,
+        masterReplicationOffset: Option[NonNegLong]
+    ) extends Role
     final case class Sentinel(masterNames: Seq[Key]) extends Role
 
-    implicit val roleRead: Read[Arr, Role] = {
-      val CR: Read[Arr, Client] = Read.instance {
-        case Arr(Bulk(Host(host)) +: Bulk(ToInt(Port(port))) +: Bulk(ToLong(NonNegLong(offset))) +: Seq()) =>
-          Right(Client(host, port, offset))
-        case Arr(other) => Left(RESPDecErr(s"Unexpected role: it should be [host, port, offset] but was $other"))
-      }
-      val RSR: Read[Bulk, ReplicaStatus] = Read.instance {
-        case Bulk("connect")    => Right(connect)
-        case Bulk("connecting") => Right(connecting)
-        case Bulk("sync")       => Right(sync)
-        case Bulk("connected")  => Right(connected)
-        case Bulk(other)        => Left(RESPDecErr(s"Unexpected replica status. Was $other"))
-      }
-      val MR: Read[Arr, Seq[Key]] = Read.arrOf(Read.bulk2KeyRead)
+    private type ClientReply   = Arr.Tuple[Bulk *: Bulk *: Bulk *: EmptyTuple]
+    private type MasterReply   = Arr.Tuple[Bulk *: Num *: Arr.Of[ClientReply] *: EmptyTuple]
+    private type SlaveReply    = Arr.Tuple[Bulk *: Bulk *: Num *: Bulk *: Num *: EmptyTuple]
+    private type SentinelReply = Arr.Tuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]
 
-      Read.instance {
-        case Arr(Bulk("master") +: Num(NonNegLong(offset)) +: Arr(v) +: Seq()) =>
-          v.foldRight[Either[RESPDecErr, (List[Client], Int)]](Right(Nil -> 0)) {
-            case (CR(Right(client)), Right((cs, csl))) => Right((client :: cs) -> (csl + 1))
-            case (CR(Left(e)), Right((_, csl))) => Left(RESPDecErr(s"Read[Arr, Role] clients error at element ${csl + 1}: ${e.message}"))
-            case (_, left)                      => left
-          }.map(r => Master(offset, r._1))
-        case Arr(Bulk("slave") +: Bulk(Host(host)) +: Num(ToInt(Port(port))) +: RSR(Right(status)) +: Num(NonNegLong(offset)) +: Seq()) =>
-          Right(Slave(host, port, status, offset))
-        case Arr(Bulk("slave") +: Bulk(Host(_)) +: Num(ToInt(Port(_))) +: RSR(Left(e)) +: Num(NonNegLong(_)) +: Seq()) =>
-          Left(RESPDecErr(s"Slave replica status read error: $e"))
-        case Arr(Bulk("sentinel") +: MR(Right(masters)) +: Seq()) => Right(Sentinel(masters))
-        case Arr(Bulk("sentinel") +: MR(Left(e)) +: Seq())        => Left(RESPDecErr(s"Sentinel masters read error: $e"))
-        case other                                                => Left(RESPDecErr(s"Unexpected role encoding. Was $other"))
-      }
+    private implicit final val hostRead: Read[Bulk, Host]                = Read.instancePF("Bulk(Host)") { case Bulk(Host(h)) => h }
+    private implicit final val bulkPortRead: Read[Bulk, Port]            = Read.instancePF("Bulk(Port)") { case Bulk(ToInt(Port(p))) => p }
+    private implicit final val numPortRead: Read[Num, Port]              = Read.instancePF("Num(Port)") { case Num(ToInt(Port(p))) => p }
+    private implicit final val offsetRead: Read[Num, Option[NonNegLong]] = Read.numMinusOneIsNone[NonNegLong]
+    private implicit final val statusRead: Read[Bulk, ReplicaStatus]     = Read.instancePF("Bulk(ReplicaStatus)") {
+      case Bulk("none")       => none
+      case Bulk("connect")    => connect
+      case Bulk("connecting") => connecting
+      case Bulk("handshake")  => handshake
+      case Bulk("sync")       => sync
+      case Bulk("connected")  => connected
+      case Bulk("unknown")    => unknown
     }
+    private implicit final val clientRead: Read[ClientReply, Client] =
+      Read[ClientReply, Host *: Port *: NonNegLong *: EmptyTuple].map { case host *: port *: offset *: _ => Client(host, port, offset) }
+
+    // a role's reply starts with its name
+    private final def named[T, L <: Tuple](name: String)(R: Read[T, String *: L]): Read[T, L] = Read.instance {
+      R.read(_).flatMap { case n *: l => if (n == name) Right(l) else Left(RESPDecErr(s"Expected the role $name but was $n")) }
+    }
+    private implicit final val masterRead: Read[MasterReply, Role] =
+      named("master")(Read[MasterReply, String *: NonNegLong *: Seq[Client] *: EmptyTuple]).map { case offset *: clients *: _ =>
+        Master(offset, clients)
+      }
+    private implicit final val slaveRead: Read[SlaveReply, Role] =
+      named("slave")(Read[SlaveReply, String *: Host *: Port *: ReplicaStatus *: Option[NonNegLong] *: EmptyTuple]).map {
+        case host *: port *: status *: offset *: _ => Slave(host, port, status, offset)
+      }
+    private implicit final val sentinelRead: Read[SentinelReply, Role] =
+      named("sentinel")(Read[SentinelReply, String *: Seq[Key] *: EmptyTuple]).map { case masters *: _ => Sentinel(masters) }
+
+    private[protocol] final val roleRead: Read[OneOf[MasterReply *: SlaveReply *: SentinelReply *: EmptyTuple], Role] =
+      Read[OneOf[MasterReply *: SlaveReply *: SentinelReply *: EmptyTuple], Role]
   }
 
   final class Parameters(private val properties: Map[String, String]) extends AnyVal with Dynamic {
@@ -537,7 +553,7 @@ trait ServerBaseP extends ServerInspectionBaseP {
 
   final val replicaofnoone: Single.Aux[OK] = Protocol("REPLICAOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
-  final val role: Single.Aux[Role] = Protocol("ROLE", EmptyTuple).as[Arr, Role]
+  final val role: Single.Aux[Role] = Protocol("ROLE", EmptyTuple).using(RESPRead.instance(Role.roleRead))
 
   final val save: Single.Aux[OK] = Protocol("SAVE", EmptyTuple).as[Str, OK]
 

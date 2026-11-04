@@ -33,7 +33,7 @@ import scala.annotation.{implicitNotFound, nowarn}
 @implicitNotFound(
   """Implicit not found RESPSub[${A}].
 
-${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Arr.Prefix, Arr.Tuple, Bulk, NilArr, NullBulk, Num or Str, a OneOf of them, or RESP for any of them
+${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Arr.Rest, Arr.Tuple, Bulk, NilArr, NullBulk, Num or Str, a OneOf of them, or RESP for any of them
   """
 ) sealed abstract class RESPSub[A] {
   def unapply(resp: RESP): Option[A]
@@ -60,8 +60,8 @@ object RESPSub {
     new Arr.Pairs[A, B](elements)
   }
 
-  implicit final def arrTupleRESPSub[T]: RESPSub[Arr.Tuple[T]]   = instance { case Arr(elements) => new Arr.Tuple[T](elements) }
-  implicit final def arrPrefixRESPSub[T]: RESPSub[Arr.Prefix[T]] = instance { case Arr(elements) => new Arr.Prefix[T](elements) }
+  implicit final def arrTupleRESPSub[T]: RESPSub[Arr.Tuple[T]]     = instance { case Arr(elements) => new Arr.Tuple[T](elements) }
+  implicit final def arrRestRESPSub[T, E]: RESPSub[Arr.Rest[T, E]] = instance { case Arr(elements) => new Arr.Rest[T, E](elements) }
 
   implicit final def oneOfRESPSub[T <: Tuple](implicit A: Alternatives[T], @nowarn D: Distinct[T]): RESPSub[OneOf[T]] = instance {
     case resp if A.matches(resp) => new OneOf[T](resp)

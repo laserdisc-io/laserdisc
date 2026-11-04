@@ -117,11 +117,6 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
     elements(arr)(resp => S.unapply(resp).map(R.read))
   }
 
-  // a plain Arr read as an Arr.Of[A], for readers within others
-  private[protocol] final def arrOf[A, B](R: Read[A, B])(implicit S: RESPSub[A]): Read[Arr, Seq[B]] = instance { arr =>
-    elements(new Arr.Of[A](arr.elements))(resp => S.unapply(resp).map(R.read))
-  }
-
   // the first pair that fails fails the whole array, naming it
   private final def pairsOf[A, B, C, D](SA: RESPSub[A], RA: Read[A, C], SB: RESPSub[B], RB: Read[B, D])(
       elements: List[RESP]
@@ -224,11 +219,26 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   implicit final def arrTuple2Tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr.Tuple[T], L] =
     instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements))
 
-  implicit final def arrPrefix2Tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr.Prefix[T], L] = instance { arr =>
-    if (arr.elements.size < R.size)
-      Left(RESPDecErr(s"Read[Arr.Prefix] error: expected at least ${R.size} elements, got ${arr.elements.size}"))
-    else R.read(arr.elements, 1).left.map(e => RESPDecErr(s"Read[Arr.Prefix] ${e.message}"))
+  private final def restPositions[T, L](R: TupleRead[T, L])(elements: List[RESP]): Either[RESPDecErr, L] =
+    if (elements.size < R.size) Left(RESPDecErr(s"Read[Arr.Rest] error: expected at least ${R.size} elements, got ${elements.size}"))
+    else R.read(elements, 1).left.map(e => RESPDecErr(s"Read[Arr.Rest] ${e.message}"))
+
+  implicit final def arrRest2Tuple[T, E, L, B](
+      implicit R: TupleRead[T, L],
+      S: RESPSub[E],
+      RE: Read[E, B]
+  ): Read[Arr.Rest[T, E], (L, Seq[B])] = instance { arr =>
+    restPositions(R)(arr.elements).flatMap { l =>
+      elements(new Arr.Of[E](arr.elements.drop(R.size)))(resp => S.unapply(resp).map(RE.read)) match {
+        case Right(bs) => Right(l -> bs)
+        case Left(e)   => Left(RESPDecErr(s"Read[Arr.Rest] after the first ${R.size} elements: ${e.message}"))
+      }
+    }
   }
+
+  // what's at the positions alone, leaving out what follows
+  implicit final def arrRest2Positions[T, L](implicit R: TupleRead[T, L]): Read[Arr.Rest[T, RESP], L] =
+    instance(arr => restPositions(R)(arr.elements))
 
   // an array of values of one type, like HMGET's that may be missing, read position by position
   implicit final def arrOf2Tuple[E, L <: Tuple](implicit R: OfTupleRead[E, L]): Read[Arr.Of[E], L] = instance { arr =>

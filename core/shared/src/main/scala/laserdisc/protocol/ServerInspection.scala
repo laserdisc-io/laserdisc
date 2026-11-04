@@ -27,19 +27,6 @@ import Protocol.Single
 /** The replies and options of the commands that inspect a server: SLOWLOG, LATENCY, MEMORY, COMMAND, MODULE, HOTKEYS and COMMANDLOG */
 object ServerInspection {
 
-  // the text of a Bulk or of a Str, as COMMAND INFO's flags and categories come as Str
-  private final def text(resp: RESP): Option[String] = resp match {
-    case Bulk(s) => Some(s)
-    case Str(s)  => Some(s)
-    case _       => None
-  }
-  private final def texts(resp: RESP): Option[Seq[String]] = resp match {
-    case Arr(elements) =>
-      val read = elements.map(text)
-      if (read.forall(_.isDefined)) Some(read.flatten) else None
-    case _ => None
-  }
-
   /** An entry of SLOWLOG GET or COMMANDLOG GET. Newer versions send more fields after these, which are left out */
   final case class LogEntry(
       id: NonNegLong,
@@ -49,7 +36,7 @@ object ServerInspection {
       clientAddress: String,
       clientName: String
   )
-  private final type LogEntryReply = Arr.Prefix[Num *: Num *: Num *: Arr.Of[Bulk] *: Bulk *: Bulk *: EmptyTuple]
+  private final type LogEntryReply = Arr.Rest[Num *: Num *: Num *: Arr.Of[Bulk] *: Bulk *: Bulk *: EmptyTuple, RESP]
   private implicit final val logEntry: Read[LogEntryReply, LogEntry] =
     Read[LogEntryReply, NonNegLong *: NonNegLong *: NonNegLong *: Seq[String] *: String *: String *: EmptyTuple].map {
       case id *: timestamp *: microseconds *: arguments *: address *: name *: _ =>
@@ -59,7 +46,7 @@ object ServerInspection {
 
   /** An event of LATENCY LATEST: when it last happened, how long it took then, and the longest it ever took */
   final case class LatencyEvent(name: String, timestamp: NonNegLong, latestMilliseconds: NonNegLong, maxMilliseconds: NonNegLong)
-  private final type LatencyEventReply = Arr.Prefix[Bulk *: Num *: Num *: Num *: EmptyTuple]
+  private final type LatencyEventReply = Arr.Rest[Bulk *: Num *: Num *: Num *: EmptyTuple, RESP]
   private implicit final val latencyEvent: Read[LatencyEventReply, LatencyEvent] =
     Read[LatencyEventReply, String *: NonNegLong *: NonNegLong *: NonNegLong *: EmptyTuple].map {
       case name *: timestamp *: latest *: max *: _ =>
@@ -124,19 +111,14 @@ object ServerInspection {
       step: Int,
       aclCategories: Seq[String]
   )
-  private[protocol] final val commandInfos: Read[Arr, Seq[Option[CommandInfo]]] = Read.instance { case Arr(elements) =>
-    elements.foldRight[Either[RESPDecErr, List[Option[CommandInfo]]]](Right(Nil)) {
-      case (NilArr | NullBulk, Right(infos))                                                                      => Right(None :: infos)
-      case (Arr(Bulk(name) +: Num(arity) +: flags +: Num(first) +: Num(last) +: Num(step) +: rest), Right(infos)) =>
-        (texts(flags), rest.headOption.fold[Option[Seq[String]]](Some(Nil))(texts)) match {
-          case (Some(fs), Some(categories)) =>
-            Right(Some(CommandInfo(name, arity.toInt, fs, first.toInt, last.toInt, step.toInt, categories)) :: infos)
-          case _ => Left(RESPDecErr(s"Unexpected flags or ACL categories for $name"))
-        }
-      case (other, Right(_)) => Left(RESPDecErr(s"Unexpected command info. Was $other"))
-      case (_, left)         => left
+  private type CommandInfoReply = Arr.Rest[Bulk *: Num *: Arr.Of[Str] *: Num *: Num *: Num *: Arr.Of[Str] *: EmptyTuple, RESP]
+  private implicit final val commandInfo: Read[CommandInfoReply, CommandInfo] =
+    Read[CommandInfoReply, String *: Int *: Seq[String] *: Int *: Int *: Int *: Seq[String] *: EmptyTuple].map {
+      case name *: arity *: flags *: first *: last *: step *: categories *: _ =>
+        CommandInfo(name, arity, flags, first, last, step, categories)
     }
-  }
+  private[protocol] final val commandInfos: Read[Arr.Of[OrNullBulk[CommandInfoReply]], Seq[Option[CommandInfo]]] =
+    Read[Arr.Of[OrNullBulk[CommandInfoReply]], Seq[Option[CommandInfo]]]
 
   /** A key of COMMAND GETKEYSANDFLAGS, with what the command does to it */
   final case class KeyAndFlags(key: Key, flags: Seq[String])

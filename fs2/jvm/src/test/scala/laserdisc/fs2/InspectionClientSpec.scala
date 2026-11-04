@@ -91,5 +91,6 @@ abstract class InspectionClientSpec(p: Port, dest: String) extends LaserdiscFs2S
     assertEquals(send(v.command.info(OneOrMore.unsafeFrom(List(Key("get"), Key("nosuch"))))).map(_.map(_.name)), Seq(Some("get"), None))
     assertEquals(send(v.command.getkeys(v.mset(OneOrMore.unsafeFrom(List(Key("i:a") -> 1, Key("i:b") -> 2))))), Seq(Key("i:a"), Key("i:b")))
     assert(send(v.module.list).forall(_.name.nonEmpty))
+    assert(send(v.role).isInstanceOf[protocol.ServerP.Role.Master])
   }
 }

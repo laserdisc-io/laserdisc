@@ -773,4 +773,94 @@ final class VersionImportsSpec extends BaseSpec {
       assertEquals(evalro[Num, Long]("return 1").frames, frame("EVAL_RO", "return 1", "0"))
     }
   }
+
+  test("a family of a version brings that family's commands, and no others") {
+    import laserdisc.redis_8_10.streams.*
+    assertEquals(xlen(Key("a")).command, "XLEN")
+    assert(compileErrors("""get[String](Key("a"))""").nonEmpty)
+  }
+
+  test("a family of a version brings its options of that version") {
+    import laserdisc.redis_8_4.strings.*
+    assertEquals(set(Key("a"), 2, stringtypes.ifEq(1)).command, "SET")
+  }
+
+  test("a family of a version doesn't bring what arrived in a later version") {
+    import laserdisc.redis_8_2.strings.*
+    assert(compileErrors("""set(Key("a"), 2, stringtypes.ifEq(1))""").nonEmpty)
+  }
+
+  test("a family of a version reads its replies as that version does") {
+    val start                                      = protocol.StreamP.Id(NonNegLong(0L), NonNegLong(0L))
+    val older                                      = Arr(Bulk("0-0"), Arr(Nil))
+    def claim(v: protocol.StreamClaimAndInfoBaseP) = v.xautoclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), start)
+    assertEquals(claim(redis_6_2.streams).decode(older).map(_.next), start)
+    assert(claim(redis_7_0.streams).decode(older).isLeft)
+    assert(redis_7_0.server.acl.getuser(Key("u")).decode(NilArr).isLeft)
+  }
+
+  test("a family of a version has that version's command groups") {
+    assert(compileErrors("""redis_6_2.server.client.noevict(on = true)""").nonEmpty)
+    assertEquals(redis_7_0.server.client.noevict(on = true).command, "CLIENT")
+  }
+
+  test("the command and the family called keys live together, and so do the ones called publish") {
+    import laserdisc.redis_6_2.*
+    assertEquals(keys(GlobPattern("a*")).command, "KEYS")
+    assertEquals(publish(Key("c"), "m").command, "PUBLISH")
+    assertEquals(redis_6_2.keys.del(Key("a")).command, "DEL")
+    assertEquals(redis_6_2.publish.publish(Key("c"), "m").command, "PUBLISH")
+  }
+
+  test("a family called keys can be imported") {
+    import laserdisc.redis_6_2.keys.*
+    assertEquals(del(Key("a")).command, "DEL")
+  }
+
+  test("blocking commands can be imported from a version") {
+    import laserdisc.redis_7_0.blocking.*
+    assertEquals(blmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), protocol.ListP.Side.left, NonNegInt(1)).command, "BLMPOP")
+    assert(compileErrors("""get[String](Key("a"))""").nonEmpty)
+  }
+
+  test("the families of each version together have what the version has") {
+    val versions: List[Base6_2] = List(
+      redis_6_2,
+      redis_7_0,
+      redis_7_2,
+      redis_7_4,
+      redis_8_0,
+      redis_8_2,
+      redis_8_4,
+      redis_8_6,
+      redis_8_8,
+      redis_8_10,
+      valkey_7_2,
+      valkey_8_0,
+      valkey_8_1,
+      valkey_9_0,
+      valkey_9_1
+    )
+    versions.foreach { v =>
+      val families = List[protocol.Features](
+        v.blocking,
+        v.cluster,
+        v.connection,
+        v.geo,
+        v.hashmaps,
+        v.hyperloglog,
+        v.keys,
+        v.lists,
+        v.publish,
+        v.scripting,
+        v.server,
+        v.sets,
+        v.sortedsets,
+        v.streams,
+        v.strings,
+        v.transaction
+      )
+      assertEquals(families.flatMap(_.supported).toSet, v.supported.toSet)
+    }
+  }
 }

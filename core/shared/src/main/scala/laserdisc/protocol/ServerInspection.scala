@@ -89,25 +89,23 @@ object ServerInspection {
 
   /** MEMORY STATS: the figures for the whole server, and those of each database, as text since they mix whole and decimal numbers */
   final case class MemoryStats(values: Map[String, String], databases: Map[Int, Map[String, String]])
-  private[protocol] final val memoryStats: Read[Arr, MemoryStats] = {
+  private[protocol] final val memoryStats: Read[Record, MemoryStats] = {
     val value    = Read.instancePF[RESP, String]("a number") { case Num(n) => n.toString; case Bulk(s) => s }
     val database = Read.pairs(Read.bulk2StringRead, value).map(_.toMap)
     val Db       = raw"db\.(\d+)".r
-    Read.instance { arr =>
-      Read.fields.read(arr).flatMap {
-        _.foldLeft[Either[RESPDecErr, MemoryStats]](Right(MemoryStats(Map.empty, Map.empty))) {
-          case (Right(stats), (k @ Db(n), fs: Arr)) =>
-            database.read(fs) match {
-              case Right(d) => Right(stats.copy(databases = stats.databases + (n.toInt -> d)))
-              case Left(e)  => Left(RESPDecErr(s"Unexpected memory stats for $k: ${e.message}"))
-            }
-          case (Right(stats), (k, v)) =>
-            value.read(v) match {
-              case Right(s) => Right(stats.copy(values = stats.values + (k -> s)))
-              case Left(e)  => Left(RESPDecErr(s"Unexpected memory stat $k: ${e.message}"))
-            }
-          case (left, _) => left
-        }
+    Read.record("memory stats") {
+      _.others(Set.empty).foldLeft[Either[RESPDecErr, MemoryStats]](Right(MemoryStats(Map.empty, Map.empty))) {
+        case (Right(stats), (k @ Db(n), fs: Arr)) =>
+          database.read(fs) match {
+            case Right(d) => Right(stats.copy(databases = stats.databases + (n.toInt -> d)))
+            case Left(e)  => Left(RESPDecErr(s"field $k: ${e.message}"))
+          }
+        case (Right(stats), (k, v)) =>
+          value.read(v) match {
+            case Right(s) => Right(stats.copy(values = stats.values + (k -> s)))
+            case Left(e)  => Left(RESPDecErr(s"field $k: ${e.message}"))
+          }
+        case (left, _) => left
       }
     }
   }
@@ -220,23 +218,22 @@ object ServerInspection {
     * other figures as text
     */
   final case class HotKeys(values: Map[String, String], byCpuTime: Seq[(Key, NonNegLong)], byNetBytes: Seq[(Key, NonNegLong)])
-  private[protocol] final val hotKeys: Read[Arr, Seq[HotKeys]] = {
-    val keysAndCounts                     = Read.pairs(Read.bulk2KeyRead, Read.num2NonNegLongRead)
-    val hotKeysReport: Read[Arr, HotKeys] = Read.instance { arr =>
-      Read.fields.read(arr).flatMap {
-        _.foldLeft[Either[RESPDecErr, HotKeys]](Right(HotKeys(Map.empty, Nil, Nil))) {
-          case (Right(h), ("by-cpu-time-us", keysAndCounts(Right(kns)))) => Right(h.copy(byCpuTime = kns))
-          case (Right(h), ("by-net-bytes", keysAndCounts(Right(kns))))   => Right(h.copy(byNetBytes = kns))
-          case (Right(h), (k, Num(n)))                                   => Right(h.copy(values = h.values + (k -> n.toString)))
-          case (Right(h), (k, Bulk(v)))                                  => Right(h.copy(values = h.values + (k -> v)))
-          case (Right(h), (k, _: Arr)) if k != "by-cpu-time-us" && k != "by-net-bytes" => Right(h)
-          case (Right(_), other) => Left(RESPDecErr(s"Unexpected hot keys report. Was $other"))
-          case (left, _)         => left
-        }
+  private implicit final val hotKeysReport: Read[Record, HotKeys] = Read.record("hot keys report") { f =>
+    val byCpuTime  = "by-cpu-time-us"
+    val byNetBytes = "by-net-bytes"
+    for {
+      cpu    <- f.optional[Arr.Pairs[Bulk, Num], Seq[(Key, NonNegLong)]](byCpuTime)
+      net    <- f.optional[Arr.Pairs[Bulk, Num], Seq[(Key, NonNegLong)]](byNetBytes)
+      values <- f.others(Set(byCpuTime, byNetBytes)).foldLeft[Either[RESPDecErr, Map[String, String]]](Right(Map.empty)) {
+        case (Right(vs), (k, Num(n)))  => Right(vs + (k -> n.toString))
+        case (Right(vs), (k, Bulk(v))) => Right(vs + (k -> v))
+        case (Right(vs), (_, _: Arr))  => Right(vs)
+        case (Right(_), (k, other))    => Left(RESPDecErr(s"field $k: Unexpected value. Was $other"))
+        case (left, _)                 => left
       }
-    }
-    Read.arrOf(hotKeysReport)
+    } yield HotKeys(values, cpu.getOrElse(Nil), net.getOrElse(Nil))
   }
+  private[protocol] final val hotKeys: Read[Records, Seq[HotKeys]] = Read[Records, Seq[HotKeys]]
 
   private[protocol] final def argumentsOf(protocol: Single): List[String] =
     protocol.command :: protocol.parameters.toList.collect { case Bulk(s) => s }

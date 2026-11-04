@@ -172,11 +172,6 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
     fields.read(Arr(pairs.elements)).flatMap(m => read(new Fields(m))).left.map(e => RESPDecErr(s"$name: ${e.message}"))
   }
 
-  // as above, for the records with computed fields, which take the fields as they are
-  private[protocol] final def untypedRecord[A](name: String)(f: Map[String, RESP] => Option[A]): Read[Arr, A] = instance { arr =>
-    fields.read(arr).flatMap(f(_).toRight(RESPDecErr(s"Unexpected $name. Was $arr")))
-  }
-
   implicit final val num2BooleanRead: Read[Num, Boolean] = instancePF("0L or 1L") {
     case Num(0L) => false
     case Num(1L) => true

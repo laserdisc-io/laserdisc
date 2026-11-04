@@ -30,9 +30,6 @@ object ClusterManagement {
 
   private final val num = Read.num2NonNegLongRead
 
-  private final def long(s: String): Option[Long] = s match { case ToLong(l) => Some(l); case _ => None }
-  private final def int(s: String): Option[Int]   = s match { case ToInt(i) => Some(i); case _ => None }
-
   private final def ranges(slots: OneOrMore[(Slot, Slot)]): List[String] = slots.value.flatMap { case (from, to) =>
     List(from.value.toString, to.value.toString)
   }
@@ -41,10 +38,6 @@ object ClusterManagement {
   private final val texts: Read[Arr, Map[String, String]] = {
     val text = Read.instancePF[RESP, String]("text or a whole number") { case Bulk(v) => v; case Num(v) => v.toString; case Str(v) => v }
     Read.pairs(Read.bulk2StringRead, text).map(_.toMap)
-  }
-
-  private final def textRecord[A](name: String)(f: Map[String, String] => Option[A]): Read[Arr, A] = Read.instance { arr =>
-    texts.read(arr).flatMap(f(_).toRight(RESPDecErr(s"Unexpected $name. Was $arr")))
   }
 
   /** A node of CLUSTER SHARDS. A node may have a port, a TLS port or both, and a hostname */
@@ -63,27 +56,27 @@ object ClusterManagement {
   /** A shard of CLUSTER SHARDS: the slot ranges it serves and its nodes. Valkey also replies with the shard's id */
   final case class Shard(slots: Seq[(Slot, Slot)], nodes: Seq[ShardNode], id: Option[String])
 
-  private[protocol] final val shards: Read[Arr, Seq[Shard]] = {
-    val node = textRecord("shard node") { fs =>
-      for {
-        id     <- fs.get("id")
-        ip     <- fs.get("ip")
-        end    <- fs.get("endpoint")
-        role   <- fs.get("role")
-        health <- fs.get("health")
-        offset <- fs.get("replication-offset").flatMap(long)
-      } yield ShardNode(id, ip, end, role, health, offset, fs.get("port").flatMap(int), fs.get("tls-port").flatMap(int), fs.get("hostname"))
-    }
-    val nodes = Read.arrOf(node)
-    val slots = Read.pairs(Read.num2SlotRead, Read.num2SlotRead)
-    val shard = Read.untypedRecord("shard") { m =>
-      for {
-        ranges <- m.get("slots").collect { case slots(Right(rs)) => rs }
-        ns     <- m.get("nodes").collect { case nodes(Right(ns)) => ns }
-      } yield Shard(ranges, ns, m.get("id").collect { case Bulk(id) => id })
-    }
-    Read.arrOf(shard)
+  private implicit final val shardNode: Read[Record, ShardNode] = Read.record("shard node") { f =>
+    for {
+      id       <- f.bulk[String]("id")
+      ip       <- f.bulk[String]("ip")
+      endpoint <- f.bulk[String]("endpoint")
+      role     <- f.bulk[String]("role")
+      health   <- f.bulk[String]("health")
+      offset   <- f.num[Long]("replication-offset")
+      port     <- f.optionalNum[Int]("port")
+      tlsPort  <- f.optionalNum[Int]("tls-port")
+      hostname <- f.optionalBulk[String]("hostname")
+    } yield ShardNode(id, ip, endpoint, role, health, offset, port, tlsPort, hostname)
   }
+  private implicit final val shard: Read[Record, Shard] = Read.record("shard") { f =>
+    for {
+      slots <- f[Arr.Pairs[Num, Num], Seq[(Slot, Slot)]]("slots")
+      nodes <- f[Records, Seq[ShardNode]]("nodes")
+      id    <- f.optionalBulk[String]("id")
+    } yield Shard(slots, nodes, id)
+  }
+  private[protocol] final val shards: Read[Records, Seq[Shard]] = Read[Records, Seq[Shard]]
 
   /** A link of CLUSTER LINKS: a connection to (`to`) or from (`from`) another node, with its buffer use in bytes */
   final case class ClusterLink(

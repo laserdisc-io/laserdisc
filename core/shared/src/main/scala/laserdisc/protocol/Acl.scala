@@ -101,38 +101,38 @@ object Acl {
       databases: Option[String]
   )
 
-  private final def texts(resp: RESP): Option[Seq[String]] = resp match {
-    case Arr(es) =>
-      val read = es.map { case Bulk(s) => Some(s); case Str(s) => Some(s); case _ => None }
-      if (read.forall(_.isDefined)) Some(read.flatten) else None
-    case _ => None
+  // what keys and channels hold: Redis 6.2 lists bare patterns, later versions reply with the rules themselves
+  private final case class Patterns(withPrefix: String => String)
+  private implicit final val bulkPatterns: Read[Bulk, Patterns]  = Read.infallible(bulk => Patterns(_ => bulk.value))
+  private implicit final val barePatterns: Read[Texts, Patterns] = Read[Texts, Seq[String]].map { patterns =>
+    Patterns(prefix => patterns.map(p => s"$prefix$p").mkString(" "))
   }
 
-  // Redis 6.2 lists bare patterns; later versions reply with the rules themselves
-  private final def rules(resp: RESP, prefix: String): Option[String] = resp match {
-    case Bulk(s)  => Some(s)
-    case arr: Arr => texts(arr).map(_.map(p => s"$prefix$p").mkString(" "))
-    case _        => None
-  }
-
-  private final val selector: Read[Record, AclSelector] = Read.record("ACL selector") { f =>
+  private implicit final val selector: Read[Record, AclSelector] = Read.record("ACL selector") { f =>
     for {
       commands <- f.bulk[String]("commands")
       keys     <- f.bulk[String]("keys")
       channels <- f.bulk[String]("channels")
     } yield AclSelector(commands, keys, channels)
   }
-  private final val selectors: Read[Arr, Seq[AclSelector]] = Read.arrOf(selector)
-
-  private[protocol] final val user: Read[Arr, AclUser] = Read.untypedRecord("ACL user") { m =>
+  private[protocol] final val user: Read[Record, AclUser] = Read.record("ACL user") { f =>
     for {
-      flags     <- m.get("flags").flatMap(texts)
-      passwords <- m.get("passwords").flatMap(texts)
-      commands  <- m.get("commands").collect { case Bulk(c) => c }
-      keys      <- m.get("keys").flatMap(rules(_, "~"))
-      channels  <- m.get("channels").fold[Option[String]](Some(""))(rules(_, "&"))
-      selected  <- m.get("selectors").fold[Option[Seq[AclSelector]]](Some(Nil)) { case selectors(Right(ss)) => Some(ss); case _ => None }
-    } yield AclUser(flags, passwords, commands, keys, channels, selected, m.get("databases").collect { case Bulk(d) => d })
+      flags     <- f[Texts, Seq[String]]("flags")
+      passwords <- f[Texts, Seq[String]]("passwords")
+      commands  <- f.bulk[String]("commands")
+      keys      <- f[OneOf[Bulk *: Texts *: EmptyTuple], Patterns]("keys")
+      channels  <- f.optional[OneOf[Bulk *: Texts *: EmptyTuple], Patterns]("channels")
+      selectors <- f.optional[Records, Seq[AclSelector]]("selectors")
+      databases <- f.optionalBulk[String]("databases")
+    } yield AclUser(
+      flags,
+      passwords,
+      commands,
+      keys.withPrefix("~"),
+      channels.fold("")(_.withPrefix("&")),
+      selectors.getOrElse(Nil),
+      databases
+    )
   }
 
   /** An entry of ACL LOG: what was denied (`reason` like `auth` or `command`, `object` the command, key or channel), to whom, how many

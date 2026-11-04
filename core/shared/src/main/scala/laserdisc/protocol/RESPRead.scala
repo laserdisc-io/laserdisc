@@ -115,11 +115,11 @@ object RESPRead {
 
   // an array read with R, or None for a null array or a null bulk string, for replies Redis changed from one to the other (e.g. LPOP with a
   // count, before Redis 7.0), and readers given explicitly
-  private[protocol] final def orNilArrOrNullBulk[B](
-      R: Read[Arr, B]
-  ): RESPRead.Aux[OneOf[NilArr *: NullBulk *: Arr *: EmptyTuple], Option[B]] = {
-    implicit val read: Read[Arr, B] = R
-    RESPRead[OneOf[NilArr *: NullBulk *: Arr *: EmptyTuple], Option[B]]
+  private[protocol] final def orNilArrOrNullBulk[A, B](
+      R: Read[A, B]
+  )(implicit S: RESPSub[A]): RESPRead.Aux[OneOf[NilArr *: NullBulk *: A *: EmptyTuple], Option[B]] = {
+    implicit val read: Read[A, B] = R
+    RESPRead[OneOf[NilArr *: NullBulk *: A *: EmptyTuple], Option[B]]
   }
 
   implicit final def derive[A: RESPSub, B](implicit R: Read[A, B]): RESPRead.Aux[A, B] = instance(R)

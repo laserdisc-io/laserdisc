@@ -271,31 +271,24 @@ object StreamP {
     case Arr(Id.bulk2IdRead(Right(next)) +: claims(Right(cs)) +: ids(Right(deleted)) +: Seq()) => AutoClaimed(next, cs, deleted)
   }
 
-  private final def number(resp: Option[RESP]): Option[NonNegLong] = resp.collect { case Num(NonNegLong(n)) => n }
-
-  private[protocol] final def streamInfo[A: Read[Bulk, _]]: Read[Arr, StreamInfo[A]] = {
-    val one   = entry[A]
+  private[protocol] final def streamInfo[A: Read[Bulk, _]]: Read[Record, StreamInfo[A]] = {
+    implicit val one: Read[Arr, Entry[A]] = entry[A]
     val typed = Set("length", "radix-tree-keys", "radix-tree-nodes", "last-generated-id", "groups", "first-entry", "last-entry")
-    def optionalEntry(resp: Option[RESP]): Option[Option[Entry[A]]] = resp match {
-      case Some(NilArr | NullBulk) | None => Some(None)
-      case Some(one(Right(e)))            => Some(Some(e))
-      case _                              => None
-    }
-    Read.untypedRecord("stream info") { m =>
+    Read.record("stream info") { f =>
       for {
-        length <- number(m.get("length"))
-        keys   <- number(m.get("radix-tree-keys"))
-        nodes  <- number(m.get("radix-tree-nodes"))
-        last   <- m.get("last-generated-id").collect { case Id.bulk2IdRead(Right(id)) => id }
-        groups <- number(m.get("groups"))
-        first  <- optionalEntry(m.get("first-entry"))
-        lastE  <- optionalEntry(m.get("last-entry"))
+        length <- f.num[NonNegLong]("length")
+        keys   <- f.num[NonNegLong]("radix-tree-keys")
+        nodes  <- f.num[NonNegLong]("radix-tree-nodes")
+        last   <- f.bulk[Id]("last-generated-id")
+        groups <- f.num[NonNegLong]("groups")
+        first  <- f.optional[OneOf[NilArr *: NullBulk *: Arr *: EmptyTuple], Option[Entry[A]]]("first-entry")
+        lastE  <- f.optional[OneOf[NilArr *: NullBulk *: Arr *: EmptyTuple], Option[Entry[A]]]("last-entry")
       } yield {
-        val others = m.collect {
-          case (k, Bulk(v)) if !typed(k) => k -> v
-          case (k, Num(v)) if !typed(k)  => k -> v.toString
+        val others = f.others(typed).collect {
+          case (k, Bulk(v)) => k -> v
+          case (k, Num(v))  => k -> v.toString
         }
-        StreamInfo(length, keys, nodes, last, groups, first, lastE, others)
+        StreamInfo(length, keys, nodes, last, groups, first.flatten, lastE.flatten, others)
       }
     }
   }

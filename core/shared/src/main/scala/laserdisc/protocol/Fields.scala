@@ -43,6 +43,9 @@ private[protocol] final class Fields(values: Map[String, RESP]) {
   def optionalBulk[B](name: String)(implicit R: Read[Bulk, B]): Either[RESPDecErr, Option[B]] = optional[Bulk, B](name)
   def optionalNum[B](name: String)(implicit R: Read[Num, B]): Either[RESPDecErr, Option[B]]   = optional[Num, B](name)
 
+  /** The fields other than these, for records that keep what they don't name */
+  def others(known: Set[String]): Map[String, RESP] = values -- known
+
   private def value[A, B](name: String, resp: RESP)(implicit S: RESPSub[A], R: Read[A, B]): Either[RESPDecErr, B] = S.unapply(resp) match {
     case Some(a) => R.read(a).left.map(e => RESPDecErr(s"field $name: ${e.message}"))
     case None    => Left(RESPDecErr(s"field $name: Unexpected value. Was $resp"))

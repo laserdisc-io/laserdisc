@@ -23,7 +23,7 @@ package laserdisc
 package fs2
 
 import cats.effect.IO
-import laserdisc.all.*
+import laserdisc.redis_6_2.*
 import laserdisc.auto.*
 import laserdisc.fs2.FakeRedisServer.*
 import munit.CatsEffectSuite

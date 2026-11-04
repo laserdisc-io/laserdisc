@@ -6,38 +6,40 @@ reply. Building one doesn't send anything; you send it with a
 
 ```scala mdoc:compile-only
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 
 val setA: Protocol.Aux[OK]             = set("a", 23)
 val getA: Protocol.Aux[Option[PosInt]] = get[PosInt]("a")
 ```
 
-`laserdisc.all.*` brings every command into scope. To import a single family
-instead, use its object:
+`laserdisc.redis_8_10.*` brings every command of Redis 8.10 into scope. Use the
+import for your server: see [Your server's version](#your-servers-version).
+
+To import a single family instead, add its name:
 
 | Family | Import |
 | --- | --- |
-| Strings | `laserdisc.families.strings.*` |
-| Streams | `laserdisc.families.streams.*`, and `laserdisc.families.streams.blocking.*` for blocking commands |
-| Keys | `laserdisc.families.keys.*` |
-| Hashes | `laserdisc.families.hashmaps.*` |
-| Lists | `laserdisc.families.lists.*`, and `laserdisc.families.lists.blocking.*` for blocking commands |
-| Sets | `laserdisc.families.sets.*` |
-| Sorted sets | `laserdisc.families.sortedsets.*`, and `laserdisc.families.sortedsets.blocking.*` for blocking commands |
-| Geospatial | `laserdisc.families.geo.*` |
-| HyperLogLog | `laserdisc.families.hyperloglog.*` |
-| Publish | `laserdisc.families.publish.*` |
-| Transactions | `laserdisc.families.transaction.*` |
-| Scripting | `laserdisc.families.scripting.*` |
-| Connection | `laserdisc.families.connection.*` |
-| Server | `laserdisc.families.server.*` |
-| Cluster | `laserdisc.families.cluster.*` |
+| Strings | `laserdisc.redis_8_10.strings.*` |
+| Streams | `laserdisc.redis_8_10.streams.*` |
+| Keys | `laserdisc.redis_8_10.keys.*` |
+| Hashes | `laserdisc.redis_8_10.hashmaps.*` |
+| Lists | `laserdisc.redis_8_10.lists.*` |
+| Sets | `laserdisc.redis_8_10.sets.*` |
+| Sorted sets | `laserdisc.redis_8_10.sortedsets.*` |
+| Geospatial | `laserdisc.redis_8_10.geo.*` |
+| HyperLogLog | `laserdisc.redis_8_10.hyperloglog.*` |
+| Publish | `laserdisc.redis_8_10.publish.*` |
+| Transactions | `laserdisc.redis_8_10.transaction.*` |
+| Scripting | `laserdisc.redis_8_10.scripting.*` |
+| Connection | `laserdisc.redis_8_10.connection.*` |
+| Server | `laserdisc.redis_8_10.server.*` |
+| Cluster | `laserdisc.redis_8_10.cluster.*` |
+| Blocking commands of lists, sorted sets and streams | `laserdisc.redis_8_10.blocking.*` |
 
 ## Your server's version
 
-`laserdisc.all.*` has every command, including some your server may not have.
-To get only what your server has, import its version instead:
+Each server and version has its own import, with only what that server has:
 
 ```scala mdoc:compile-only
 import laserdisc.*
@@ -101,7 +103,7 @@ read it back:
 
 ```scala mdoc:compile-only
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 
 final case class User(name: String, age: Int, email: Option[String])
@@ -124,7 +126,7 @@ that says which one:
 
 ```scala mdoc:compile-only
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 
 val fields  = OneOrMoreKeys.unsafeFrom(List(Key("age"), Key("email")))
@@ -141,7 +143,7 @@ arguments are the script's `KEYS` and `ARGV`:
 
 ```scala mdoc:compile-only
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 
 val keys = OneOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
 val args = OneOrMore.unsafeFrom(List[Value](1, "two"))
@@ -173,7 +175,7 @@ command:
 import cats.effect.IO
 
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 import laserdisc.fs2.*
 
@@ -207,7 +209,7 @@ To store values of your own types, give LaserDisc a `Show` to write them and a
 
 ```scala mdoc:compile-only
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 
 final case class UserId(value: Long)

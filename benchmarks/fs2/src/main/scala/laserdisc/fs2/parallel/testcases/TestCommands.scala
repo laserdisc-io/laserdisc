@@ -24,7 +24,7 @@ package fs2
 package parallel
 package testcases
 
-import laserdisc.all.{lrange, ltrim, mset, rpush, set}
+import laserdisc.redis_8_10.{lrange, ltrim, mset, rpush, set}
 import laserdisc.auto.*
 import laserdisc.protocol.RESP
 import scodec.Codec

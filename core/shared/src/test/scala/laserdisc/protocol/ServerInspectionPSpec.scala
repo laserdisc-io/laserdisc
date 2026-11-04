@@ -85,7 +85,8 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
 
   test("The Server protocol using command.getkeys sends the command it is given") {
     import laserdisc.auto.*
-    val lmove = families.lists.lmove[String]("a", "b", families.lists.listtypes.ListSide.left, families.lists.listtypes.ListSide.right)
+    val lmove =
+      redis_8_10.lists.lmove[String]("a", "b", redis_8_10.lists.listtypes.ListSide.left, redis_8_10.lists.listtypes.ListSide.right)
     assertEquals(command.getkeys(lmove).encode, bulks("COMMAND", "GETKEYS", "LMOVE", "a", "b", "LEFT", "RIGHT"))
     command.getkeysandflags(lmove).decode(Arr(Arr(Bulk("a"), Arr(Str("RW"), Str("access"))), Arr(Bulk("b"), Arr(Str("RW"))))).onRight {
       _ == Seq(KeyAndFlags(Key("a"), Seq("RW", "access")), KeyAndFlags(Key("b"), Seq("RW")))

@@ -14,7 +14,7 @@ written, and any type with a `Decoder` can be read:
 import io.circe.{Decoder, Encoder}
 
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 import laserdisc.interop.circe.*
 

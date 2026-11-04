@@ -24,7 +24,7 @@ package fs2
 
 import cats.effect.*
 import cats.syntax.traverse.*
-import laserdisc.all.*
+import laserdisc.redis_6_2.*
 import laserdisc.auto.*
 import laserdisc.fs2.LaserdiscFs2ClientSpec.ClientSpecIo
 

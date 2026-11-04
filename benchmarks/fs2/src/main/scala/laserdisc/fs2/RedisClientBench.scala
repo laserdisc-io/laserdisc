@@ -25,7 +25,7 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import cats.syntax.traverse.*
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 import laserdisc.fs2.SetUpLaserdiscCatsRespByte.LaserdiscState
 import laserdisc.fs2.parallel.runtime.BenchRuntime.createNewRuntime

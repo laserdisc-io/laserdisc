@@ -116,7 +116,7 @@ final class AclPSpec extends BaseSpec with ServerP {
 
   test("The ACL protocol using dryrun sends the command it is given and reads OK as None and a reason as Some") {
     import laserdisc.auto.*
-    val del = families.keys.del("app:1")
+    val del = redis_8_10.keys.del("app:1")
     assertEquals(acl.dryrun("u", del).encode, bulks("ACL", "DRYRUN", "u", "DEL", "app:1"))
     assertEquals(acl.dryrun("u", del).decode(Str("OK")), None)
     assertEquals(

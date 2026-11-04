@@ -26,8 +26,8 @@ final case class NoShow(i: Int)
 final class VersionImportsSpec extends BaseSpec {
   private def frame(ps: String*): Seq[RESP] = Seq(Arr(ps.map(Bulk(_)).toList))
 
-  test("all has every SET variant") {
-    import laserdisc.all.*
+  test("redis_8_10 has every SET variant") {
+    import laserdisc.redis_8_10.*
     import laserdisc.auto.*
 
     assertEquals(set("a", 2).frames, frame("SET", "a", "2"))
@@ -44,8 +44,8 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(set("a", 2, stringtypes.compare.ifDeq("abc")).frames, frame("SET", "a", "2", "IFDEQ", "abc"))
   }
 
-  test("all has setget, getset, getdel and getex, choosing the type of the reply") {
-    import laserdisc.all.*
+  test("redis_8_10 has setget, getset, getdel and getex, choosing the type of the reply") {
+    import laserdisc.redis_8_10.*
     import laserdisc.auto.*
 
     assertEquals(setget[Int]("a", 2).frames, frame("SET", "a", "2", "GET"))
@@ -64,16 +64,16 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("SET's KEEPTTL and GETEX's PERSIST only go with their own command") {
-    import laserdisc.all.*
+    import laserdisc.redis_8_10.*
     import laserdisc.auto.*
 
     assertEquals(getex[Int]("a").frames, frame("GETEX", "a"))
-    assert(compileErrors("""getex[Int]("a", strings.expiry.keepTtl)""").nonEmpty)
-    assert(compileErrors("""set("a", 2, strings.expiry.persist)""").nonEmpty)
+    assert(compileErrors("""getex[Int]("a", stringtypes.expiry.keepTtl)""").nonEmpty)
+    assert(compileErrors("""set("a", 2, stringtypes.expiry.persist)""").nonEmpty)
   }
 
   test("a value without a Show gives laserdisc's message for set, and a type mismatch for setget") {
-    import laserdisc.all.*
+    import laserdisc.redis_8_10.*
     import laserdisc.auto.*
 
     assertEquals(set("a", 2).frames, frame("SET", "a", "2"))
@@ -86,7 +86,7 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.redis_6_2.*
 
     assertEquals(setget[Int]("a", 2).frames, frame("SET", "a", "2", "GET"))
-    assert(compileErrors("""setget[Int]("a", 2, strings.flag.nx)""").nonEmpty)
+    assert(compileErrors("""setget[Int]("a", 2, stringtypes.flag.nx)""").nonEmpty)
   }
 
   test("redis_8_2 has setget with NX, but no IFEQ or IFNE") {
@@ -94,8 +94,8 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.redis_8_2.*
 
     assertEquals(setget[Int]("a", 2, stringtypes.flag.nx).frames, frame("SET", "a", "2", "NX", "GET"))
-    assert(compileErrors("""set("a", 2, strings.ifEq(1))""").nonEmpty)
-    assert(compileErrors("""set("a", 2, strings.compare.ifNe(1))""").nonEmpty)
+    assert(compileErrors("""set("a", 2, stringtypes.ifEq(1))""").nonEmpty)
+    assert(compileErrors("""set("a", 2, stringtypes.compare.ifNe(1))""").nonEmpty)
   }
 
   test("redis_8_4 has IFEQ and IFNE") {
@@ -111,7 +111,7 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.valkey_8_1.*
 
     assertEquals(set("a", 2, stringtypes.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
-    assert(compileErrors("""set("a", 2, strings.compare.ifNe(1))""").nonEmpty)
+    assert(compileErrors("""set("a", 2, stringtypes.compare.ifNe(1))""").nonEmpty)
   }
 
   test("a version's options can be used next to import laserdisc.*") {
@@ -127,7 +127,7 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.valkey_8_0.*
 
     assertEquals(set("a", 2).frames, frame("SET", "a", "2"))
-    assert(compileErrors("""set("a", 2, strings.ifEq(1))""").nonEmpty)
+    assert(compileErrors("""set("a", 2, stringtypes.ifEq(1))""").nonEmpty)
   }
 
   test("redis_6_2 has ZADD with GT and LT and BZPOPMIN, but not ZINTERCARD, ZMPOP or BZMPOP") {
@@ -137,8 +137,8 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(zadd("a", sortedsettypes.flag.xxGt, "m", 1.5).frames, frame("ZADD", "a", "XX", "GT", "1.5", "m"))
     assertEquals(blocking.bzpopmin[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 1).frames, frame("BZPOPMIN", "a", "1"))
     assert(compileErrors("""zintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))))""").nonEmpty)
-    assert(compileErrors("""zmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsets.pop.min)""").nonEmpty)
-    assert(compileErrors("""blocking.bzmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsets.pop.min, 1)""").nonEmpty)
+    assert(compileErrors("""zmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsettypes.pop.min)""").nonEmpty)
+    assert(compileErrors("""blocking.bzmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsettypes.pop.min, 1)""").nonEmpty)
   }
 
   test("redis_7_0 has ZINTERCARD, ZMPOP and BZMPOP, but not ZRANK with WITHSCORE") {
@@ -168,11 +168,11 @@ final class VersionImportsSpec extends BaseSpec {
     }
     {
       import laserdisc.redis_8_6.*
-      assert(compileErrors("""zinter[String](ks, sortedsets.aggregate.count)""").nonEmpty)
+      assert(compileErrors("""zinter[String](ks, sortedsettypes.aggregate.count)""").nonEmpty)
     }
     {
       import laserdisc.valkey_9_1.*
-      assert(compileErrors("""zinter[String](ks, sortedsets.aggregate.count)""").nonEmpty)
+      assert(compileErrors("""zinter[String](ks, sortedsettypes.aggregate.count)""").nonEmpty)
     }
   }
 
@@ -193,12 +193,12 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
-  test("all has every sorted set command, with the blocking ones under blocking") {
-    import laserdisc.all.*
+  test("redis_8_10 has every sorted set command, with the blocking ones under blocking") {
+    import laserdisc.redis_8_10.*
     import laserdisc.auto.*
 
     val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
-    assertEquals(zscannoscores[String]("a", 0L).frames, frame("ZSCAN", "a", "0", "NOSCORES"))
+    assertEquals(valkey_9_1.zscannoscores[String]("a", 0L).frames, frame("ZSCAN", "a", "0", "NOSCORES"))
     assertEquals(zrevrankwithscore("a", "m").frames, frame("ZREVRANK", "a", "m", "WITHSCORE"))
     assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.min, 0).frames, frame("BZMPOP", "0", "1", "a", "MIN"))
     assertEquals(blocking.blpop[String](a, 0).frames, frame("BLPOP", "a", "0"))
@@ -266,7 +266,7 @@ final class VersionImportsSpec extends BaseSpec {
     val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
     assertEquals(sintercard(ks, 3).frames, frame("SINTERCARD", "2", "a", "b", "LIMIT", "3"))
     assert(compileErrors("""sdiffcard(ks)""").nonEmpty)
-    assert(compileErrors("""sunioncard(ks, sets.approx)""").nonEmpty)
+    assert(compileErrors("""sunioncard(ks, settypes.approx)""").nonEmpty)
   }
 
   test("redis_8_10 has SDIFFCARD and SUNIONCARD") {
@@ -407,8 +407,8 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(bitfieldro("a", OneOrMore.unsafeFrom(List(bf.i(64) -> bf.bit(0L)))).frames, frame("BITFIELD_RO", "a", "GET", "i64", "0"))
     assert(compileErrors("""bf.u(64)""").nonEmpty)
     assert(compileErrors("""lcs[String]("a", "b")""").nonEmpty)
-    assert(compileErrors("""bitcount("a", 0L, 7L, strings.bitUnit.bit)""").nonEmpty)
-    assert(compileErrors("""bitop(strings.bitwise.diff, TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), "c")""").nonEmpty)
+    assert(compileErrors("""bitcount("a", 0L, 7L, stringtypes.bitUnit.bit)""").nonEmpty)
+    assert(compileErrors("""bitop(stringtypes.bitwise.diff, TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), "c")""").nonEmpty)
   }
 
   test("valkey_9_1 has LCS and BITCOUNT with BIT, but not BITOP with DIFF") {
@@ -417,7 +417,7 @@ final class VersionImportsSpec extends BaseSpec {
 
     assertEquals(lcslen("a", "b").frames, frame("LCS", "a", "b", "LEN"))
     assertEquals(bitcount("a", 0L, 7L, stringtypes.bitUnit.bit).frames, frame("BITCOUNT", "a", "0", "7", "BIT"))
-    assert(compileErrors("""bitop(strings.bitwise.diff, TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), "c")""").nonEmpty)
+    assert(compileErrors("""bitop(stringtypes.bitwise.diff, TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), "c")""").nonEmpty)
   }
 
   test("redis_8_2 has BITOP with DIFF, DIFF1, ANDOR and ONE") {
@@ -451,9 +451,9 @@ final class VersionImportsSpec extends BaseSpec {
       increx("a", 2L, stringtypes.increx.int.expiry(stringtypes.expiry.persist)).frames,
       frame("INCREX", "a", "BYINT", "2", "PERSIST")
     )
-    assert(compileErrors("""strings.increx.int.expiry(strings.expiry.keepTtl)""").nonEmpty)
-    assert(compileErrors("""strings.increx.int.expiryIfNone(strings.expiry.persist)""").nonEmpty)
-    assert(compileErrors("""increx("a", 2L, strings.increx.float)""").nonEmpty)
+    assert(compileErrors("""stringtypes.increx.int.expiry(stringtypes.expiry.keepTtl)""").nonEmpty)
+    assert(compileErrors("""stringtypes.increx.int.expiryIfNone(stringtypes.expiry.persist)""").nonEmpty)
+    assert(compileErrors("""increx("a", 2L, stringtypes.increx.float)""").nonEmpty)
   }
 
   test("valkey_9_0 has DELIFEQ, but not MSETEX, DELEX or DIGEST, and valkey_9_1 has MSETEX") {
@@ -482,9 +482,9 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(replicafailover.frames, frame("FAILOVER"))
     assertEquals(flushallsync.frames, frame("FLUSHALL", "SYNC"))
     assert(compileErrors("""client.noevict(on = true)""").nonEmpty)
-    assert(compileErrors("""shutdown(servers.shutdownOptions.now)""").nonEmpty)
+    assert(compileErrors("""shutdown(servertypes.shutdownOptions.now)""").nonEmpty)
     assert(compileErrors("""config.set(OneOrMore.unsafeFrom(List(Key("a") -> 1)))""").nonEmpty)
-    assert(compileErrors("""info(OneOrMore.unsafeFrom(List(servers.info.cpu)))""").nonEmpty)
+    assert(compileErrors("""info(OneOrMore.unsafeFrom(List(servertypes.info.cpu)))""").nonEmpty)
   }
 
   test("redis_7_0 has CLIENT NO-EVICT, SHUTDOWN NOW and several CONFIG parameters, but not CLIENT NO-TOUCH") {
@@ -503,7 +503,7 @@ final class VersionImportsSpec extends BaseSpec {
     {
       import laserdisc.valkey_7_2.*
       assertEquals(client.notouch(on = true).frames, frame("CLIENT", "NO-TOUCH", "ON"))
-      assert(compileErrors("""client.kill(servers.clientFilter.id(1L), 10L)""").nonEmpty)
+      assert(compileErrors("""client.kill(servertypes.clientFilter.id(1L), 10L)""").nonEmpty)
     }
     {
       import laserdisc.valkey_8_0.*
@@ -527,27 +527,27 @@ final class VersionImportsSpec extends BaseSpec {
     {
       import laserdisc.redis_6_2.*
       assertEquals(info(servertypes.info.errorstats).frames, frame("INFO", "errorstats"))
-      assert(compileErrors("""info(servers.info.latencystats)""").nonEmpty)
+      assert(compileErrors("""info(servertypes.info.latencystats)""").nonEmpty)
     }
     {
       import laserdisc.redis_7_4.*
       assertEquals(info(servertypes.info.latencystats).frames, frame("INFO", "latencystats"))
-      assert(compileErrors("""info(servers.info.keysizes)""").nonEmpty)
+      assert(compileErrors("""info(servertypes.info.keysizes)""").nonEmpty)
     }
     {
       import laserdisc.redis_8_4.*
       assertEquals(info(servertypes.info.threads).frames, frame("INFO", "threads"))
-      assert(compileErrors("""info(servers.info.hotkeys)""").nonEmpty)
+      assert(compileErrors("""info(servertypes.info.hotkeys)""").nonEmpty)
     }
     {
       import laserdisc.redis_8_10.*
       assertEquals(info(servertypes.info.hotkeys).frames, frame("INFO", "hotkeys"))
-      assert(compileErrors("""info(servers.info.tls)""").nonEmpty)
+      assert(compileErrors("""info(servertypes.info.tls)""").nonEmpty)
     }
     {
       import laserdisc.valkey_9_1.*
       assertEquals(info(servertypes.info.tls).frames, frame("INFO", "tls"))
-      assert(compileErrors("""info(servers.info.keysizes)""").nonEmpty)
+      assert(compileErrors("""info(servertypes.info.keysizes)""").nonEmpty)
     }
   }
 
@@ -562,7 +562,7 @@ final class VersionImportsSpec extends BaseSpec {
     assert(compileErrors("""latency.histogram""").nonEmpty)
     assert(compileErrors("""command.list""").nonEmpty)
     assert(compileErrors("""hotkeys.stop""").nonEmpty)
-    assert(compileErrors("""commandlog.len(servers.commandLogType.slow)""").nonEmpty)
+    assert(compileErrors("""commandlog.len(servertypes.commandLogType.slow)""").nonEmpty)
   }
 
   test("redis_7_0 has LATENCY HISTOGRAM and COMMAND LIST, redis_8_6 has HOTKEYS, and valkey_8_1 has COMMANDLOG") {
@@ -576,7 +576,7 @@ final class VersionImportsSpec extends BaseSpec {
     {
       import laserdisc.redis_8_6.*
       assertEquals(hotkeys.reset.frames, frame("HOTKEYS", "RESET"))
-      assert(compileErrors("""commandlog.len(servers.commandLogType.slow)""").nonEmpty)
+      assert(compileErrors("""commandlog.len(servertypes.commandLogType.slow)""").nonEmpty)
     }
     {
       import laserdisc.valkey_8_1.*
@@ -635,7 +635,7 @@ final class VersionImportsSpec extends BaseSpec {
       import laserdisc.redis_6_2.*
       assertEquals(acl.setuser("u", servertypes.aclRules.on).frames, frame("ACL", "SETUSER", "u", "on"))
       assert(compileErrors("""acl.dryrun("u", ping)""").nonEmpty)
-      assert(compileErrors("""acl.setuser("u", servers.aclSelectorRules.on)""").nonEmpty)
+      assert(compileErrors("""acl.setuser("u", servertypes.aclSelectorRules.on)""").nonEmpty)
     }
     {
       import laserdisc.redis_7_0.*
@@ -644,7 +644,7 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
-  test("redis_6_2 and families.streams have the stream commands") {
+  test("redis_6_2 and redis_8_10.streams have the stream commands") {
     import laserdisc.auto.*
 
     val fields = OneOrMore.unsafeFrom(List(Key("a") -> 1))
@@ -655,7 +655,7 @@ final class VersionImportsSpec extends BaseSpec {
       assertEquals(xlen("s").frames, frame("XLEN", "s"))
     }
     {
-      import laserdisc.families.streams.*
+      import laserdisc.redis_8_10.streams.*
       import streamtypes.*
       assertEquals(xtrim("s", StreamTrim.maxLenApprox(10L)).frames, frame("XTRIM", "s", "MAXLEN", "~", "10"))
     }
@@ -731,10 +731,10 @@ final class VersionImportsSpec extends BaseSpec {
       )
     }
     {
-      import laserdisc.families.streams.*
+      import laserdisc.redis_8_10.streams.*
       import streamtypes.*
       assertEquals(
-        blocking.xreadgroup[Int]("g", "c", OneOrMore.unsafeFrom(List(Key("s") -> StreamGroupFrom.newEntries)), 100L).frames,
+        redis_8_10.blocking.xreadgroup[Int]("g", "c", OneOrMore.unsafeFrom(List(Key("s") -> StreamGroupFrom.newEntries)), 100L).frames,
         frame("XREADGROUP", "GROUP", "g", "c", "BLOCK", "100", "STREAMS", "s", ">")
       )
     }
@@ -768,8 +768,8 @@ final class VersionImportsSpec extends BaseSpec {
       assertEquals(script.show(sha).frames, frame("SCRIPT", "SHOW", sha.value))
     }
     {
-      import laserdisc.families.scripting.*
-      assertEquals(script.show(sha).frames, frame("SCRIPT", "SHOW", sha.value))
+      import laserdisc.redis_8_10.scripting.*
+      assertEquals(valkey_9_1.script.show(sha).frames, frame("SCRIPT", "SHOW", sha.value))
       assertEquals(evalro[Num, Long]("return 1").frames, frame("EVAL_RO", "return 1", "0"))
     }
   }

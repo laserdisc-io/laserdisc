@@ -26,7 +26,7 @@ import log.effect.LogWriter
 import log.effect.fs2.SyncLogWriter
 
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 import laserdisc.fs2.*
 

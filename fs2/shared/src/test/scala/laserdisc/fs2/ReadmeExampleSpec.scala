@@ -36,7 +36,7 @@ final class ReadmeExampleSpec extends CatsEffectSuite {
   test("The readme example gives the expected output and logs when a LogWriter is in scope") {
 
     import laserdisc.*
-    import laserdisc.all.*
+    import laserdisc.redis_8_10.*
     import laserdisc.auto.*
     import laserdisc.fs2.*
 

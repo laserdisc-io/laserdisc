@@ -56,7 +56,7 @@ result per command, in the same order:
 import cats.effect.IO
 
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 import laserdisc.fs2.*
 
@@ -78,7 +78,7 @@ import cats.effect.IO
 import scala.concurrent.duration.*
 
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 import laserdisc.fs2.*
 
@@ -104,7 +104,7 @@ you its values as a `Stream`:
 import cats.effect.IO
 
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 import laserdisc.fs2.*
 
@@ -122,7 +122,7 @@ or `None` to stop. This one reads a list 100 items at a time:
 
 ```scala mdoc:compile-only
 import laserdisc.*
-import laserdisc.all.*
+import laserdisc.redis_8_10.*
 
 def wholeList(key: Key): Loop[String] =
   Loop(0L)(start => lrange[String](key, Index.unsafeFrom(start), Index.unsafeFrom(start + 99))) { (start, page) =>

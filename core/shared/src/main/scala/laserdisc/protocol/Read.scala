@@ -122,7 +122,7 @@ trait ReadInstances1 extends ReadLabelledInstances {
       elements: List[RESP]
   ): Either[RESPDecErr, Seq[(C, D)]] = {
     def element[X, Y](resp: RESP, i: Int, which: String)(S: RESPSub[X], R: Read[X, Y]): Either[RESPDecErr, Y] = S.unapply(resp) match {
-      case Some(x) => R.read(x).left.map(e => RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: ${e.message}"))
+      case Some(x) => R.read(x).leftMap(e => RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: ${e.message}"))
       case None    => Left(RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: Unexpected element. Was $resp"))
     }
     @scala.annotation.tailrec
@@ -160,7 +160,7 @@ trait ReadInstances1 extends ReadLabelledInstances {
 
   // a reply made of names and values read field by field: a failure says which record, and which field
   private[protocol] final def record[A](name: String)(read: Fields => Either[RESPDecErr, A]): Read[Record, A] = instance { pairs =>
-    fields.read(pairs).flatMap(m => read(new Fields(m))).left.map(e => RESPDecErr(s"$name: ${e.message}"))
+    fields.read(pairs).flatMap(m => read(new Fields(m))).leftMap(e => RESPDecErr(s"$name: ${e.message}"))
   }
 
   implicit final val num2BooleanRead: Read[Num, Boolean] = instancePF("0L or 1L") {
@@ -205,7 +205,7 @@ trait ReadInstances1 extends ReadLabelledInstances {
 
   // the first alternative that matches and reads, or what the one that matched said, or what each of them said, numbered
   implicit final def oneOf2Read[T <: Tuple, B](implicit R: AlternativesRead[T, B]): Read[OneOf[T], B] = instance { oneOf =>
-    R.read(oneOf.value, 1).left.map {
+    R.read(oneOf.value, 1).leftMap {
       case Nil           => RESPDecErr(s"Read[OneOf] error: no alternative matched ${oneOf.value}")
       case (_, e) :: Nil => RESPDecErr(s"Read[OneOf] error: $e")
       case failures      => RESPDecErr(s"Read[OneOf] error: ${failures.map { case (i, e) => s"alternative $i: $e" }.mkString("; ")}")
@@ -217,7 +217,7 @@ trait ReadInstances1 extends ReadLabelledInstances {
 
   private final def restPositions[T, L](R: TupleRead[T, L])(elements: List[RESP]): Either[RESPDecErr, L] =
     if (elements.size < R.size) Left(RESPDecErr(s"Read[Arr.AsTupleThen] error: expected at least ${R.size} elements, got ${elements.size}"))
-    else R.read(elements, 1).left.map(e => RESPDecErr(s"Read[Arr.AsTupleThen] ${e.message}"))
+    else R.read(elements, 1).leftMap(e => RESPDecErr(s"Read[Arr.AsTupleThen] ${e.message}"))
 
   implicit final def arrAsTupleThen2Tuple[T <: Tuple, E, L, B](
       implicit R: TupleRead[T, L],
@@ -239,7 +239,7 @@ trait ReadInstances1 extends ReadLabelledInstances {
   // an array of values of one type, like HMGET's that may be missing, read position by position
   implicit final def arrOf2Tuple[E, L <: Tuple](implicit R: OfTupleRead[E, L]): Read[Arr.Of[E], L] = instance { arr =>
     if (arr.elements.size != R.size) Left(RESPDecErr(s"Read[Arr.Of] error: expected ${R.size} elements, got ${arr.elements.size}"))
-    else R.read(arr.elements, 1).left.map(e => RESPDecErr(s"Read[Arr.Of] ${e.message}"))
+    else R.read(arr.elements, 1).leftMap(e => RESPDecErr(s"Read[Arr.Of] ${e.message}"))
   }
 
   // a cursor, then the values, if any

@@ -36,7 +36,7 @@ object FieldRead extends FieldReadLowPriority {
   }
 
   private[protocol] final def read[A](name: String, bulk: Bulk)(R: Read[Bulk, A]): Either[RESPDecErr, A] =
-    R.read(bulk).left.map(e => RESPDecErr(s"field $name: ${e.message}"))
+    R.read(bulk).leftMap(e => RESPDecErr(s"field $name: ${e.message}"))
 }
 
 sealed trait FieldReadLowPriority {

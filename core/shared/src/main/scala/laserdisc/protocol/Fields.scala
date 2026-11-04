@@ -47,7 +47,7 @@ private[protocol] final class Fields(values: Map[String, RESP]) {
   def others(known: Set[String]): Map[String, RESP] = values -- known
 
   private def value[A, B](name: String, resp: RESP)(implicit S: RESPSub[A], R: Read[A, B]): Either[RESPDecErr, B] = S.unapply(resp) match {
-    case Some(a) => R.read(a).left.map(e => RESPDecErr(s"field $name: ${e.message}"))
+    case Some(a) => R.read(a).leftMap(e => RESPDecErr(s"field $name: ${e.message}"))
     case None    => Left(RESPDecErr(s"field $name: Unexpected value. Was $resp"))
   }
 }

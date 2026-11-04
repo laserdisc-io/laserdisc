@@ -95,7 +95,7 @@ object AlternativeRead extends AlternativeReadPlain {
 
   private[protocol] final def of[H, B](S: RESPSub[H])(f: H => Either[RESPDecErr, B]): AlternativeRead[H, B] =
     new AlternativeRead[H, B] {
-      override final def read(resp: RESP): Option[Either[String, B]] = S.unapply(resp).map(h => f(h).left.map(_.message))
+      override final def read(resp: RESP): Option[Either[String, B]] = S.unapply(resp).map(h => f(h).leftMap(_.message))
     }
 }
 
@@ -131,7 +131,7 @@ object AlternativesRead {
   ): AlternativesRead[H *: T, B] = new AlternativesRead[H *: T, B] {
     override final def read(resp: RESP, i: Int): Either[List[(Int, String)], B] = H.read(resp) match {
       case Some(Right(b)) => Right(b)
-      case Some(Left(e))  => T.read(resp, i + 1).left.map((i -> e) :: _)
+      case Some(Left(e))  => T.read(resp, i + 1).leftMap((i -> e) :: _)
       case None           => T.read(resp, i + 1)
     }
   }

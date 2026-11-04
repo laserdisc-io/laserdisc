@@ -30,7 +30,7 @@ sealed trait ElementRead[E, A] {
 object ElementRead {
   implicit final def elementRead[E, A](implicit S: RESPSub[E], R: Read[E, A]): ElementRead[E, A] = new ElementRead[E, A] {
     override final def read(resp: RESP): Either[String, A] = S.unapply(resp) match {
-      case Some(e) => R.read(e).left.map(_.message)
+      case Some(e) => R.read(e).leftMap(_.message)
       case None    => Left(s"Unexpected element. Was $resp")
     }
   }
@@ -66,7 +66,7 @@ object TupleRead {
   // all the elements, or how many there were when that's not as many as expected
   private[protocol] final def read[T, L](R: TupleRead[T, L], name: String)(elements: List[RESP]): Either[RESPDecErr, L] =
     if (elements.size != R.size) Left(RESPDecErr(s"Read[$name] error: expected ${R.size} elements, got ${elements.size}"))
-    else R.read(elements, 1).left.map(e => RESPDecErr(s"Read[$name] ${e.message}"))
+    else R.read(elements, 1).leftMap(e => RESPDecErr(s"Read[$name] ${e.message}"))
 }
 
 /** How the elements of an array whose elements are all `E`s are read position by position, as the types at the same positions of `L`: like

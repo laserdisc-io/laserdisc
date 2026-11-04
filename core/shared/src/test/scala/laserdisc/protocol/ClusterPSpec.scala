@@ -334,7 +334,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
   property("The Cluster protocol using slots roundtrips successfully using val") {
     forAll(slotsGen) { ss =>
-      val node: RawSlotNode => ClusterSlotNode = { case (h, p, id) => ClusterSlotNode(Some(h.getOrElse(LoopbackHost)), p, id, Map.empty) }
+      val node: RawSlotNode => ClusterSlotNode = { case (h, p, id) => ClusterSlotNode(h.toOption, p, id, Map.empty) }
 
       assertEquals(slots.encode, Arr(Bulk("CLUSTER"), Bulk("SLOTS")))
       slots.decode(slotsToArr(ss)).onRight {
@@ -349,7 +349,9 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   private val port   = Port.unsafeFrom(6379)
   private val range  = ClusterRangeSlotType(Slot.unsafeFrom(0), Slot.unsafeFrom(100))
 
-  test("The Cluster protocol using slots reads a node as Redis 7.0 and Valkey send it, with its metadata and maybe no host") {
+  test(
+    "The Cluster protocol using slots reads a node as Redis 7.0 and Valkey send it, with its metadata, and an empty or null host as no host"
+  ) {
     def reply(host: RESP, metadata: Arr) = Arr(Arr(Num(0L), Num(100L), Arr(host, Num(6379L), Bulk(nodeId.value), metadata)))
 
     assertEquals(
@@ -360,6 +362,10 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       slots.decode(reply(NullBulk, Arr(Bulk("hostname"), Bulk("foo.example")))).map(_.slots),
       Map(range -> ClusterSlotInfo(ClusterSlotNode(None, port, nodeId, Map("hostname" -> "foo.example")), Nil))
     )
+    assertEquals(
+      slots.decode(reply(Bulk(""), Arr(Nil))).map(_.slots),
+      Map(range -> ClusterSlotInfo(ClusterSlotNode(None, port, nodeId, Map.empty), Nil))
+    )
     assert(slots.decode(Arr(Arr(Num(0L), Num(100L), Arr(Bulk(""), Num(6379L), Bulk(nodeId.value))))).isLeft)
     assert(slots.decode(Arr(Arr(Num(0L), Num(100L)))).isLeft)
   }
@@ -367,7 +373,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   test("The Cluster protocol using slots reads a node with or without metadata, on a server of Redis 6.2") {
     val older = new ClusterBaseP {}
     val old   = Arr(Bulk(""), Num(6379L), Bulk(nodeId.value))
-    val node  = ClusterSlotNode(Some(LoopbackHost), port, nodeId, Map.empty)
+    val node  = ClusterSlotNode(None, port, nodeId, Map.empty)
     assertEquals(
       older.slots.decode(Arr(Arr(Num(0L), Num(100L), old, old))).map(_.slots),
       Map(range -> ClusterSlotInfo(node, List(node)))

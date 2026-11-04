@@ -238,14 +238,17 @@ object ClusterP {
     // the first and last slot and the master, then the replicas
     private type Assigned[N] = Arr.Rest[Num *: Num *: N *: EmptyTuple, N]
 
-    private implicit final val hostRead: Read[Bulk, Host] = Read.instancePF("Bulk(Host)") {
-      case Bulk("")      => LoopbackHost
-      case Bulk(Host(h)) => h
+    // an empty host, like a null one, means the server doesn't know it, so use the one you connected to
+    private implicit final val hostRead: Read[Bulk, Option[Host]] = Read.instancePF("Bulk(Host)") {
+      case Bulk("")      => None
+      case Bulk(Host(h)) => Some(h)
     }
     private implicit final val portRead: Read[Num, Port]            = Read.instancePF("Num(Port)") { case Num(ToInt(Port(p))) => p }
     private implicit final val nodeIdRead: Read[Bulk, NodeId]       = ClusterManagement.nodeId
     private implicit final val node6_2Read: Read[Node6_2, SlotNode] =
-      Read[Node6_2, Host *: Port *: NodeId *: EmptyTuple].map { case host *: port *: id *: _ => SlotNode(Some(host), port, id, Map.empty) }
+      Read[Node6_2, Option[Host] *: Port *: NodeId *: EmptyTuple].map { case host *: port *: id *: _ =>
+        SlotNode(host, port, id, Map.empty)
+      }
     private implicit final val node7_0Read: Read[Node7_0, SlotNode] =
       Read[Node7_0, Option[Host] *: Port *: NodeId *: Map[String, String] *: EmptyTuple].map { case host *: port *: id *: metadata *: _ =>
         SlotNode(host, port, id, metadata)

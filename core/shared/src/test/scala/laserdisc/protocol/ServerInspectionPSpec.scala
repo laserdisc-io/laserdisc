@@ -37,7 +37,7 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
         Seq((7L, 36L, Seq("SET", "a", "1"), ""), (6L, 160L, Seq("CONFIG", "SET", "x", "0"), "me"))
     }
     assertEquals(slowlog.get(PosInt(2)).encode, bulks("SLOWLOG", "GET", "2"))
-    assertEquals(commandlog.get(servers.commandLogType.largeReply).encode, bulks("COMMANDLOG", "GET", "-1", "large-reply"))
+    assertEquals(commandlog.get(servertypes.commandLogType.largeReply).encode, bulks("COMMANDLOG", "GET", "-1", "large-reply"))
   }
 
   test("The Server protocol using latency reads events, samples and histograms") {
@@ -91,7 +91,7 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
       _ == Seq(KeyAndFlags(Key("a"), Seq("RW", "access")), KeyAndFlags(Key("b"), Seq("RW")))
     }
     assertEquals(
-      command.list(servers.commandFilter.pattern(GlobPattern("xa*"))).encode,
+      command.list(servertypes.commandFilter.pattern(GlobPattern("xa*"))).encode,
       bulks("COMMAND", "LIST", "FILTERBY", "PATTERN", "xa*")
     )
   }
@@ -108,7 +108,7 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
 
   test("The Server protocol using hotkeys sends the metrics and options, and reads the report or None") {
     assertEquals(
-      hotkeys.start(servers.hotKeysMetrics.cpuAndNet, servers.hotKeysOptions.count(PosInt(5)).duration(PosInt(10))).encode,
+      hotkeys.start(servertypes.hotKeysMetrics.cpuAndNet, servertypes.hotKeysOptions.count(PosInt(5)).duration(PosInt(10))).encode,
       bulks("HOTKEYS", "START", "METRICS", "2", "CPU", "NET", "COUNT", "5", "DURATION", "10")
     )
     val report = Arr(

@@ -251,7 +251,7 @@ trait StringBaseP extends Features {
 
   private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
 
-  object strings {
+  object stringtypes {
     final val bit      = Bit
     final val bitfield = BitField
     final val bitUnit  = BitUnit

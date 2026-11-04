@@ -39,13 +39,13 @@ abstract class AclClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   protected final def selectors(version: Redis7_2): Unit = {
-    import version.{acl, del, get, servers, set}
+    import version.{acl, del, get, servertypes, set}
 
-    val rules = servers.aclSelectorRules.reset.on
+    val rules = servertypes.aclSelectorRules.reset.on
       .password("secret")
       .keys("app:*")
       .allow("get")
-      .selector(servers.aclSelectorRules.keys("w:*").allow("set"))
+      .selector(servertypes.aclSelectorRules.keys("w:*").allow("set"))
     assertEquals(send(acl.setuser("ld-acl-s", rules)), OK)
     assertEquals(send(acl.dryrun("ld-acl-s", get[String]("app:1"))), None)
     assertEquals(send(acl.dryrun("ld-acl-s", set("w:1", 1))), None)
@@ -56,9 +56,9 @@ abstract class AclClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
 
   test(s"a $dest client creates, reads and deletes a user") {
     val v = laserdisc.redis_6_2
-    import v.{acl, servers}
+    import v.{acl, servertypes}
 
-    val rules = servers.aclRules.reset.on.password("secret").keys("app:*").allow("get").allow("set")
+    val rules = servertypes.aclRules.reset.on.password("secret").keys("app:*").allow("get").allow("set")
     assertEquals(send(acl.setuser("ld-acl", rules)), OK)
     val user = send(acl.getuser("ld-acl")).getOrElse(fail("expected the user"))
     assert(user.flags.contains("on"))

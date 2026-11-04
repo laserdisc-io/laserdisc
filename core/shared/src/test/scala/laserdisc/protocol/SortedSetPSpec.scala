@@ -38,7 +38,7 @@ final class SortedSetPSpec extends BaseSpec with SortedSetP with BSortedSetP {
 
   property("The SortedSet protocol using zaddincr with a flag reads None when nothing changed") {
     forAll { (k: Key, m: String, i: NonZeroDouble, os: Option[ValidDouble]) =>
-      val protocol = zaddincr(k, sortedsets.flag.xxGt, m, i)
+      val protocol = zaddincr(k, sortedsettypes.flag.xxGt, m, i)
       assertEquals(protocol.encode, Arr(Bulk("ZADD"), Bulk(k), Bulk("XX"), Bulk("GT"), Bulk("INCR"), Bulk(i), Bulk(m)))
       assertEquals(protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))), os.map(_.value))
     }
@@ -70,7 +70,7 @@ final class SortedSetPSpec extends BaseSpec with SortedSetP with BSortedSetP {
 
   property("The SortedSet protocol using zrangestore sends BYSCORE, REV and LIMIT") {
     forAll { (s: Key, d: Key, min: ValidDouble, max: ValidDouble, o: NonNegLong, c: PosLong, n: NonNegInt) =>
-      val range    = sortedsets.scorerange.openClosed(min, max)
+      val range    = sortedsettypes.scorerange.openClosed(min, max)
       val protocol = zrevrangestore(s, d, range, o, c)
       assertEquals(
         protocol.encode,
@@ -93,7 +93,7 @@ final class SortedSetPSpec extends BaseSpec with SortedSetP with BSortedSetP {
 
   property("The SortedSet protocol using zinterweightedwithscores sends WEIGHTS, AGGREGATE and WITHSCORES") {
     forAll { (wks: TwoOrMoreWeightedKeys, ps: List[(String, ValidDouble)]) =>
-      val protocol = zinterweightedwithscores[String](wks, sortedsets.aggregate.min)
+      val protocol = zinterweightedwithscores[String](wks, sortedsettypes.aggregate.min)
       val (ks, ws) = wks.value.unzip
       assertEquals(
         protocol.encode,
@@ -108,7 +108,7 @@ final class SortedSetPSpec extends BaseSpec with SortedSetP with BSortedSetP {
 
   property("The SortedSet protocol using zunionstore sends AGGREGATE COUNT") {
     forAll { (ks: TwoOrMoreKeys, d: Key, n: NonNegInt) =>
-      val protocol = zunionstore(ks, d, sortedsets.aggregate.count)
+      val protocol = zunionstore(ks, d, sortedsettypes.aggregate.count)
       assertEquals(
         protocol.encode,
         Arr(Bulk("ZUNIONSTORE") :: Bulk(d) :: Bulk(ks.value.size) :: ks.value.map(Bulk(_)) ::: List(Bulk("AGGREGATE"), Bulk("COUNT")))
@@ -119,7 +119,7 @@ final class SortedSetPSpec extends BaseSpec with SortedSetP with BSortedSetP {
 
   property("The SortedSet protocol using zmpop reads the key with its members and scores, or None") {
     forAll { (ks: OneOrMoreKeys, c: PosInt, okv: Option[KV[List[(String, ValidDouble)]]]) =>
-      val protocol = zmpop[String](ks, sortedsets.pop.max, c)
+      val protocol = zmpop[String](ks, sortedsettypes.pop.max, c)
       assertEquals(
         protocol.encode,
         Arr(Bulk("ZMPOP") :: Bulk(ks.value.size) :: ks.value.map(Bulk(_)) ::: List(Bulk("MAX"), Bulk("COUNT"), Bulk(c)))

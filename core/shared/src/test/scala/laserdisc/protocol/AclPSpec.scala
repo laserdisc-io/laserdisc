@@ -30,14 +30,16 @@ final class AclPSpec extends BaseSpec with ServerP {
 
   test("The ACL protocol using setuser sends the rules in order") {
     val rules =
-      servers.aclRules.reset.on.password(Key("secret")).keys(GlobPattern("app:*")).allow(Key("get")).denyCategory(Key("dangerous"))
+      servertypes.aclRules.reset.on.password(Key("secret")).keys(GlobPattern("app:*")).allow(Key("get")).denyCategory(Key("dangerous"))
     assertEquals(
       acl.setuser(Key("u"), rules).encode,
       bulks("ACL", "SETUSER", "u", "reset", "on", ">secret", "~app:*", "+get", "-@dangerous")
     )
-    assertEquals(acl.setuser(Key("u"), servers.aclRules).encode, bulks("ACL", "SETUSER", "u"))
+    assertEquals(acl.setuser(Key("u"), servertypes.aclRules).encode, bulks("ACL", "SETUSER", "u"))
     val withSelectors =
-      servers.aclSelectorRules.on.readKeys(GlobPattern("r:*")).selector(servers.aclSelectorRules.keys(GlobPattern("b:*")).allow(Key("set")))
+      servertypes.aclSelectorRules.on
+        .readKeys(GlobPattern("r:*"))
+        .selector(servertypes.aclSelectorRules.keys(GlobPattern("b:*")).allow(Key("set")))
     assertEquals(acl.setuser(Key("u"), withSelectors).encode, bulks("ACL", "SETUSER", "u", "on", "%R~r:*", "(~b:* +set)"))
   }
 

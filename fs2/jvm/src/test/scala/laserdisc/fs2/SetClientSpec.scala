@@ -38,8 +38,8 @@ final class RedisSetClientSpec extends SetClientSpec(6379, "redis") {
     assertEquals(send(sdiffcard(ks, 2)).value, 2)
     assertEquals(send(sunioncard(ks)).value, 7)
     assertEquals(send(sunioncard(ks, 3)).value, 3)
-    assertEquals(send(sunioncard(ks, sets.approx, 3)).value, 3)
-    assert(send(sunioncard(ks, sets.approx)).value > 0)
+    assertEquals(send(sunioncard(ks, settypes.approx, 3)).value, 3)
+    assert(send(sunioncard(ks, settypes.approx)).value > 0)
   }
 }
 

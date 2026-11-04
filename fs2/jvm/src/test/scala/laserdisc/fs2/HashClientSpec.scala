@@ -47,7 +47,7 @@ final class ValkeyHashClientSpec extends HashClientSpec(6381, "valkey") {
     val fvs = OneOrMore.unsafeFrom(List(Key("a") -> 1))
     assert(!send(hsetex("h:k", HashKeyCondition.xx, fvs)))
     assert(send(hsetex("h:k", HashKeyCondition.nx, fvs)))
-    assert(send(hsetex("h:k", HashKeyCondition.xx, HashFieldsCondition.fxx, strings.expiry.seconds(100L), fvs)))
+    assert(send(hsetex("h:k", HashKeyCondition.xx, HashFieldsCondition.fxx, stringtypes.expiry.seconds(100L), fvs)))
   }
 }
 
@@ -86,12 +86,12 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     assertEquals(send(hpersist("h:e", ab)), Seq(HashFieldPersisted, HashFieldPersisted, HashNoField))
     assertEquals(send(hexpiretime("h:e", a)), Seq(HashNoExpire))
 
-    assertEquals(send(hgetex[Int]("h:e", strings.expiry.seconds(50L), ab)), Seq(Some(1), Some(2), None))
+    assertEquals(send(hgetex[Int]("h:e", stringtypes.expiry.seconds(50L), ab)), Seq(Some(1), Some(2), None))
     assertEquals(send(hpttl("h:e", a)).size, 1)
-    assertEquals(send(hgetex[Int]("h:e", strings.expiry.persist, a)), Seq(Some(1)))
+    assertEquals(send(hgetex[Int]("h:e", stringtypes.expiry.persist, a)), Seq(Some(1)))
     val fvs = OneOrMore.unsafeFrom(List(Key("a") -> 9))
     assert(!send(hsetex("h:e", HashFieldsCondition.fnx, fvs)))
-    assert(send(hsetex("h:e", HashFieldsCondition.fxx, strings.expiry.keepTtl, fvs)))
+    assert(send(hsetex("h:e", HashFieldsCondition.fxx, stringtypes.expiry.keepTtl, fvs)))
     assertEquals(send(hgetdel[Int]("h:e", OneOrMoreKeys.unsafeFrom(List(Key("a"), Key("zz"))))), Seq(Some(9), None))
     assertEquals(send(hlen("h:e")).value, 1)
     assertEquals(send(hscannovalues("h:e", 0L)).values, Some(Seq(Key("b"))))

@@ -27,14 +27,14 @@ import laserdisc.auto.*
 final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis") {
   test("a redis client reads histograms, lists commands and tracks hot keys with the commands of Redis 8.10") {
     val v = redis_8_10
-    import v.{hotkeys, servers}
+    import v.{hotkeys, servertypes}
 
     assert(send(v.latency.histogram(OneOrMore.unsafeFrom(List(Key("ping"))))).keySet.subsetOf(Set("ping")))
-    assert(send(v.command.list(servers.commandFilter.pattern("xa*"))).contains("xadd"))
+    assert(send(v.command.list(servertypes.commandFilter.pattern("xa*"))).contains("xadd"))
     assertEquals(send(v.command.getkeysandflags(v.set("i:a", 1))).map(_.key), Seq(Key("i:a")))
     assert(send(v.module.list).exists(_.name == "search"))
 
-    assertEquals(send(hotkeys.start(servers.hotKeysMetrics.cpuAndNet, servers.hotKeysOptions.count(5))), OK)
+    assertEquals(send(hotkeys.start(servertypes.hotKeysMetrics.cpuAndNet, servertypes.hotKeysOptions.count(5))), OK)
     send(v.set("i:hot", 1))
     send(v.get[Int]("i:hot"))
     assert(send(hotkeys.get).exists(_.exists(_.byNetBytes.nonEmpty)))
@@ -62,11 +62,11 @@ final class KeyDbInspectionClientSpec extends InspectionClientSpec(6380, "keyDb"
 final class ValkeyInspectionClientSpec extends InspectionClientSpec(6381, "valkey") {
   test("a valkey client reads the command log with the commands of Valkey 9.1") {
     val v = valkey_9_1
-    import v.{commandlog, servers}
+    import v.{commandlog, servertypes}
 
-    assert(send(commandlog.len(servers.commandLogType.slow)).value >= 0L)
-    assert(send(commandlog.get(servers.commandLogType.slow, 5)).size <= 5)
-    assert(send(commandlog.get(servers.commandLogType.largeReply)).forall(_.arguments.nonEmpty))
+    assert(send(commandlog.len(servertypes.commandLogType.slow)).value >= 0L)
+    assert(send(commandlog.get(servertypes.commandLogType.slow, 5)).size <= 5)
+    assert(send(commandlog.get(servertypes.commandLogType.largeReply)).forall(_.arguments.nonEmpty))
   }
 }
 

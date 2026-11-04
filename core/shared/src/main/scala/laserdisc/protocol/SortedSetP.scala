@@ -215,7 +215,7 @@ trait SortedSetBaseP extends Features {
 
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  object sortedsets {
+  object sortedsettypes {
     final val aggregate  = Aggregate
     final val flag       = Flag
     final val lexrange   = LexRange

@@ -36,25 +36,27 @@ final class RedisStringClientSpec extends StringClientSpec(6379, "redis") {
     send(set("s:a", "hello"))
     val hash = send(digest("s:a")).getOrElse(fail("expected a digest"))
     assertEquals(send(digest("s:none")), None)
-    assert(!send(delex("s:a", strings.compare.ifNe("hello"))))
-    assert(send(delex("s:a", strings.compare.ifDeq(hash))))
+    assert(!send(delex("s:a", stringtypes.compare.ifNe("hello"))))
+    assert(send(delex("s:a", stringtypes.compare.ifDeq(hash))))
     assert(!send(delex("s:a")))
 
-    assert(send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1, Key("s:b") -> 2)), strings.flag.nx, strings.expiry.seconds(100L))))
-    assert(!send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1)), strings.flag.nx)))
+    assert(
+      send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1, Key("s:b") -> 2)), stringtypes.flag.nx, stringtypes.expiry.seconds(100L)))
+    )
+    assert(!send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1)), stringtypes.flag.nx)))
 
     assertEquals(send(increx("s:n")), Incremented(1L, 1L))
-    assertEquals(send(increx("s:n", 5L, strings.increx.int.expiry(strings.expiry.seconds(100L)))), Incremented(6L, 5L))
-    assertEquals(send(increx("s:n", 5L, strings.increx.int.upperBound(7L))), Incremented(6L, 0L))
-    assertEquals(send(increx("s:n", 5L, strings.increx.int.upperBound(7L).saturate)), Incremented(7L, 1L))
-    assertEquals(send(increx("s:f", 1.5, strings.increx.float.lowerBound(0.0))), Incremented(1.5, 1.5))
+    assertEquals(send(increx("s:n", 5L, stringtypes.increx.int.expiry(stringtypes.expiry.seconds(100L)))), Incremented(6L, 5L))
+    assertEquals(send(increx("s:n", 5L, stringtypes.increx.int.upperBound(7L))), Incremented(6L, 0L))
+    assertEquals(send(increx("s:n", 5L, stringtypes.increx.int.upperBound(7L).saturate)), Incremented(7L, 1L))
+    assertEquals(send(increx("s:f", 1.5, stringtypes.increx.float.lowerBound(0.0))), Incremented(1.5, 1.5))
   }
 
   test("a redis client combines bits with DIFF, DIFF1, ANDOR and ONE with the commands of Redis 8.10") {
     import laserdisc.redis_8_10.*
 
     send(del("s:x", "s:y", "s:z", "s:d"))
-    val bf = strings.bitfield
+    val bf = stringtypes.bitfield
     send(bitfield("s:x", bf.set(bf.u(8), bf.bit(0L), 0xf0L)))
     send(bitfield("s:y", bf.set(bf.u(8), bf.bit(0L), 0x3cL)))
     send(bitfield("s:z", bf.set(bf.u(8), bf.bit(0L), 0x0fL)))
@@ -62,13 +64,13 @@ final class RedisStringClientSpec extends StringClientSpec(6379, "redis") {
     val xyz = TwoOrMoreKeys.unsafeFrom(List(Key("s:x"), Key("s:y"), Key("s:z")))
     val u8  = OneOrMore.unsafeFrom(List(bf.u(8) -> bf.bit(0L)))
 
-    send(bitop(strings.bitwise.diff, xy, "s:d"))
+    send(bitop(stringtypes.bitwise.diff, xy, "s:d"))
     assertEquals(send(bitfieldro("s:d", u8)), Seq(0xc0L))
-    send(bitop(strings.bitwise.diff1, xy, "s:d"))
+    send(bitop(stringtypes.bitwise.diff1, xy, "s:d"))
     assertEquals(send(bitfieldro("s:d", u8)), Seq(0x0cL))
-    send(bitop(strings.bitwise.andor, xyz, "s:d"))
+    send(bitop(stringtypes.bitwise.andor, xyz, "s:d"))
     assertEquals(send(bitfieldro("s:d", u8)), Seq(0x30L))
-    send(bitop(strings.bitwise.one, xyz, "s:d"))
+    send(bitop(stringtypes.bitwise.one, xyz, "s:d"))
     assertEquals(send(bitfieldro("s:d", u8)), Seq(0xc3L))
   }
 }
@@ -85,8 +87,10 @@ final class ValkeyStringClientSpec extends StringClientSpec(6381, "valkey") {
     send(set("s:a", "hello"))
     assert(!send(delifeq("s:a", "nope")))
     assert(send(delifeq("s:a", "hello")))
-    assert(send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1, Key("s:b") -> 2)), strings.flag.nx, strings.expiry.millis(100000L))))
-    assert(send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 3)), strings.flag.xx, strings.expiry.keepTtl)))
+    assert(
+      send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1, Key("s:b") -> 2)), stringtypes.flag.nx, stringtypes.expiry.millis(100000L)))
+    )
+    assert(send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 3)), stringtypes.flag.xx, stringtypes.expiry.keepTtl)))
   }
 }
 
@@ -107,18 +111,18 @@ abstract class StringClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assertEquals(matches.matches, Seq(LcsMatch(LcsRange(NonNegInt(4), NonNegInt(7)), LcsRange(NonNegInt(5), NonNegInt(8)), NonNegInt(4))))
     assertEquals(send(lcsidx("s:l1", "s:l2")).matches.size, 2)
 
-    send(setbit("s:b", 3L, strings.bit.set))
-    send(setbit("s:b", 9L, strings.bit.set))
-    assertEquals(send(bitcount("s:b", 0L, 7L, strings.bitUnit.bit)).value, 1)
-    assertEquals(send(bitcount("s:b", 0L, 0L, strings.bitUnit.byte)).value, 1)
-    assertEquals(send(bitpos("s:b", strings.bit.set, 4L, 15L, strings.bitUnit.bit)).map(_.value), Some(9))
+    send(setbit("s:b", 3L, stringtypes.bit.set))
+    send(setbit("s:b", 9L, stringtypes.bit.set))
+    assertEquals(send(bitcount("s:b", 0L, 7L, stringtypes.bitUnit.bit)).value, 1)
+    assertEquals(send(bitcount("s:b", 0L, 0L, stringtypes.bitUnit.byte)).value, 1)
+    assertEquals(send(bitpos("s:b", stringtypes.bit.set, 4L, 15L, stringtypes.bitUnit.bit)).map(_.value), Some(9))
   }
 
   test(s"a $dest client reads, writes and increments numbers in a string with BITFIELD") {
     import laserdisc.redis_6_2.*
 
     send(del("s:f"))
-    val bf = strings.bitfield
+    val bf = stringtypes.bitfield
     assertEquals(
       send(bitfield("s:f", bf.set(bf.u(8), bf.bit(0L), 255L).get(bf.u(8), bf.bit(0L)).incrBy(bf.u(8), bf.bit(0L), 10L))),
       Seq(Some(0L), Some(255L), Some(9L))

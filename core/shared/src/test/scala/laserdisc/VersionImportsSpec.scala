@@ -31,14 +31,17 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.auto.*
 
     assertEquals(set("a", 2).frames, frame("SET", "a", "2"))
-    assertEquals(set("a", 2, strings.expiry.seconds(10L)).frames, frame("SET", "a", "2", "EX", "10"))
-    assertEquals(set("a", 2, strings.expiry.keepTtl).frames, frame("SET", "a", "2", "KEEPTTL"))
-    assertEquals(set("a", 2, strings.flag.nx).frames, frame("SET", "a", "2", "NX"))
-    assertEquals(set("a", 2, strings.expiry.millis(5L), strings.flag.xx).frames, frame("SET", "a", "2", "XX", "PX", "5"))
-    assertEquals(set("a", 2, strings.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
-    assertEquals(set("a", 2, strings.expiry.atSeconds(99L), strings.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1", "EXAT", "99"))
-    assertEquals(set("a", 2, strings.compare.ifNe(1)).frames, frame("SET", "a", "2", "IFNE", "1"))
-    assertEquals(set("a", 2, strings.compare.ifDeq("abc")).frames, frame("SET", "a", "2", "IFDEQ", "abc"))
+    assertEquals(set("a", 2, stringtypes.expiry.seconds(10L)).frames, frame("SET", "a", "2", "EX", "10"))
+    assertEquals(set("a", 2, stringtypes.expiry.keepTtl).frames, frame("SET", "a", "2", "KEEPTTL"))
+    assertEquals(set("a", 2, stringtypes.flag.nx).frames, frame("SET", "a", "2", "NX"))
+    assertEquals(set("a", 2, stringtypes.expiry.millis(5L), stringtypes.flag.xx).frames, frame("SET", "a", "2", "XX", "PX", "5"))
+    assertEquals(set("a", 2, stringtypes.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
+    assertEquals(
+      set("a", 2, stringtypes.expiry.atSeconds(99L), stringtypes.ifEq(1)).frames,
+      frame("SET", "a", "2", "IFEQ", "1", "EXAT", "99")
+    )
+    assertEquals(set("a", 2, stringtypes.compare.ifNe(1)).frames, frame("SET", "a", "2", "IFNE", "1"))
+    assertEquals(set("a", 2, stringtypes.compare.ifDeq("abc")).frames, frame("SET", "a", "2", "IFDEQ", "abc"))
   }
 
   test("all has setget, getset, getdel and getex, choosing the type of the reply") {
@@ -46,15 +49,18 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.auto.*
 
     assertEquals(setget[Int]("a", 2).frames, frame("SET", "a", "2", "GET"))
-    assertEquals(setget[Int]("a", "two", strings.expiry.seconds(10L)).frames, frame("SET", "a", "two", "GET", "EX", "10"))
-    assertEquals(setget[Int]("a", 2, strings.flag.nx).frames, frame("SET", "a", "2", "NX", "GET"))
-    assertEquals(setget[Int]("a", 2, strings.expiry.keepTtl, strings.flag.xx).frames, frame("SET", "a", "2", "XX", "GET", "KEEPTTL"))
+    assertEquals(setget[Int]("a", "two", stringtypes.expiry.seconds(10L)).frames, frame("SET", "a", "two", "GET", "EX", "10"))
+    assertEquals(setget[Int]("a", 2, stringtypes.flag.nx).frames, frame("SET", "a", "2", "NX", "GET"))
+    assertEquals(
+      setget[Int]("a", 2, stringtypes.expiry.keepTtl, stringtypes.flag.xx).frames,
+      frame("SET", "a", "2", "XX", "GET", "KEEPTTL")
+    )
     assertEquals(setget[Int]("a", 2).decode(Bulk(1)), Some(1))
     assertEquals(setget[Int]("a", 2).decode(NullBulk), None)
     assertEquals(getset[Int]("a", 2).frames, frame("GETSET", "a", "2"))
     assertEquals(getdel[Int]("a").frames, frame("GETDEL", "a"))
-    assertEquals(getex[Int]("a", strings.expiry.persist).frames, frame("GETEX", "a", "PERSIST"))
-    assertEquals(getex[Int]("a", strings.expiry.atMillis(7L)).decode(Bulk(1)), Some(1))
+    assertEquals(getex[Int]("a", stringtypes.expiry.persist).frames, frame("GETEX", "a", "PERSIST"))
+    assertEquals(getex[Int]("a", stringtypes.expiry.atMillis(7L)).decode(Bulk(1)), Some(1))
   }
 
   test("SET's KEEPTTL and GETEX's PERSIST only go with their own command") {
@@ -87,7 +93,7 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.auto.*
     import laserdisc.redis_8_2.*
 
-    assertEquals(setget[Int]("a", 2, strings.flag.nx).frames, frame("SET", "a", "2", "NX", "GET"))
+    assertEquals(setget[Int]("a", 2, stringtypes.flag.nx).frames, frame("SET", "a", "2", "NX", "GET"))
     assert(compileErrors("""set("a", 2, strings.ifEq(1))""").nonEmpty)
     assert(compileErrors("""set("a", 2, strings.compare.ifNe(1))""").nonEmpty)
   }
@@ -96,15 +102,15 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.auto.*
     import laserdisc.redis_8_4.*
 
-    assertEquals(set("a", 2, strings.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
-    assertEquals(set("a", 2, strings.compare.ifNe(1)).frames, frame("SET", "a", "2", "IFNE", "1"))
+    assertEquals(set("a", 2, stringtypes.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
+    assertEquals(set("a", 2, stringtypes.compare.ifNe(1)).frames, frame("SET", "a", "2", "IFNE", "1"))
   }
 
   test("valkey_8_1 has IFEQ, but no IFNE") {
     import laserdisc.auto.*
     import laserdisc.valkey_8_1.*
 
-    assertEquals(set("a", 2, strings.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
+    assertEquals(set("a", 2, stringtypes.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
     assert(compileErrors("""set("a", 2, strings.compare.ifNe(1))""").nonEmpty)
   }
 
@@ -113,7 +119,7 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.auto.*
     import laserdisc.valkey_8_1.*
 
-    assertEquals(set(Key("a"), 2, strings.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
+    assertEquals(set(Key("a"), 2, stringtypes.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
   }
 
   test("valkey_8_0 has no IFEQ") {
@@ -128,7 +134,7 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.auto.*
     import laserdisc.redis_6_2.*
 
-    assertEquals(zadd("a", sortedsets.flag.xxGt, "m", 1.5).frames, frame("ZADD", "a", "XX", "GT", "1.5", "m"))
+    assertEquals(zadd("a", sortedsettypes.flag.xxGt, "m", 1.5).frames, frame("ZADD", "a", "XX", "GT", "1.5", "m"))
     assertEquals(blocking.bzpopmin[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 1).frames, frame("BZPOPMIN", "a", "1"))
     assert(compileErrors("""zintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))))""").nonEmpty)
     assert(compileErrors("""zmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsets.pop.min)""").nonEmpty)
@@ -141,8 +147,8 @@ final class VersionImportsSpec extends BaseSpec {
 
     val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
     assertEquals(zintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), 5).frames, frame("ZINTERCARD", "2", "a", "b", "LIMIT", "5"))
-    assertEquals(zmpop[String](a, sortedsets.pop.min).frames, frame("ZMPOP", "1", "a", "MIN"))
-    assertEquals(blocking.bzmpop[String](a, sortedsets.pop.max, 2, 1).frames, frame("BZMPOP", "1", "1", "a", "MAX", "COUNT", "2"))
+    assertEquals(zmpop[String](a, sortedsettypes.pop.min).frames, frame("ZMPOP", "1", "a", "MIN"))
+    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.max, 2, 1).frames, frame("BZMPOP", "1", "1", "a", "MAX", "COUNT", "2"))
     assertEquals(blocking.bzpopmin[String](a, 1).frames, frame("BZPOPMIN", "a", "1"))
     assert(compileErrors("""zrankwithscore("a", "m")""").nonEmpty)
   }
@@ -154,8 +160,11 @@ final class VersionImportsSpec extends BaseSpec {
 
     {
       import laserdisc.redis_8_8.*
-      assertEquals(zunionstore(ks, "c", sortedsets.aggregate.count).frames, frame("ZUNIONSTORE", "c", "2", "a", "b", "AGGREGATE", "COUNT"))
-      assertEquals(zunion[String](ks, sortedsets.aggregate.max).frames, frame("ZUNION", "2", "a", "b", "AGGREGATE", "MAX"))
+      assertEquals(
+        zunionstore(ks, "c", sortedsettypes.aggregate.count).frames,
+        frame("ZUNIONSTORE", "c", "2", "a", "b", "AGGREGATE", "COUNT")
+      )
+      assertEquals(zunion[String](ks, sortedsettypes.aggregate.max).frames, frame("ZUNION", "2", "a", "b", "AGGREGATE", "MAX"))
     }
     {
       import laserdisc.redis_8_6.*
@@ -191,7 +200,7 @@ final class VersionImportsSpec extends BaseSpec {
     val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
     assertEquals(zscannoscores[String]("a", 0L).frames, frame("ZSCAN", "a", "0", "NOSCORES"))
     assertEquals(zrevrankwithscore("a", "m").frames, frame("ZREVRANK", "a", "m", "WITHSCORE"))
-    assertEquals(blocking.bzmpop[String](a, sortedsets.pop.min, 0).frames, frame("BZMPOP", "0", "1", "a", "MIN"))
+    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.min, 0).frames, frame("BZMPOP", "0", "1", "a", "MIN"))
     assertEquals(blocking.blpop[String](a, 0).frames, frame("BLPOP", "a", "0"))
   }
 
@@ -266,7 +275,7 @@ final class VersionImportsSpec extends BaseSpec {
 
     val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
     assertEquals(sdiffcard(ks, 2).frames, frame("SDIFFCARD", "2", "a", "b", "LIMIT", "2"))
-    assertEquals(sunioncard(ks, sets.approx).frames, frame("SUNIONCARD", "2", "a", "b", "APPROX"))
+    assertEquals(sunioncard(ks, settypes.approx).frames, frame("SUNIONCARD", "2", "a", "b", "APPROX"))
   }
 
   test("redis_6_2 has GEOSEARCH and GEOADD with NX, but not BYPOLYGON") {
@@ -363,7 +372,7 @@ final class VersionImportsSpec extends BaseSpec {
 
     val fs  = OneOrMoreKeys.unsafeFrom(List(Key("f")))
     val fvs = OneOrMore.unsafeFrom(List(Key("f") -> 1))
-    assertEquals(hgetex[Int]("a", strings.expiry.persist, fs).frames, frame("HGETEX", "a", "PERSIST", "FIELDS", "1", "f"))
+    assertEquals(hgetex[Int]("a", stringtypes.expiry.persist, fs).frames, frame("HGETEX", "a", "PERSIST", "FIELDS", "1", "f"))
     assertEquals(hsetex("a", HashFieldsCondition.fxx, fvs).frames, frame("HSETEX", "a", "FXX", "FIELDS", "1", "f", "1"))
     assert(compileErrors("""hgetdel[Int]("a", fs)""").nonEmpty)
     assert(compileErrors("""hsetex("a", HashKeyCondition.nx, fvs)""").nonEmpty)
@@ -393,7 +402,7 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.auto.*
     import laserdisc.redis_6_2.*
 
-    val bf = strings.bitfield
+    val bf = stringtypes.bitfield
     assertEquals(bitfield("a", bf.incrBy(bf.u(8), bf.field(1L), 5L)).frames, frame("BITFIELD", "a", "INCRBY", "u8", "#1", "5"))
     assertEquals(bitfieldro("a", OneOrMore.unsafeFrom(List(bf.i(64) -> bf.bit(0L)))).frames, frame("BITFIELD_RO", "a", "GET", "i64", "0"))
     assert(compileErrors("""bf.u(64)""").nonEmpty)
@@ -407,7 +416,7 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.valkey_9_1.*
 
     assertEquals(lcslen("a", "b").frames, frame("LCS", "a", "b", "LEN"))
-    assertEquals(bitcount("a", 0L, 7L, strings.bitUnit.bit).frames, frame("BITCOUNT", "a", "0", "7", "BIT"))
+    assertEquals(bitcount("a", 0L, 7L, stringtypes.bitUnit.bit).frames, frame("BITCOUNT", "a", "0", "7", "BIT"))
     assert(compileErrors("""bitop(strings.bitwise.diff, TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), "c")""").nonEmpty)
   }
 
@@ -416,18 +425,18 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.redis_8_2.*
 
     val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
-    assertEquals(bitop(strings.bitwise.andor, ks, "c").frames, frame("BITOP", "ANDOR", "c", "a", "b"))
-    assertEquals(bitop(strings.bitwise.and, ks, "c").frames, frame("BITOP", "AND", "c", "a", "b"))
+    assertEquals(bitop(stringtypes.bitwise.andor, ks, "c").frames, frame("BITOP", "ANDOR", "c", "a", "b"))
+    assertEquals(bitop(stringtypes.bitwise.and, ks, "c").frames, frame("BITOP", "AND", "c", "a", "b"))
   }
 
   test("redis_8_4 has DIGEST, DELEX and MSETEX, but not INCREX or DELIFEQ") {
     import laserdisc.auto.*
     import laserdisc.redis_8_4.*
 
-    assertEquals(delex("a", strings.compare.ifDeq("abc")).frames, frame("DELEX", "a", "IFDEQ", "abc"))
+    assertEquals(delex("a", stringtypes.compare.ifDeq("abc")).frames, frame("DELEX", "a", "IFDEQ", "abc"))
     assertEquals(digest("a").frames, frame("DIGEST", "a"))
     assertEquals(
-      msetex(OneOrMore.unsafeFrom(List(Key("a") -> 1)), strings.expiry.keepTtl).frames,
+      msetex(OneOrMore.unsafeFrom(List(Key("a") -> 1)), stringtypes.expiry.keepTtl).frames,
       frame("MSETEX", "1", "a", "1", "KEEPTTL")
     )
     assert(compileErrors("""increx("a")""").nonEmpty)
@@ -438,7 +447,10 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.auto.*
     import laserdisc.redis_8_8.*
 
-    assertEquals(increx("a", 2L, strings.increx.int.expiry(strings.expiry.persist)).frames, frame("INCREX", "a", "BYINT", "2", "PERSIST"))
+    assertEquals(
+      increx("a", 2L, stringtypes.increx.int.expiry(stringtypes.expiry.persist)).frames,
+      frame("INCREX", "a", "BYINT", "2", "PERSIST")
+    )
     assert(compileErrors("""strings.increx.int.expiry(strings.expiry.keepTtl)""").nonEmpty)
     assert(compileErrors("""strings.increx.int.expiryIfNone(strings.expiry.persist)""").nonEmpty)
     assert(compileErrors("""increx("a", 2L, strings.increx.float)""").nonEmpty)
@@ -458,7 +470,7 @@ final class VersionImportsSpec extends BaseSpec {
     }
     {
       import laserdisc.valkey_9_1.*
-      assertEquals(msetex(kvs, strings.flag.xx).frames, frame("MSETEX", "1", "a", "1", "XX"))
+      assertEquals(msetex(kvs, stringtypes.flag.xx).frames, frame("MSETEX", "1", "a", "1", "XX"))
     }
   }
 
@@ -495,7 +507,7 @@ final class VersionImportsSpec extends BaseSpec {
     }
     {
       import laserdisc.valkey_8_0.*
-      assertEquals(client.kill(servers.clientFilter.id(1L), 10L).frames, frame("CLIENT", "KILL", "ID", "1", "MAXAGE", "10"))
+      assertEquals(client.kill(servertypes.clientFilter.id(1L), 10L).frames, frame("CLIENT", "KILL", "ID", "1", "MAXAGE", "10"))
       assert(compileErrors("""bgsavecancel""").nonEmpty)
     }
     {
@@ -504,7 +516,7 @@ final class VersionImportsSpec extends BaseSpec {
     }
     {
       import laserdisc.redis_8_10.*
-      assertEquals(client.kill(servers.clientFilter.id(1L), 10L).frames, frame("CLIENT", "KILL", "ID", "1", "MAXAGE", "10"))
+      assertEquals(client.kill(servertypes.clientFilter.id(1L), 10L).frames, frame("CLIENT", "KILL", "ID", "1", "MAXAGE", "10"))
       assert(compileErrors("""bgsavecancel""").nonEmpty)
     }
   }
@@ -514,27 +526,27 @@ final class VersionImportsSpec extends BaseSpec {
 
     {
       import laserdisc.redis_6_2.*
-      assertEquals(info(servers.info.errorstats).frames, frame("INFO", "errorstats"))
+      assertEquals(info(servertypes.info.errorstats).frames, frame("INFO", "errorstats"))
       assert(compileErrors("""info(servers.info.latencystats)""").nonEmpty)
     }
     {
       import laserdisc.redis_7_4.*
-      assertEquals(info(servers.info.latencystats).frames, frame("INFO", "latencystats"))
+      assertEquals(info(servertypes.info.latencystats).frames, frame("INFO", "latencystats"))
       assert(compileErrors("""info(servers.info.keysizes)""").nonEmpty)
     }
     {
       import laserdisc.redis_8_4.*
-      assertEquals(info(servers.info.threads).frames, frame("INFO", "threads"))
+      assertEquals(info(servertypes.info.threads).frames, frame("INFO", "threads"))
       assert(compileErrors("""info(servers.info.hotkeys)""").nonEmpty)
     }
     {
       import laserdisc.redis_8_10.*
-      assertEquals(info(servers.info.hotkeys).frames, frame("INFO", "hotkeys"))
+      assertEquals(info(servertypes.info.hotkeys).frames, frame("INFO", "hotkeys"))
       assert(compileErrors("""info(servers.info.tls)""").nonEmpty)
     }
     {
       import laserdisc.valkey_9_1.*
-      assertEquals(info(servers.info.tls).frames, frame("INFO", "tls"))
+      assertEquals(info(servertypes.info.tls).frames, frame("INFO", "tls"))
       assert(compileErrors("""info(servers.info.keysizes)""").nonEmpty)
     }
   }
@@ -568,7 +580,7 @@ final class VersionImportsSpec extends BaseSpec {
     }
     {
       import laserdisc.valkey_8_1.*
-      assertEquals(commandlog.len(servers.commandLogType.largeRequest).frames, frame("COMMANDLOG", "LEN", "large-request"))
+      assertEquals(commandlog.len(servertypes.commandLogType.largeRequest).frames, frame("COMMANDLOG", "LEN", "large-request"))
       assert(compileErrors("""hotkeys.stop""").nonEmpty)
     }
   }
@@ -621,14 +633,14 @@ final class VersionImportsSpec extends BaseSpec {
 
     {
       import laserdisc.redis_6_2.*
-      assertEquals(acl.setuser("u", servers.aclRules.on).frames, frame("ACL", "SETUSER", "u", "on"))
+      assertEquals(acl.setuser("u", servertypes.aclRules.on).frames, frame("ACL", "SETUSER", "u", "on"))
       assert(compileErrors("""acl.dryrun("u", ping)""").nonEmpty)
       assert(compileErrors("""acl.setuser("u", servers.aclSelectorRules.on)""").nonEmpty)
     }
     {
       import laserdisc.redis_7_0.*
       assertEquals(acl.dryrun("u", ping).frames, frame("ACL", "DRYRUN", "u", "PING"))
-      assertEquals(acl.setuser("u", servers.aclSelectorRules.writeKeys("w:*")).frames, frame("ACL", "SETUSER", "u", "%W~w:*"))
+      assertEquals(acl.setuser("u", servertypes.aclSelectorRules.writeKeys("w:*")).frames, frame("ACL", "SETUSER", "u", "%W~w:*"))
     }
   }
 

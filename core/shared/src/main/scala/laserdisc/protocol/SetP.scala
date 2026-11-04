@@ -58,7 +58,7 @@ trait SetBaseP extends Features {
 
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  object sets {
+  object settypes {
     final val approx: SetP.Approx = SetP.Approx.approx
   }
 

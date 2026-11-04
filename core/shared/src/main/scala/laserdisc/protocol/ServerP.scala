@@ -462,7 +462,7 @@ trait ServerBaseP extends ServerInspectionBaseP {
 
   import ServerP.{Info, InfoSection, Role, ShutdownFlag}
 
-  object servers {
+  object servertypes {
     final val aclRules         = Acl.AclRules.none
     final val aclSelectorRules = Acl.AclRulesWithSelectors.none
     final val clientFilter     = ServerP.ClientFilter
@@ -528,7 +528,7 @@ trait ServerBaseP extends ServerInspectionBaseP {
 
   final val flushdbsync: Single.Aux[OK] = Protocol("FLUSHDB", "SYNC").as[Str, OK]
 
-  final val info: Single.Aux[Info]                       = info(servers.info.default)
+  final val info: Single.Aux[Info]                       = info(servertypes.info.default)
   final def info(section: InfoSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
 
   final val lastsave: Single.Aux[NonNegLong] = Protocol("LASTSAVE", EmptyTuple).as[Num, NonNegLong]

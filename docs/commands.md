@@ -44,11 +44,11 @@ import laserdisc.*
 import laserdisc.auto.*
 import laserdisc.valkey_8_1.*
 
-val setIfOne = set("a", 2, strings.ifEq(1))
+val setIfOne = set("a", 2, stringtypes.ifEq(1))
 ```
 
 A command or option your server doesn't have won't compile. For example,
-`strings.ifEq` arrived in Valkey 8.1 and Redis 8.4, so the same line doesn't
+`stringtypes.ifEq` arrived in Valkey 8.1 and Redis 8.4, so the same line doesn't
 compile with `laserdisc.redis_8_2.*`.
 
 | Server | Import |

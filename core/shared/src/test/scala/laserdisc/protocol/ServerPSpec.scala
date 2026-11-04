@@ -58,21 +58,21 @@ final class ServerPSpec extends BaseSpec with ServerP {
       sections(InfoSection.server).executable[String] == Right("/data/redis-server") &&
       sections(InfoSection.keyspace).db0[String] == Right("keys=1,expires=0,avg_ttl=0")
     }
-    assertEquals(info(servers.info.keysizes).encode, Arr(Bulk("INFO"), Bulk("keysizes")))
-    assertEquals(info(servers.info.latencystats).encode, Arr(Bulk("INFO"), Bulk("latencystats")))
-    assertEquals(info(servers.info.everything).encode, Arr(Bulk("INFO"), Bulk("everything")))
+    assertEquals(info(servertypes.info.keysizes).encode, Arr(Bulk("INFO"), Bulk("keysizes")))
+    assertEquals(info(servertypes.info.latencystats).encode, Arr(Bulk("INFO"), Bulk("latencystats")))
+    assertEquals(info(servertypes.info.everything).encode, Arr(Bulk("INFO"), Bulk("everything")))
   }
 
   property("The Server protocol using info with several sections sends each of them") {
     forAll { (b: Boolean) =>
-      val sections = if (b) List(servers.info.memory, servers.info.cpu) else List(servers.info.modules)
+      val sections = if (b) List(servertypes.info.memory, servertypes.info.cpu) else List(servertypes.info.modules)
       assertEquals(info(OneOrMore.unsafeFrom(sections)).encode, Arr(Bulk("INFO") :: sections.map(s => Bulk(Show[InfoSection].show(s)))))
     }
   }
 
   property("The Server protocol using client.kill with filters sends each filter and reads how many clients it closed") {
     forAll { (id: NonNegLong, h: Host, p: Port, u: String, n: NonNegLong) =>
-      val filter   = servers.clientFilter.id(id).address(h, p).clientType(servers.clientType.pubsub).user(u).skipMe(false)
+      val filter   = servertypes.clientFilter.id(id).address(h, p).clientType(servertypes.clientType.pubsub).user(u).skipMe(false)
       val protocol = client.kill(filter)
       assertEquals(
         protocol.encode,
@@ -83,7 +83,7 @@ final class ServerPSpec extends BaseSpec with ServerP {
       )
       assertEquals(protocol.decode(Num(n.value)), n)
       assertEquals(
-        client.kill(servers.clientFilter.localAddress(h, p), PosLong(10L)).encode,
+        client.kill(servertypes.clientFilter.localAddress(h, p), PosLong(10L)).encode,
         Arr(List("CLIENT", "KILL", "LADDR", s"${h.value}:${p.value}", "MAXAGE", "10").map(Bulk(_)))
       )
     }
@@ -92,9 +92,9 @@ final class ServerPSpec extends BaseSpec with ServerP {
   property("The Server protocol using the client commands sends their arguments") {
     forAll { (ids: OneOrMore[NonNegLong], ms: PosLong, id: NonNegLong, k: Key) =>
       assertEquals(client.list(ids).encode, Arr(Bulk("CLIENT") :: Bulk("LIST") :: Bulk("ID") :: ids.value.map(Bulk(_))))
-      assertEquals(client.list(servers.clientType.replica).encode, Arr(Bulk("CLIENT"), Bulk("LIST"), Bulk("TYPE"), Bulk("replica")))
-      assertEquals(client.pause(ms, servers.pauseMode.write).encode, Arr(Bulk("CLIENT"), Bulk("PAUSE"), Bulk(ms), Bulk("WRITE")))
-      assertEquals(client.unblock(id, servers.unblockMode.error).encode, Arr(Bulk("CLIENT"), Bulk("UNBLOCK"), Bulk(id), Bulk("ERROR")))
+      assertEquals(client.list(servertypes.clientType.replica).encode, Arr(Bulk("CLIENT"), Bulk("LIST"), Bulk("TYPE"), Bulk("replica")))
+      assertEquals(client.pause(ms, servertypes.pauseMode.write).encode, Arr(Bulk("CLIENT"), Bulk("PAUSE"), Bulk(ms), Bulk("WRITE")))
+      assertEquals(client.unblock(id, servertypes.unblockMode.error).encode, Arr(Bulk("CLIENT"), Bulk("UNBLOCK"), Bulk(id), Bulk("ERROR")))
       assertEquals(client.unblock(id).decode(Num(1L)), true)
       assertEquals(client.noevict(on = true).encode, Arr(Bulk("CLIENT"), Bulk("NO-EVICT"), Bulk("ON")))
       assertEquals(client.notouch(on = false).encode, Arr(Bulk("CLIENT"), Bulk("NO-TOUCH"), Bulk("OFF")))
@@ -128,7 +128,7 @@ final class ServerPSpec extends BaseSpec with ServerP {
       )
       assertEquals(replicaof(h, p).encode, Arr(Bulk("REPLICAOF"), Bulk(h), Bulk(p)))
       assertEquals(
-        shutdown(servers.flag.nosave, servers.shutdownOptions.now.force).encode,
+        shutdown(servertypes.flag.nosave, servertypes.shutdownOptions.now.force).encode,
         Arr(Bulk("SHUTDOWN"), Bulk("nosave"), Bulk("NOW"), Bulk("FORCE"))
       )
     }

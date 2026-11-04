@@ -55,7 +55,7 @@ final class SetPSpec extends BaseSpec with SetP {
 
   property("The Set protocol using sunioncard sends APPROX before LIMIT") {
     forAll { (ks: TwoOrMoreKeys, l: PosInt, n: NonNegInt) =>
-      val protocol = sunioncard(ks, sets.approx, l)
+      val protocol = sunioncard(ks, settypes.approx, l)
       assertEquals(
         protocol.encode,
         Arr(Bulk("SUNIONCARD") :: Bulk(ks.value.size) :: ks.value.map(Bulk(_)) ::: List(Bulk("APPROX"), Bulk("LIMIT"), Bulk(l)))

@@ -37,9 +37,9 @@ final class StringDelExIncrExPSpec extends BaseSpec with StringP {
   property("The String protocol using delex sends the condition and reads whether it deleted") {
     forAll { (k: Key, v: String, d: String, b: Boolean) =>
       assertEquals(delex(k).encode, Arr(Bulk("DELEX"), Bulk(k)))
-      assertEquals(delex(k, strings.ifEq(v)).encode, Arr(Bulk("DELEX"), Bulk(k), Bulk("IFEQ"), Bulk(v)))
-      assertEquals(delex(k, strings.compare.ifDne(d)).encode, Arr(Bulk("DELEX"), Bulk(k), Bulk("IFDNE"), Bulk(d)))
-      assertEquals(delex(k, strings.compare.ifNe(v)).decode(Num(if (b) 1L else 0L)), b)
+      assertEquals(delex(k, stringtypes.ifEq(v)).encode, Arr(Bulk("DELEX"), Bulk(k), Bulk("IFEQ"), Bulk(v)))
+      assertEquals(delex(k, stringtypes.compare.ifDne(d)).encode, Arr(Bulk("DELEX"), Bulk(k), Bulk("IFDNE"), Bulk(d)))
+      assertEquals(delex(k, stringtypes.compare.ifNe(v)).decode(Num(if (b) 1L else 0L)), b)
     }
   }
 
@@ -52,7 +52,7 @@ final class StringDelExIncrExPSpec extends BaseSpec with StringP {
 
   property("The String protocol using msetex sends the number of keys, the keys and values, the flag and the expiry") {
     forAll { (kvs: OneOrMore[(Key, Int)], s: PosLong, b: Boolean) =>
-      val protocol = msetex(kvs, strings.flag.nx, strings.expiry.seconds(s))
+      val protocol = msetex(kvs, stringtypes.flag.nx, stringtypes.expiry.seconds(s))
       assertEquals(
         protocol.encode,
         Arr(
@@ -66,7 +66,7 @@ final class StringDelExIncrExPSpec extends BaseSpec with StringP {
 
   property("The String protocol using increx with whole numbers reads the value and the increment applied") {
     forAll { (k: Key, i: Long, l: Long, u: Long, s: PosLong, v: Long, a: Long) =>
-      val protocol = increx(k, i, strings.increx.int.lowerBound(l).upperBound(u).saturate.expiryIfNone(strings.expiry.seconds(s)))
+      val protocol = increx(k, i, stringtypes.increx.int.lowerBound(l).upperBound(u).saturate.expiryIfNone(stringtypes.expiry.seconds(s)))
       assertEquals(
         protocol.encode,
         Arr(
@@ -94,7 +94,7 @@ final class StringDelExIncrExPSpec extends BaseSpec with StringP {
 
   property("The String protocol using increx with decimal numbers reads the value and the increment applied") {
     forAll { (k: Key, i: ValidDouble, u: ValidDouble, v: ValidDouble, a: ValidDouble) =>
-      val protocol = increx(k, i, strings.increx.float.upperBound(u).expiry(strings.expiry.persist))
+      val protocol = increx(k, i, stringtypes.increx.float.upperBound(u).expiry(stringtypes.expiry.persist))
       assertEquals(protocol.encode, Arr(Bulk("INCREX"), Bulk(k), Bulk("BYFLOAT"), Bulk(i), Bulk("UBOUND"), Bulk(u), Bulk("PERSIST")))
       assertEquals(protocol.decode(Arr(Bulk(v), Bulk(a))), Incremented(v.value, a.value))
     }

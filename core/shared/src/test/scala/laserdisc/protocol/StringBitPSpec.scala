@@ -29,7 +29,7 @@ final class StringBitPSpec extends BaseSpec with StringP {
 
   property("The String protocol using bitfield sends each step in order and reads a number or None for each") {
     forAll { (k: Key, s: SignedBitWidth, u: UnsignedBitWidth, o: NonNegLong, v: Long, ols: List[Option[Long]]) =>
-      val bf       = strings.bitfield
+      val bf       = stringtypes.bitfield
       val protocol = bitfield(k, bf.set(bf.u(u), bf.bit(o), v).overflow(bf.fail).incrBy(bf.i(s), bf.field(o), v).get(bf.i(s), bf.bit(o)))
       assertEquals(
         protocol.encode,
@@ -44,7 +44,7 @@ final class StringBitPSpec extends BaseSpec with StringP {
 
   property("The String protocol using bitfieldro sends a GET for each field and reads a number for each") {
     forAll { (k: Key, u: UnsignedBitWidth, o: NonNegLong, ls: List[Long]) =>
-      val bf       = strings.bitfield
+      val bf       = stringtypes.bitfield
       val protocol = bitfieldro(k, OneOrMore.unsafeFrom(List(bf.u(u) -> bf.bit(o), bf.u(u) -> bf.field(o))))
       assertEquals(
         protocol.encode,
@@ -56,19 +56,19 @@ final class StringBitPSpec extends BaseSpec with StringP {
 
   property("The String protocol using bitcount and bitpos send BIT or BYTE after the range") {
     forAll { (k: Key, s: Index, e: Index, n: NonNegInt) =>
-      assertEquals(bitcount(k, s, e, strings.bitUnit.bit).encode, Arr(Bulk("BITCOUNT"), Bulk(k), Bulk(s), Bulk(e), Bulk("BIT")))
+      assertEquals(bitcount(k, s, e, stringtypes.bitUnit.bit).encode, Arr(Bulk("BITCOUNT"), Bulk(k), Bulk(s), Bulk(e), Bulk("BIT")))
       assertEquals(
-        bitpos(k, strings.bit.set, s, e, strings.bitUnit.byte).encode,
+        bitpos(k, stringtypes.bit.set, s, e, stringtypes.bitUnit.byte).encode,
         Arr(Bulk("BITPOS"), Bulk(k), Bulk("1"), Bulk(s), Bulk(e), Bulk("BYTE"))
       )
-      assertEquals(bitpos(k, strings.bit.set, s, e, strings.bitUnit.byte).decode(Num(-1L)), None)
-      assertEquals(bitcount(k, s, e, strings.bitUnit.bit).decode(Num(n.value.toLong)), n)
+      assertEquals(bitpos(k, stringtypes.bit.set, s, e, stringtypes.bitUnit.byte).decode(Num(-1L)), None)
+      assertEquals(bitcount(k, s, e, stringtypes.bitUnit.bit).decode(Num(n.value.toLong)), n)
     }
   }
 
   property("The String protocol using bitop with DIFF sends it like AND and OR") {
     forAll { (ks: TwoOrMoreKeys, d: Key, n: NonNegInt) =>
-      val protocol = bitop(strings.bitwise.diff1, ks, d)
+      val protocol = bitop(stringtypes.bitwise.diff1, ks, d)
       assertEquals(protocol.encode, Arr(Bulk("BITOP") :: Bulk("DIFF1") :: Bulk(d) :: ks.value.map(Bulk(_))))
       assertEquals(protocol.decode(Num(n.value.toLong)), n)
     }

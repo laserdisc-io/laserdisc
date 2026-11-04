@@ -49,6 +49,12 @@ object FieldsRead {
 
 private[protocol] trait ReadLabelledInstances {
 
+  /** Two positions read as a pair. On Scala 3 a pair is a tuple like any other, and needs nothing of its own */
+  implicit final def arrTuple2Pair[E1, E2, A, B](
+      implicit R: TupleRead[E1 *: E2 *: EmptyTuple, A *: B *: EmptyTuple]
+  ): Read[Arr.Tuple[E1 *: E2 *: EmptyTuple], (A, B)] =
+    Read.instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements).map { case a *: b *: _ => a -> b })
+
   /** A case class (not a tuple) read from a reply made of fields, like HGETALL's, by the names of its fields */
   implicit final def productRead[P <: Product, L <: Tuple](
       implicit @nowarn ev: Refute[IsTuple[P]],

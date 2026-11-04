@@ -151,6 +151,26 @@ final class ArrSpec extends BaseSpec with EitherSyntax {
     )
   }
 
+  test("decoding Arr.Prefix reads the positions it names and ignores what follows, but not fewer") {
+    def protocol = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Prefix[Bulk *: Num *: EmptyTuple], String *: Long *: EmptyTuple]
+    val request  = "id" *: EmptyTuple
+
+    assertEquals(protocol(request).decode(Arr(Bulk("a"), Num(1L))), "a" *: 1L *: EmptyTuple)
+    assertEquals(protocol(request).decode(Arr(Bulk("a"), Num(1L), Bulk("newer"), Num(2L))), "a" *: 1L *: EmptyTuple)
+    assertLeftEquals(
+      protocol(request)
+        .decode(Arr(Bulk("a")))
+        .leftMap(_.getMessage.endsWith("Read[Arr.Prefix] error: expected at least 2 elements, got 1")),
+      true
+    )
+    assertLeftEquals(
+      protocol(request)
+        .decode(Arr(Bulk("a"), Bulk("1"), Num(2L)))
+        .leftMap(_.getMessage.endsWith("Read[Arr.Prefix] error at element 2: Unexpected element. Was Bulk(1)")),
+      true
+    )
+  }
+
   test("decoding Arr.Of[OrNullBulk[Bulk]] as a tuple reads a missing value as None at an Option position, and as an error anywhere else") {
     def lenient = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Int *: Option[String] *: EmptyTuple]
     def strict  = Protocol("CUSTOM", _: String *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Int *: String *: EmptyTuple]

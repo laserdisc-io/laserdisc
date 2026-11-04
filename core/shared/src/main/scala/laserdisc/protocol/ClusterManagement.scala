@@ -101,14 +101,12 @@ object ClusterManagement {
 
   /** The figures of a slot of CLUSTER SLOT-STATS, by metric name, like `key-count` */
   final case class SlotStats(slot: Slot, metrics: Map[String, Long])
-  private[protocol] final val slotStats: Read[Arr, Seq[SlotStats]] = {
-    val metrics = Read.pairs(Read.bulk2StringRead, Read.num2LongRead).map(_.toMap)
-    val one     = Read.instance[Arr, SlotStats] {
-      case Arr(Num(ToInt(Slot(slot))) +: (ms: Arr) +: Seq()) => metrics.read(ms).map(SlotStats(slot, _))
-      case Arr(other)                                        => Left(RESPDecErr(s"Unexpected slot stats. Was $other"))
+  private implicit final val slotStat: Read[Arr.Tuple[Num *: Arr.Pairs[Bulk, Num] *: EmptyTuple], SlotStats] =
+    Read[Arr.Tuple[Num *: Arr.Pairs[Bulk, Num] *: EmptyTuple], Slot *: Map[String, Long] *: EmptyTuple].map { case slot *: metrics *: _ =>
+      SlotStats(slot, metrics)
     }
-    Read.arrOf(one)
-  }
+  private[protocol] final val slotStats: Read[Arr.Of[Arr.Tuple[Num *: Arr.Pairs[Bulk, Num] *: EmptyTuple]], Seq[SlotStats]] =
+    Read[Arr.Of[Arr.Tuple[Num *: Arr.Pairs[Bulk, Num] *: EmptyTuple]], Seq[SlotStats]]
 
   /** What CLUSTER SLOT-STATS orders slots by. `cpuUsec`, `networkBytesIn` and `networkBytesOut` need the server's
     * `cluster-slot-stats-enabled` setting

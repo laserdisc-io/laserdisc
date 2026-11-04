@@ -82,10 +82,10 @@ object ListP {
     }
   }
 
-  private[protocol] final def keyedSeq[A](implicit R: Read[Bulk, A]): RESPRead.Aux[OrNilArr[Arr], Option[KV[Seq[A]]]] = {
-    val as = Read.arrOf(Read[Bulk, A])
-    RESPRead.orNilArr(Read.instancePF("Arr(Key, Seq[A])") { case Arr(Bulk(Key(k)) +: as(Right(values)) +: Seq()) => KV(k, values) })
-  }
+  private[protocol] final def keyedSeq[
+      A: Read[Bulk, _]
+  ]: RESPRead.Aux[OrNilArr[Arr.Tuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]], Option[KV[Seq[A]]]] =
+    RESPRead[OrNilArr[Arr.Tuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]], Option[KV[Seq[A]]]]
 }
 
 trait ListBaseP extends Features {
@@ -141,7 +141,7 @@ trait ListBaseP extends Features {
 
   final def lpop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("LPOP", key).as[OrNullBulk[Bulk], Option[A]]
   final def lpop[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Option[Seq[A]]] =
-    Protocol("LPOP", key *: count *: EmptyTuple).using(RESPRead.orNilArrOrNullBulk(Read.arrOf(Read[Bulk, A])))
+    Protocol("LPOP", key *: count *: EmptyTuple).as[OneOf[NilArr *: NullBulk *: Arr.Of[Bulk] *: EmptyTuple], Option[Seq[A]]]
 
   final def lpos[A: Show](key: Key, element: A): Single.Aux[Option[NonNegInt]] =
     Protocol("LPOS", key *: element *: EmptyTuple).as[OrNullBulk[Num], Option[NonNegInt]]
@@ -174,7 +174,7 @@ trait ListBaseP extends Features {
 
   final def rpop[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("RPOP", key).as[OrNullBulk[Bulk], Option[A]]
   final def rpop[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Option[Seq[A]]] =
-    Protocol("RPOP", key *: count *: EmptyTuple).using(RESPRead.orNilArrOrNullBulk(Read.arrOf(Read[Bulk, A])))
+    Protocol("RPOP", key *: count *: EmptyTuple).as[OneOf[NilArr *: NullBulk *: Arr.Of[Bulk] *: EmptyTuple], Option[Seq[A]]]
 
   final def rpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Single.Aux[Option[A]] =
     Protocol("RPOPLPUSH", source :: destination :: Nil).as[OrNullBulk[Bulk], Option[A]]

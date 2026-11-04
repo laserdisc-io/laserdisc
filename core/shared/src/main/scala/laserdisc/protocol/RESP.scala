@@ -170,6 +170,9 @@ object Arr {
     * be missing
     */
   final class Tuple[T] private[protocol] (private[protocol] val elements: List[RESP])
+
+  /** An array that starts like an [[Tuple]], and may go on with anything: for replies that newer versions add to, like SLOWLOG's entries */
+  final class Prefix[T] private[protocol] (private[protocol] val elements: List[RESP])
 }
 
 private[protocol] final case class Repr[A](decoded: A, bits: BitVector)

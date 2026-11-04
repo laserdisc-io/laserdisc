@@ -22,6 +22,8 @@
 package laserdisc
 package protocol
 
+import scala.annotation.nowarn
+
 /** A reply, an element or a field that may be any one of the RESP types in `T`, like `OneOf[NullBulk *: Bulk *: EmptyTuple]` for a value
   * that may be missing (see [[laserdisc.OrNullBulk]] and [[laserdisc.OrNilArr]]).
   *
@@ -45,7 +47,7 @@ object Distinct {
 
   implicit final val emptyDistinct: Distinct[EmptyTuple] = instance.asInstanceOf[Distinct[EmptyTuple]]
 
-  implicit final def consDistinct[H, T <: Tuple](implicit H: NotIn[H, T], T: Distinct[T]): Distinct[H *: T] =
+  implicit final def consDistinct[H, T <: Tuple](implicit @nowarn H: NotIn[H, T], @nowarn T: Distinct[T]): Distinct[H *: T] =
     instance.asInstanceOf[Distinct[H *: T]]
 }
 
@@ -58,7 +60,7 @@ object NotIn extends NotInListedTwice {
 
   implicit final def emptyNotIn[H]: NotIn[H, EmptyTuple] = instance.asInstanceOf[NotIn[H, EmptyTuple]]
 
-  implicit final def consNotIn[H, X, T <: Tuple](implicit ev: H =:!= X, T: NotIn[H, T]): NotIn[H, X *: T] =
+  implicit final def consNotIn[H, X, T <: Tuple](implicit @nowarn ev: H =:!= X, @nowarn T: NotIn[H, T]): NotIn[H, X *: T] =
     instance.asInstanceOf[NotIn[H, X *: T]]
 }
 

@@ -157,22 +157,23 @@ object SortedSetP {
   private[protocol] final def firstScored[A: Read[Bulk, _]]: RESPRead.Aux[Arr.Pairs[Bulk, Bulk], Option[(A, Double)]] =
     RESPRead.instance(Read[Arr.Pairs[Bulk, Bulk], Seq[(A, Double)]].map(_.headOption))
 
-  private[protocol] final def keyedScored[A](implicit R: Read[Bulk, A]): RESPRead.Aux[OrNilArr[Arr], Option[KV[(A, Double)]]] =
-    RESPRead.orNilArr(Read.instancePF("Arr(Key, A, Double)") {
-      case Arr(Bulk(Key(k)) +: R(Right(a)) +: Read.bulk2DoubleRead(Right(score)) +: Seq()) => KV(k, a -> score)
-    })
-
-  private[protocol] final def keyedScoredSeq[A](implicit R: Read[Bulk, A]): RESPRead.Aux[OrNilArr[Arr], Option[KV[Seq[(A, Double)]]]] = {
-    val scored = Read.arrOf(Read.tuple[Bulk *: Bulk *: EmptyTuple, A *: Double *: EmptyTuple].map { case a *: d *: _ => a -> d })
-    RESPRead.orNilArr(Read.instancePF("Arr(Key, Seq[(A, Double)])") { case Arr(Bulk(Key(k)) +: scored(Right(as)) +: Seq()) =>
-      KV(k, as)
-    })
+  private[protocol] final def keyedScored[
+      A: Read[Bulk, _]
+  ]: RESPRead.Aux[OrNilArr[Arr.Tuple[Bulk *: Bulk *: Bulk *: EmptyTuple]], Option[KV[(A, Double)]]] = {
+    implicit val scored: Read[Arr.Tuple[Bulk *: Bulk *: Bulk *: EmptyTuple], KV[(A, Double)]] =
+      Read[Arr.Tuple[Bulk *: Bulk *: Bulk *: EmptyTuple], Key *: A *: Double *: EmptyTuple].map { case k *: a *: score *: _ =>
+        KV(k, a -> score)
+      }
+    RESPRead[OrNilArr[Arr.Tuple[Bulk *: Bulk *: Bulk *: EmptyTuple]], Option[KV[(A, Double)]]]
   }
 
-  private[protocol] final val rankWithScore: RESPRead.Aux[OrNilArr[Arr], Option[(NonNegInt, Double)]] =
-    RESPRead.orNilArr(Read.instancePF("Arr(NonNegInt, Double)") {
-      case Arr(Read.num2NonNegIntRead(Right(rank)) +: Read.bulk2DoubleRead(Right(score)) +: Seq()) => rank -> score
-    })
+  private[protocol] final def keyedScoredSeq[
+      A: Read[Bulk, _]
+  ]: RESPRead.Aux[OrNilArr[Arr.Tuple[Bulk *: Arr.Of[Arr.Tuple[Bulk *: Bulk *: EmptyTuple]] *: EmptyTuple]], Option[KV[Seq[(A, Double)]]]] =
+    RESPRead[OrNilArr[Arr.Tuple[Bulk *: Arr.Of[Arr.Tuple[Bulk *: Bulk *: EmptyTuple]] *: EmptyTuple]], Option[KV[Seq[(A, Double)]]]]
+
+  private[protocol] final val rankWithScore: RESPRead.Aux[OrNilArr[Arr.Tuple[Num *: Bulk *: EmptyTuple]], Option[(NonNegInt, Double)]] =
+    RESPRead[OrNilArr[Arr.Tuple[Num *: Bulk *: EmptyTuple]], Option[(NonNegInt, Double)]]
 }
 
 trait SortedSetBaseP extends Features {

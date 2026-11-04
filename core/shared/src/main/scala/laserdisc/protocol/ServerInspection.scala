@@ -26,8 +26,6 @@ import Protocol.Single
 
 /** The replies and options of the commands that inspect a server: SLOWLOG, LATENCY, MEMORY, COMMAND, MODULE, HOTKEYS and COMMANDLOG */
 object ServerInspection {
-  private final val nonNegLong = Read.num2NonNegLongRead
-  private final val strings    = Read.arrOf(Read.bulk2StringRead)
 
   // the text of a Bulk or of a Str, as COMMAND INFO's flags and categories come as Str
   private final def text(resp: RESP): Option[String] = resp match {
@@ -51,41 +49,45 @@ object ServerInspection {
       clientAddress: String,
       clientName: String
   )
-  private final val logEntry: Read[Arr, LogEntry] = Read.instancePF("Arr(log entry)") {
-    case Arr(
-          nonNegLong(Right(id)) +: nonNegLong(Right(timestamp)) +: nonNegLong(Right(microseconds)) +: strings(Right(arguments)) +:
-          Bulk(address) +: Bulk(name) +: _
-        ) =>
-      LogEntry(id, timestamp, microseconds, arguments, address, name)
-  }
-  private[protocol] final val logEntries: Read[Arr, Seq[LogEntry]] = Read.arrOf(logEntry)
+  private final type LogEntryReply = Arr.Prefix[Num *: Num *: Num *: Arr.Of[Bulk] *: Bulk *: Bulk *: EmptyTuple]
+  private implicit final val logEntry: Read[LogEntryReply, LogEntry] =
+    Read[LogEntryReply, NonNegLong *: NonNegLong *: NonNegLong *: Seq[String] *: String *: String *: EmptyTuple].map {
+      case id *: timestamp *: microseconds *: arguments *: address *: name *: _ =>
+        LogEntry(id, timestamp, microseconds, arguments, address, name)
+    }
+  private[protocol] final val logEntries: Read[Arr.Of[LogEntryReply], Seq[LogEntry]] = Read[Arr.Of[LogEntryReply], Seq[LogEntry]]
 
   /** An event of LATENCY LATEST: when it last happened, how long it took then, and the longest it ever took */
   final case class LatencyEvent(name: String, timestamp: NonNegLong, latestMilliseconds: NonNegLong, maxMilliseconds: NonNegLong)
-  private final val latencyEvent: Read[Arr, LatencyEvent] = Read.instancePF("Arr(latency event)") {
-    case Arr(Bulk(name) +: nonNegLong(Right(timestamp)) +: nonNegLong(Right(latest)) +: nonNegLong(Right(max)) +: _) =>
-      LatencyEvent(name, timestamp, latest, max)
-  }
-  private[protocol] final val latencyEvents: Read[Arr, Seq[LatencyEvent]] = Read.arrOf(latencyEvent)
+  private final type LatencyEventReply = Arr.Prefix[Bulk *: Num *: Num *: Num *: EmptyTuple]
+  private implicit final val latencyEvent: Read[LatencyEventReply, LatencyEvent] =
+    Read[LatencyEventReply, String *: NonNegLong *: NonNegLong *: NonNegLong *: EmptyTuple].map {
+      case name *: timestamp *: latest *: max *: _ =>
+        LatencyEvent(name, timestamp, latest, max)
+    }
+  private[protocol] final val latencyEvents: Read[Arr.Of[LatencyEventReply], Seq[LatencyEvent]] =
+    Read[Arr.Of[LatencyEventReply], Seq[LatencyEvent]]
 
   /** A sample of LATENCY HISTORY */
   final case class LatencySample(timestamp: NonNegLong, milliseconds: NonNegLong)
-  private final val latencySample: Read[Arr, LatencySample] = Read.instancePF("Arr(latency sample)") {
-    case Arr(nonNegLong(Right(timestamp)) +: nonNegLong(Right(milliseconds)) +: Seq()) => LatencySample(timestamp, milliseconds)
-  }
-  private[protocol] final val latencySamples: Read[Arr, Seq[LatencySample]] = Read.arrOf(latencySample)
+  private implicit final val latencySample: Read[Arr.Tuple[Num *: Num *: EmptyTuple], LatencySample] =
+    Read[Arr.Tuple[Num *: Num *: EmptyTuple], NonNegLong *: NonNegLong *: EmptyTuple].map { case timestamp *: milliseconds *: _ =>
+      LatencySample(timestamp, milliseconds)
+    }
+  private[protocol] final val latencySamples: Read[Arr.Of[Arr.Tuple[Num *: Num *: EmptyTuple]], Seq[LatencySample]] =
+    Read[Arr.Of[Arr.Tuple[Num *: Num *: EmptyTuple]], Seq[LatencySample]]
 
   /** A command's LATENCY HISTOGRAM: how many calls it had, and for each bucket the number of calls that took at most that many microseconds
     */
   final case class LatencyHistogram(calls: NonNegLong, buckets: Seq[(NonNegLong, NonNegLong)])
-  private[protocol] final val latencyHistograms: Read[Arr, Map[String, LatencyHistogram]] = {
-    val buckets   = Read.pairs(Read.num2NonNegLongRead, Read.num2NonNegLongRead)
-    val histogram = Read.instancePF[Arr, LatencyHistogram]("Arr(latency histogram)") {
-      case Arr(Bulk("calls") +: nonNegLong(Right(calls)) +: Bulk("histogram_usec") +: buckets(Right(bs)) +: Seq()) =>
-        LatencyHistogram(calls, bs)
-    }
-    Read.pairs(Read.bulk2StringRead, histogram).map(_.toMap)
+  private implicit final val latencyHistogram: Read[Record, LatencyHistogram] = Read.record("latency histogram") { f =>
+    for {
+      calls   <- f.num[NonNegLong]("calls")
+      buckets <- f[Arr.Pairs[Num, Num], Seq[(NonNegLong, NonNegLong)]]("histogram_usec")
+    } yield LatencyHistogram(calls, buckets)
   }
+  private[protocol] final val latencyHistograms: Read[Arr.Pairs[Bulk, Record], Map[String, LatencyHistogram]] =
+    Read[Arr.Pairs[Bulk, Record], Map[String, LatencyHistogram]]
 
   /** MEMORY STATS: the figures for the whole server, and those of each database, as text since they mix whole and decimal numbers */
   final case class MemoryStats(values: Map[String, String], databases: Map[Int, Map[String, String]])
@@ -138,16 +140,10 @@ object ServerInspection {
 
   /** A key of COMMAND GETKEYSANDFLAGS, with what the command does to it */
   final case class KeyAndFlags(key: Key, flags: Seq[String])
-  private[protocol] final val keysAndFlags: Read[Arr, Seq[KeyAndFlags]] = Read.instance { case Arr(elements) =>
-    elements.foldRight[Either[RESPDecErr, List[KeyAndFlags]]](Right(Nil)) {
-      case (Arr(Bulk(Key(key)) +: flags +: Seq()), Right(kfs)) =>
-        texts(flags).fold[Either[RESPDecErr, List[KeyAndFlags]]](Left(RESPDecErr(s"Unexpected flags of $key")))(fs =>
-          Right(KeyAndFlags(key, fs) :: kfs)
-        )
-      case (other, Right(_)) => Left(RESPDecErr(s"Unexpected key and flags. Was $other"))
-      case (_, left)         => left
-    }
-  }
+  private implicit final val keyAndFlags: Read[Arr.Tuple[Bulk *: Texts *: EmptyTuple], KeyAndFlags] =
+    Read[Arr.Tuple[Bulk *: Texts *: EmptyTuple], Key *: Seq[String] *: EmptyTuple].map { case key *: flags *: _ => KeyAndFlags(key, flags) }
+  private[protocol] final val keysAndFlags: Read[Arr.Of[Arr.Tuple[Bulk *: Texts *: EmptyTuple]], Seq[KeyAndFlags]] =
+    Read[Arr.Of[Arr.Tuple[Bulk *: Texts *: EmptyTuple]], Seq[KeyAndFlags]]
 
   /** FILTERBY, for COMMAND LIST: the commands of a module, of an ACL category, or whose names match a pattern */
   sealed trait CommandFilter { def params: List[String] }

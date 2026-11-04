@@ -33,7 +33,7 @@ import scala.annotation.{implicitNotFound, nowarn}
 @implicitNotFound(
   """Implicit not found RESPSub[${A}].
 
-${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Arr.Tuple, Bulk, NilArr, NullBulk, Num or Str, a OneOf of them, or RESP for any of them
+${A} must be one of the RESP types Arr, Arr.Of, Arr.Pairs, Arr.Prefix, Arr.Tuple, Bulk, NilArr, NullBulk, Num or Str, a OneOf of them, or RESP for any of them
   """
 ) sealed abstract class RESPSub[A] {
   def unapply(resp: RESP): Option[A]
@@ -60,7 +60,8 @@ object RESPSub {
     new Arr.Pairs[A, B](elements)
   }
 
-  implicit final def arrTupleRESPSub[T]: RESPSub[Arr.Tuple[T]] = instance { case Arr(elements) => new Arr.Tuple[T](elements) }
+  implicit final def arrTupleRESPSub[T]: RESPSub[Arr.Tuple[T]]   = instance { case Arr(elements) => new Arr.Tuple[T](elements) }
+  implicit final def arrPrefixRESPSub[T]: RESPSub[Arr.Prefix[T]] = instance { case Arr(elements) => new Arr.Prefix[T](elements) }
 
   implicit final def oneOfRESPSub[T <: Tuple](implicit A: Alternatives[T], @nowarn D: Distinct[T]): RESPSub[OneOf[T]] = instance {
     case resp if A.matches(resp) => new OneOf[T](resp)
@@ -106,12 +107,6 @@ object RESPRead {
         case _    => mismatch(resp)
       }
     }
-
-  // an array read with R, or None for a null array, for readers given explicitly
-  private[protocol] final def orNilArr[B](R: Read[Arr, B]): RESPRead.Aux[OrNilArr[Arr], Option[B]] = {
-    implicit val read: Read[Arr, B] = R
-    RESPRead[OrNilArr[Arr], Option[B]]
-  }
 
   // an array read with R, or None for a null array or a null bulk string, for replies Redis changed from one to the other (e.g. LPOP with a
   // count, before Redis 7.0), and readers given explicitly

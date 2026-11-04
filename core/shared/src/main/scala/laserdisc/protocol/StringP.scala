@@ -135,49 +135,38 @@ object StringP {
   /** The reply of INCREX: the value now, and the increment that was applied, which is 0 when a bound refused it */
   final case class Incremented[A](value: A, increment: A)
 
-  private[protocol] final val incrementedLong: Read[Arr, Incremented[Long]] = Read.instancePF("Arr(Num, Num)") {
-    case Arr(Num(value) +: Num(increment) +: Seq()) => Incremented(value, increment)
-  }
-  private[protocol] final val incrementedDouble: Read[Arr, Incremented[Double]] = Read.instancePF("Arr(Bulk(Double), Bulk(Double))") {
-    case Arr(Read.bulk2DoubleRead(Right(value)) +: Read.bulk2DoubleRead(Right(increment)) +: Seq()) => Incremented(value, increment)
-  }
+  private[protocol] final val incrementedLong: Read[Arr.Tuple[Num *: Num *: EmptyTuple], Incremented[Long]] =
+    Read[Arr.Tuple[Num *: Num *: EmptyTuple], Long *: Long *: EmptyTuple].map { case value *: increment *: _ =>
+      Incremented(value, increment)
+    }
+  private[protocol] final val incrementedDouble: Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Incremented[Double]] =
+    Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Double *: Double *: EmptyTuple].map { case value *: increment *: _ =>
+      Incremented(value, increment)
+    }
 
   /** Where a match is, in each of the two strings LCS compares */
   final case class LcsRange(start: NonNegInt, end: NonNegInt)
   final case class LcsMatch(first: LcsRange, second: LcsRange, length: NonNegInt)
   final case class LcsMatches(matches: Seq[LcsMatch], length: NonNegInt)
 
-  private[protocol] final val bitFieldResults: Read[Arr, Seq[Option[Long]]] = Read.instance { case Arr(vector) =>
-    vector
-      .foldRight[Either[RESPDecErr, List[Option[Long]]]](Right(Nil)) {
-        case (Num(l), Right(ls))   => Right(Some(l) :: ls)
-        case (NullBulk, Right(ls)) => Right(None :: ls)
-        case (other, Right(_))     => Left(RESPDecErr(s"Read[Arr, Seq[Option[Long]]] error: unexpected $other"))
-        case (_, left)             => left
-      }
-  }
+  private[protocol] final val bitFieldResults: Read[Arr.Of[OrNullBulk[Num]], Seq[Option[Long]]] =
+    Read[Arr.Of[OrNullBulk[Num]], Seq[Option[Long]]]
 
-  private[protocol] final val lcsMatches: Read[Arr, LcsMatches] = {
-    val nonNegInt                           = Read.num2NonNegIntRead
-    def range(resp: RESP): Option[LcsRange] = resp match {
-      case Arr(nonNegInt(Right(start)) +: nonNegInt(Right(end)) +: Seq()) => Some(LcsRange(start, end))
-      case _                                                              => None
-    }
-    def lcsMatch(resp: RESP): Option[LcsMatch] = resp match {
-      case Arr(first +: second +: nonNegInt(Right(length)) +: Seq()) =>
-        for {
-          f <- range(first)
-          s <- range(second)
-        } yield LcsMatch(f, s, length)
-      case _ => None
-    }
-    Read.instance {
-      case Arr(Bulk("matches") +: Arr(matches) +: Bulk("len") +: nonNegInt(Right(length)) +: Seq()) =>
-        val read = matches.map(lcsMatch)
-        if (read.forall(_.isDefined)) Right(LcsMatches(read.flatten, length))
-        else Left(RESPDecErr(s"Unexpected LCS matches. Was $matches"))
-      case other => Left(RESPDecErr(s"Unexpected LCS IDX reply. Was $other"))
-    }
+  private implicit final val lcsRange: Read[Arr.Tuple[Num *: Num *: EmptyTuple], LcsRange] =
+    Read[Arr.Tuple[Num *: Num *: EmptyTuple], NonNegInt *: NonNegInt *: EmptyTuple].map { case start *: end *: _ => LcsRange(start, end) }
+  private implicit final val lcsMatch: Read[Arr.Tuple[Arr.Tuple[Num *: Num *: EmptyTuple] *: Arr.Tuple[Num *: Num *: EmptyTuple] *: Num *: EmptyTuple], LcsMatch] =
+    Read[Arr.Tuple[
+      Arr.Tuple[Num *: Num *: EmptyTuple] *: Arr.Tuple[Num *: Num *: EmptyTuple] *: Num *: EmptyTuple
+    ], LcsRange *: LcsRange *: NonNegInt *: EmptyTuple]
+      .map { case first *: second *: length *: _ => LcsMatch(first, second, length) }
+
+  private[protocol] final val lcsMatches: Read[Record, LcsMatches] = Read.record("LCS matches") { f =>
+    for {
+      matches <- f[Arr.Of[Arr.Tuple[Arr.Tuple[Num *: Num *: EmptyTuple] *: Arr.Tuple[Num *: Num *: EmptyTuple] *: Num *: EmptyTuple]], Seq[
+        LcsMatch
+      ]]("matches")
+      length <- f.num[NonNegInt]("len")
+    } yield LcsMatches(matches, length)
   }
 
   /** EX, PX, EXAT, PXAT and KEEPTTL, for SET */

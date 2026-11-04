@@ -163,9 +163,8 @@ object KeyP {
     }
   }
 
-  private[protocol] final val localAndReplicas: Read[Arr, (NonNegInt, NonNegInt)] = Read.instancePF("Arr(NonNegInt, NonNegInt)") {
-    case Arr(Read.num2NonNegIntRead(Right(local)) +: Read.num2NonNegIntRead(Right(replicas)) +: Seq()) => local -> replicas
-  }
+  private[protocol] final val localAndReplicas: Read[Arr.Tuple[Num *: Num *: EmptyTuple], (NonNegInt, NonNegInt)] =
+    Read[Arr.Tuple[Num *: Num *: EmptyTuple], (NonNegInt, NonNegInt)]
 
   object ExpireTimeResponse {
     final case class ExpireAt(timestamp: NonNegLong) extends ExpireTimeResponse

@@ -224,9 +224,11 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
   implicit final def arrTuple2Tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr.Tuple[T], L] =
     instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements))
 
-  // a plain Arr read as an Arr.Tuple[T], for readers within others
-  private[protocol] final def tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr, L] =
-    instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements))
+  implicit final def arrPrefix2Tuple[T, L](implicit R: TupleRead[T, L]): Read[Arr.Prefix[T], L] = instance { arr =>
+    if (arr.elements.size < R.size)
+      Left(RESPDecErr(s"Read[Arr.Prefix] error: expected at least ${R.size} elements, got ${arr.elements.size}"))
+    else R.read(arr.elements, 1).left.map(e => RESPDecErr(s"Read[Arr.Prefix] ${e.message}"))
+  }
 
   // an array of values of one type, like HMGET's that may be missing, read position by position
   implicit final def arrOf2Tuple[E, L <: Tuple](implicit R: OfTupleRead[E, L]): Read[Arr.Of[E], L] = instance { arr =>
@@ -245,8 +247,11 @@ trait ReadInstances1 extends EitherSyntax with ReadLabelledInstances {
       ScanKV(scan.cursor, scan.values.map(_.map { case (k, v) => KV(k, v) }))
     }
 
-  implicit final def arrTuple2KV[A](implicit R: Read[Bulk, A]): Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], KV[A]] =
-    Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Key *: A *: EmptyTuple].map { case k *: a *: _ => KV(k, a) }
+  // a key, and what's under it
+  implicit final def arrTuple2KV[E, A](
+      implicit R: TupleRead[Bulk *: E *: EmptyTuple, Key *: A *: EmptyTuple]
+  ): Read[Arr.Tuple[Bulk *: E *: EmptyTuple], KV[A]] =
+    instance(arr => TupleRead.read(R, "Arr.Tuple")(arr.elements).map { case k *: a *: _ => KV(k, a) })
 
   implicit final val arrTuple2Time: Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], Time] =
     Read[Arr.Tuple[Bulk *: Bulk *: EmptyTuple], NonNegLong *: NonNegLong *: EmptyTuple].map { case ts *: em *: _ => Time(ts, em) }

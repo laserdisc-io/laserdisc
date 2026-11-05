@@ -24,6 +24,7 @@ To import a single family instead, add its name:
 | Streams | `laserdisc.redis_8_10.streams.*` |
 | Keys | `laserdisc.redis_8_10.keys.*` |
 | Hashes | `laserdisc.redis_8_10.hashmaps.*` |
+| Arrays | `laserdisc.redis_8_10.arrays.*` |
 | Lists | `laserdisc.redis_8_10.lists.*` |
 | Sets | `laserdisc.redis_8_10.sets.*` |
 | Sorted sets | `laserdisc.redis_8_10.sortedsets.*` |

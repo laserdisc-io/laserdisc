@@ -740,6 +740,26 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
+  test("only Redis 8.8 and later have arrays") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_8_8.*
+      assertEquals(arlen("a").frames, frame("ARLEN", "a"))
+      assertEquals(arrays.arcount("a").frames, frame("ARCOUNT", "a"))
+    }
+    {
+      import laserdisc.redis_8_6.*
+      assertEquals(llen("a").frames, frame("LLEN", "a"))
+      assert(compileErrors("""arlen("a")""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(llen("a").frames, frame("LLEN", "a"))
+      assert(compileErrors("""arlen("a")""").nonEmpty)
+    }
+  }
+
   test("every version has the blocking stream reads under blocking") {
     import laserdisc.auto.*
 
@@ -864,7 +884,11 @@ final class VersionImportsSpec extends BaseSpec {
       valkey_9_1
     )
     versions.foreach { v =>
-      val families = List[protocol.Features](
+      val arrays = v match {
+        case v: Redis8_8 => List[protocol.Features](v.arrays)
+        case _           => Nil
+      }
+      val families = arrays ++ List[protocol.Features](
         v.blocking,
         v.cluster,
         v.connection,

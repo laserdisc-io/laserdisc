@@ -26,6 +26,22 @@ import laserdisc.auto.*
 
 final class RedisKeyClientSpec extends KeyClientSpec(6379, "redis") {
   test("a redis client sets expiries with conditions and reads them with the commands of Redis 8.10")(expiries(redis_8_10))
+
+  test("a redis client reads the type of an array or a module's key, and scans by it") {
+    import laserdisc.redis_8_10.*
+    import keytypes.*
+
+    send(del("k:a", "k:v"))
+    send(arset("k:a", 0L, OneOrMore.unsafeFrom(List("x"))))
+    send(Protocol("VADD", List("k:v", "VALUES", "1", "1", "e")).as[Num, Long])
+
+    assertEquals(send(typeof("k:a")), Some(KeyType.array))
+    assertEquals(send(typeof("k:v")), Some(KeyType.other("vectorset")))
+    assertEquals(send(typeof("k:none")), None)
+    assert(send(scan(0L, 10000, KeyType.array)).values.exists(_.contains(Key("k:a"))))
+    assert(send(scan(0L, 10000, KeyType.other("vectorset"))).values.exists(_.contains(Key("k:v"))))
+    send(del("k:a", "k:v"))
+  }
 }
 
 final class KeyDbKeyClientSpec extends KeyClientSpec(6380, "keyDb")

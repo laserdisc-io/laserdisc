@@ -126,14 +126,19 @@ object KeyP {
     case object both        extends RestoreMode { override final val params: List[String] = List("REPLACE", "ABSTTL") }
   }
 
+  /** What TYPE replies, and what SCAN can look for. `array` is from Redis 8.8, and `other` is any type of a server's module, like
+    * `vectorset`
+    */
   sealed trait Type
   object Type {
-    case object string extends Type
-    case object list   extends Type
-    case object set    extends Type
-    case object zset   extends Type
-    case object hash   extends Type
-    case object stream extends Type
+    case object string                extends Type
+    case object list                  extends Type
+    case object set                   extends Type
+    case object zset                  extends Type
+    case object hash                  extends Type
+    case object stream                extends Type
+    case object array                 extends Type
+    final case class other(name: Key) extends Type
 
     implicit final val typeShow: Show[Type] = Show.instance {
       case `string` => "string"
@@ -142,6 +147,8 @@ object KeyP {
       case `zset`   => "zset"
       case `hash`   => "hash"
       case `stream` => "stream"
+      case `array`  => "array"
+      case other(n) => n.value
     }
   }
 
@@ -259,8 +266,9 @@ trait KeyBaseP extends Features {
     case Str("zset")   => Right(Some(KeyType.zset))
     case Str("hash")   => Right(Some(KeyType.hash))
     case Str("stream") => Right(Some(KeyType.stream))
+    case Str("array")  => Right(Some(KeyType.array))
     case Str("none")   => Right(None)
-    case Str(other)    => Left(RESPDecErr(s"Unexpected string for Read[Str, Option[KeyType]]. Was $other"))
+    case Str(other)    => Read[Bulk, Key].read(Bulk(other)).map(name => Some(KeyType.other(name)))
   }
 
   final def copy(source: Key, destination: Key): Single.Aux[Boolean] =

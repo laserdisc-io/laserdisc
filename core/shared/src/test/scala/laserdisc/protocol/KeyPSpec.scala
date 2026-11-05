@@ -55,7 +55,16 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
     )
   }
   private implicit final val typeArb: Arbitrary[KeyType] = Arbitrary {
-    Gen.oneOf(KeyType.string, KeyType.list, KeyType.set, KeyType.zset, KeyType.hash, KeyType.stream)
+    Gen.oneOf(
+      KeyType.array,
+      KeyType.other(Key("vectorset")),
+      KeyType.string,
+      KeyType.list,
+      KeyType.set,
+      KeyType.zset,
+      KeyType.hash,
+      KeyType.stream
+    )
   }
 
   private final val ttlResponseToNum: KeyTTLResponse => Num = {
@@ -449,9 +458,12 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
     }
   }
 
-  property("The Key protocol using typeof reads a stream") {
+  property("The Key protocol using typeof reads a stream, an array, a type of a module, and none as no key") {
     forAll { (k: Key) =>
       assertEquals(typeof(k).decode(Str("stream")), Some(KeyType.stream))
+      assertEquals(typeof(k).decode(Str("array")), Some(KeyType.array))
+      assertEquals(typeof(k).decode(Str("ReJSON-RL")), Some(KeyType.other(Key("ReJSON-RL"))))
+      assertEquals(typeof(k).decode(Str("none")), None)
     }
   }
 

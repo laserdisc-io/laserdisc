@@ -74,6 +74,21 @@ abstract class KeyClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
     assertEquals(local.value -> replicas.value, 0 -> 0)
   }
 
+  test(s"a $dest client dumps a key and restores it, as a dump isn't text") {
+    import laserdisc.redis_6_2.*
+    import keytypes.*
+
+    send(del("k:dump", "k:restored"))
+    send(set("k:dump", "héllo"))
+
+    val dumped = send(dump("k:dump")).getOrElse(fail("nothing dumped"))
+    assertEquals(send(restore("k:restored", 0L, dumped)), OK)
+    assertEquals(send(get[String]("k:restored")), Some("héllo"))
+    assertEquals(send(restore("k:restored", 0L, dumped, KeyRestoreMode.replace)), OK)
+    assertEquals(send(dump("k:none")), None)
+    send(del("k:dump", "k:restored"))
+  }
+
   test(s"a $dest client copies, scans by type and sorts with GET") {
     import laserdisc.redis_6_2.*
     import keytypes.*

@@ -27,7 +27,7 @@ import java.{lang => j}
 
 import scodec.Err.{General, MatchingDiscriminatorNotFound}
 import scodec.bits.{BitVector, _}
-import scodec.codecs.{filtered, fixedSizeBytes}
+import scodec.codecs.{bytes, filtered, fixedSizeBytes}
 import scodec.{Attempt, Codec, DecodeResult, Decoder, Err => SErr, SizeBound}
 
 import scala.annotation.tailrec
@@ -109,12 +109,28 @@ case object NullBulk extends GenBulk
 
 /** This is the special case of a non-null RESP [[GenBulk]]
   *
-  * @param value
-  *   The wrapped bulk string value
+  * It keeps the bytes exactly as they are, as what a bulk string holds may not be text, like what DUMP replies with. `value` is those bytes
+  * read as UTF-8 text, where any bytes that aren't valid UTF-8 are replaced, so it doesn't always say what `bytes` does
+  *
+  * @param bytes
+  *   The wrapped bulk string's bytes
   */
-final case class Bulk(value: String) extends GenBulk
+final class Bulk private (val bytes: ByteVector, text: =>String) extends GenBulk {
+  lazy val value: String = text
+
+  override def equals(other: Any): Boolean = other match {
+    case that: Bulk => bytes == that.bytes
+    case _          => false
+  }
+  override def hashCode: Int    = bytes.hashCode
+  override def toString: String = s"Bulk($value)"
+}
 object Bulk {
-  final def apply[A](a: A)(implicit A: Show[A]): Bulk = new Bulk(A.show(a))
+  final def apply(bytes: ByteVector): Bulk            = new Bulk(bytes, new String(bytes.toArray, UTF_8))
+  final def apply(value: String): Bulk                = new Bulk(ByteVector.view(value.getBytes(UTF_8)), value)
+  final def apply[A](a: A)(implicit A: Show[A]): Bulk = apply(A.show(a))
+
+  final def unapply(bulk: Bulk): Some[String] = Some(bulk.value)
 
   implicit final val bulkShow: Show[Bulk] = Show.instance(_.value)
 }
@@ -223,7 +239,7 @@ sealed trait RESPCodecs extends BitVectorSyntax {
     private final val nullBulkBits = minusOne ++ crlf
     private final val decoder      = crlfTerminatedLongCodec.flatMap {
       case -1                => Decoder.liftAttempt(Attempt.successful(NullBulk))
-      case size if size >= 0 => fixedSizeBytes(size + crlfBytesSize, crlfTerminatedCodec(utf8Codec, size)).map(Bulk.apply)
+      case size if size >= 0 => fixedSizeBytes(size + crlfBytesSize, crlfTerminatedCodec(bytes, size)).map(Bulk(_))
       case negSize           => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
     }
     private final def failDec(negSize: Long)            = General(s"failed to decode bulk-string of size $negSize", List("size"))
@@ -234,10 +250,8 @@ sealed trait RESPCodecs extends BitVectorSyntax {
     override final def encode(bulk: GenBulk): Attempt[BitVector] =
       bulk match {
         case NullBulk => Attempt.successful(nullBulkBits)
-        case Bulk(s)  =>
-          crlfTerminatedStringCodec.encode(s).flatMap { bits =>
-            crlfTerminatedLongCodec.encode(bits.size / BitsInByte - crlfBytesSize).mapErr(failEnc(bulk, _)).map(_ ++ bits)
-          }
+        case b: Bulk  =>
+          crlfTerminatedLongCodec.encode(b.bytes.size).mapErr(failEnc(bulk, _)).map(_ ++ b.bytes.bits ++ crlf)
       }
     override final def decode(buffer: BitVector): Attempt[DecodeResult[GenBulk]] = decoder.decode(buffer)
   }

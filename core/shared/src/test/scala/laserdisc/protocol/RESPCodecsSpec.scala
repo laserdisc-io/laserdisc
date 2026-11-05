@@ -28,7 +28,7 @@ import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.*
 import org.scalacheck.Prop.forAll
 import org.scalacheck.{Arbitrary, Gen}
-import scodec.bits.BitVector
+import scodec.bits.{BitVector, _}
 import scodec.{Attempt, Codec, Err => SErr}
 
 object RESPCodecsSpec {
@@ -212,5 +212,26 @@ final class RESPCodecsSpec extends BaseSpec {
 
   property("A RESP codec handling bulk strings roundtrips with no errors") {
     forAll((a: GenArr) => assertEquals(a.roundTrip, a))
+  }
+
+  test("A Bulk keeps bytes that aren't text as they are, on the way in and out") {
+    val binary = hex"00ff0d0afe".bits
+    val wire   = hex"24350d0a".bits ++ binary ++ hex"0d0a".bits
+    val bulk   = Bulk(binary.bytes)
+
+    assertEquals(Codec[RESP].decode(wire).map(_.value), Attempt.successful(bulk: RESP))
+    assertEquals(Codec[RESP].encode(bulk), Attempt.successful(wire))
+  }
+
+  test("A Bulk compares by its bytes and reads them as text") {
+    val text = Bulk("héllo")
+
+    assertEquals(Bulk(text.bytes), text)
+    assertEquals(Bulk(text.bytes).hashCode, text.hashCode)
+    assertEquals(Bulk(text.bytes).value, "héllo")
+    assertEquals(text.toString, "Bulk(héllo)")
+    assert(Bulk(hex"ff") != Bulk(hex"fe"))
+    assertEquals(Bulk(hex"ff").value, "\ufffd")
+    Bulk("x") match { case Bulk(value) => assertEquals(value, "x") }
   }
 }

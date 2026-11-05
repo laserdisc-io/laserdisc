@@ -57,14 +57,20 @@ object ClusterP {
   final case class Nodes(nodes: Seq[Node]) extends AnyVal
   object Nodes {
     private final val A: Read[String, Address] = {
-      val HPCP = raw"([A-Za-z0-9\-\.]*):(\d+)@(\d+)".r
+      // the hostname, from Redis 7.0, then any other fields, which are left out
+      val HPCP = raw"([A-Za-z0-9\-\.]*):(\d+)@(\d+)(?:,|$$)([A-Za-z0-9\-\.]*)(?:,.*)?".r
       val HP   = raw"([A-Za-z0-9\-\.]*):(\d+)".r
+      object MaybeHost {
+        def unapply(s: String): Option[Option[Host]] = s match {
+          case ""      => Some(None)
+          case Host(h) => Some(Some(h))
+          case _       => None
+        }
+      }
       Read.instance {
-        case HPCP("", ToInt(Port(p)), ToInt(Port(cp)))      => Right(Address(LoopbackHost, p, cp))
-        case HPCP(Host(h), ToInt(Port(p)), ToInt(Port(cp))) => Right(Address(h, p, cp))
-        case HP("", ToInt(Port(p)))                         => Right(Address(LoopbackHost, p, p))
-        case HP(Host(h), ToInt(Port(p)))                    => Right(Address(h, p, p))
-        case other                                          => Left(RESPDecErr(s"Unexpected encoding for Address. Was $other"))
+        case HPCP(MaybeHost(h), ToInt(Port(p)), ToInt(Port(cp)), MaybeHost(n)) => Right(Address(h, p, cp, n))
+        case HP(MaybeHost(h), ToInt(Port(p)))                                  => Right(Address(h, p, p, None))
+        case other => Left(RESPDecErr(s"Unexpected encoding for Address. Was $other"))
       }
     }
     private final val Fs: Read[String, Seq[Flag]] = Read.instance {
@@ -184,7 +190,10 @@ object ClusterP {
     implicit final val linkStateShow: Show[LinkState] = Show.unsafeFromToString
   }
 
-  final case class Address(host: Host, port: Port, clusterPort: Port)
+  /** Where a node listens. `host` is `None` until the node knows its own address, as on a fresh node. `hostname` is what the node announces
+    * with cluster-announce-hostname, from Redis 7.0
+    */
+  final case class Address(host: Option[Host], port: Port, clusterPort: Port, hostname: Option[Host])
 
   sealed trait ResetMode
   object ResetMode {

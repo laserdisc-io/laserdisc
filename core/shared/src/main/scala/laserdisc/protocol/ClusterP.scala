@@ -43,12 +43,12 @@ object ClusterP {
       KVPS.contramap[Bulk](_.value.split(CRLF).toList).map(kv => new Info(kv.toMap))
   }
 
-  /** A node of CLUSTER NODES. `ping` and `pong` are when the last ping was sent and the last pong received, in milliseconds since the
-    * epoch, or 0 if there was none
+  /** A node of CLUSTER NODES. `address` is `None` when the server doesn't know where the node is. `ping` and `pong` are when the last ping
+    * was sent and the last pong received, in milliseconds since the epoch, or 0 if there was none
     */
   final case class Node(
       id: NodeId,
-      address: Address,
+      address: Option[Address],
       flags: Seq[Flag],
       maybeMaster: Option[NodeId],
       ping: NonNegLong,
@@ -59,7 +59,7 @@ object ClusterP {
   )
   final case class Nodes(nodes: Seq[Node]) extends AnyVal
   object Nodes {
-    private final val A: Read[String, Address] = {
+    private final val A: Read[String, Option[Address]] = {
       // the hostname, from Redis 7.0, then any other fields, which are left out
       val HPCP = raw"([A-Za-z0-9\-\.]*):(\d+)@(\d+)(?:,|$$)([A-Za-z0-9\-\.]*)(?:,.*)?".r
       val HP   = raw"([A-Za-z0-9\-\.]*):(\d+)".r
@@ -71,8 +71,9 @@ object ClusterP {
         }
       }
       Read.instance {
-        case HPCP(MaybeHost(h), ToInt(Port(p)), ToInt(Port(cp)), MaybeHost(n)) => Right(Address(h, p, cp, n))
-        case HP(MaybeHost(h), ToInt(Port(p)))                                  => Right(Address(h, p, p, None))
+        case ":0@0"                                                            => Right(None)
+        case HPCP(MaybeHost(h), ToInt(Port(p)), ToInt(Port(cp)), MaybeHost(n)) => Right(Some(Address(h, p, cp, n)))
+        case HP(MaybeHost(h), ToInt(Port(p)))                                  => Right(Some(Address(h, p, p, None)))
         case other => Left(RESPDecErr(s"Unexpected encoding for Address. Was $other"))
       }
     }

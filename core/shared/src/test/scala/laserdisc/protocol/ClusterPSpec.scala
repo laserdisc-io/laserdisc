@@ -99,7 +99,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       ns =>
         ns.nodes.zip(rns).foreach {
           case (
-                ClusterNode(n0, ClusterAddress(h0, p0, cp0, _), fs0, m0, ps0, pr0, ce0, l0, ss0),
+                ClusterNode(n0, Some(ClusterAddress(h0, p0, cp0, _)), fs0, m0, ps0, pr0, ce0, l0, ss0),
                 (n, h, p, cp, fs, m, ps, pr, ce, l, ss)
               ) =>
             assertEquals(n0.value, n)
@@ -266,14 +266,25 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
     val (port, bus) = (Port(6379), Port(16379))
     val (ip, name)  = (Host("127.0.0.1"), Host("my.host.example"))
-    assertEquals(address(":6379@16379"), Seq(ClusterAddress(None, port, bus, None)))
-    assertEquals(address("127.0.0.1:6379@16379"), Seq(ClusterAddress(Some(ip), port, bus, None)))
-    assertEquals(address(":6379@16379,my.host.example"), Seq(ClusterAddress(None, port, bus, Some(name))))
-    assertEquals(address("127.0.0.1:6379@16379,my.host.example"), Seq(ClusterAddress(Some(ip), port, bus, Some(name))))
-    assertEquals(address("127.0.0.1:6379@16379,my.host.example,shard-id=abc"), Seq(ClusterAddress(Some(ip), port, bus, Some(name))))
-    assertEquals(address("127.0.0.1:6379@16379,,shard-id=abc"), Seq(ClusterAddress(Some(ip), port, bus, None)))
-    assertEquals(address("127.0.0.1:6379"), Seq(ClusterAddress(Some(ip), port, port, None)))
+    assertEquals(address(":6379@16379"), Seq(Some(ClusterAddress(None, port, bus, None))))
+    assertEquals(address("127.0.0.1:6379@16379"), Seq(Some(ClusterAddress(Some(ip), port, bus, None))))
+    assertEquals(address(":6379@16379,my.host.example"), Seq(Some(ClusterAddress(None, port, bus, Some(name)))))
+    assertEquals(address("127.0.0.1:6379@16379,my.host.example"), Seq(Some(ClusterAddress(Some(ip), port, bus, Some(name)))))
+    assertEquals(address("127.0.0.1:6379@16379,my.host.example,shard-id=abc"), Seq(Some(ClusterAddress(Some(ip), port, bus, Some(name)))))
+    assertEquals(address("127.0.0.1:6379@16379,,shard-id=abc"), Seq(Some(ClusterAddress(Some(ip), port, bus, None))))
+    assertEquals(address("127.0.0.1:6379"), Seq(Some(ClusterAddress(Some(ip), port, port, None))))
     assert(address("127.0.0.1:6379@16379,not_a_host").isLeft)
+  }
+
+  test("The Cluster protocol using nodes reads a node with no known address as no address, and no other port of 0") {
+    val id                 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    def address(a: String) = nodes.decode(Bulk(s"$id $a noflags - 1793860727551 0 0 disconnected")).map(_.nodes.map(_.address))
+
+    assertEquals(address(":0@0"), Seq(None))
+    assert(address(":0@16379").isLeft)
+    assert(address(":6379@0").isLeft)
+    assert(address("127.0.0.1:0@0").isLeft)
+    assert(address(":0").isLeft)
   }
 
   property("The Cluster protocol using nodes roundtrips successfully using val") {

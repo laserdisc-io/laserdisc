@@ -67,6 +67,7 @@ trait Streams6_2 extends StreamBaseP with StreamGroupBaseP with StreamClaimAndIn
 trait Streams7_0 extends Streams6_2 with StreamClaimDeletedP with StreamGroupEntriesReadP with StreamSetIdEntriesP
 trait Streams8_2 extends Streams7_0 with StreamRefPolicyP
 trait Streams8_6 extends Streams8_2 with StreamIdmpP
+trait Streams8_8 extends Streams8_6 with StreamNackP
 
 trait Cluster6_2       extends ClusterBaseP
 trait Cluster7_0       extends Cluster6_2 with ClusterSlotsMetadataP with ClusterShardsP
@@ -215,8 +216,9 @@ trait Redis8_6 extends Redis8_4 with Server8_6 with Streams8_6 {
   override val server: Server8_6   = new Server8_6 {}
   override val streams: Streams8_6 = new Streams8_6 {}
 }
-trait Redis8_8 extends Redis8_6 with SortedSets8_8 with Strings8_8 {
+trait Redis8_8 extends Redis8_6 with SortedSets8_8 with Streams8_8 with Strings8_8 {
   override val sortedsets: SortedSets8_8 = new SortedSets8_8 {}
+  override val streams: Streams8_8       = new Streams8_8 {}
   override val strings: Strings8_8       = new Strings8_8 {}
 }
 trait Redis8_10 extends Redis8_8 with Lists8_10 with Server8_10 with Sets8_10 {

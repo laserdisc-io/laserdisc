@@ -104,8 +104,10 @@ object StreamP {
   /** XPENDING's summary: how many entries are pending, the smallest and largest of their ids, and how many each consumer has */
   final case class PendingSummary(count: NonNegLong, smallest: Option[Id], largest: Option[Id], consumers: Seq[(Key, NonNegLong)])
 
-  /** A pending entry of XPENDING: its id, the consumer it was delivered to, how long ago in milliseconds, and how many times */
-  final case class PendingEntry(id: Id, consumer: Key, idleMilliseconds: NonNegLong, deliveries: NonNegLong)
+  /** A pending entry of XPENDING: its id, the consumer it was delivered to, how long ago in milliseconds, and how many times. An entry
+    * given back with XNACK has no consumer or idle time
+    */
+  final case class PendingEntry(id: Id, consumer: Option[Key], idleMilliseconds: Option[NonNegLong], deliveries: NonNegLong)
 
   private final type PendingSummaryReply =
     Arr.AsTuple[Num *: OrNullBulk[Bulk] *: OrNullBulk[Bulk] *: OrNilArr[Arr.Of[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]]] *: EmptyTuple]
@@ -115,10 +117,24 @@ object StreamP {
     }
 
   private final type PendingEntryReply = Arr.AsTuple[Bulk *: Bulk *: Num *: Num *: EmptyTuple]
-  private implicit final val pendingEntry: Read[PendingEntryReply, PendingEntry] =
-    Read[PendingEntryReply, Id *: Key *: NonNegLong *: NonNegLong *: EmptyTuple].map { case id *: consumer *: idle *: deliveries *: _ =>
-      PendingEntry(id, consumer, idle, deliveries)
+  // an entry given back with XNACK has no consumer, sent as an empty name, and no idle time, sent as -1
+  private final val pendingConsumer: Read[Bulk, Option[Key]] = Read.instance {
+    case Bulk("") => Right(None)
+    case other    => Read[Bulk, Key].read(other).map(Some(_))
+  }
+  private final val pendingIdle: Read[Num, Option[NonNegLong]] = Read.instance {
+    case Num(-1L) => Right(None)
+    case other    => Read[Num, NonNegLong].read(other).map(Some(_))
+  }
+  private implicit final val pendingEntry: Read[PendingEntryReply, PendingEntry] = Read.instance { reply =>
+    Read[PendingEntryReply, Id *: Bulk *: Num *: NonNegLong *: EmptyTuple].read(reply).flatMap {
+      case id *: consumer *: idle *: deliveries *: _ =>
+        for {
+          consumer <- pendingConsumer.read(consumer)
+          idle     <- pendingIdle.read(idle)
+        } yield PendingEntry(id, consumer, idle, deliveries)
     }
+  }
   private[protocol] final val pendingEntries: Read[Arr.Of[PendingEntryReply], Seq[PendingEntry]] =
     Read[Arr.Of[PendingEntryReply], Seq[PendingEntry]]
 
@@ -221,6 +237,34 @@ object StreamP {
   object IdmpConfig {
     def duration(seconds: PosLong): IdmpConfig = new IdmpConfig(List("IDMP-DURATION", seconds.value.toString))
     def maxSize(ids: PosLong): IdmpConfig      = new IdmpConfig(List("IDMP-MAXSIZE", ids.value.toString))
+  }
+
+  /** SILENT, FAIL and FATAL, for XNACK: the consumer gave the entries back without processing them, failed to process them, or found they
+    * can never be processed. Redis 8.8
+    */
+  sealed trait NackMode
+  object NackMode {
+    object silent extends NackMode
+    object fail   extends NackMode
+    object fatal  extends NackMode
+
+    implicit val nackModeShow: Show[NackMode] = Show.instance {
+      case `silent` => "SILENT"
+      case `fail`   => "FAIL"
+      case `fatal`  => "FATAL"
+    }
+  }
+
+  /** RETRYCOUNT and FORCE, for XNACK: set how many times the entries were delivered, and also give back entries the group doesn't have
+    * pending, such as acknowledged ones. Redis 8.8
+    */
+  final class NackOptions private (val params: List[String]) {
+    def retryCount(count: NonNegLong): NackOptions = new NackOptions(params ++ List("RETRYCOUNT", count.value.toString))
+    def force: NackOptions                         = new NackOptions(params :+ "FORCE")
+  }
+  object NackOptions {
+    def retryCount(count: NonNegLong): NackOptions = new NackOptions(List("RETRYCOUNT", count.value.toString))
+    def force: NackOptions                         = new NackOptions(List("FORCE"))
   }
 
   /** NOMKSTREAM, for XADD: don't create the stream when it doesn't exist */
@@ -346,6 +390,8 @@ trait StreamBaseP extends Features {
     final type StreamIdmp           = StreamP.Idmp
     final type StreamIdmpConfig     = StreamP.IdmpConfig
     final type StreamRefPolicy      = StreamP.RefPolicy
+    final type StreamNackMode       = StreamP.NackMode
+    final type StreamNackOptions    = StreamP.NackOptions
     final type StreamPending        = StreamP.PendingEntry
     final type StreamPendingSummary = StreamP.PendingSummary
     final type StreamId             = StreamP.Id
@@ -363,6 +409,8 @@ trait StreamBaseP extends Features {
     final val StreamIdmp           = StreamP.Idmp
     final val StreamIdmpConfig     = StreamP.IdmpConfig
     final val StreamRefPolicy      = StreamP.RefPolicy
+    final val StreamNackMode       = StreamP.NackMode
+    final val StreamNackOptions    = StreamP.NackOptions
     final val StreamPending        = StreamP.PendingEntry
     final val StreamPendingSummary = StreamP.PendingSummary
     final val StreamId             = StreamP.Id
@@ -757,6 +805,23 @@ trait StreamIdmpP extends Features {
   final def xcfgset(key: Key, config: IdmpConfig): Single.Aux[OK] = Protocol("XCFGSET", key.value :: config.params).as[Str, OK]
 }
 
+/** XNACK: Redis 8.8 */
+trait StreamNackP extends Features {
+  import StreamP.{Id, NackMode, NackOptions}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("XNACK: FAIL FATAL FORCE IDS RETRYCOUNT SILENT")
+
+  private final def params(key: Key, group: Key, mode: NackMode, ids: OneOrMore[Id]): List[String] =
+    key.value :: group.value :: Show[NackMode].show(mode) :: "IDS" :: ids.value.length.toString :: ids.value.map(_.toString)
+
+  /** Gives the entries back to the group for another consumer to read, with how many it gave back */
+  final def xnack(key: Key, group: Key, mode: NackMode, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
+    Protocol("XNACK", params(key, group, mode, ids)).as[Num, NonNegLong]
+  final def xnack(key: Key, group: Key, mode: NackMode, ids: OneOrMore[Id], options: NackOptions): Single.Aux[NonNegLong] =
+    Protocol("XNACK", params(key, group, mode, ids) ++ options.params).as[Num, NonNegLong]
+}
+
 /** XGROUP CREATE and XGROUP SETID with ENTRIESREAD: Redis 7.0 */
 trait StreamGroupEntriesReadP extends Features {
   import StreamP.{From, MkStream}
@@ -792,3 +857,4 @@ trait StreamP
     with StreamSetIdEntriesP
     with StreamRefPolicyP
     with StreamIdmpP
+    with StreamNackP

@@ -716,6 +716,30 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
+  test("only Redis 8.8 and later have XNACK") {
+    import laserdisc.auto.*
+
+    val ids = OneOrMore.unsafeFrom(List(protocol.StreamP.Id(NonNegLong(1L), NonNegLong(1L))))
+
+    {
+      import laserdisc.redis_8_8.*
+      import streamtypes.*
+      assertEquals(xnack("s", "g", StreamNackMode.fail, ids).frames, frame("XNACK", "s", "g", "FAIL", "IDS", "1", "1-1"))
+    }
+    {
+      import laserdisc.redis_8_6.*
+      import streamtypes.*
+      assertEquals(xcfgset("s", StreamIdmpConfig.maxSize(10L)).frames, frame("XCFGSET", "s", "IDMP-MAXSIZE", "10"))
+      assert(compileErrors("""xnack("s", "g", StreamNackMode.fail, ids)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      import streamtypes.*
+      assertEquals(xtrim("s", StreamTrim.maxLen(1L)).frames, frame("XTRIM", "s", "MAXLEN", "1"))
+      assert(compileErrors("""xnack("s", "g", StreamNackMode.fail, ids)""").nonEmpty)
+    }
+  }
+
   test("every version has the blocking stream reads under blocking") {
     import laserdisc.auto.*
 

@@ -54,6 +54,27 @@ final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
     assertEquals(send(xlen("x:r")).value, 1L)
     assertEquals(send(xcfgset("x:r", StreamIdmpConfig.duration(60L).maxSize(100L))), OK)
   }
+
+  test("a redis client gives entries back to the group with the commands of Redis 8.10") {
+    import laserdisc.redis_8_10.*
+    import streamtypes.*
+
+    send(del("x:n"))
+    send(xgroupcreate("x:n", "grp", StreamFrom.latest, StreamMkStream))
+    val first = send(xadd("x:n", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
+    send(xreadgroup[Int]("grp", "c", OneOrMore.unsafeFrom(List(Key("x:n") -> StreamGroupFrom.newEntries))))
+
+    val ids = OneOrMore.unsafeFrom(List(first))
+    assertEquals(send(xnack("x:n", "grp", StreamNackMode.fail, ids)).value, 1L)
+    assertEquals(send(xpending("x:n", "grp", StreamBound.min, StreamBound.max, 10L)), Seq(StreamPending(first, None, None, 1L)))
+
+    assertEquals(send(xnack("x:n", "grp", StreamNackMode.silent, ids, StreamNackOptions.retryCount(5L))).value, 1L)
+    assertEquals(send(xpending("x:n", "grp", StreamBound.min, StreamBound.max, 10L)), Seq(StreamPending(first, None, None, 5L)))
+
+    send(xack("x:n", "grp", ids))
+    assertEquals(send(xnack("x:n", "grp", StreamNackMode.fail, ids)).value, 0L)
+    assertEquals(send(xnack("x:n", "grp", StreamNackMode.fail, ids, StreamNackOptions.force)).value, 1L)
+  }
 }
 final class KeyDbStreamClientSpec  extends StreamClientSpec(6380, "keyDb")
 final class ValkeyStreamClientSpec extends StreamClientSpec(6381, "valkey") {

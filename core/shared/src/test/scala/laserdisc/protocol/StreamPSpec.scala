@@ -126,7 +126,7 @@ final class StreamPSpec extends BaseSpec with StreamP {
     assertEquals(detail.encode, bulks("XPENDING", "s", "g", "IDLE", "0", "-", "+", "10", "c1"))
     assertEquals(
       detail.decode(Arr(Arr(Bulk("1-1"), Bulk("c1"), Num(19L), Num(1L)))),
-      Seq(StreamPending(one, Key("c1"), NonNegLong(19L), NonNegLong(1L)))
+      Seq(StreamPending(one, Some(Key("c1")), Some(NonNegLong(19L)), NonNegLong(1L)))
     )
   }
 
@@ -264,6 +264,22 @@ final class StreamPSpec extends BaseSpec with StreamP {
     assertEquals(
       xcfgset(Key("s"), StreamIdmpConfig.duration(PosLong(50L)).maxSize(PosLong(10L))).encode,
       bulks("XCFGSET", "s", "IDMP-DURATION", "50", "IDMP-MAXSIZE", "10")
+    )
+  }
+
+  test("The Stream protocol using Redis 8.8's XNACK sends the mode, the ids and the options, and reads how many it gave back") {
+    val ids = OneOrMore.unsafeFrom(List(StreamId(NonNegLong(1L), NonNegLong(1L)), StreamId(NonNegLong(9L), NonNegLong(1L))))
+    assertEquals(xnack(Key("s"), Key("g"), StreamNackMode.silent, ids).encode, bulks("XNACK", "s", "g", "SILENT", "IDS", "2", "1-1", "9-1"))
+    assertEquals(xnack(Key("s"), Key("g"), StreamNackMode.fail, ids).encode, bulks("XNACK", "s", "g", "FAIL", "IDS", "2", "1-1", "9-1"))
+    assertEquals(
+      xnack(Key("s"), Key("g"), StreamNackMode.fatal, ids, StreamNackOptions.retryCount(NonNegLong(5L)).force).encode,
+      bulks("XNACK", "s", "g", "FATAL", "IDS", "2", "1-1", "9-1", "RETRYCOUNT", "5", "FORCE")
+    )
+    assertEquals(xnack(Key("s"), Key("g"), StreamNackMode.fail, ids).decode(Num(1L)), NonNegLong(1L))
+    assertEquals(
+      xpending(Key("s"), Key("g"), StreamBound.min, StreamBound.max, PosLong(1L))
+        .decode(Arr(Arr(Bulk("1-1"), Bulk(""), Num(-1L), Num(2L)))),
+      Seq(StreamPending(StreamId(NonNegLong(1L), NonNegLong(1L)), None, None, NonNegLong(2L)))
     )
   }
 }

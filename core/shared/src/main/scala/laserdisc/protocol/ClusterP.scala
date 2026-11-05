@@ -43,13 +43,16 @@ object ClusterP {
       KVPS.contramap[Bulk](_.value.split(CRLF).toList).map(kv => new Info(kv.toMap))
   }
 
+  /** A node of CLUSTER NODES. `ping` and `pong` are when the last ping was sent and the last pong received, in milliseconds since the
+    * epoch, or 0 if there was none
+    */
   final case class Node(
       id: NodeId,
       address: Address,
       flags: Seq[Flag],
       maybeMaster: Option[NodeId],
-      ping: NonNegInt,
-      pong: NonNegInt,
+      ping: NonNegLong,
+      pong: NonNegLong,
       configEpoch: NonNegInt,
       link: LinkState,
       slots: Seq[SlotType]
@@ -116,7 +119,7 @@ object ClusterP {
     private final val ND: Read[String, Node] = {
       val errorS = "Read[String, Node], Error decoding a cluster Node. Error was: "
       _.split(SPACE_CH).toList match {
-        case NodeId(id) :: A(Right(a)) :: Fs(Right(fs)) :: MM(Right(mm)) :: ToInt(NonNegInt(ps)) :: ToInt(NonNegInt(pr)) ::
+        case NodeId(id) :: A(Right(a)) :: Fs(Right(fs)) :: MM(Right(mm)) :: ToLong(NonNegLong(ps)) :: ToLong(NonNegLong(pr)) ::
             ToInt(NonNegInt(ce)) :: L(Right(l)) :: Ss(Right(ss)) =>
           Right(Node(id, a, fs, mm, ps, pr, ce, l, ss))
         case _ :: A(Left(e)) :: _ :: _ :: _ :: _ :: _ :: _ :: _  => Left(RESPDecErr(s"$errorS $e"))

@@ -48,7 +48,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   }
 
   private type RawNode =
-    (String, Either[EmptyString, Host], Port, Option[Port], Seq[String], String, Int, Int, Int, String, Seq[String])
+    (String, Either[EmptyString, Host], Port, Option[Port], Seq[String], String, Long, Long, Int, String, Seq[String])
   private type RawNodes = List[RawNode]
   private val rawNodeToString: RawNode => String = {
     case (nid, h, p, None, fs, mnid, ps, pr, ce, l, ss) =>
@@ -82,8 +82,8 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       mcp   <- option(portGen)
       fs    <- Gen.oneOf(const("noflags").map(Seq(_)), choose(1, 7).flatMap(containerOfN[Set, String](_, flag).map(_.toSeq)))
       mmnid <- Gen.oneOf(const("-"), nodeIdGen)
-      ps    <- nonNegIntGen
-      pr    <- nonNegIntGen
+      ps    <- nonNegLongGen
+      pr    <- nonNegLongGen
       ce    <- nonNegIntGen
       l     <- Gen.oneOf("connected", "disconnected")
       ss    <- choose(1, 20).flatMap(listOfN(_, slotType))
@@ -245,6 +245,19 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("MEET"), Bulk(h), Bulk(p)))
       assertEquals(protocol.decode(Str(OK.value)), OK)
     }
+  }
+
+  test("The Cluster protocol using nodes reads the reply of a cluster of several nodes, as Redis sends it") {
+    val reply = Bulk(
+      """3ad1b4e7d2f0a9c8e6b5d4c3a2f1e0d9c8b7a6f5 172.18.0.4:6379@16379 master - 0 1793860745759 2 connected
+        |7c2e9f1a8b3d6c5e4f7a0b9d8c1e2f3a4b5c6d7e 172.18.0.3:6379@16379 slave 03de9542be20d29e116c3f364b74016aad932344 0 1793860746949 1 connected
+        |03de9542be20d29e116c3f364b74016aad932344 172.18.0.2:6379@16379 myself,master - 0 0 1 connected 0-16383
+        |""".stripMargin
+    )
+    assertEquals(
+      nodes.decode(reply).map(_.nodes.map(n => n.ping.value -> n.pong.value)),
+      Seq(0L -> 1793860745759L, 0L -> 1793860746949L, 0L -> 0L)
+    )
   }
 
   test("The Cluster protocol using nodes reads an address with or without a host and a hostname, as Redis and Valkey send them") {

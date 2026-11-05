@@ -86,6 +86,15 @@ jobs:
       - name: Start up Valkey
         run: 'docker run -p 6381:6379 -d valkey/valkey:alpine'
 
+      - name: Start up a Redis cluster
+        run: 'docker run -p 7100:7100 -p 7101:7101 -p 7102:7102 -p 7103:7103 -d --entrypoint sh redis:alpine -c ''redis-server --port 7100 --cluster-enabled yes --cluster-config-file nodes-7100.conf --protected-mode no --daemonize yes; redis-server --port 7101 --cluster-enabled yes --cluster-config-file nodes-7101.conf --protected-mode no --daemonize yes; redis-server --port 7102 --cluster-enabled yes --cluster-config-file nodes-7102.conf --protected-mode no --daemonize yes; exec redis-server --port 7103 --cluster-enabled yes --cluster-config-file nodes-7103.conf --protected-mode no'''
+
+      - name: Start up a KeyDb cluster
+        run: 'docker run -p 7110:7110 -p 7111:7111 -p 7112:7112 -p 7113:7113 -d --entrypoint sh eqalpha/keydb -c ''keydb-server --port 7110 --cluster-enabled yes --cluster-config-file nodes-7110.conf --protected-mode no --daemonize yes; keydb-server --port 7111 --cluster-enabled yes --cluster-config-file nodes-7111.conf --protected-mode no --daemonize yes; keydb-server --port 7112 --cluster-enabled yes --cluster-config-file nodes-7112.conf --protected-mode no --daemonize yes; exec keydb-server --port 7113 --cluster-enabled yes --cluster-config-file nodes-7113.conf --protected-mode no'''
+
+      - name: Start up a Valkey cluster
+        run: 'docker run -p 7120:7120 -p 7121:7121 -p 7122:7122 -p 7123:7123 -d --entrypoint sh valkey/valkey:alpine -c ''valkey-server --port 7120 --cluster-enabled yes --cluster-config-file nodes-7120.conf --protected-mode no --daemonize yes; valkey-server --port 7121 --cluster-enabled yes --cluster-config-file nodes-7121.conf --protected-mode no --daemonize yes; valkey-server --port 7122 --cluster-enabled yes --cluster-config-file nodes-7122.conf --protected-mode no --daemonize yes; exec valkey-server --port 7123 --cluster-enabled yes --cluster-config-file nodes-7123.conf --protected-mode no'''
+
       - name: Check that workflows are up to date
         run: sbt githubWorkflowCheck
 
@@ -438,6 +447,15 @@ jobs:
 
       - name: Start up Valkey
         run: 'docker run -p 6381:6379 -d valkey/valkey:alpine'
+
+      - name: Start up a Redis cluster
+        run: 'docker run -p 7100:7100 -p 7101:7101 -p 7102:7102 -p 7103:7103 -d --entrypoint sh redis:alpine -c ''redis-server --port 7100 --cluster-enabled yes --cluster-config-file nodes-7100.conf --protected-mode no --daemonize yes; redis-server --port 7101 --cluster-enabled yes --cluster-config-file nodes-7101.conf --protected-mode no --daemonize yes; redis-server --port 7102 --cluster-enabled yes --cluster-config-file nodes-7102.conf --protected-mode no --daemonize yes; exec redis-server --port 7103 --cluster-enabled yes --cluster-config-file nodes-7103.conf --protected-mode no'''
+
+      - name: Start up a KeyDb cluster
+        run: 'docker run -p 7110:7110 -p 7111:7111 -p 7112:7112 -p 7113:7113 -d --entrypoint sh eqalpha/keydb -c ''keydb-server --port 7110 --cluster-enabled yes --cluster-config-file nodes-7110.conf --protected-mode no --daemonize yes; keydb-server --port 7111 --cluster-enabled yes --cluster-config-file nodes-7111.conf --protected-mode no --daemonize yes; keydb-server --port 7112 --cluster-enabled yes --cluster-config-file nodes-7112.conf --protected-mode no --daemonize yes; exec keydb-server --port 7113 --cluster-enabled yes --cluster-config-file nodes-7113.conf --protected-mode no'''
+
+      - name: Start up a Valkey cluster
+        run: 'docker run -p 7120:7120 -p 7121:7121 -p 7122:7122 -p 7123:7123 -d --entrypoint sh valkey/valkey:alpine -c ''valkey-server --port 7120 --cluster-enabled yes --cluster-config-file nodes-7120.conf --protected-mode no --daemonize yes; valkey-server --port 7121 --cluster-enabled yes --cluster-config-file nodes-7121.conf --protected-mode no --daemonize yes; valkey-server --port 7122 --cluster-enabled yes --cluster-config-file nodes-7122.conf --protected-mode no --daemonize yes; exec valkey-server --port 7123 --cluster-enabled yes --cluster-config-file nodes-7123.conf --protected-mode no'''
 
       - name: Run tests with coverage
         run: sbt '++ ${{ matrix.scala }}' coverage core/test laws/test fs2/test circe/test cli/test laserdiscJVM/coverageAggregate

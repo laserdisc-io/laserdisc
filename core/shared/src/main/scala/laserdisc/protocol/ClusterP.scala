@@ -137,8 +137,8 @@ object ClusterP {
       }
     }
 
-    implicit final val nodesRead: Read[Bulk, Nodes] = Read.instance { case Bulk(s) =>
-      s.split(LF_CH)
+    private final def nodesOf(lines: Seq[String]): Either[RESPDecErr, Nodes] =
+      lines
         .foldRight[Either[RESPDecErr, (List[Node], Int)]](Right(Nil -> 0)) {
           case (ND(Right(node)), Right((ns, nsl))) => Right((node :: ns) -> (nsl + 1))
           case (ND(Left(e)), Right((_, nsl)))      =>
@@ -146,6 +146,13 @@ object ClusterP {
           case (_, left) => left
         }
         .map(n => Nodes(n._1))
+
+    // CLUSTER NODES sends one text with a line for each node
+    implicit final val nodesRead: Read[Bulk, Nodes] = Read.instance { case Bulk(s) => nodesOf(s.split(LF_CH).toList) }
+
+    // CLUSTER REPLICAS sends an array with a text for each node
+    implicit final val nodesOfArrRead: Read[Arr.Of[Bulk], Nodes] = Read.instance { lines =>
+      Read[Arr.Of[Bulk], Seq[String]].read(lines).flatMap(nodesOf)
     }
   }
 
@@ -382,7 +389,7 @@ trait ClusterBaseP extends Features {
   final val readwrite: Single.Aux[OK] = Protocol("READWRITE", EmptyTuple).as[Str, OK]
 
   final def replicas(nodeId: NodeId): Single.Aux[ClusterNodes] =
-    Protocol("CLUSTER", "REPLICAS" *: nodeId *: EmptyTuple).as[Bulk, ClusterNodes]
+    Protocol("CLUSTER", "REPLICAS" *: nodeId *: EmptyTuple).as[Arr.Of[Bulk], ClusterNodes]
 
   final def replicate(nodeId: NodeId): Single.Aux[OK] = Protocol("CLUSTER", "REPLICATE" *: nodeId *: EmptyTuple).as[Str, OK]
 
@@ -399,7 +406,7 @@ trait ClusterBaseP extends Features {
     Protocol("CLUSTER", "SETSLOT" *: slot *: mode *: node *: EmptyTuple).as[Str, OK]
 
   final def slaves(nodeId: NodeId): Single.Aux[ClusterNodes] =
-    Protocol("CLUSTER", "SLAVES" *: nodeId *: EmptyTuple).as[Bulk, ClusterNodes]
+    Protocol("CLUSTER", "SLAVES" *: nodeId *: EmptyTuple).as[Arr.Of[Bulk], ClusterNodes]
 
   final val slots: Single.Aux[ClusterSlots] = Protocol("CLUSTER", "SLOTS").using(slotsRead)
 

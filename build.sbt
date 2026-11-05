@@ -61,10 +61,26 @@ ThisBuild / coverageFailOnMinimum    := false
 ThisBuild / coverageHighlighting     := true
 ThisBuild / coverageMinimumStmtTotal := 60
 
+// four nodes for ClusterClientSpec to make a cluster of: they're in one container so that they can reach each other on 127.0.0.1.
+// Not from port 7000, which AirPlay Receiver has on macOS
+def startUpCluster(name: String, image: String, server: String, firstPort: Int) = {
+  val ports           = (firstPort until firstPort + 4).toList
+  def node(port: Int) = s"$server --port $port --cluster-enabled yes --cluster-config-file nodes-$port.conf --protected-mode no"
+  val published       = ports.map(p => s"-p $p:$p").mkString(" ")
+  val nodes           = (ports.init.map(node(_) + " --daemonize yes") :+ s"exec ${node(ports.last)}").mkString("; ")
+  WorkflowStep.Run(
+    commands = List(s"docker run $published -d --entrypoint sh $image -c '$nodes'"),
+    name = Some(s"Start up a $name cluster")
+  )
+}
+
 val startUpRedisServers = List(
   WorkflowStep.Run(commands = List("docker run -p 6379:6379 -d redis:alpine"), name = Some("Start up Redis")),
   WorkflowStep.Run(commands = List("docker run -p 6380:6379 -d eqalpha/keydb"), name = Some("Start up KeyDb")),
-  WorkflowStep.Run(commands = List("docker run -p 6381:6379 -d valkey/valkey:alpine"), name = Some("Start up Valkey"))
+  WorkflowStep.Run(commands = List("docker run -p 6381:6379 -d valkey/valkey:alpine"), name = Some("Start up Valkey")),
+  startUpCluster("Redis", "redis:alpine", "redis-server", 7100),
+  startUpCluster("KeyDb", "eqalpha/keydb", "keydb-server", 7110),
+  startUpCluster("Valkey", "valkey/valkey:alpine", "valkey-server", 7120)
 )
 
 ThisBuild / githubWorkflowBuildPreamble ++= startUpRedisServers

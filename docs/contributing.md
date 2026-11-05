@@ -10,6 +10,10 @@ docker run -p 6380:6379 -d eqalpha/keydb
 docker run -p 6381:6379 -d valkey/valkey:alpine
 ```
 
+Some of them also need a cluster of each. The steps that start those are in
+`.github/workflows/ci.yml`, named "Start up a Redis cluster" and so on: copy
+their commands. The tests connect the nodes themselves.
+
 Then run the tests for every Scala version and platform:
 
 ```sh

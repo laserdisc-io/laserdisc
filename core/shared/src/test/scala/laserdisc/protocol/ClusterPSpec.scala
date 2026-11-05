@@ -311,8 +311,15 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     forAll(nodeIdArb.arbitrary, nodesGen filter nodesIsValid) { (n, ns) =>
       val protocol = replicas(n)
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("REPLICAS"), Bulk(n)))
-      protocol.decode(Bulk(ns)).onRightAll(validateNodes(ns))
+      protocol.decode(Arr(ns.map(rawNodeToString).map(Bulk(_)))).onRightAll(validateNodes(ns))
     }
+  }
+
+  test("The Cluster protocol using replicas reads a master with no replicas, and a node that can't be read") {
+    val id = NodeId("0ca04a0a36e401b77e45584f8c44d7543eb9cc68")
+    assertEquals(replicas(id).decode(Arr(Nil)), ClusterNodes(Seq.empty))
+    assert(replicas(id).decode(Arr(Bulk("nope"))).isLeft)
+    assert(replicas(id).decode(Bulk("0ca04a0a36e401b77e45584f8c44d7543eb9cc68 :6379@16379 myself,master - 0 0 1 connected")).isLeft)
   }
 
   property("The Cluster protocol using replicate roundtrips successfully given a nodeId") {
@@ -371,7 +378,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     forAll(nodeIdArb.arbitrary, nodesGen filter nodesIsValid) { (n, ns) =>
       val protocol = slaves(n)
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SLAVES"), Bulk(n)))
-      protocol.decode(Bulk(ns)).onRightAll(validateNodes(ns))
+      protocol.decode(Arr(ns.map(rawNodeToString).map(Bulk(_)))).onRightAll(validateNodes(ns))
     }
   }
 

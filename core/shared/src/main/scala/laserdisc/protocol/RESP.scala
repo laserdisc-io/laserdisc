@@ -179,8 +179,6 @@ object Arr {
   final class AsTupleThen[T <: Tuple, E] private[protocol] (private[protocol] val elements: List[RESP])
 }
 
-private[protocol] final case class Repr[A](decoded: A, bits: BitVector)
-
 sealed trait RESPCodecs extends BitVectorSyntax {
   protected final val utf8Codec           = new LenientStringCodec(UTF_8)
   protected final val BitsInByte          = 8L
@@ -298,17 +296,6 @@ sealed trait RESPCodecs extends BitVectorSyntax {
       )
     override final val toString: String = "RESP"
   }
-
-  protected final val crlfTerminatedReprOfLongDecoder: Decoder[Repr[Long]] = crlfTerminatedCodec(
-    new Codec[Repr[String]] {
-      override final val sizeBound: SizeBound                                         = SizeBound.unknown
-      override final def encode(bd: Repr[String]): Attempt[BitVector]                 = utf8Codec.encode(bd.decoded)
-      override final def decode(bits: BitVector): Attempt[DecodeResult[Repr[String]]] = utf8Codec.decode(bits).map(_.map(Repr(_, bits)))
-    }
-  ).asDecoder.emap { sRepr =>
-    try Attempt.successful(Repr(j.Long.parseLong(sRepr.decoded), sRepr.bits))
-    catch { case _: NumberFormatException => Attempt.failure(SErr(s"Expected long but found ${sRepr.decoded}")) }
-  }
 }
 
 final case class RESPDecErr(message: String) extends RuntimeException(message, null, true, false)
@@ -320,78 +307,85 @@ sealed trait RESPFunctions { this: RESPCodecs =>
   private final val readDiscriminator: BitVector => ((BitVector, BitVector) => Either[String, State]) => Either[String, State] =
     bits => f => bits.consumeThen(BitsInByte)(_.asLeft, f)
 
+  private final val plusByte   = plus.toByte()
+  private final val minusByte  = minus.toByte()
+  private final val colonByte  = colon.toByte()
+  private final val dollarByte = dollar.toByte()
+  private final val starByte   = star.toByte()
+
   final val stateOf: BitVector => Either[String, State] = bits =>
-    readDiscriminator(bits) {
-      case (`plus` | `minus` | `colon`, _) =>
-        val eomIndex = bits.bytes.indexOfSlice(crlfBytes, from = 0L)
-        val size     = eomIndex * BitsInByte + crlf.size
-
-        if (eomIndex == -1) Right(Incomplete)
-        else if (size < bits.size) Right(CompleteWithRemainder(bits.take(size), bits.drop(size)))
-        else Right(Complete)
-      case (`dollar`, payload) =>
-        evalWithSizeDecodedFrom(payload) {
-          case Left(_)                               => Incomplete
-          case Right(DecodeResult(value, remainder)) =>
-            val decoded  = BitsInByte + value.bits.size + crlf.size
-            val expected = value.decoded * BitsInByte + crlf.size
-            val size     = decoded + expected
-
-            if (value.decoded >= 0 && remainder.size == expected) Complete
-            else if (value.decoded >= 0 && remainder.size > expected) CompleteWithRemainder(bits.take(size), bits.drop(size))
-            else if (value.decoded == -1 && remainder.isEmpty) Complete
-            else if (value.decoded == -1 && remainder.nonEmpty) CompleteWithRemainder(bits.take(decoded), bits.drop(decoded))
-            else MissingBits(expected - remainder.size)
-        }
-      case (`star`, payload) =>
-        attemptEvalWithSizeDecodedFrom(payload) {
-          case Left(_)                               => Right(Incomplete)
-          case Right(DecodeResult(value, remainder)) =>
-            val size = BitsInByte + value.bits.size + crlf.size
-
-            if (value.decoded == -1 && remainder.isEmpty) Right(Complete)
-            else if (value.decoded == -1 && remainder.nonEmpty) Right(CompleteWithRemainder(bits.take(size), bits.drop(size)))
-            else stateOfArr(value.decoded, remainder, bits.take(size))
-        }
-      case (other, _) => Left(s"unidentified RESP type when checking the state: ${other.toUtf8} (${other.toHex})")
+    readDiscriminator(bits) { (_, _) =>
+      scan(bits.bytes.compact, 0L, Nil).map {
+        case Scanned(end) if end * BitsInByte == bits.size => Complete
+        case Scanned(end)           => CompleteWithRemainder(bits.take(end * BitsInByte), bits.drop(end * BitsInByte))
+        case Stopped(_, _, 0L)      => Incomplete
+        case Stopped(_, _, missing) => MissingBits(missing)
+      }
     }
 
+  /** Looks for the end of a frame from the start of an element, knowing how many more elements each of the arrays it's in is waiting for: a
+    * frame arriving in pieces is only looked at once, however many pieces it comes in
+    */
   @tailrec
-  private final def stateOfArr(missing: Long, remainder: BitVector, bits: BitVector): Either[String, State] =
-    missing match {
-      case 0L =>
-        if (remainder.isEmpty) Right(Complete)
-        else Right(CompleteWithRemainder(bits, remainder))
+  private[protocol] final def scan(buffer: ByteVector, from: Long, open: List[Long]): Either[String, Scan] =
+    if (from >= buffer.size) Right(Stopped(from, open, 0L))
+    else
+      element(buffer, from) match {
+        case Left(e)                => Left(e)
+        case Right(Short(missing))  => Right(Stopped(from, open, missing))
+        case Right(Opened(next, n)) => scan(buffer, next, n :: open)
+        case Right(Finished(next))  =>
+          closing(open) match {
+            case Nil       => Right(Scanned(next))
+            case stillOpen => scan(buffer, next, stillOpen)
+          }
+      }
 
-      case _ if remainder.isEmpty => Right(Incomplete)
-
-      case _ =>
-        stateOf(remainder) match {
-          case Right(CompleteWithRemainder(c, r)) => stateOfArr(missing - 1, r, bits ++ c)
-          case Right(Complete) if missing == 1    => Right(Complete)
-          case Right(Complete)                    => Right(Incomplete)
-          case Right(incomplete)                  => Right(incomplete)
-          case left                               => left
-        }
+  // an element ends the arrays it's the last element of
+  @tailrec
+  private final def closing(open: List[Long]): List[Long] =
+    open match {
+      case 1L :: outer => closing(outer)
+      case n :: outer  => (n - 1L) :: outer
+      case Nil         => Nil
     }
 
-  private final def evalWithSizeDecodedFrom[A](bits: BitVector)(
-      f: Either[Incomplete, DecodeResult[Repr[Long]]] => A
-  ): Either[String, A] =
-    attemptEvalWithSizeDecodedFrom(bits)(x => Right(f(x)))
+  private final def element(buffer: ByteVector, from: Long): Either[String, Element] = {
+    val eol = buffer.indexOfSlice(crlfBytes, from)
+    buffer(from) match {
+      case _ if eol == -1L && isDiscriminator(buffer(from)) => Right(Short(0L))
+      case `plusByte` | `minusByte` | `colonByte`           => Right(Finished(eol + crlfBytes.size))
+      case `dollarByte`                                     =>
+        sizeBetween(buffer, from + 1L, eol).flatMap {
+          case -1L          => Right(Finished(eol + crlfBytes.size))
+          case n if n < -1L => Left(s"Expected a size of at least -1 but found $n")
+          case n            =>
+            val end = eol + crlfBytes.size + n + crlfBytes.size
+            Right(if (end <= buffer.size) Finished(end) else Short((end - buffer.size) * BitsInByte))
+        }
+      case `starByte` =>
+        sizeBetween(buffer, from + 1L, eol).flatMap {
+          case -1L | 0L     => Right(Finished(eol + crlfBytes.size))
+          case n if n < -1L => Left(s"Expected a size of at least -1 but found $n")
+          case n            => Right(Opened(eol + crlfBytes.size, n))
+        }
+      case _ =>
+        val other = buffer.slice(from, from + 1L).bits
+        Left(s"unidentified RESP type when checking the state: ${other.toUtf8} (${other.toHex})")
+    }
+  }
 
-  private final def attemptEvalWithSizeDecodedFrom[A](bits: BitVector)(
-      f: Either[Incomplete, DecodeResult[Repr[Long]]] => Either[String, A]
-  ): Either[String, A] =
-    crlfTerminatedReprOfLongDecoder
-      .decode(bits)
-      .fold(
-        {
-          case MatchingDiscriminatorNotFound(_, _) => f(Left(Incomplete))
-          case err                                 => Left(err.message)
-        },
-        res => f(Right(res))
-      )
+  private final def isDiscriminator(byte: Byte): Boolean =
+    byte match {
+      case `plusByte` | `minusByte` | `colonByte` | `dollarByte` | `starByte` => true
+      case _                                                                  => false
+    }
+
+  private final def sizeBetween(buffer: ByteVector, from: Long, until: Long): Either[String, Long] = {
+    val size = buffer.slice(from, until).decodeUtf8.fold(_ => "", identity)
+    try Right(j.Long.parseLong(size))
+    catch { case _: NumberFormatException => Left(s"Expected long but found $size") }
+  }
 }
 
 object BitVectorDecoding {
@@ -403,6 +397,15 @@ object BitVectorDecoding {
   final case class CompleteWithRemainder(complete: BitVector, remainder: BitVector) extends State
   case object Incomplete                                                            extends State
   case object Complete                                                              extends State
+
+  private[protocol] sealed trait Scan
+  private[protocol] final case class Scanned(end: Long)                                 extends Scan
+  private[protocol] final case class Stopped(at: Long, open: List[Long], missing: Long) extends Scan
+
+  private[protocol] sealed trait Element
+  private[protocol] final case class Finished(next: Long)           extends Element
+  private[protocol] final case class Opened(next: Long, size: Long) extends Element
+  private[protocol] final case class Short(missing: Long)           extends Element
 }
 
 object RESP extends RESPCodecs with RESPFunctions

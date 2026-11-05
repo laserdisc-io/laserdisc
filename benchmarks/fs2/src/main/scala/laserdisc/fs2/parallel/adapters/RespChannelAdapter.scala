@@ -62,7 +62,7 @@ private[parallel] object RespChannelAdapter {
               case Right(frame: MoreThanOneFrame) =>
                 Pull.output(Chunk.from(frame.complete)) >> {
                   if (frame.remainder.isEmpty) loopScan(rest, EmptyFrame)
-                  else loopScan(rest, IncompleteFrame(frame.remainder, 0L))
+                  else loopScan(rest, IncompleteFrame(frame.remainder, 0L)())
                 }
               case Right(frame: IncompleteFrame) => loopScan(rest, frame)
             }

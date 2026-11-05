@@ -47,7 +47,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
     "Appending to an empty Bulk frame a bit vector that's not complete gives Incomplete with the correct partial and the correct missing count"
   ) {
     val inputVector = BitVector("$16\r\nTest bulk string".getBytes)
-    assertEquals(EmptyFrame.append(inputVector), IncompleteFrame(inputVector, 16))
+    assertEquals(EmptyFrame.append(inputVector), IncompleteFrame(inputVector, 16)())
   }
 
   test(
@@ -171,7 +171,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
   }
 
   test("Appending to a non empty Bulk frame a bit vector that completes it gives Complete with all the bits") {
-    val nonEmptyFrame = IncompleteFrame(BitVector("$16\r\nTest bulk str".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("$16\r\nTest bulk str".getBytes), 0)()
     val inputVector   = BitVector("ing\r\n".getBytes)
     val expected      = BitVector("$16\r\nTest bulk string\r\n".getBytes)
     assertEquals(nonEmptyFrame.append(inputVector), CompleteFrame(expected))
@@ -180,16 +180,16 @@ final class RESPFrameBulkSpec extends BaseSpec {
   test(
     "Appending to a non empty Bulk frame a bit vector that doesn't complete it gives Incomplete with the correct partial and the correct missing count"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("$16\r\nTest bul".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("$16\r\nTest bul".getBytes), 0)()
     val inputVector   = BitVector("k str".getBytes)
     val expected      = BitVector("$16\r\nTest bulk str".getBytes)
-    assertEquals(nonEmptyFrame.append(inputVector), IncompleteFrame(expected, 40))
+    assertEquals(nonEmptyFrame.append(inputVector), IncompleteFrame(expected, 40)())
   }
 
   test(
     "Appending to a non empty Bulk frame a bit vector with multiple messages all complete gives MoreThanOne with a list of the complete ones and an empty remainder"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("$16\r\nTest bulk s".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("$16\r\nTest bulk s".getBytes), 0)()
     val inputVector   = BitVector("tring\r\n$16\r\nTest bulk string\r\n$16\r\nTest bulk string\r\n".getBytes)
     assertEquals(
       nonEmptyFrame.append(inputVector),
@@ -203,7 +203,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
   test(
     "Appending to a non empty Bulk frame a bit vector with multiple messages with the last not complete gives MoreThanOne with a list of the complete ones and a remainder with the incomplete bits"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("$16\r\nTest bulk s".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("$16\r\nTest bulk s".getBytes), 0)()
     val inputVector   = BitVector("tring\r\n$16\r\nTest bulk string\r\n$16\r\nTest bulk".getBytes)
     assertEquals(
       nonEmptyFrame.append(inputVector),
@@ -217,7 +217,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
   test(
     "Appending to a non empty Bulk frame a bit vector with multiple null bulk all complete gives MoreThanOne with a list of the complete ones and an empty remainder"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("$-".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("$-".getBytes), 0)()
     val inputVector   = BitVector("1\r\n$-1\r\n$-1\r\n$-1\r\n$-1\r\n$-1\r\n".getBytes)
     assertEquals(
       nonEmptyFrame.append(inputVector),
@@ -231,7 +231,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
   test(
     "Appending to a non empty Bulk frame a bit vector with multiple null bulk with the last not complete gives MoreThanOne with a list of the complete ones and a remainder with the incomplete bits"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("$-".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("$-".getBytes), 0)()
     val inputVector   = BitVector("1\r\n$-1\r\n$-1\r\n$-1\r\n$".getBytes)
     assertEquals(
       nonEmptyFrame.append(inputVector),
@@ -245,7 +245,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
   test(
     "Appending to a non empty Bulk frame a bit vector with multiple different messages with the last not complete gives MoreThanOne with a list of the complete ones in the inverted order and a remainder with the incomplete bits"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("$21\r\nTest bulk s".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("$21\r\nTest bulk s".getBytes), 0)()
     val inputVector   = BitVector(
       "tring 1 11\r\n$17\r\nTest bulk string2\r\n$20\r\nTest bulk string 3 1\r\n$19\r\nTest bulk string 40\r\n$18\r\nTest bulk".getBytes
     )
@@ -266,7 +266,7 @@ final class RESPFrameBulkSpec extends BaseSpec {
   test(
     "Appending to a non empty Bulk frame a bit vector with multiple different messages with the last not complete gives MoreThanOne where the call to complete should give a vector with the complete ones in the original order"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("$21\r\nTest bulk s".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("$21\r\nTest bulk s".getBytes), 0)()
     val inputVector   = BitVector(
       "tring 1 11\r\n$17\r\nTest bulk string2\r\n$20\r\nTest bulk string 3 1\r\n$19\r\nTest bulk string 40\r\n$18\r\nTest bulk".getBytes
     )

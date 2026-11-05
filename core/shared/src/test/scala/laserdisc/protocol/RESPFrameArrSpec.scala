@@ -37,11 +37,11 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
     "Appending a bit vector that contains only the size of a non empty array to an empty GenArr frame gives an incomplete frame with the bits of the size"
   ) {
     val inputVector = BitVector("*32\r\n".getBytes)
-    assertEquals(EmptyFrame.append(inputVector), IncompleteFrame(inputVector, 0))
+    assertEquals(EmptyFrame.append(inputVector), IncompleteFrame(inputVector, 0)())
   }
 
   test("Appending to a non empty GenArr frame a bit vector that completes it gives a correct complete frame") {
-    val nonEmptyFrame = IncompleteFrame(BitVector("*1\r\n$16\r\nTest bulk str".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("*1\r\n$16\r\nTest bulk str".getBytes), 0)()
     val inputVector   = BitVector("ing\r\n".getBytes)
     val expected      = BitVector("*1\r\n$16\r\nTest bulk string\r\n".getBytes)
     assertEquals(nonEmptyFrame.append(inputVector), CompleteFrame(expected))
@@ -50,14 +50,14 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
   test(
     "Appending to a non empty GenArr frame a bit vector that doesn't complete it but has complete results gives an incomplete frame with the correct partial and 0 as missing count"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)()
     val inputVector   = BitVector("ing\r\n:100\r\n".getBytes)
     val expected      = BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n".getBytes)
-    assertEquals(nonEmptyFrame.append(inputVector), IncompleteFrame(expected, 0))
+    assertEquals(nonEmptyFrame.append(inputVector), IncompleteFrame(expected, 0)())
   }
 
   test("Appending to a non empty GenArr frame a bit vector that completes the array gives a correct complete frame") {
-    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)()
     val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n".getBytes)
     val expected      = BitVector("*3\r\n$16\r\nTest bulk string\r\n:100\r\n+A simple string\r\n".getBytes)
     assertEquals(nonEmptyFrame.append(inputVector), CompleteFrame(expected))
@@ -66,7 +66,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
   test(
     "Appending to a non empty GenArr frame a bit vector with more than one array gives more than one frame with a list of the complete ones and an empty remainder"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)()
     val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n".getBytes)
     assertEquals(
       nonEmptyFrame.append(inputVector),
@@ -83,7 +83,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
   test(
     "Appending to a non empty GenArr frame a bit vector with more than one array plus a reminder gives more than one frame with a list of the complete ones and the correct remainder"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)()
     val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n$17\r\nAnother bulk ".getBytes)
     assertEquals(
       nonEmptyFrame.append(inputVector),
@@ -100,7 +100,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
   test(
     "Appending to a non empty GenArr frame a bit vector with multiple null arrays gives more than one frame with a list of the complete ones and the correct remainder"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)()
     val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n*-1\r\n*-1\r\n*-1\r\n*-1\r\n*-1\r\n".getBytes)
     assertEquals(
       nonEmptyFrame.append(inputVector),
@@ -121,7 +121,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
   test(
     "Appending to a non empty GenArr frame a bit vector with multiple null arrays the last of which not complete gives more than one frame with a list of the complete ones and the correct remainder"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)()
     val inputVector   = BitVector("ing\r\n:100\r\n+A simple string\r\n*-1\r\n*-1\r\n*-1\r\n*-1\r\n*-1\r\n*".getBytes)
     assertEquals(
       nonEmptyFrame.append(inputVector),
@@ -142,7 +142,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
   test(
     "Appending to a non empty GenArr frame a bit vector with multiple arrays interleaved with null arrays gives as `complete` more than one frame with a list of the complete ones in the right order"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)()
     val inputVector   = BitVector(
       "ing\r\n:100\r\n+A simple string\r\n*-1\r\n*-1\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n*-1\r\n*-1\r\n*-1\r\n".getBytes
     )
@@ -172,7 +172,7 @@ final class RESPFrameArrSpec extends BaseSpec with RESPFrameFixture {
   test(
     "Appending to a non empty GenArr frame a bit vector with multiple arrays containing nested arrays gives as `complete` more than one frame with a list of the complete ones in the correct order"
   ) {
-    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)
+    val nonEmptyFrame = IncompleteFrame(BitVector("*3\r\n$16\r\nTest bulk str".getBytes), 0)()
     val inputVector   = BitVector(
       "ing\r\n:100\r\n+A simple string\r\n*-1\r\n*2\r\n$8\r\nAnother1\r\n-An error\r\n*3\r\n$8\r\nAnother1\r\n*3\r\n*2\r\n+Simple string\r\n*2\r\n$3\r\nfoo\r\n-an error\r\n:13\r\n:12\r\n-An error\r\n*-1\r\n".getBytes
     )

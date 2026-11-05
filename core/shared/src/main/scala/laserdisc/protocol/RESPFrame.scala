@@ -30,14 +30,22 @@ import scala.annotation.tailrec
 
 private[laserdisc] sealed trait RESPFrame extends Product with Serializable with BitVectorSyntax {
   def append(bits: BitVector): Either[Exception, NonEmptyRESPFrame]                    = nextFrame(bits)
-  protected final def nextFrame(bits: BitVector): Either[Exception, NonEmptyRESPFrame] =
-    stateOf(bits) match {
-      case Right(MissingBits(n))              => Right(IncompleteFrame(bits, n))
-      case Right(Incomplete)                  => Right(IncompleteFrame(bits, 0L))
-      case Right(Complete)                    => Right(CompleteFrame(bits))
-      case Right(CompleteWithRemainder(c, r)) => consumeRemainder(MoreThanOneFrame(Vector(CompleteFrame(c)), r))
+  protected final def nextFrame(bits: BitVector): Either[Exception, NonEmptyRESPFrame] = nextFrame(bits, new FrameProgress(bits, Nil))
+
+  // all the bits, and where in them to carry on looking for the end of the frame
+  protected final def nextFrame(bits: BitVector, progress: FrameProgress): Either[Exception, NonEmptyRESPFrame] = {
+    val rest = progress.rest.compact.bytes
+    RESP.scan(rest, 0L, progress.open) match {
+      case Right(Stopped(at, open, missing)) =>
+        Right(IncompleteFrame(bits, missing)(new FrameProgress(rest.drop(at).bits, open)))
+      case Right(Scanned(end)) if end == rest.size => Right(CompleteFrame(bits.compact))
+      case Right(Scanned(end))                     =>
+        val complete = bits.compact
+        val size     = bits.size - rest.drop(end).bits.size
+        consumeRemainder(MoreThanOneFrame(Vector(CompleteFrame(complete.take(size))), complete.drop(size)))
       case Left(e) => Left(UnknownBufferState(s"Err building the frame from buffer: $e. Content: ${bits.tailToUtf8}"))
     }
+  }
 
   @tailrec private final def consumeRemainder(current: MoreThanOneFrame): Either[Exception, MoreThanOneFrame] =
     stateOf(current.remainder) match {
@@ -54,11 +62,19 @@ private[protocol] sealed trait NonEmptyRESPFrame extends RESPFrame
 private[laserdisc] final case class CompleteFrame(bits: BitVector) extends NonEmptyRESPFrame
 private[laserdisc] final case class MoreThanOneFrame(private[laserdisc] val complete: Vector[CompleteFrame], remainder: BitVector)
     extends NonEmptyRESPFrame
-private[laserdisc] final case class IncompleteFrame(partial: BitVector, bitsToComplete: Long) extends NonEmptyRESPFrame {
-  override def append(bits: BitVector): Either[Exception, NonEmptyRESPFrame] =
-    //  Saves some size checks
-    if (bitsToComplete > 0 && bitsToComplete == bits.size) Right(CompleteFrame(partial ++ bits))
-    else nextFrame(partial ++ bits)
+private[laserdisc] final case class IncompleteFrame(partial: BitVector, bitsToComplete: Long)(
+    progress: FrameProgress = new FrameProgress(partial, Nil)
+) extends NonEmptyRESPFrame {
+  override def append(bits: BitVector): Either[Exception, NonEmptyRESPFrame] = {
+    val all  = partial ++ bits
+    val rest = progress.rest ++ bits
+    // the element it stopped at can't be complete yet, so there's nothing to look at
+    if (bits.size < bitsToComplete) Right(IncompleteFrame(all, bitsToComplete - bits.size)(new FrameProgress(rest, progress.open)))
+    else nextFrame(all, new FrameProgress(rest, progress.open))
+  }
 }
+
+// what's left to look at, from the start of the element it stopped at, and how many more elements each array it's in is waiting for
+private[protocol] final class FrameProgress(val rest: BitVector, val open: List[Long])
 
 private[laserdisc] final case class UnknownBufferState(message: String) extends RuntimeException(message, null, true, false)

@@ -152,11 +152,11 @@ private[laserdisc] trait RESPFrameFixture extends HighPriorityGenerators {
           EmptyFrame -> (completed :+ CompleteFrame(c))
         case Right(MoreThanOneFrame(c, reminder)) =>
           if (reminder.size > 0)
-            IncompleteFrame(reminder, 0) -> (completed ++ c)
+            IncompleteFrame(reminder, 0)() -> (completed ++ c)
           else
             EmptyFrame -> (completed ++ c)
         case Right(IncompleteFrame(p, _)) =>
-          IncompleteFrame(p, 0) -> completed
+          IncompleteFrame(p, 0)() -> completed
         case Left(e) => throw e
       }
     }

@@ -24,14 +24,62 @@ package protocol
 
 import Protocol.Single
 
+/** PUBSUB, under `pubsub`. Redis 6.2 */
+trait PubSubCommands extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("PUBSUB CHANNELS", "PUBSUB NUMPAT", "PUBSUB NUMSUB")
+
+  /** The channels with a subscriber, or those whose name matches the pattern */
+  val channels: Single.Aux[Seq[Key]]                       = Protocol("PUBSUB", "CHANNELS").as[Arr.Of[Bulk], Seq[Key]]
+  def channels(pattern: GlobPattern): Single.Aux[Seq[Key]] =
+    Protocol("PUBSUB", "CHANNELS" *: pattern *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
+
+  /** How many patterns clients are subscribed to */
+  val numpat: Single.Aux[NonNegInt] = Protocol("PUBSUB", "NUMPAT").as[Num, NonNegInt]
+
+  /** How many subscribers each channel has, not counting those subscribed by a pattern */
+  def numsub(channels: OneOrMoreKeys): Single.Aux[Seq[(Key, NonNegInt)]] =
+    Protocol("PUBSUB", "NUMSUB" :: channels.value.map(_.value)).as[Arr.OfPairs[Bulk, Num], Seq[(Key, NonNegInt)]]
+}
+
+/** PUBSUB for shard channels, under `pubsub`. Redis 7.0 */
+trait PubSubShardCommands extends PubSubCommands {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("PUBSUB SHARDCHANNELS", "PUBSUB SHARDNUMSUB")
+
+  /** The shard channels with a subscriber, or those whose name matches the pattern */
+  val shardchannels: Single.Aux[Seq[Key]]                       = Protocol("PUBSUB", "SHARDCHANNELS").as[Arr.Of[Bulk], Seq[Key]]
+  def shardchannels(pattern: GlobPattern): Single.Aux[Seq[Key]] =
+    Protocol("PUBSUB", "SHARDCHANNELS" *: pattern *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
+
+  /** How many subscribers each shard channel has */
+  def shardnumsub(channels: OneOrMoreKeys): Single.Aux[Seq[(Key, NonNegInt)]] =
+    Protocol("PUBSUB", "SHARDNUMSUB" :: channels.value.map(_.value)).as[Arr.OfPairs[Bulk, Num], Seq[(Key, NonNegInt)]]
+}
+
 trait PublishP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "PUBLISH"
-    )
+    ) ++ pubsub.supported
 
   // TODO work out all pub/sub system properly
 
+  lazy val pubsub: PubSubCommands = new PubSubCommands {}
+
   final def publish[A: Show](channel: Key, value: A): Single.Aux[NonNegInt] =
     Protocol("PUBLISH", channel *: value *: EmptyTuple).as[Num, NonNegInt]
+}
+
+/** SPUBLISH, and PUBSUB for shard channels under `pubsub`. Redis 7.0 */
+trait PublishShardP extends PublishP {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SPUBLISH")
+
+  override lazy val pubsub: PubSubShardCommands = new PubSubShardCommands {}
+
+  /** Publishes to a shard channel, and replies with how many subscribers received it. In a cluster, send it to the node holding the
+    * channel's slot
+    */
+  final def spublish[A: Show](channel: Key, value: A): Single.Aux[NonNegInt] =
+    Protocol("SPUBLISH", channel *: value *: EmptyTuple).as[Num, NonNegInt]
 }

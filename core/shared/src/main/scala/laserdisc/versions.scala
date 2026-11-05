@@ -171,6 +171,7 @@ trait Redis7_0
     with Cluster7_0
     with Keys7_0
     with Lists7_0
+    with PublishShardP
     with Scripting7_0
     with Server7_0
     with Sets7_0
@@ -182,6 +183,7 @@ trait Redis7_0
   override val cluster: Cluster7_0       = new Cluster7_0 {}
   override val keys: Keys7_0             = new Keys7_0 {}
   override val lists: Lists7_0           = new Lists7_0 {}
+  override val publish: PublishShardP    = new PublishShardP {}
   override val scripting: Scripting7_0   = new Scripting7_0 {}
   override val server: Server7_0         = new Server7_0 {}
   override val sets: Sets7_0             = new Sets7_0 {}

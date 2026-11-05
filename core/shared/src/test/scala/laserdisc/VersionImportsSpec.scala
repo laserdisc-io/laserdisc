@@ -846,6 +846,21 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(redis_7_0.server.client.noevict(on = true).command, "CLIENT")
   }
 
+  test("PUBSUB is on every version, and shard channels from Redis 7.0") {
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(pubsub.numpat.frames, frame("PUBSUB", "NUMPAT"))
+      assert(compileErrors("""pubsub.shardchannels""").nonEmpty)
+      assert(compileErrors("""spublish(Key("c"), "m")""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(pubsub.shardchannels.frames, frame("PUBSUB", "SHARDCHANNELS"))
+      assertEquals(spublish(Key("c"), "m").frames, frame("SPUBLISH", "c", "m"))
+      assertEquals(laserdisc.redis_7_0.publish.spublish(Key("c"), "m").frames, frame("SPUBLISH", "c", "m"))
+    }
+  }
+
   test("the command and the family called keys live together, and so do the ones called publish") {
     import laserdisc.redis_6_2.*
     assertEquals(keys(GlobPattern("a*")).command, "KEYS")

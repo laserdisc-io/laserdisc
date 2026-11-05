@@ -33,11 +33,10 @@ import log.effect.fs2.syntax.*
 import scala.concurrent.duration.*
 
 object RedisClient {
-  @inline final def apply[F[_]: Async: LogSelector]: RedisClientConnector[F] =
+  @inline final def apply[F[_]: Async: Network: LogSelector]: RedisClientConnector[F] =
     new RedisClientConnector[F]()
 
-  private[fs2] class RedisClientConnector[F[_]: Async: LogSelector]() {
-    private implicit val _network: Network[F] = Network.forAsync[F]
+  private[fs2] class RedisClientConnector[F[_]: Async: Network: LogSelector]() {
 
     @inline final def to(
         host: Host,

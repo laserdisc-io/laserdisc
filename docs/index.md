@@ -14,9 +14,9 @@ LaserDisc works with Scala 2.12, 2.13 and 3.9 or newer, on Java 17 or newer.
 | Module | What it gives you | JVM | Scala.js | Scala Native |
 | --- | --- | --- | --- | --- |
 | `laserdisc-core` | Commands and the Redis wire format | ✓ | ✓ | ✓ |
-| `laserdisc-fs2` | A client built on [fs2](https://fs2.io/) and [Cats Effect](https://typelevel.org/cats-effect/) | ✓ | ✓ | |
+| `laserdisc-fs2` | A client built on [fs2](https://fs2.io/) and [Cats Effect](https://typelevel.org/cats-effect/) | ✓ | ✓ | ✓ |
 | `laserdisc-circe` | Store and read values as JSON with [circe](https://circe.github.io/circe/) | ✓ | ✓ | ✓ |
-| `laserdisc-cli` | An interactive prompt, like `redis-cli` | ✓ | | |
+| `laserdisc-cli` | An interactive prompt, like `redis-cli` | ✓ | | ✓ |
 
 With Redis running on `localhost:6379`:
 

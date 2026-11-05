@@ -39,9 +39,6 @@ object Request {
 
   def apply[F[_], A](protocol: Protocol.Aux[A], callback: Maybe[A] => F[Unit]): Request[F] =
     new Req[F, A](protocol, callback) {}
-
-  def unapply[F[_]](req: Request[F]): Option[(Protocol.Aux[req.A], Maybe[req.A] => F[Unit])] =
-    Some(req.protocol -> req.callback)
 }
 
 // the requests of one send, which go to the server together and in order. claim is completed by whoever comes

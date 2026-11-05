@@ -49,8 +49,10 @@ final class ValkeyClusterClientSpec extends ClusterClientSpec(7120, "valkey", va
 abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) extends LaserdiscFs2Suite(p) {
   import cluster.*
 
-  private val List(replicaPort, otherPort, freshPort) = List(1, 2, 3).map(n => Port.unsafeFrom(p.value + n))
-  private val everySlot                               = OneOrMore.unsafeFrom((0 to 16383).toList.map(Slot.unsafeFrom))
+  private val replicaPort = Port.unsafeFrom(p.value + 1)
+  private val otherPort   = Port.unsafeFrom(p.value + 2)
+  private val freshPort   = Port.unsafeFrom(p.value + 3)
+  private val everySlot   = OneOrMore.unsafeFrom((0 to 16383).toList.map(Slot.unsafeFrom))
 
   private def result[A](on: String, sent: IO[Maybe[A]]): A =
     sent.unsafeRunSync()(using runtime).fold(e => fail(s"$dest $on replied with an error: ${e.getMessage}"), identity)

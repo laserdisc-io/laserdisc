@@ -116,7 +116,6 @@ final class VersionImportsSpec extends BaseSpec {
 
   test("a version's options can be used next to import laserdisc.*") {
     import laserdisc.*
-    import laserdisc.auto.*
     import laserdisc.valkey_8_1.*
 
     assertEquals(set(Key("a"), 2, stringtypes.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
@@ -168,10 +167,12 @@ final class VersionImportsSpec extends BaseSpec {
     }
     {
       import laserdisc.redis_8_6.*
+      assertEquals(zunion[String](ks, sortedsettypes.aggregate.max).frames, frame("ZUNION", "2", "a", "b", "AGGREGATE", "MAX"))
       assert(compileErrors("""zinter[String](ks, sortedsettypes.aggregate.count)""").nonEmpty)
     }
     {
       import laserdisc.valkey_9_1.*
+      assertEquals(zunion[String](ks, sortedsettypes.aggregate.max).frames, frame("ZUNION", "2", "a", "b", "AGGREGATE", "MAX"))
       assert(compileErrors("""zinter[String](ks, sortedsettypes.aggregate.count)""").nonEmpty)
     }
   }
@@ -185,10 +186,12 @@ final class VersionImportsSpec extends BaseSpec {
     }
     {
       import laserdisc.valkey_7_2.*
+      assertEquals(zscan[String]("a", 0L).frames, frame("ZSCAN", "a", "0"))
       assert(compileErrors("""zscannoscores[String]("a", 0L)""").nonEmpty)
     }
     {
       import laserdisc.redis_8_10.*
+      assertEquals(zscan[String]("a", 0L).frames, frame("ZSCAN", "a", "0"))
       assert(compileErrors("""zscannoscores[String]("a", 0L)""").nonEmpty)
     }
   }
@@ -346,10 +349,9 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.auto.*
     import laserdisc.redis_7_2.*
 
-    val fs = OneOrMoreKeys.unsafeFrom(List(Key("f")))
     assertEquals(hrandfields("a", 2).frames, frame("HRANDFIELD", "a", "2"))
     assertEquals(hset("a", OneOrMore.unsafeFrom(List(Key("f") -> 1))).frames, frame("HSET", "a", "f", "1"))
-    assert(compileErrors("""httl("a", fs)""").nonEmpty)
+    assert(compileErrors("""httl("a", OneOrMoreKeys.unsafeFrom(List(Key("f"))))""").nonEmpty)
     assert(compileErrors("""hscannovalues("a", 0L)""").nonEmpty)
   }
 
@@ -392,9 +394,8 @@ final class VersionImportsSpec extends BaseSpec {
     }
     {
       import laserdisc.redis_8_10.*
-      import hashtypes.*
       assertEquals(hgetdel[Int]("a", fs).frames, frame("HGETDEL", "a", "FIELDS", "1", "f"))
-      assert(compileErrors("""hsetex("a", HashKeyCondition.nx, fvs)""").nonEmpty)
+      assert(compileErrors("""hsetex("a", hashtypes.HashKeyCondition.nx, fvs)""").nonEmpty)
     }
   }
 
@@ -475,7 +476,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("redis_6_2 has CLIENT UNPAUSE, FAILOVER and FLUSHALL SYNC, but not CLIENT NO-EVICT, SHUTDOWN NOW or several CONFIG parameters") {
-    import laserdisc.auto.*
     import laserdisc.redis_6_2.*
 
     assertEquals(client.unpause.frames, frame("CLIENT", "UNPAUSE"))
@@ -488,7 +488,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("redis_7_0 has CLIENT NO-EVICT, SHUTDOWN NOW and several CONFIG parameters, but not CLIENT NO-TOUCH") {
-    import laserdisc.auto.*
     import laserdisc.redis_7_0.*
 
     assertEquals(client.noevict(on = true).frames, frame("CLIENT", "NO-EVICT", "ON"))
@@ -522,7 +521,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("each version can ask INFO only for the sections it has") {
-    import laserdisc.auto.*
 
     {
       import laserdisc.redis_6_2.*
@@ -566,7 +564,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("redis_7_0 has LATENCY HISTOGRAM and COMMAND LIST, redis_8_6 has HOTKEYS, and valkey_8_1 has COMMANDLOG") {
-    import laserdisc.auto.*
 
     {
       import laserdisc.redis_7_0.*
@@ -586,7 +583,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("each version has the cluster commands its server has") {
-    import laserdisc.auto.*
 
     val ranges = OneOrMore.unsafeFrom(List(Slot(0) -> Slot(10)))
 
@@ -714,6 +710,7 @@ final class VersionImportsSpec extends BaseSpec {
     {
       import laserdisc.valkey_9_1.*
       import streamtypes.*
+      assertEquals(xtrim("s", StreamTrim.maxLen(1L)).frames, frame("XTRIM", "s", "MAXLEN", "1"))
       assert(compileErrors("""xtrim("s", StreamTrim.maxLen(1L), StreamRefPolicy.delRef)""").nonEmpty)
       assert(compileErrors("""xcfgset("s", StreamIdmpConfig.maxSize(10L))""").nonEmpty)
     }
@@ -787,6 +784,7 @@ final class VersionImportsSpec extends BaseSpec {
 
   test("a family of a version doesn't bring what arrived in a later version") {
     import laserdisc.redis_8_2.strings.*
+    assertEquals(set(Key("a"), 2).command, "SET")
     assert(compileErrors("""set(Key("a"), 2, stringtypes.ifEq(1))""").nonEmpty)
   }
 

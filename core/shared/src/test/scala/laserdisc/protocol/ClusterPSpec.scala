@@ -99,13 +99,13 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       ns =>
         ns.nodes.zip(rns).foreach {
           case (
-                ClusterNode(n0, Some(ClusterAddress(h0, p0, cp0, _)), fs0, m0, ps0, pr0, ce0, l0, ss0),
+                ClusterNode(n0, a0, fs0, m0, ps0, pr0, ce0, l0, ss0),
                 (n, h, p, cp, fs, m, ps, pr, ce, l, ss)
               ) =>
             assertEquals(n0.value, n)
-            assertEquals(h0, h.toOption)
-            assertEquals(p0, p)
-            assertEquals(cp0, cp.getOrElse(p))
+            assertEquals(a0.map(_.host), Some(h.toOption))
+            assertEquals(a0.map(_.port), Some(p))
+            assertEquals(a0.map(_.clusterPort), Some(cp.getOrElse(p)))
             assertEquals(
               if (fs0.isEmpty) Seq("noflags") else fs0.map(Show[ClusterFlag].show),
               fs

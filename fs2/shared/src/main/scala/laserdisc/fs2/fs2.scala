@@ -28,24 +28,7 @@ import cats.syntax.all.*
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.FiniteDuration
 
-package object fs2 {
-  final type Network[F[_]]      = _root_.fs2.io.net.Network[F]
-  final type Pipe[F[_], -I, +O] = _root_.fs2.Pipe[F, I, O]
-  final type Queue[F[_]]        = cats.effect.std.Queue[F, Batch[F]]
-  final type Signal[F[_], A]    = _root_.fs2.concurrent.SignallingRef[F, A]
-  final type Stream[+F[_], +O]  = _root_.fs2.Stream[F, O]
-
-  final val Network = _root_.fs2.io.net.Network
-  final val Queue   = cats.effect.std.Queue
-  final val Signal  = _root_.fs2.concurrent.SignallingRef
-  final val Stream  = _root_.fs2.Stream
-
-  final type Env[F[_]]         = (Queue[F], FiniteDuration)
-  final type RedisClient[F[_]] = Client[F, Env[F]]
-
-  // the requests of a send, each with a check for whether its reply arrived, and the action that waits for all the replies
-  private[fs2] final type Prepared[F[_], Out] = (Vector[(Request[F], F[Boolean])], F[Out])
-
+package fs2 {
   // a send's requests are queued in one go, so they reach the server together, and then their replies are awaited
   sealed abstract class RedisHandler[F[_], In <: Tuple](implicit F: Temporal[F]) extends Handler[F, Env[F], In] {
     def prepare(in: In): F[Prepared[F, LOut]]
@@ -75,6 +58,25 @@ package object fs2 {
   object RedisHandler {
     type Aux[F[_], In <: Tuple, LOut0 <: Tuple] = RedisHandler[F, In] { type LOut = LOut0 }
   }
+}
+
+package object fs2 {
+  final type Network[F[_]]      = _root_.fs2.io.net.Network[F]
+  final type Pipe[F[_], -I, +O] = _root_.fs2.Pipe[F, I, O]
+  final type Queue[F[_]]        = cats.effect.std.Queue[F, Batch[F]]
+  final type Signal[F[_], A]    = _root_.fs2.concurrent.SignallingRef[F, A]
+  final type Stream[+F[_], +O]  = _root_.fs2.Stream[F, O]
+
+  final val Network = _root_.fs2.io.net.Network
+  final val Queue   = cats.effect.std.Queue
+  final val Signal  = _root_.fs2.concurrent.SignallingRef
+  final val Stream  = _root_.fs2.Stream
+
+  final type Env[F[_]]         = (Queue[F], FiniteDuration)
+  final type RedisClient[F[_]] = Client[F, Env[F]]
+
+  // the requests of a send, each with a check for whether its reply arrived, and the action that waits for all the replies
+  private[fs2] final type Prepared[F[_], Out] = (Vector[(Request[F], F[Boolean])], F[Out])
 
   implicit final def emptyRedisHandler[F[_]](implicit F: Temporal[F]): RedisHandler.Aux[F, EmptyTuple, EmptyTuple] =
     new RedisHandler[F, EmptyTuple] {

@@ -116,10 +116,9 @@ object RedisClient {
                   case empty => empty -> Left(NoInFlightRequest(resp))
                 }
                 .flatMap {
-                  case Right(Some((Request(protocol, cb), replies))) => cb(protocol.decodeReplies(replies))
-                  case Right(Some(_))                                => absurd
-                  case Right(None)                                   => Concurrent[F].unit
-                  case Left(error)                                   => Concurrent[F].raiseError[Unit](error)
+                  case Right(Some((request, replies))) => request.callback(request.protocol.decodeReplies(replies))
+                  case Right(None)                     => Concurrent[F].unit
+                  case Left(error)                     => Concurrent[F].raiseError[Unit](error)
                 }
 
             // the requests sent on a connection that's gone will never get a reply

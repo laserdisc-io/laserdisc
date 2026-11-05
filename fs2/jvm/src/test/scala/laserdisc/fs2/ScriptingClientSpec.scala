@@ -108,6 +108,15 @@ abstract class ScriptingClientSpec(p: Port, dest: String) extends LaserdiscFs2Su
     assertEquals(send(function.list(GlobPattern("nope*"))), Seq.empty[ScriptingLibrary])
     assertEquals(send(function.stats), ScriptingStats(None, Seq(ScriptingEngine("LUA", NonNegLong(1L), NonNegLong(2L)))))
 
+    val dumped = send(function.dump)
+    assert(failure(function.restore(dumped)).nonEmpty)
+    assert(failure(function.restore(dumped, ScriptingRestorePolicy.append)).nonEmpty)
+    assertEquals(send(function.restore(dumped, ScriptingRestorePolicy.replace)), OK)
+    assertEquals(send(function.restore(dumped, ScriptingRestorePolicy.flush)), OK)
+    send(function.flush)
+    assertEquals(send(function.restore(dumped)), OK)
+    assertEquals(send(function.list).map(_.name), Seq(Key("sclib")))
+
     assertEquals(send(function.delete("sclib")), OK)
     assert(failure(function.kill).startsWith("NOTBUSY"))
   }

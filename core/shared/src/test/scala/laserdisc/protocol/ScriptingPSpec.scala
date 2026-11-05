@@ -22,6 +22,8 @@
 package laserdisc
 package protocol
 
+import scodec.bits._
+
 final class ScriptingPSpec extends BaseSpec with ScriptingP {
   import scriptingtypes.*
 
@@ -120,6 +122,27 @@ final class ScriptingPSpec extends BaseSpec with ScriptingP {
     assertEquals(function.delete(Key("l")).encode, bulks("FUNCTION", "DELETE", "l"))
     assertEquals(function.flush(ScriptingFlushMode.sync).encode, bulks("FUNCTION", "FLUSH", "SYNC"))
     assertEquals(function.kill.encode, bulks("FUNCTION", "KILL"))
+  }
+
+  test("The Scripting protocol using function dumps and restores libraries, keeping the payload's bytes") {
+    val payload = Bulk(hex"f5c30301ff")
+
+    assertEquals(function.dump.encode, bulks("FUNCTION", "DUMP"))
+    assertEquals(function.dump.decode(payload), payload)
+    assertEquals(function.restore(payload).encode, Arr(Bulk("FUNCTION"), Bulk("RESTORE"), payload))
+    assertEquals(
+      function.restore(payload, ScriptingRestorePolicy.append).encode,
+      Arr(Bulk("FUNCTION"), Bulk("RESTORE"), payload, Bulk("APPEND"))
+    )
+    assertEquals(
+      function.restore(payload, ScriptingRestorePolicy.flush).encode,
+      Arr(Bulk("FUNCTION"), Bulk("RESTORE"), payload, Bulk("FLUSH"))
+    )
+    assertEquals(
+      function.restore(payload, ScriptingRestorePolicy.replace).encode,
+      Arr(Bulk("FUNCTION"), Bulk("RESTORE"), payload, Bulk("REPLACE"))
+    )
+    assertEquals(function.restore(payload).decode(Str("OK")), OK)
   }
 
   test("The Scripting protocol using function reads the stats, with or without a function running") {

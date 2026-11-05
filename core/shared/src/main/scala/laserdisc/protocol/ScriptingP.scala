@@ -38,6 +38,22 @@ object ScriptingP {
     implicit val withCodeShow: Show[WithCode] = Show.const("WITHCODE")
   }
 
+  /** What FUNCTION RESTORE does with the libraries already loaded: `append` to them, failing if a name clashes, which is the default,
+    * `flush` them first, or `replace` those of the same name
+    */
+  sealed trait RestorePolicy
+  object RestorePolicy {
+    case object append  extends RestorePolicy
+    case object flush   extends RestorePolicy
+    case object replace extends RestorePolicy
+
+    implicit val restorePolicyShow: Show[RestorePolicy] = Show.instance {
+      case `append`  => "APPEND"
+      case `flush`   => "FLUSH"
+      case `replace` => "REPLACE"
+    }
+  }
+
   /** A function of a library: its name, its description, if it has one, and its flags (like `no-writes`) */
   final case class Function(name: Key, description: Option[String], flags: Seq[String])
 
@@ -142,23 +158,25 @@ trait ScriptingBaseP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("EVAL", "EVALSHA") ++ script.supported
 
   object scriptingtypes {
-    final type ScriptingEngine    = ScriptingP.Engine
-    final type ScriptingFlushMode = ClusterManagement.FlushMode
-    final type ScriptingFunction  = ScriptingP.Function
-    final type ScriptingLibrary   = ScriptingP.Library
-    final type ScriptingReplace   = ScriptingP.Replace
-    final type ScriptingRunning   = ScriptingP.Running
-    final type ScriptingStats     = ScriptingP.Stats
-    final type ScriptingWithCode  = ScriptingP.WithCode
+    final type ScriptingEngine        = ScriptingP.Engine
+    final type ScriptingFlushMode     = ClusterManagement.FlushMode
+    final type ScriptingFunction      = ScriptingP.Function
+    final type ScriptingLibrary       = ScriptingP.Library
+    final type ScriptingReplace       = ScriptingP.Replace
+    final type ScriptingRestorePolicy = ScriptingP.RestorePolicy
+    final type ScriptingRunning       = ScriptingP.Running
+    final type ScriptingStats         = ScriptingP.Stats
+    final type ScriptingWithCode      = ScriptingP.WithCode
 
-    final val ScriptingEngine    = ScriptingP.Engine
-    final val ScriptingFlushMode = ClusterManagement.FlushMode
-    final val ScriptingFunction  = ScriptingP.Function
-    final val ScriptingLibrary   = ScriptingP.Library
-    final val ScriptingReplace   = ScriptingP.Replace
-    final val ScriptingRunning   = ScriptingP.Running
-    final val ScriptingStats     = ScriptingP.Stats
-    final val ScriptingWithCode  = ScriptingP.WithCode
+    final val ScriptingEngine        = ScriptingP.Engine
+    final val ScriptingFlushMode     = ClusterManagement.FlushMode
+    final val ScriptingFunction      = ScriptingP.Function
+    final val ScriptingLibrary       = ScriptingP.Library
+    final val ScriptingReplace       = ScriptingP.Replace
+    final val ScriptingRestorePolicy = ScriptingP.RestorePolicy
+    final val ScriptingRunning       = ScriptingP.Running
+    final val ScriptingStats         = ScriptingP.Stats
+    final val ScriptingWithCode      = ScriptingP.WithCode
   }
 
   lazy val script: ScriptCommands = new ScriptCommands {}
@@ -185,23 +203,28 @@ trait ScriptingBaseP extends Features {
     run("EVALSHA", sha.value, keys.value, args.value)(R)
 }
 
-/** FUNCTION, under `function`. Redis 7.0. Not DUMP and RESTORE yet: their payload is binary, which a [[Bulk]] doesn't keep intact */
+/** FUNCTION, under `function`. Redis 7.0 */
 trait FunctionCommands extends Features {
   import ClusterManagement.FlushMode
-  import ScriptingP.{Library, Replace, Stats, WithCode}
+  import ScriptingP.{Library, Replace, RestorePolicy, Stats, WithCode}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "FUNCTION DELETE",
+      "FUNCTION DUMP",
       "FUNCTION FLUSH: ASYNC SYNC",
       "FUNCTION KILL",
       "FUNCTION LIST: LIBRARYNAME WITHCODE",
       "FUNCTION LOAD: REPLACE",
+      "FUNCTION RESTORE: APPEND FLUSH REPLACE",
       "FUNCTION STATS"
     )
 
   /** Deletes the library and its functions */
   def delete(library: Key): Single.Aux[OK] = Protocol("FUNCTION", "DELETE" :: library.value :: Nil).as[Str, OK]
+
+  /** Every library, in a binary form for `restore` */
+  val dump: Single.Aux[Bulk] = Protocol("FUNCTION", "DUMP").as[Bulk, Bulk]
 
   /** Deletes every library */
   val flush: Single.Aux[OK]                  = Protocol("FUNCTION", "FLUSH").as[Str, OK]
@@ -223,6 +246,11 @@ trait FunctionCommands extends Features {
   /** Loads a library from its code, which starts with `#!lua name=<library>`, and replies with the library's name */
   def load(code: String): Single.Aux[Key]                   = Protocol("FUNCTION", "LOAD" :: code :: Nil).as[Bulk, Key]
   def load(code: String, replace: Replace): Single.Aux[Key] = Protocol("FUNCTION", "LOAD" *: replace *: code *: EmptyTuple).as[Bulk, Key]
+
+  /** Loads the libraries of a `dump` */
+  def restore(payload: Bulk): Single.Aux[OK]                        = Protocol("FUNCTION", "RESTORE" *: payload *: EmptyTuple).as[Str, OK]
+  def restore(payload: Bulk, policy: RestorePolicy): Single.Aux[OK] =
+    Protocol("FUNCTION", "RESTORE" *: payload *: policy *: EmptyTuple).as[Str, OK]
 
   val stats: Single.Aux[Stats] = Protocol("FUNCTION", "STATS").using(RESPRead.instance(ScriptingP.stats))
 }

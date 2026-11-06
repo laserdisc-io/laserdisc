@@ -88,9 +88,11 @@ final class Witness[A <: Singleton] private[laserdisc] (val value: A) {
 }
 
 // Witnesses
-final val AllNICsEqWit       = new Witness("0.0.0.0")
-final val DbIndexMaxValueWit = new Witness(15)
-final val GeoHashRegexWit    = new Witness("[a-z0-9]{11}")
+final val AllNICsEqWit               = new Witness("0.0.0.0")
+final val BlockingSecondsMinValueWit = new Witness(0.002d)
+final val BlockingSecondsMaxValueWit = new Witness(4294967.0d)
+final val DbIndexMaxValueWit         = new Witness(15)
+final val GeoHashRegexWit            = new Witness("[a-z0-9]{11}")
 
 /** A Redis glob: `*`, `?`, `[abc]`, `[a-z]`, `[^abc]`, `\x` for the character x itself, or any other character but a control character. A
   * `]` outside of a class, and a `^` first in a class, are written `\]` and `\^`
@@ -129,6 +131,11 @@ private final type Rfc3927Ref     = IPv4Ref & Match["^169\\.254\\..*"]
 private final type Rfc2544Ref     = IPv4Ref & (Match["^198\\.18\\..*"] | Match["^198\\.19\\..*"])
 private final type ValidDoubleRef = NonNaN
 
+/** Seconds a blocking command waits, 0 to wait forever. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above what
+  * Dragonfly takes
+  */
+final type BlockingSecondsRef = ValidDoubleRef &
+  (StrictEqual[0.0d] | Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T])
 final type ConnectionNameRef = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
 final type DbIndexRef        = Interval.Closed[0, DbIndexMaxValueWit.T]
 final type GeoHashRef        = Match[GeoHashRegexWit.T]
@@ -161,6 +168,7 @@ final type UnsignedBitWidthRef = Interval.Closed[1, UnsignedBitWidthMaxValueWit.
 final type TwoOrMoreRef        = MinLength[2]
 
 // New types
+final type BlockingSeconds       = BlockingSeconds.T
 final type ConnectionName        = ConnectionName.T
 final type DbIndex               = DbIndex.T
 final type GeoHash               = GeoHash.T
@@ -202,6 +210,7 @@ object OneOrMore {
   def unsafeFrom[A](l: List[A]): OneOrMore[A]           = l.refineUnsafe[OneOrMoreRef]
 }
 
+object BlockingSeconds       extends RefinedTypeOps[Double, BlockingSecondsRef]
 object ConnectionName        extends RefinedTypeOps[String, ConnectionNameRef]
 object DbIndex               extends RefinedTypeOps[Int, DbIndexRef]
 object GeoHash               extends RefinedTypeOps[String, GeoHashRef]

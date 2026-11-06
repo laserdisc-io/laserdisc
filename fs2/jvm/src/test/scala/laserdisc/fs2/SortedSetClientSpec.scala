@@ -41,7 +41,7 @@ final class RedisSortedSetClientSpec extends SortedSetClientSpec(6379, "redis") 
 
     val x = OneOrMoreKeys.unsafeFrom(List(Key("ss:x")))
     assertEquals(send(zmpop[String](x, sortedsettypes.pop.min)), Some(KV(Key("ss:x"), Seq("a" -> 1.0))))
-    assertEquals(send(blocking.bzmpop[String](x, sortedsettypes.pop.max, 2, 1)), Some(KV(Key("ss:x"), Seq("c" -> 3.0, "b" -> 2.0))))
+    assertEquals(send(blocking.bzmpop[String](x, sortedsettypes.pop.max, 2, 1.0)), Some(KV(Key("ss:x"), Seq("c" -> 3.0, "b" -> 2.0))))
     assertEquals(send(zmpop[String](x, sortedsettypes.pop.min, 1)), None)
   }
 }
@@ -93,7 +93,8 @@ abstract class SortedSetClientSpec(p: Port, dest: String) extends LaserdiscFs2Su
 
     send(zadd("ss:b", "m", 5.0))
     val b = OneOrMoreKeys.unsafeFrom(List(Key("ss:b")))
-    assertEquals(send(blocking.bzpopmax[String](b, 1)), Some(KV(Key("ss:b"), "m" -> 5.0)))
+    assertEquals(send(blocking.bzpopmax[String](b, 1.0)), Some(KV(Key("ss:b"), "m" -> 5.0)))
+    assertEquals(send(blocking.bzpopmax[String](b, 0.1)), None)
   }
 
   test(s"a $dest client reads ranges of scores and of names with one ZRANGE") {

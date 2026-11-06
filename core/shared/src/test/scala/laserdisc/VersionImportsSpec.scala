@@ -134,10 +134,10 @@ final class VersionImportsSpec extends BaseSpec {
     import laserdisc.redis_6_2.*
 
     assertEquals(zadd("a", sortedsettypes.flag.xxGt, "m", 1.5).frames, frame("ZADD", "a", "XX", "GT", "1.5", "m"))
-    assertEquals(blocking.bzpopmin[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 1).frames, frame("BZPOPMIN", "a", "1"))
+    assertEquals(blocking.bzpopmin[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 1.0).frames, frame("BZPOPMIN", "a", "1"))
     assert(compileErrors("""zintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))))""").nonEmpty)
     assert(compileErrors("""zmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsettypes.pop.min)""").nonEmpty)
-    assert(compileErrors("""blocking.bzmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsettypes.pop.min, 1)""").nonEmpty)
+    assert(compileErrors("""blocking.bzmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsettypes.pop.min, 1.0)""").nonEmpty)
   }
 
   test("redis_7_0 has ZINTERCARD, ZMPOP and BZMPOP, but not ZRANK with WITHSCORE") {
@@ -147,8 +147,8 @@ final class VersionImportsSpec extends BaseSpec {
     val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
     assertEquals(zintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), 5).frames, frame("ZINTERCARD", "2", "a", "b", "LIMIT", "5"))
     assertEquals(zmpop[String](a, sortedsettypes.pop.min).frames, frame("ZMPOP", "1", "a", "MIN"))
-    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.max, 2, 1).frames, frame("BZMPOP", "1", "1", "a", "MAX", "COUNT", "2"))
-    assertEquals(blocking.bzpopmin[String](a, 1).frames, frame("BZPOPMIN", "a", "1"))
+    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.max, 2, 1.0).frames, frame("BZMPOP", "1", "1", "a", "MAX", "COUNT", "2"))
+    assertEquals(blocking.bzpopmin[String](a, 1.0).frames, frame("BZPOPMIN", "a", "1"))
     assert(compileErrors("""zrankwithscore("a", "m")""").nonEmpty)
   }
 
@@ -203,8 +203,8 @@ final class VersionImportsSpec extends BaseSpec {
     val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
     assertEquals(valkey_9_1.zscannoscores[String]("a", 0L).frames, frame("ZSCAN", "a", "0", "NOSCORES"))
     assertEquals(zrevrankwithscore("a", "m").frames, frame("ZREVRANK", "a", "m", "WITHSCORE"))
-    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.min, 0).frames, frame("BZMPOP", "0", "1", "a", "MIN"))
-    assertEquals(blocking.blpop[String](a, 0).frames, frame("BLPOP", "a", "0"))
+    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.min, 0.0).frames, frame("BZMPOP", "0", "1", "a", "MIN"))
+    assertEquals(blocking.blpop[String](a, 0.0).frames, frame("BLPOP", "a", "0"))
   }
 
   test("redis_6_2 has LMOVE, LPOS and BLMOVE, but not LMPOP, BLMPOP or LMOVEM") {
@@ -215,11 +215,11 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(lmove[String]("a", "b", ListSide.left, ListSide.right).frames, frame("LMOVE", "a", "b", "LEFT", "RIGHT"))
     assertEquals(lpos("a", "x", 2, ListSearch.rank(-1)).frames, frame("LPOS", "a", "x", "COUNT", "2", "RANK", "-1"))
     assertEquals(
-      blocking.blmove[String]("a", "b", ListSide.right, ListSide.left, 1).frames,
+      blocking.blmove[String]("a", "b", ListSide.right, ListSide.left, 1.0).frames,
       frame("BLMOVE", "a", "b", "RIGHT", "LEFT", "1")
     )
     assert(compileErrors("""lmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), ListSide.left)""").nonEmpty)
-    assert(compileErrors("""blocking.blmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), ListSide.left, 1)""").nonEmpty)
+    assert(compileErrors("""blocking.blmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), ListSide.left, 1.0)""").nonEmpty)
     assert(compileErrors("""lmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock)""").nonEmpty)
   }
 
@@ -230,11 +230,11 @@ final class VersionImportsSpec extends BaseSpec {
 
     val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
     assertEquals(lmpop[String](a, ListSide.left, 2).frames, frame("LMPOP", "1", "a", "LEFT", "COUNT", "2"))
-    assertEquals(blocking.blmpop[String](a, ListSide.right, 3).frames, frame("BLMPOP", "3", "1", "a", "RIGHT"))
+    assertEquals(blocking.blmpop[String](a, ListSide.right, 3.0).frames, frame("BLMPOP", "3", "1", "a", "RIGHT"))
     assert(compileErrors("""lmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock)""").nonEmpty)
     assert(
       compileErrors(
-        """blocking.blmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock, 1)"""
+        """blocking.blmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock, 1.0)"""
       ).nonEmpty
     )
   }
@@ -249,7 +249,7 @@ final class VersionImportsSpec extends BaseSpec {
       frame("LMOVEM", "a", "b", "LEFT", "LEFT", "COUNT", "2", "OBO")
     )
     assertEquals(
-      blocking.blmovem[String]("a", "b", ListSide.left, ListSide.right, ListAmount.exactly(2), ListOrder.asBlock, 1).frames,
+      blocking.blmovem[String]("a", "b", ListSide.left, ListSide.right, ListAmount.exactly(2), ListOrder.asBlock, 1.0).frames,
       frame("BLMOVEM", "a", "b", "LEFT", "RIGHT", "1", "EXACTLY", "2", "BULK")
     )
   }
@@ -1265,7 +1265,10 @@ final class VersionImportsSpec extends BaseSpec {
 
   test("blocking commands can be imported from a version") {
     import laserdisc.redis_7_0.blocking.*
-    assertEquals(blmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), protocol.ListP.Side.left, NonNegInt(1)).command, "BLMPOP")
+    assertEquals(
+      blmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), protocol.ListP.Side.left, BlockingSeconds(1.0d)).command,
+      "BLMPOP"
+    )
     assert(compileErrors("""get[String](Key("a"))""").nonEmpty)
   }
 

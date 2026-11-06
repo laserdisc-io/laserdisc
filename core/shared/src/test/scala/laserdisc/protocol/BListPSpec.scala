@@ -28,7 +28,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
 
   test("The Blocking List protocol using blpop fails to compile given one key and timeout but missing read instance") {
     assertCompileErrors(
-      compileErrors("""blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))"""),
+      compileErrors("""blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), BlockingSeconds(0.0d))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
          |
@@ -40,7 +40,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
          |
          |You may also be able to build it from an existing Read with map, contramap or flatMap.
          |
-         |blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))
+         |blpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), BlockingSeconds(0.0d))
          |          ^
          |""".stripMargin,
       "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
@@ -49,7 +49,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
 
   test("The Blocking List protocol using brpop fails to compile given one key and timeout but missing read instance") {
     assertCompileErrors(
-      compileErrors("""brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))"""),
+      compileErrors("""brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), BlockingSeconds(0.0d))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
          |
@@ -61,7 +61,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
          |
          |You may also be able to build it from an existing Read with map, contramap or flatMap.
          |
-         |brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), NonNegInt(0))
+         |brpop[Bar](OneOrMoreKeys.unsafeFrom(List(Key("a"))), BlockingSeconds(0.0d))
          |          ^
          |""".stripMargin,
       "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
@@ -69,7 +69,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
   }
 
   property("The Blocking List protocol using blpop roundtrips successfully given one or more keys and timeout") {
-    forAll { (ks: OneOrMoreKeys, t: NonNegInt, i: Int) =>
+    forAll { (ks: OneOrMoreKeys, t: BlockingSeconds, i: Int) =>
       val protocol = blpop[Int](ks, t)
       assertEquals(protocol.encode, Arr((Bulk("BLPOP") :: ks.value.map(Bulk(_))) :+ Bulk(t)))
       protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))).onRight(_ contains KV(ks.value.head, i))
@@ -77,7 +77,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
   }
 
   property("The Blocking List protocol using blpop roundtrips successfully given one or more keys, timeout and specific read instance") {
-    forAll { (ks: OneOrMoreKeys, t: NonNegInt, i: Int) =>
+    forAll { (ks: OneOrMoreKeys, t: BlockingSeconds, i: Int) =>
       val protocol = blpop[Foo](ks, t)
       assertEquals(protocol.encode, Arr((Bulk("BLPOP") :: ks.value.map(Bulk(_))) :+ Bulk(t)))
       protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))).onRight(_ contains KV(ks.value.head, Foo(i)))
@@ -85,7 +85,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
   }
 
   property("The Blocking List protocol using brpop roundtrips successfully given one or more keys and timeout") {
-    forAll { (ks: OneOrMoreKeys, t: NonNegInt, i: Int) =>
+    forAll { (ks: OneOrMoreKeys, t: BlockingSeconds, i: Int) =>
       val protocol = brpop[Int](ks, t)
       assertEquals(protocol.encode, Arr((Bulk("BRPOP") :: ks.value.map(Bulk(_))) :+ Bulk(t)))
       protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))).onRight(_ contains KV(ks.value.head, i))
@@ -93,7 +93,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
   }
 
   property("The Blocking List protocol using brpop roundtrips successfully given one or more keys, timeout and specific read instance") {
-    forAll { (ks: OneOrMoreKeys, t: NonNegInt, i: Int) =>
+    forAll { (ks: OneOrMoreKeys, t: BlockingSeconds, i: Int) =>
       val protocol = brpop[Foo](ks, t)
       assertEquals(protocol.encode, Arr((Bulk("BRPOP") :: ks.value.map(Bulk(_))) :+ Bulk(t)))
       protocol.decode(Arr(Bulk(ks.value.head), Bulk(i))).onRight(_ contains KV(ks.value.head, Foo(i)))
@@ -119,7 +119,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
   }
 
   property("The Blocking List protocol using brpoplpush roundtrips successfully given source key, destination key and timeout") {
-    forAll { (s: Key, d: Key, pi: PosInt, i: Int) =>
+    forAll { (s: Key, d: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpoplpush[Int](s, d, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOPLPUSH"), Bulk(s), Bulk(d), Bulk(pi)))
       protocol.decode(Bulk(i)).onRight(_ contains i)
@@ -129,15 +129,22 @@ abstract class BListPSpec extends BaseSpec with BListP {
   property(
     "The Blocking List protocol using brpoplpush roundtrips successfully given source key, destination key, timeout and specific read instance"
   ) {
-    forAll { (s: Key, d: Key, pi: PosInt, i: Int) =>
+    forAll { (s: Key, d: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpoplpush[Foo](s, d, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOPLPUSH"), Bulk(s), Bulk(d), Bulk(pi)))
       protocol.decode(Bulk(i)).onRight(_ contains Foo(i))
     }
   }
 
+  test("The Blocking List protocol sends whole seconds without a fraction, and others with one") {
+    val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    assertEquals(blpop[String](a, BlockingSeconds(5.0d)).encode, Arr(Bulk("BLPOP"), Bulk("a"), Bulk("5")))
+    assertEquals(blpop[String](a, BlockingSeconds(0.0d)).encode, Arr(Bulk("BLPOP"), Bulk("a"), Bulk("0")))
+    assertEquals(blpop[String](a, BlockingSeconds(0.25d)).encode, Arr(Bulk("BLPOP"), Bulk("a"), Bulk("0.25")))
+  }
+
   property("The Blocking List protocol using blmove sends the timeout last") {
-    forAll { (s: Key, d: Key, t: NonNegInt, os: Option[String]) =>
+    forAll { (s: Key, d: Key, t: BlockingSeconds, os: Option[String]) =>
       val protocol = blmove[String](s, d, ListP.Side.right, ListP.Side.left, t)
       assertEquals(protocol.encode, Arr(Bulk("BLMOVE"), Bulk(s), Bulk(d), Bulk("RIGHT"), Bulk("LEFT"), Bulk(t)))
       assertEquals(protocol.decode(os.fold(NullBulk: GenBulk)(Bulk(_))), os)
@@ -145,7 +152,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
   }
 
   property("The Blocking List protocol using blmpop sends the timeout first") {
-    forAll { (ks: OneOrMoreKeys, t: NonNegInt, okv: Option[KV[List[String]]]) =>
+    forAll { (ks: OneOrMoreKeys, t: BlockingSeconds, okv: Option[KV[List[String]]]) =>
       val protocol = blmpop[String](ks, ListP.Side.left, t)
       assertEquals(protocol.encode, Arr(Bulk("BLMPOP") :: Bulk(t) :: Bulk(ks.value.size) :: ks.value.map(Bulk(_)) ::: List(Bulk("LEFT"))))
       val reply = okv.fold(NilArr: GenArr) { case KV(k, vs) => Arr(Bulk(k), Arr(vs.map(Bulk(_)))) }
@@ -154,7 +161,7 @@ abstract class BListPSpec extends BaseSpec with BListP {
   }
 
   property("The Blocking List protocol using blmovem sends the timeout before the amount") {
-    forAll { (s: Key, d: Key, c: PosInt, t: NonNegInt) =>
+    forAll { (s: Key, d: Key, c: PosInt, t: BlockingSeconds) =>
       val protocol = blmovem[String](s, d, ListP.Side.left, ListP.Side.left, ListP.Amount.upTo(c), ListP.Order.oneByOne, t)
       assertEquals(
         protocol.encode,

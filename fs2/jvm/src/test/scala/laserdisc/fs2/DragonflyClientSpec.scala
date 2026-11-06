@@ -199,7 +199,7 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(6382) {
     send(rpush("df:l", OneOrMore.unsafeFrom(List("a", "b"))))
     val lists = OneOrMoreKeys.unsafeFrom(List(Key("df:l")))
     assertEquals(send(lmpop[String](lists, listtypes.ListSide.left)), Some(KV(Key("df:l"), Seq("a"))))
-    assertEquals(send(blocking.blmpop[String](lists, listtypes.ListSide.left, 1)), Some(KV(Key("df:l"), Seq("b"))))
+    assertEquals(send(blocking.blmpop[String](lists, listtypes.ListSide.left, 1.0)), Some(KV(Key("df:l"), Seq("b"))))
     assertEquals(send(lmpop[String](lists, listtypes.ListSide.left)), None)
     assertEquals(send(lpop[String]("df:l", 1)), None)
     send(sadd("df:s1", OneOrMoreKeys.unsafeFrom(List(Key("a")))))
@@ -210,7 +210,7 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(6382) {
     assertEquals(send(zrankwithscore("df:z", "b")), Some(NonNegInt(1) -> 2.0))
     val zs = OneOrMoreKeys.unsafeFrom(List(Key("df:z")))
     assertEquals(send(zmpop[String](zs, laserdisc.protocol.SortedSetP.Pop.min)), Some(KV(Key("df:z"), Seq("a" -> 1.0))))
-    assertEquals(send(blocking.bzmpop[String](zs, laserdisc.protocol.SortedSetP.Pop.min, 1)), Some(KV(Key("df:z"), Seq("b" -> 2.0))))
+    assertEquals(send(blocking.bzmpop[String](zs, laserdisc.protocol.SortedSetP.Pop.min, 1.0)), Some(KV(Key("df:z"), Seq("b" -> 2.0))))
     send(del("df:s1", "df:s2"))
   }
 

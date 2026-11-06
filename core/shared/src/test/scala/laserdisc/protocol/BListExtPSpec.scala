@@ -47,7 +47,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   }
   test("The Blocking List extended protocol using blpop fails to compile given key and timeout but missing read instance") {
     assertCompileErrors(
-      compileErrors("""blpop[Bar](Key("a"), PosInt(1))"""),
+      compileErrors("""blpop[Bar](Key("a"), BlockingSeconds(1.0d))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
          |
@@ -59,7 +59,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
          |
          |You may also be able to build it from an existing Read with map, contramap or flatMap.
          |
-         |blpop[Bar](Key("a"), PosInt(1))
+         |blpop[Bar](Key("a"), BlockingSeconds(1.0d))
          |          ^
          |""".stripMargin,
       "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
@@ -143,28 +143,28 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   }
   // BLPOP with timeout specified
   property("The Blocking List extended protocol using blpop roundtrips successfully given key1 and positive timeout") {
-    forAll { (k1: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = blpop[Int](k1, pi)
       assertEquals(protocol.encode, Arr(Bulk("BLPOP"), Bulk(k1), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, i))
     }
   }
   property("The Blocking List extended protocol using blpop roundtrips successfully given key1, key2 and positive timeout") {
-    forAll { (k1: Key, k2: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = blpop[Int](k1, k2, pi)
       assertEquals(protocol.encode, Arr(Bulk("BLPOP"), Bulk(k1), Bulk(k2), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, i))
     }
   }
   property("The Blocking List extended protocol using blpop roundtrips successfully given key1, key2, key3 and positive timeout") {
-    forAll { (k1: Key, k2: Key, k3: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = blpop[Int](k1, k2, k3, pi)
       assertEquals(protocol.encode, Arr(Bulk("BLPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, i))
     }
   }
   property("The Blocking List extended protocol using blpop roundtrips successfully given key1, key2, key3, key4 and positive timeout") {
-    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = blpop[Int](k1, k2, k3, k4, pi)
       assertEquals(protocol.encode, Arr(Bulk("BLPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, i))
@@ -173,7 +173,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using blpop roundtrips successfully given key1, key2, key3, key4, key5 and positive timeout"
   ) {
-    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, k5: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, k5: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = blpop[Int](k1, k2, k3, k4, k5, pi)
       assertEquals(protocol.encode, Arr(Bulk("BLPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4), Bulk(k5), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, i))
@@ -183,7 +183,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using blpop roundtrips successfully given key1, positive timeout and specific read instance"
   ) {
-    forAll { (k1: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = blpop[Foo](k1, pi)
       assertEquals(protocol.encode, Arr(Bulk("BLPOP"), Bulk(k1), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
@@ -192,7 +192,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using blpop roundtrips successfully given key1, key2, positive timeout and specific read instance"
   ) {
-    forAll { (k1: Key, k2: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = blpop[Foo](k1, k2, pi)
       assertEquals(protocol.encode, Arr(Bulk("BLPOP"), Bulk(k1), Bulk(k2), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
@@ -201,7 +201,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using blpop roundtrips successfully given key1, key2, key3, positive timeout and specific read instance"
   ) {
-    forAll { (k1: Key, k2: Key, k3: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = blpop[Foo](k1, k2, k3, pi)
       assertEquals(protocol.encode, Arr(Bulk("BLPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
@@ -210,7 +210,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using blpop roundtrips successfully given key1, key2, key3, key4, positive timeout and specific read instance"
   ) {
-    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = blpop[Foo](k1, k2, k3, k4, pi)
       assertEquals(protocol.encode, Arr(Bulk("BLPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
@@ -219,7 +219,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using blpop roundtrips successfully given key1, key2, key3, key4, key5, positive timeout and specific read instance"
   ) {
-    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, k5: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, k5: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = blpop[Foo](k1, k2, k3, k4, k5, pi)
       assertEquals(protocol.encode, Arr(Bulk("BLPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4), Bulk(k5), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
@@ -247,7 +247,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   }
   test("The Blocking List extended protocol using brpop fails to compile given key and timeout but missing read instance") {
     assertCompileErrors(
-      compileErrors("""brpop[Bar](Key("a"), PosInt(1))"""),
+      compileErrors("""brpop[Bar](Key("a"), BlockingSeconds(1.0d))"""),
       """|error:
          |Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar].
          |
@@ -259,7 +259,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
          |
          |You may also be able to build it from an existing Read with map, contramap or flatMap.
          |
-         |brpop[Bar](Key("a"), PosInt(1))
+         |brpop[Bar](Key("a"), BlockingSeconds(1.0d))
          |          ^
          |""".stripMargin,
       "Implicit not found Read[laserdisc.protocol.Bulk, laserdisc.Bar]."
@@ -343,28 +343,28 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   }
   // BRPOP with timeout specified
   property("The Blocking List extended protocol using brpop roundtrips successfully given key1 and positive timeout") {
-    forAll { (k1: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpop[Int](k1, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, i))
     }
   }
   property("The Blocking List extended protocol using brpop roundtrips successfully given key1, key2 and positive timeout") {
-    forAll { (k1: Key, k2: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpop[Int](k1, k2, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(k2), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, i))
     }
   }
   property("The Blocking List extended protocol using brpop roundtrips successfully given key1, key2, key3 and positive timeout") {
-    forAll { (k1: Key, k2: Key, k3: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpop[Int](k1, k2, k3, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, i))
     }
   }
   property("The Blocking List extended protocol using brpop roundtrips successfully given key1, key2, key3, key4 and positive timeout") {
-    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpop[Int](k1, k2, k3, k4, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, i))
@@ -373,7 +373,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using brpop roundtrips successfully given key1, key2, key3, key4, key5 and positive timeout"
   ) {
-    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, k5: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, k5: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpop[Int](k1, k2, k3, k4, k5, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4), Bulk(k5), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, i))
@@ -383,7 +383,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using brpop roundtrips successfully given key1, positive timeout and specific read instance"
   ) {
-    forAll { (k1: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpop[Foo](k1, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
@@ -392,7 +392,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using brpop roundtrips successfully given key1, key2, positive timeout and specific read instance"
   ) {
-    forAll { (k1: Key, k2: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpop[Foo](k1, k2, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(k2), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
@@ -401,7 +401,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using brpop roundtrips successfully given key1, key2, key3, positive timeout and specific read instance"
   ) {
-    forAll { (k1: Key, k2: Key, k3: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpop[Foo](k1, k2, k3, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
@@ -410,7 +410,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using brpop roundtrips successfully given key1, key2, key3, key4, positive timeout and specific read instance"
   ) {
-    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpop[Foo](k1, k2, k3, k4, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
@@ -419,7 +419,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   property(
     "The Blocking List extended protocol using brpop roundtrips successfully given key1, key2, key3, key4, key5, positive timeout and specific read instance"
   ) {
-    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, k5: Key, pi: PosInt, i: Int) =>
+    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, k5: Key, pi: BlockingSeconds, i: Int) =>
       val protocol = brpop[Foo](k1, k2, k3, k4, k5, pi)
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4), Bulk(k5), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
@@ -427,7 +427,7 @@ final class BListExtPSpec extends BListPSpec with ExtPArguments {
   }
 
   //format: off
-  private val seconds = PosInt(7)
+  private val seconds = BlockingSeconds(7.0d)
 
   test("The Blocking List extended protocol using blpop sends in order from 1 to 22 keys") {
     assertEquals(blpop[String](k1).encode, frame("BLPOP", "k1", "0"))

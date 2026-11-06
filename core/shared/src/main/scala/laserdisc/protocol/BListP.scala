@@ -38,20 +38,20 @@ trait BListBaseP extends Features {
       destination: Key,
       from: ListP.Side,
       to: ListP.Side,
-      seconds: NonNegInt
+      seconds: BlockingSeconds
   ): Single.Aux[Option[A]] =
     Protocol("BLMOVE", source *: destination *: from *: to *: seconds *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
-  final def blpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[A]]] =
+  final def blpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: BlockingSeconds): Single.Aux[Option[KV[A]]] =
     Protocol("BLPOP", keys.value *: seconds *: EmptyTuple).as[OrNilArr[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]], Option[KV[A]]]
 
-  final def brpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[A]]] =
+  final def brpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: BlockingSeconds): Single.Aux[Option[KV[A]]] =
     Protocol("BRPOP", keys.value *: seconds *: EmptyTuple).as[OrNilArr[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]], Option[KV[A]]]
 
   final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Single.Aux[Option[A]] =
     Protocol("BRPOPLPUSH", source *: destination *: 0 *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
-  final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key, timeout: PosInt): Single.Aux[Option[A]] =
-    Protocol("BRPOPLPUSH", source *: destination *: timeout *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+  final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key, seconds: BlockingSeconds): Single.Aux[Option[A]] =
+    Protocol("BRPOPLPUSH", source *: destination *: seconds *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 }
 
 /** BLMPOP: Redis 7.0 */
@@ -60,9 +60,14 @@ trait BListMPopP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("BLMPOP: COUNT LEFT RIGHT")
 
-  final def blmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, side: Side, seconds: NonNegInt): Single.Aux[Option[KV[Seq[A]]]] =
+  final def blmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, side: Side, seconds: BlockingSeconds): Single.Aux[Option[KV[Seq[A]]]] =
     Protocol("BLMPOP", seconds *: keys.value.length *: keys.value *: side *: EmptyTuple).using(keyedSeq[A])
-  final def blmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, side: Side, count: PosInt, seconds: NonNegInt): Single.Aux[Option[KV[Seq[A]]]] =
+  final def blmpop[A: Read[Bulk, _]](
+      keys: OneOrMoreKeys,
+      side: Side,
+      count: PosInt,
+      seconds: BlockingSeconds
+  ): Single.Aux[Option[KV[Seq[A]]]] =
     Protocol("BLMPOP", seconds *: keys.value.length *: keys.value *: side *: "COUNT" *: count *: EmptyTuple).using(keyedSeq[A])
 }
 
@@ -79,7 +84,7 @@ trait BListMoveManyP extends Features {
       to: Side,
       amount: Amount,
       order: Order,
-      seconds: NonNegInt
+      seconds: BlockingSeconds
   ): Single.Aux[Option[Seq[A]]] =
     Protocol("BLMOVEM", source *: destination *: from *: to *: seconds *: amount.params *: order *: EmptyTuple)
       .as[OrNilArr[Arr.Of[Bulk]], Option[Seq[A]]]

@@ -132,7 +132,7 @@ final class SortedSetPSpec extends BaseSpec with SortedSetP with BSortedSetP {
   }
 
   property("The SortedSet protocol using bzpopmin reads the key, member and score, or None") {
-    forAll { (ks: OneOrMoreKeys, t: NonNegInt, okv: Option[KV[(String, ValidDouble)]]) =>
+    forAll { (ks: OneOrMoreKeys, t: BlockingSeconds, okv: Option[KV[(String, ValidDouble)]]) =>
       val protocol = bzpopmin[String](ks, t)
       assertEquals(protocol.encode, Arr(Bulk("BZPOPMIN") :: ks.value.map(Bulk(_)) ::: List(Bulk(t))))
       val reply = okv.fold(NilArr: GenArr) { case KV(k, (m, s)) => Arr(Bulk(k), Bulk(m), Bulk(s)) }

@@ -38,7 +38,7 @@ final class RedisListClientSpec extends ListClientSpec(6379, "redis") {
     )
     assertEquals(send(lmovem[String]("l:s", "l:d", ListSide.left, ListSide.left, ListAmount.exactly(5), ListOrder.asBlock)), None)
     assertEquals(
-      send(blocking.blmovem[String]("l:s", "l:d", ListSide.left, ListSide.left, ListAmount.exactly(2), ListOrder.oneByOne, 1)),
+      send(blocking.blmovem[String]("l:s", "l:d", ListSide.left, ListSide.left, ListAmount.exactly(2), ListOrder.oneByOne, 1.0)),
       Some(Seq("d", "c"))
     )
     assertEquals(send(lrange[String]("l:d", 0L, -1L)), Seq("d", "c", "a", "b"))
@@ -57,7 +57,7 @@ final class ValkeyListClientSpec extends ListClientSpec(6381, "valkey") {
 
     val keys = OneOrMoreKeys.unsafeFrom(List(Key("l:a"), Key("l:b")))
     assertEquals(send(lmpop[String](keys, ListSide.left)), Some(KV(Key("l:b"), Seq("x"))))
-    assertEquals(send(blocking.blmpop[String](keys, ListSide.right, 5, 1)), Some(KV(Key("l:b"), Seq("z", "y"))))
+    assertEquals(send(blocking.blmpop[String](keys, ListSide.right, 5, 1.0)), Some(KV(Key("l:b"), Seq("z", "y"))))
     assertEquals(send(lmpop[String](keys, ListSide.left)), None)
   }
 }
@@ -82,7 +82,7 @@ abstract class ListClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     assertEquals(send(lpos("l:x", "zz")), None)
 
     assertEquals(send(lmove[String]("l:x", "l:y", ListSide.right, ListSide.left)), Some("a"))
-    assertEquals(send(blocking.blmove[String]("l:x", "l:y", ListSide.left, ListSide.right, 1)), Some("a"))
+    assertEquals(send(blocking.blmove[String]("l:x", "l:y", ListSide.left, ListSide.right, 1.0)), Some("a"))
     assertEquals(send(lrange[String]("l:y", 0L, -1L)), Seq("a", "a"))
 
     assertEquals(send(lpop[String]("l:x", 2)), Some(Seq("b", "a")))
@@ -98,7 +98,8 @@ abstract class ListClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
 
     send(del("l:b1", "l:b2"))
     send(rpush("l:b2", OneOrMore.unsafeFrom(List("x"))))
-    assertEquals(send(blocking.blpop[String](OneOrMoreKeys.unsafeFrom(List(Key("l:b1"), Key("l:b2"))), 1)), Some(KV(Key("l:b2"), "x")))
+    assertEquals(send(blocking.blpop[String](OneOrMoreKeys.unsafeFrom(List(Key("l:b1"), Key("l:b2"))), 1.0)), Some(KV(Key("l:b2"), "x")))
+    assertEquals(send(blocking.blpop[String](OneOrMoreKeys.unsafeFrom(List(Key("l:b1"), Key("l:b2"))), 0.1)), None)
   }
 
   test(s"a $dest client reads nothing to pop with a count, whichever null the server replies with") {

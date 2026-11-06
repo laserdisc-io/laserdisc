@@ -33,10 +33,10 @@ trait BSortedSetBaseP extends Features {
       "BZPOPMIN"
     )
 
-  final def bzpopmax[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[(A, Double)]]] =
+  final def bzpopmax[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: BlockingSeconds): Single.Aux[Option[KV[(A, Double)]]] =
     Protocol("BZPOPMAX", keys.value *: seconds *: EmptyTuple).using(keyedScored[A])
 
-  final def bzpopmin[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: NonNegInt): Single.Aux[Option[KV[(A, Double)]]] =
+  final def bzpopmin[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: BlockingSeconds): Single.Aux[Option[KV[(A, Double)]]] =
     Protocol("BZPOPMIN", keys.value *: seconds *: EmptyTuple).using(keyedScored[A])
 }
 
@@ -46,13 +46,13 @@ trait BSortedSetMPopP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("BZMPOP: COUNT MAX MIN")
 
-  final def bzmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, pop: Pop, seconds: NonNegInt): Single.Aux[Option[KV[Seq[(A, Double)]]]] =
+  final def bzmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, pop: Pop, seconds: BlockingSeconds): Single.Aux[Option[KV[Seq[(A, Double)]]]] =
     Protocol("BZMPOP", seconds *: keys.value.length *: keys.value *: pop *: EmptyTuple).using(keyedScoredSeq[A])
   final def bzmpop[A: Read[Bulk, _]](
       keys: OneOrMoreKeys,
       pop: Pop,
       count: PosInt,
-      seconds: NonNegInt
+      seconds: BlockingSeconds
   ): Single.Aux[Option[KV[Seq[(A, Double)]]]] =
     Protocol("BZMPOP", seconds *: keys.value.length *: keys.value *: pop *: "COUNT" *: count *: EmptyTuple).using(keyedScoredSeq[A])
 }

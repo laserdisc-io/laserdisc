@@ -57,9 +57,10 @@ ThisBuild / scalaVersion               := scala_213
 ThisBuild / tlJdkRelease               := Some(17)
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("17"), JavaSpec.temurin("21"))
 
-ThisBuild / coverageFailOnMinimum    := false
-ThisBuild / coverageHighlighting     := true
-ThisBuild / coverageMinimumStmtTotal := 60
+ThisBuild / coverageFailOnMinimum      := true
+ThisBuild / coverageHighlighting       := true
+ThisBuild / coverageMinimumStmtTotal   := 85
+ThisBuild / coverageMinimumBranchTotal := 80
 
 // four nodes for ClusterClientSpec to make a cluster of: they're in one container so that they can reach each other on 127.0.0.1.
 // Not from port 7000, which AirPlay Receiver has on macOS

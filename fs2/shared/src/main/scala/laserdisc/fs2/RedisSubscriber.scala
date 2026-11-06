@@ -44,28 +44,46 @@ object RedisSubscriber {
 
   private[fs2] final class RedisSubscriberConnector[F[_]: Async: Network: LogSelector]() {
 
-    final def to[A](host: Host, port: Port, feed: Feed[A]): Resource[F, Stream[F, A]] = open(RedisAddress(host, port), Nil, feed)
+    final def to[A](host: Host, port: Port, feed: Feed[A]): Resource[F, Stream[F, A]] =
+      open(RedisAddress(host, port), Nil, feed).map(_._2)
 
     /** Logs in first, as a new connection isn't logged in */
     final def to[A](host: Host, port: Port, password: Key, feed: Feed[A]): Resource[F, Stream[F, A]] =
-      open(RedisAddress(host, port), List(protocol.Arr(protocol.Bulk("AUTH"), protocol.Bulk(password.value))), feed)
+      open(RedisAddress(host, port), List(auth(password)), feed).map(_._2)
 
-    private def open[A](address: RedisAddress, before: List[RESP], feed: Feed[A]): Resource[F, Stream[F, A]] =
+    /** Like `to`, also giving the connection's id, which CLIENT TRACKING's REDIRECT asks for */
+    final def identified[A](host: Host, port: Port, feed: Feed[A]): Resource[F, (NonNegLong, Stream[F, A])] =
+      withId(RedisAddress(host, port), Nil, feed)
+    final def identified[A](host: Host, port: Port, password: Key, feed: Feed[A]): Resource[F, (NonNegLong, Stream[F, A])] =
+      withId(RedisAddress(host, port), List(auth(password)), feed)
+
+    private def auth(password: Key): RESP = protocol.Arr(protocol.Bulk("AUTH"), protocol.Bulk(password.value))
+
+    private def withId[A](address: RedisAddress, before: List[RESP], feed: Feed[A]): Resource[F, (NonNegLong, Stream[F, A])] =
+      open(address, before :+ protocol.Arr(protocol.Bulk("CLIENT"), protocol.Bulk("ID")), feed).evalMap { case (answers, stream) =>
+        answers.lastOption match {
+          case Some(protocol.Num(NonNegLong(id))) => (id -> stream).pure[F]
+          case other                              =>
+            Async[F].raiseError[(NonNegLong, Stream[F, A])](protocol.RESPDecErr(s"Expected the connection's id but got: $other"))
+        }
+      }
+
+    private def open[A](address: RedisAddress, before: List[RESP], feed: Feed[A]): Resource[F, (Vector[RESP], Stream[F, A])] =
       for {
         socketAddress <- Resource.eval(address.toSocketAddress[F])
         socket        <- RedisChannel.connectedSocket(socketAddress, receiveBufferSizeBytes)
         replies       <- Resource.eval(CatsQueue.bounded[F, Either[Throwable, RESP]](queueSize))
         _             <- (socket.reads.through(RedisChannel.impl.receiveResp).attempt ++
           Stream.emit(Left(ServerTerminatedConnection(address)))).evalMap(replies.offer).compile.drain.background
-        _     <- Resource.eval(Stream.emits(before :+ feed.command).through(RedisChannel.impl.send(socket.write)).compile.drain)
-        early <- Resource.eval(
-          confirm(replies, before.size, feed.confirmations, feed, Vector.empty)
-            .timeoutTo(confirmationTimeout, Async[F].raiseError[Vector[A]](ServerNotResponding(address)))
+        _         <- Resource.eval(Stream.emits(before :+ feed.command).through(RedisChannel.impl.send(socket.write)).compile.drain)
+        confirmed <- Resource.eval(
+          confirm(replies, before.size, feed.confirmations, feed, Vector.empty, Vector.empty)
+            .timeoutTo(confirmationTimeout, Async[F].raiseError[(Vector[RESP], Vector[A])](ServerNotResponding(address)))
         )
-      } yield Stream.emits(early) ++ Stream.fromQueueUnterminated(replies).flatMap {
+      } yield confirmed._1 -> (Stream.emits(confirmed._2) ++ Stream.fromQueueUnterminated(replies).flatMap {
         case Left(failure) => Stream.raiseError[F](failure)
         case Right(reply)  => Stream.fromEither[F](feed.message(reply)).flatMap(Stream.fromOption[F](_))
-      }
+      })
 
     // what arrives while the rest is being confirmed is kept for the stream
     private def confirm[A](
@@ -73,19 +91,20 @@ object RedisSubscriber {
         before: Int,
         pending: Set[String],
         feed: Feed[A],
+        answers: Vector[RESP],
         early: Vector[A]
-    ): F[Vector[A]] =
-      if (before == 0 && pending.isEmpty) early.pure[F]
+    ): F[(Vector[RESP], Vector[A])] =
+      if (before == 0 && pending.isEmpty) (answers -> early).pure[F]
       else
         replies.take.flatMap {
-          case Left(failure)          => Async[F].raiseError[Vector[A]](failure)
-          case Right(error: Err)      => Async[F].raiseError[Vector[A]](error)
-          case Right(_) if before > 0 => confirm(replies, before - 1, pending, feed, early)
-          case Right(reply)           =>
+          case Left(failure)              => Async[F].raiseError[(Vector[RESP], Vector[A])](failure)
+          case Right(error: Err)          => Async[F].raiseError[(Vector[RESP], Vector[A])](error)
+          case Right(reply) if before > 0 => confirm(replies, before - 1, pending, feed, answers :+ reply, early)
+          case Right(reply)               =>
             feed.confirmed(reply) match {
-              case Some(name) => confirm(replies, before, pending - name, feed, early)
+              case Some(name) => confirm(replies, before, pending - name, feed, answers, early)
               case None       =>
-                Async[F].fromEither(feed.message(reply)).flatMap(a => confirm(replies, before, pending, feed, early ++ a))
+                Async[F].fromEither(feed.message(reply)).flatMap(a => confirm(replies, before, pending, feed, answers, early ++ a))
             }
         }
   }

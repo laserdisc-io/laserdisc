@@ -29,6 +29,7 @@ trait ConnectionBaseP extends Features {
     super.supported ++ List(
       "AUTH",
       "ECHO",
+      "HELLO: AUTH SETNAME",
       "PING",
       "QUIT",
       "SELECT"
@@ -42,6 +43,18 @@ trait ConnectionBaseP extends Features {
   final def auth(password: Key): Single.Aux[OK] = Protocol("AUTH", password).as[Str, OK]
 
   final def echo[A: Show: Read[Bulk, _]](message: A): Single.Aux[A] = Protocol("ECHO", message).as[Bulk, A]
+
+  /** What the server says about itself and this connection, optionally logging in and naming the connection first. It always asks for
+    * protocol 2, the one laserdisc reads
+    */
+  final val hello: Single.Aux[ServerInspection.Hello] = Protocol("HELLO", "2").using(RESPRead.instance(ServerInspection.hello))
+  final def hello(username: Key, password: Key): Single.Aux[ServerInspection.Hello] =
+    Protocol("HELLO", "2" :: "AUTH" :: username.value :: password.value :: Nil).using(RESPRead.instance(ServerInspection.hello))
+  final def hello(name: ConnectionName): Single.Aux[ServerInspection.Hello] =
+    Protocol("HELLO", "2" :: "SETNAME" :: name.value :: Nil).using(RESPRead.instance(ServerInspection.hello))
+  final def hello(username: Key, password: Key, name: ConnectionName): Single.Aux[ServerInspection.Hello] =
+    Protocol("HELLO", "2" :: "AUTH" :: username.value :: password.value :: "SETNAME" :: name.value :: Nil)
+      .using(RESPRead.instance(ServerInspection.hello))
 
   final val ping: Single.Aux[PONG]                                  = Protocol("PING", EmptyTuple).as[Str, PONG]
   final def ping[A: Show: Read[Bulk, _]](message: A): Single.Aux[A] = Protocol("PING", message).as[Bulk, A]

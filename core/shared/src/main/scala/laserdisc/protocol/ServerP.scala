@@ -329,6 +329,39 @@ object ServerP {
     def skipMe(skip: Boolean): ClientFilter                = none.skipMe(skip)
   }
 
+  /** REDIRECT, BCAST, PREFIX, OPTIN, OPTOUT and NOLOOP, for CLIENT TRACKING. Which connection gets the notices, for every key under the
+    * prefixes rather than only those read, only for the keys read right after `caching(true)` or all but those after `caching(false)`, and
+    * not about this connection's own changes. A server refuses PREFIX without BCAST, and OPTIN with OPTOUT
+    */
+  final class TrackingOptions private (val params: List[String]) {
+    def redirect(id: NonNegLong): TrackingOptions = new TrackingOptions(params ++ List("REDIRECT", id.value.toString))
+    def bcast: TrackingOptions                    = new TrackingOptions(params :+ "BCAST")
+    def prefix(prefix: Key): TrackingOptions      = new TrackingOptions(params ++ List("PREFIX", prefix.value))
+    def optin: TrackingOptions                    = new TrackingOptions(params :+ "OPTIN")
+    def optout: TrackingOptions                   = new TrackingOptions(params :+ "OPTOUT")
+    def noloop: TrackingOptions                   = new TrackingOptions(params :+ "NOLOOP")
+  }
+  object TrackingOptions {
+    def redirect(id: NonNegLong): TrackingOptions = new TrackingOptions(List("REDIRECT", id.value.toString))
+  }
+
+  /** CLIENT TRACKINGINFO: the connection's tracking flags, where its notices go, if anywhere, and its prefixes */
+  final case class TrackingInfo(flags: Seq[String], redirect: Option[NonNegLong], prefixes: Seq[String])
+
+  private[protocol] final val trackingInfo: Read[Record, TrackingInfo] = {
+    implicit val redirect: Read[Num, Option[NonNegLong]] = Read.instance {
+      case Num(-1L) | Num(0L) => Right(None)
+      case other              => Read[Num, NonNegLong].read(other).map(Some(_))
+    }
+    Read.record("tracking info") { f =>
+      for {
+        flags    <- f[Arr.Of[Bulk], Seq[String]]("flags")
+        target   <- f[Num, Option[NonNegLong]]("redirect")
+        prefixes <- f[Arr.Of[Bulk], Seq[String]]("prefixes")
+      } yield TrackingInfo(flags, target, prefixes)
+    }
+  }
+
   /** The filters of CLIENT KILL and CLIENT LIST on Valkey 9.0: a client must match all of them, and the `not` ones must not match. `flags`
     * and `capabilities` are the letters CLIENT LIST shows for them
     */
@@ -490,8 +523,47 @@ trait ClientCoreCommands extends Features {
   val unsetname: Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
 }
 
+/** CLIENT TRACKING, CACHING, GETREDIR and TRACKINGINFO: Redis 6.2. Laserdisc reads protocol 2, so the notices go to another connection,
+  * with [[ServerP.TrackingOptions.redirect]]: open it with `RedisSubscriber.identified` and [[invalidations]]. Tracking belongs to the
+  * connection, so it's gone after the client reconnects, and a cache kept from these notices can go stale without any notice saying so
+  */
+trait ClientTrackingCommands extends Features {
+  import ServerP.{TrackingInfo, TrackingOptions}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "CLIENT CACHING: NO YES",
+      "CLIENT GETREDIR",
+      "CLIENT TRACKING: BCAST NOLOOP OFF ON OPTIN OPTOUT PREFIX REDIRECT",
+      "CLIENT TRACKINGINFO"
+    )
+
+  /** Which keys changed, for the connection that CLIENT TRACKING redirects its notices to */
+  val invalidations: Feed[Feed.Invalidation] = Feed.invalidations
+
+  /** Asks for notices when the keys this connection reads change */
+  def tracking(options: TrackingOptions): Single.Aux[OK] = Protocol("CLIENT", "TRACKING" :: "ON" :: options.params).as[Str, OK]
+
+  val trackingoff: Single.Aux[OK] = Protocol("CLIENT", "TRACKING" :: "OFF" :: Nil).as[Str, OK]
+
+  /** With OPTIN or OPTOUT, whether to track the keys of the next command. It only applies to the very next command on the connection, so
+    * send them together in the same `send`, or another caller's may come in between
+    */
+  def caching(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "CACHING" :: (if (on) "YES" else "NO") :: Nil).as[Str, OK]
+
+  /** The connection that gets this one's notices, or `None` when there isn't one */
+  val getredir: Single.Aux[Option[NonNegLong]] = Protocol("CLIENT", "GETREDIR").using(
+    RESPRead.instance(Read.instance[Num, Option[NonNegLong]] {
+      case Num(-1L) | Num(0L) => Right(None)
+      case other              => Read[Num, NonNegLong].read(other).map(Some(_))
+    })
+  )
+
+  val trackinginfo: Single.Aux[TrackingInfo] = Protocol("CLIENT", "TRACKINGINFO").using(RESPRead.instance(ServerP.trackingInfo))
+}
+
 /** CLIENT: Redis 6.2 */
-trait ClientCommands extends ClientCoreCommands {
+trait ClientCommands extends ClientCoreCommands with ClientTrackingCommands {
   import ServerP.{ClientFilter, UnblockMode}
 
   override private[laserdisc] def supported: List[String] =
@@ -656,6 +728,7 @@ trait ServerCoreP extends ServerInspectionCoreP with MonitorP {
     final val aclSelectorRules      = Acl.AclRulesWithSelectors.none
     final val clientFilter          = ServerP.ClientFilter
     final val clientType            = ServerP.ClientType
+    final val trackingOptions       = ServerP.TrackingOptions
     final val valkeyClientFilter    = ServerP.ValkeyClientFilter
     final val valkeyShutdownOptions = ServerP.ValkeyShutdownOptions
     final val commandFilter         = ServerInspection.CommandFilter

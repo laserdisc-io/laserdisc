@@ -50,6 +50,13 @@ object Feed {
     */
   final case class MonitorEvent(time: BigDecimal, db: NonNegInt, client: String, command: Seq[String])
 
+  /** A notice of client tracking: these keys changed, or all of them, as after FLUSHALL */
+  sealed trait Invalidation
+  object Invalidation {
+    final case class Keys(keys: Seq[Key]) extends Invalidation
+    case object Everything                extends Invalidation
+  }
+
   private final def command(name: String, arguments: List[String]): RESP = Arr(Bulk(name) :: arguments.map(Bulk(_)))
 
   private final def confirmedAs(kind: String): RESP => Option[String] = {
@@ -113,6 +120,29 @@ object Feed {
             key <- keyOf(channel)
             a   <- Read[Bulk, A].read(value)
           } yield Some(ShardMessage(key, a))
+        case resp if confirmation(resp).nonEmpty => Right(None)
+        case resp                                => unexpected(resp)
+      }
+    )
+  }
+
+  private final val invalidationChannel = "__redis__:invalidate"
+
+  private[protocol] final val invalidations: Feed[Invalidation] = {
+    val confirmation = confirmedAs("subscribe")
+    new Feed[Invalidation](
+      command("SUBSCRIBE", List(invalidationChannel)),
+      Set(invalidationChannel),
+      confirmation,
+      {
+        case Arr(Bulk("message") :: Bulk(`invalidationChannel`) :: NullBulk :: Nil)  => Right(Some(Invalidation.Everything))
+        case Arr(Bulk("message") :: Bulk(`invalidationChannel`) :: Arr(keys) :: Nil) =>
+          keys
+            .foldRight[Maybe[List[Key]]](Right(Nil)) {
+              case (bulk: Bulk, rest) => rest.flatMap(found => Read[Bulk, Key].read(bulk).map(_ :: found))
+              case (other, _)         => Left(RESPDecErr(s"Unexpected key in a tracking notice: $other"))
+            }
+            .map(found => Some(Invalidation.Keys(found)))
         case resp if confirmation(resp).nonEmpty => Right(None)
         case resp                                => unexpected(resp)
       }

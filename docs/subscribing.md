@@ -50,3 +50,33 @@ If the server needs a password, pass it before the subscription:
 ```scala
 RedisSubscriber[IO].to("localhost", 6379, Key("secret"), subscribe[String](channels))
 ```
+
+## Knowing when keys change
+
+Client tracking tells you when a key you've read changes, which is how you keep a
+local cache of it. laserdisc reads protocol 2, so the notices go to a second
+connection:
+
+```scala
+val c       = laserdisc.redis_8_10.client
+val options = laserdisc.redis_8_10.servertypes.trackingOptions
+
+RedisSubscriber[IO].identified("localhost", 6379, c.invalidations).use { case (id, notices) =>
+  redisClient.send(c.tracking(options.redirect(id))) *>
+    notices.evalMap(notice => IO.println(notice)).compile.drain
+}
+```
+
+Each notice is `Invalidation.Keys(keys)`, or `Invalidation.Everything` after a
+command like `FLUSHALL`.
+
+- **Tracking doesn't survive a reconnect.** `RedisClient` reconnects on its own, and
+  the new connection isn't tracking anything, without any notice saying so. Don't
+  rely on a cache being fresh after a connection problem.
+- **`caching` only applies to the very next command**, so send them together:
+  `redisClient.send(c.caching(true), get[String]("key"))`. Otherwise another
+  caller's command may come in between.
+- **It's for the whole connection.** `RedisClient` shares one connection between all
+  your calls, so what every caller reads gets tracked. Use a `RedisClient` of its own
+  to track only some reads.
+- **Dragonfly doesn't have it.** It only allows tracking with protocol 3.

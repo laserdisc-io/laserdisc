@@ -260,6 +260,37 @@ object ServerInspection {
   private[protocol] final val moduleInfos: Read[OneOf[Records *: Arr.Of[DragonflyModuleReply] *: EmptyTuple], Seq[ModuleInfo]] =
     Read[OneOf[Records *: Arr.Of[DragonflyModuleReply] *: EmptyTuple], Seq[ModuleInfo]]
 
+  /** HELLO's reply: the server's name and version, the protocol, this connection's id, how the server runs, and its modules, with anything
+    * else the server sends as text
+    */
+  final case class Hello(
+      server: String,
+      version: String,
+      protocol: Long,
+      id: NonNegLong,
+      mode: String,
+      role: String,
+      modules: Seq[ModuleInfo],
+      others: Map[String, String]
+  )
+  private[protocol] final val hello: Read[Record, Hello] = {
+    val typed = Set("server", "version", "proto", "id", "mode", "role", "modules")
+    Read.record("hello") { f =>
+      for {
+        server  <- f.bulk[String]("server")
+        version <- f.bulk[String]("version")
+        proto   <- f.num[Long]("proto")
+        id      <- f.num[NonNegLong]("id")
+        mode    <- f.bulk[String]("mode")
+        role    <- f.bulk[String]("role")
+        modules <- f.optional[Records, Seq[ModuleInfo]]("modules")
+      } yield {
+        val others = f.others(typed).collect { case (k, Bulk(v)) => k -> v }
+        Hello(server, version, proto, id, mode, role, modules.getOrElse(Nil), others)
+      }
+    }
+  }
+
   /** SLOW, LARGE-REQUEST and LARGE-REPLY, for COMMANDLOG: Valkey 8.1 */
   sealed trait CommandLogType
   object CommandLogType {

@@ -89,6 +89,7 @@ Some things still behave differently from Redis:
 - `ACL LOAD`, `ACL SAVE` and `CONFIG REWRITE` need Dragonfly to have been started
   with those files.
 - `PUBSUB SHARDCHANNELS` and `PUBSUB SHARDNUMSUB` need cluster mode.
+- `CLIENT TRACKING` isn't available, because Dragonfly only allows it with protocol 3.
 
 ## Commands laserdisc doesn't send
 
@@ -102,6 +103,7 @@ because they have no use on a connection shared by all your calls:
 | `ASKING`, `RESTORE-ASKING`, `CLUSTER SYNCSLOTS`, `XIDMPRECORD` | Servers send these to each other |
 | `SCRIPT DEBUG` | It takes over the connection with an interactive debugger |
 | `UNSUBSCRIBE`, `PUNSUBSCRIBE`, `SUNSUBSCRIBE` | Closing a [subscription](subscribing.md) ends it |
+| `HELLO 3` | laserdisc reads protocol 2, so `hello` only asks for that |
 | `DISCARD` | A transaction is sent whole, so there's never an open one to cancel |
 | `RESET` | It would log out and change the database for everyone sharing the connection |
 | `CLIENT REPLY` | Replies are matched to requests by their order, so a missing reply breaks the connection |

@@ -32,13 +32,16 @@ import java.net.{InetAddress, ServerSocket}
 import scala.concurrent.duration.*
 
 final class RedisRedisSubscriberSpec extends RedisSubscriberSpec(6379, "redis") {
+  test("a redis client is told which keys it read changed")(tracking(laserdisc.redis_8_10.client))
   test("a redis client reads messages of shard channels")(shards(laserdisc.redis_8_10))
   test("a redis client is told about a wrong password")(wrongPassword())
 }
 final class KeyDbRedisSubscriberSpec extends RedisSubscriberSpec(6380, "keyDb") {
+  test("a keyDb client is told which keys it read changed")(tracking(laserdisc.redis_6_2.client))
   test("a keyDb client is told about a wrong password")(wrongPassword())
 }
 final class ValkeyRedisSubscriberSpec extends RedisSubscriberSpec(6381, "valkey") {
+  test("a valkey client is told which keys it read changed")(tracking(laserdisc.valkey_9_1.client))
   test("a valkey client reads messages of shard channels")(shards(laserdisc.valkey_9_1))
   test("a valkey client is told about a wrong password")(wrongPassword())
 }
@@ -61,6 +64,47 @@ abstract class RedisSubscriberSpec(p: Port, dest: String) extends LaserdiscFs2Su
       IO(send(v.spublish(Key("sub:s"), "m"))) *> messages.take(1).compile.toList
     }
     assertEquals(run(received), List(ShardMessage(Key("sub:s"), "m")))
+  }
+
+  protected final def tracking(c: laserdisc.protocol.ClientCommands): Unit = {
+    val options = laserdisc.redis_6_2.servertypes.trackingOptions
+    val checked = RedisSubscriber[IO].identified("127.0.0.1", p, c.invalidations).use { case (id, notices) =>
+      RedisClient[IO].to("127.0.0.1", p).use { own =>
+        def ok[A](protocol: Protocol.Aux[A]) = own.send(protocol).flatMap(IO.fromEither)
+        for {
+          _     <- ok(publisher.set(Key("sub:t"), "1"))
+          _     <- ok(c.tracking(options.redirect(id)))
+          redir <- ok(c.getredir)
+          info  <- ok(c.trackinginfo)
+          _     <- ok(publisher.get[String](Key("sub:t")))
+          _     <- IO(send(publisher.set(Key("sub:t"), "2")))
+          seen  <- notices.take(1).compile.toList
+          _     <- ok(c.trackingoff)
+          off   <- ok(c.getredir)
+          _     <- ok(c.tracking(options.redirect(id).optin))
+          _     <- own.send(c.caching(true), publisher.get[String](Key("sub:t")))
+          _     <- IO(send(publisher.set(Key("sub:t"), "3")))
+          next  <- notices.take(1).compile.toList
+          _     <- ok(c.trackingoff)
+          _     <- ok(c.tracking(options.redirect(id).bcast.prefix(Key("sub:b:")).noloop))
+          bcast <- ok(c.trackinginfo)
+          _     <- IO(send(publisher.set(Key("sub:b:1"), "1")))
+          third <- notices.take(1).compile.toList
+          _     <- ok(c.trackingoff)
+        } yield (id, redir, info, seen, off, next, bcast, third)
+      }
+    }
+    val (id, redir, info, seen, off, next, bcast, third) = run(checked)
+    val changed                                          = Feed.Invalidation.Keys(Seq(Key("sub:t")))
+    assertEquals(redir, Some(id))
+    assertEquals(info.redirect, Some(id))
+    assert(info.flags.contains("on"))
+    assertEquals(seen, List[Feed.Invalidation](changed))
+    assertEquals(off, None)
+    assertEquals(next, List[Feed.Invalidation](changed))
+    assertEquals(bcast.prefixes, Seq("sub:b:"))
+    assert(bcast.flags.contains("bcast"))
+    assertEquals(third, List[Feed.Invalidation](Feed.Invalidation.Keys(Seq(Key("sub:b:1")))))
   }
 
   protected final def wrongPassword(): Unit = {
@@ -96,6 +140,18 @@ abstract class RedisSubscriberSpec(p: Port, dest: String) extends LaserdiscFs2Su
       }
       .attempt
     assert(run(attempt).isLeft)
+  }
+
+  test(s"a $dest client says hello, names its connection and reads what the server says") {
+    val named = RedisClient[IO].to("127.0.0.1", p).use { own =>
+      own.send(publisher.hello(ConnectionName("ld-hello"))).flatMap(IO.fromEither) product own
+        .send(publisher.client.getname)
+        .flatMap(IO.fromEither)
+    }
+    val (info, name) = run(named)
+    assertEquals(info.protocol, 2L)
+    assert(info.id.value > 0L)
+    assertEquals(name.map(_.value), Some("ld-hello"))
   }
 
   test(s"a $dest client is no longer subscribed once closed") {
@@ -186,6 +242,20 @@ final class RedisSubscriberBehaviourSpec extends munit.FunSuite {
       RedisSubscriber[IO].to("127.0.0.1", port(p), Key("secret"), feed).use(_.take(1).compile.toList).timeout(5.seconds).unsafeRunSync()
     assertEquals(received, List(Message(Key("a"), "m")))
     assertEquals(seen, List(List("AUTH", "secret"), List("SUBSCRIBE", "a", "b")))
+  }
+
+  test("identified gives the connection's id, asked for before subscribing") {
+    var seen: List[List[String]] = Nil
+    val p                        = serving { in =>
+      val id        = command(in)
+      val subscribe = command(in)
+      seen = List(id, subscribe)
+      ":42\r\n" + confirmation("a", 1) + confirmation("b", 2)
+    }
+    val id =
+      RedisSubscriber[IO].identified("127.0.0.1", port(p), feed).use { case (id, _) => IO.pure(id) }.timeout(5.seconds).unsafeRunSync()
+    assertEquals(id.value, 42L)
+    assertEquals(seen, List(List("CLIENT", "ID"), List("SUBSCRIBE", "a", "b")))
   }
 
   test("the stream fails when the server closes the connection") {

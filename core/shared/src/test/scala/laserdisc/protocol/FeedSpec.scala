@@ -82,4 +82,69 @@ final class FeedSpec extends BaseSpec with PublishShardP with MonitorP {
     assertEquals(Feed.monitorArguments("not quoted"), None)
     assert(monitor.message(Str("something else")).isLeft)
   }
+
+  test("The invalidations feed reads the keys of a notice, or that all of them changed") {
+    val feed = redis_6_2.client.invalidations
+    assertEquals(feed.command, bulks("SUBSCRIBE", "__redis__:invalidate"))
+    assertEquals(feed.confirmed(Arr(Bulk("subscribe"), Bulk("__redis__:invalidate"), Num(1L))), Some("__redis__:invalidate"))
+    assertEquals(
+      feed.message(Arr(Bulk("message"), Bulk("__redis__:invalidate"), bulks("a", "b"))),
+      Some(Feed.Invalidation.Keys(Seq(Key("a"), Key("b"))): Feed.Invalidation)
+    )
+    assertEquals(
+      feed.message(Arr(Bulk("message"), Bulk("__redis__:invalidate"), NullBulk)),
+      Some(Feed.Invalidation.Everything: Feed.Invalidation)
+    )
+    assert(feed.message(Arr(Bulk("message"), Bulk("other"), NullBulk)).isLeft)
+    assert(feed.message(Arr(Bulk("message"), Bulk("__redis__:invalidate"), Arr(Num(1L)))).isLeft)
+  }
+
+  test("CLIENT TRACKING sends its options, and CLIENT TRACKINGINFO and GETREDIR read where the notices go") {
+    val c  = redis_6_2.client
+    val o  = redis_6_2.servertypes.trackingOptions
+    val id = NonNegLong(5L)
+    assertEquals(c.tracking(o.redirect(id)).encode, bulks("CLIENT", "TRACKING", "ON", "REDIRECT", "5"))
+    assertEquals(
+      c.tracking(o.redirect(id).bcast.prefix(Key("a")).prefix(Key("b")).noloop).encode,
+      bulks("CLIENT", "TRACKING", "ON", "REDIRECT", "5", "BCAST", "PREFIX", "a", "PREFIX", "b", "NOLOOP")
+    )
+    assertEquals(c.tracking(o.redirect(id).optin).encode, bulks("CLIENT", "TRACKING", "ON", "REDIRECT", "5", "OPTIN"))
+    assertEquals(c.tracking(o.redirect(id).optout).encode, bulks("CLIENT", "TRACKING", "ON", "REDIRECT", "5", "OPTOUT"))
+    assertEquals(c.trackingoff.encode, bulks("CLIENT", "TRACKING", "OFF"))
+    assertEquals(c.caching(true).encode, bulks("CLIENT", "CACHING", "YES"))
+    assertEquals(c.caching(false).encode, bulks("CLIENT", "CACHING", "NO"))
+    assertEquals(c.getredir.decode(Num(-1L)), None)
+    assertEquals(c.getredir.decode(Num(0L)), None)
+    assertEquals(c.getredir.decode(Num(5L)), Some(id))
+    assertEquals(
+      c.trackinginfo.decode(Arr(Bulk("flags"), bulks("on", "bcast"), Bulk("redirect"), Num(5L), Bulk("prefixes"), bulks("a"))),
+      ServerP.TrackingInfo(Seq("on", "bcast"), Some(id), Seq("a"))
+    )
+    assertEquals(
+      c.trackinginfo.decode(Arr(Bulk("flags"), bulks("off"), Bulk("redirect"), Num(-1L), Bulk("prefixes"), Arr(Nil))).map(_.redirect),
+      None
+    )
+  }
+
+  test("HELLO asks for protocol 2, logging in and naming the connection, and reads what each server sends") {
+    val h = redis_6_2
+    assertEquals(h.hello.encode, bulks("HELLO", "2"))
+    assertEquals(h.hello(Key("u"), Key("p")).encode, bulks("HELLO", "2", "AUTH", "u", "p"))
+    assertEquals(h.hello(ConnectionName("n")).encode, bulks("HELLO", "2", "SETNAME", "n"))
+    assertEquals(h.hello(Key("u"), Key("p"), ConnectionName("n")).encode, bulks("HELLO", "2", "AUTH", "u", "p", "SETNAME", "n"))
+    def fields(extra: RESP*) =
+      Arr(
+        List[RESP](Bulk("server"), Bulk("redis"), Bulk("version"), Bulk("7.4.0"), Bulk("proto"), Num(2L), Bulk("id"), Num(1L)) ++
+          List[RESP](Bulk("mode"), Bulk("standalone"), Bulk("role"), Bulk("master")) ++ extra
+      )
+    assertEquals(
+      h.hello.decode(fields(Bulk("dragonfly_version"), Bulk("df-v2.0.2"))),
+      ServerInspection.Hello("redis", "7.4.0", 2L, NonNegLong(1L), "standalone", "master", Nil, Map("dragonfly_version" -> "df-v2.0.2"))
+    )
+    val module = Arr(Bulk("name"), Bulk("m"), Bulk("ver"), Num(1L), Bulk("path"), Bulk("/m"), Bulk("args"), Arr(Nil))
+    assertEquals(
+      h.hello.decode(fields(Bulk("modules"), Arr(module))).map(_.modules),
+      Seq(ServerInspection.ModuleInfo("m", 1L, Some("/m"), Nil))
+    )
+  }
 }

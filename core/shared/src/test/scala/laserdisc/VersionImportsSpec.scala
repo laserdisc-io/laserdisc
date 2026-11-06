@@ -649,6 +649,26 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
+  test("every version has HELLO and CLIENT TRACKING, except that dragonfly_2_0 has no tracking") {
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(hello.frames, frame("HELLO", "2"))
+      assertEquals(client.trackingoff.frames, frame("CLIENT", "TRACKING", "OFF"))
+      assertEquals(client.invalidations.confirmations, Set("__redis__:invalidate"))
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(client.getredir.frames, frame("CLIENT", "GETREDIR"))
+    }
+    {
+      import laserdisc.dragonfly_2_0.*
+      assertEquals(connection.hello.frames, frame("HELLO", "2"))
+      assert(compileErrors("""client.trackingoff""").nonEmpty)
+      assert(compileErrors("""client.invalidations""").nonEmpty)
+      assert(compileErrors("""client.getredir""").nonEmpty)
+    }
+  }
+
   test("redis imports don't have Dragonfly's own commands") {
     import laserdisc.auto.*
     import laserdisc.redis_8_10.*

@@ -781,6 +781,56 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
+  test("only Redis 8.4 and later have XREADGROUP with CLAIM, and only Redis 8.10 and later MAXCOUNT and MAXSIZE") {
+    import laserdisc.auto.*
+
+    val streamKeys = OneOrMoreKeys.unsafeFrom(List(Key("s")))
+
+    {
+      import laserdisc.redis_8_4.*
+      assertEquals(
+        xreadgroupclaim[Int]("g", "c", streamKeys, 50L).frames,
+        frame("XREADGROUP", "GROUP", "g", "c", "CLAIM", "50", "STREAMS", "s", ">")
+      )
+      assertEquals(
+        blocking.xreadgroupclaim[Int]("g", "c", streamKeys, 50L, 100L).frames,
+        frame("XREADGROUP", "GROUP", "g", "c", "BLOCK", "100", "CLAIM", "50", "STREAMS", "s", ">")
+      )
+      assert(
+        compileErrors(
+          """xread[Int](OneOrMore.unsafeFrom(List(Key("s") -> streamtypes.StreamFrom.latest)), streamtypes.StreamReadLimits.maxCount(1L))"""
+        ).nonEmpty
+      )
+      assert(
+        compileErrors(
+          """blocking.xread[Int](OneOrMore.unsafeFrom(List(Key("s") -> streamtypes.StreamFrom.latest)), 100L, streamtypes.StreamReadLimits.maxCount(1L))"""
+        ).nonEmpty
+      )
+    }
+    {
+      import laserdisc.redis_8_2.*
+      assertEquals(xlen("s").frames, frame("XLEN", "s"))
+      assert(compileErrors("""xreadgroupclaim[Int]("g", "c", OneOrMoreKeys.unsafeFrom(List(Key("s"))), 50L)""").nonEmpty)
+      assert(compileErrors("""blocking.xreadgroupclaim[Int]("g", "c", OneOrMoreKeys.unsafeFrom(List(Key("s"))), 50L, 100L)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(xlen("s").frames, frame("XLEN", "s"))
+      assert(compileErrors("""xreadgroupclaim[Int]("g", "c", OneOrMoreKeys.unsafeFrom(List(Key("s"))), 50L)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      import streamtypes.*
+      val from = OneOrMore.unsafeFrom(List(Key("s") -> StreamFrom.latest))
+      assertEquals(xread[Int](from, StreamReadLimits.maxCount(1L)).frames, frame("XREAD", "MAXCOUNT", "1", "STREAMS", "s", "$"))
+      assertEquals(
+        blocking.xread[Int](from, 100L, StreamReadLimits.maxSize(9L)).frames,
+        frame("XREAD", "MAXSIZE", "9", "BLOCK", "100", "STREAMS", "s", "$")
+      )
+      assertEquals(streams.xread[Int](from, StreamReadLimits.maxCount(1L)).frames, frame("XREAD", "MAXCOUNT", "1", "STREAMS", "s", "$"))
+    }
+  }
+
   test("every version has EVAL and SCRIPT, only Redis 7.0 and later have functions, and only Valkey 8.0 and later SCRIPT SHOW") {
     import laserdisc.auto.*
 

@@ -31,13 +31,10 @@ import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
   * longer than the wait
   */
 trait BStreamBaseP extends Features {
-  import StreamP.{Entry, From, GroupFrom, NoAck}
+  import StreamP.{Entry, From, GroupFrom, NoAck, streamsParams}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("XREAD: BLOCK COUNT STREAMS", "XREADGROUP: BLOCK COUNT GROUP NOACK STREAMS")
-
-  private final def streamsParams[K](streams: OneOrMore[(Key, K)])(param: K => String): List[String] =
-    "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(s => param(s._2))
 
   private final def entries[A: Read[Bulk, _]] = StreamP.maybeStreams[A]
 
@@ -172,4 +169,222 @@ trait BStreamBaseP extends Features {
     else read.flatMap(_.lastOption).fold(GroupFrom.newEntries)(entry => GroupFrom.pendingAfter(entry.id))
 }
 
-trait BStreamP extends BStreamBaseP
+/** XREADGROUP with CLAIM that waits, up to `blockMilliseconds`: Redis 8.4 */
+trait BStreamReadGroupClaimP extends Features {
+  import StreamP.{ClaimedEntry, NoAck, claimParams, maybeClaimed}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("XREADGROUP: CLAIM")
+
+  private final def countParams(count: PosLong): List[String]                = List("COUNT", count.value.toString)
+  private final def blockParams(blockMilliseconds: NonNegLong): List[String] = List("BLOCK", blockMilliseconds.value.toString)
+
+  /** Reads new entries for a consumer of the group, by stream, or `None` when none came within the wait, first taking over other consumers'
+    * entries that have been pending for at least `minIdleMilliseconds`
+    */
+  final def xreadgroupclaim[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      keys: OneOrMoreKeys,
+      minIdleMilliseconds: NonNegLong,
+      blockMilliseconds: NonNegLong
+  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+    Protocol("XREADGROUP", claimParams(group, consumer, minIdleMilliseconds, keys, blockParams(blockMilliseconds), Nil))
+      .using(maybeClaimed[A])
+  final def xreadgroupclaim[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      keys: OneOrMoreKeys,
+      minIdleMilliseconds: NonNegLong,
+      blockMilliseconds: NonNegLong,
+      count: PosLong
+  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      claimParams(group, consumer, minIdleMilliseconds, keys, countParams(count) ++ blockParams(blockMilliseconds), Nil)
+    ).using(maybeClaimed[A])
+  final def xreadgroupclaim[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      keys: OneOrMoreKeys,
+      minIdleMilliseconds: NonNegLong,
+      blockMilliseconds: NonNegLong,
+      noAck: NoAck
+  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      claimParams(group, consumer, minIdleMilliseconds, keys, blockParams(blockMilliseconds), List(Show[NoAck].show(noAck)))
+    ).using(maybeClaimed[A])
+  final def xreadgroupclaim[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      keys: OneOrMoreKeys,
+      minIdleMilliseconds: NonNegLong,
+      blockMilliseconds: NonNegLong,
+      count: PosLong,
+      noAck: NoAck
+  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      claimParams(
+        group,
+        consumer,
+        minIdleMilliseconds,
+        keys,
+        countParams(count) ++ blockParams(blockMilliseconds),
+        List(Show[NoAck].show(noAck))
+      )
+    ).using(maybeClaimed[A])
+}
+
+/** XREAD and XREADGROUP with MAXCOUNT and MAXSIZE that wait, up to `blockMilliseconds`: Redis 8.10 */
+trait BStreamReadLimitsP extends Features {
+  import StreamP.{ClaimedEntry, Entry, From, GroupFrom, NoAck, ReadLimits, claimParams, maybeClaimed, maybeStreams, streamsParams}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("XREAD: MAXCOUNT MAXSIZE", "XREADGROUP: MAXCOUNT MAXSIZE")
+
+  private final def countParams(count: PosLong): List[String]                = List("COUNT", count.value.toString)
+  private final def blockParams(blockMilliseconds: NonNegLong): List[String] = List("BLOCK", blockMilliseconds.value.toString)
+
+  /** The streams' entries after the given ids, by stream, up to the limits for the whole read, or `None` when none came within the wait */
+  final def xread[A: Read[Bulk, _]](
+      streams: OneOrMore[(Key, From)],
+      blockMilliseconds: NonNegLong,
+      limits: ReadLimits
+  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    Protocol("XREAD", limits.params ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(_.param)).using(maybeStreams[A])
+  final def xread[A: Read[Bulk, _]](
+      streams: OneOrMore[(Key, From)],
+      blockMilliseconds: NonNegLong,
+      count: PosLong,
+      limits: ReadLimits
+  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    Protocol("XREAD", countParams(count) ++ limits.params ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(_.param))
+      .using(maybeStreams[A])
+
+  private final def group(group: Key, consumer: Key): List[String] = List("GROUP", group.value, consumer.value)
+
+  /** Reads the streams for a consumer of the group, by stream, up to the limits for the whole read, or `None` when none had entries for it
+    * within the wait
+    */
+  final def xreadgroup[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      streams: OneOrMore[(Key, GroupFrom)],
+      blockMilliseconds: NonNegLong,
+      limits: ReadLimits
+  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      this.group(group, consumer) ++ limits.params ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(_.param)
+    ).using(maybeStreams[A])
+  final def xreadgroup[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      streams: OneOrMore[(Key, GroupFrom)],
+      blockMilliseconds: NonNegLong,
+      count: PosLong,
+      limits: ReadLimits
+  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      this.group(group, consumer) ++ countParams(count) ++ limits.params ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(
+        _.param
+      )
+    ).using(maybeStreams[A])
+  final def xreadgroup[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      streams: OneOrMore[(Key, GroupFrom)],
+      blockMilliseconds: NonNegLong,
+      limits: ReadLimits,
+      noAck: NoAck
+  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      this.group(group, consumer) ++ limits.params ++ blockParams(blockMilliseconds) ++
+        (Show[NoAck].show(noAck) :: streamsParams(streams)(_.param))
+    ).using(maybeStreams[A])
+  final def xreadgroup[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      streams: OneOrMore[(Key, GroupFrom)],
+      blockMilliseconds: NonNegLong,
+      count: PosLong,
+      limits: ReadLimits,
+      noAck: NoAck
+  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      this.group(group, consumer) ++ countParams(count) ++ limits.params ++ blockParams(blockMilliseconds) ++
+        (Show[NoAck].show(noAck) :: streamsParams(streams)(_.param))
+    ).using(maybeStreams[A])
+
+  /** XREADGROUP with CLAIM that waits, up to the limits for the whole read */
+  final def xreadgroupclaim[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      keys: OneOrMoreKeys,
+      minIdleMilliseconds: NonNegLong,
+      blockMilliseconds: NonNegLong,
+      limits: ReadLimits
+  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+    Protocol("XREADGROUP", claimParams(group, consumer, minIdleMilliseconds, keys, limits.params ++ blockParams(blockMilliseconds), Nil))
+      .using(maybeClaimed[A])
+  final def xreadgroupclaim[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      keys: OneOrMoreKeys,
+      minIdleMilliseconds: NonNegLong,
+      blockMilliseconds: NonNegLong,
+      count: PosLong,
+      limits: ReadLimits
+  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      claimParams(group, consumer, minIdleMilliseconds, keys, countParams(count) ++ limits.params ++ blockParams(blockMilliseconds), Nil)
+    ).using(maybeClaimed[A])
+  final def xreadgroupclaim[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      keys: OneOrMoreKeys,
+      minIdleMilliseconds: NonNegLong,
+      blockMilliseconds: NonNegLong,
+      limits: ReadLimits,
+      noAck: NoAck
+  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      claimParams(
+        group,
+        consumer,
+        minIdleMilliseconds,
+        keys,
+        limits.params ++ blockParams(blockMilliseconds),
+        List(Show[NoAck].show(noAck))
+      )
+    ).using(maybeClaimed[A])
+  final def xreadgroupclaim[A: Read[Bulk, _]](
+      group: Key,
+      consumer: Key,
+      keys: OneOrMoreKeys,
+      minIdleMilliseconds: NonNegLong,
+      blockMilliseconds: NonNegLong,
+      count: PosLong,
+      limits: ReadLimits,
+      noAck: NoAck
+  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+    Protocol(
+      "XREADGROUP",
+      claimParams(
+        group,
+        consumer,
+        minIdleMilliseconds,
+        keys,
+        countParams(count) ++ limits.params ++ blockParams(blockMilliseconds),
+        List(Show[NoAck].show(noAck))
+      )
+    ).using(maybeClaimed[A])
+}
+
+trait BStreamP extends BStreamBaseP with BStreamReadGroupClaimP with BStreamReadLimitsP

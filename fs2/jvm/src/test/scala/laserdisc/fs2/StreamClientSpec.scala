@@ -55,6 +55,46 @@ final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
     assertEquals(send(xcfgset("x:r", StreamIdmpConfig.duration(60L).maxSize(100L))), OK)
   }
 
+  test("a redis client takes over idle entries with XREADGROUP's CLAIM, and limits whole reads with MAXCOUNT and MAXSIZE") {
+    import laserdisc.redis_8_10.*
+    import streamtypes.*
+
+    send(del("x:m", "x:m2"))
+    send(xgroupcreate("x:m", "grp", StreamFrom.latest, StreamMkStream))
+    val first  = send(xadd("x:m", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
+    val second = send(xadd("x:m", OneOrMore.unsafeFrom(List(Key("a") -> 2))))
+    send(xreadgroup[Int]("grp", "c1", OneOrMore.unsafeFrom(List(Key("x:m") -> StreamGroupFrom.newEntries)), 1L))
+
+    val keys    = OneOrMoreKeys.unsafeFrom(List(Key("x:m")))
+    val claimed = send(xreadgroupclaim[Int]("grp", "c2", keys, 0L)).toList.flatten.flatMap(_.value)
+    assertEquals(claimed.map(e => e.id -> e.deliveries.value), List(first -> 1L, second -> 0L))
+    assertEquals(claimed.map(_.fields), List(Seq(Key("a") -> 1), Seq(Key("a") -> 2)))
+
+    val claimedAgain = send(blocking.xreadgroupclaim[Int]("grp", "c3", keys, 0L, 100L, 1L)).toList.flatten.flatMap(_.value)
+    assertEquals(claimedAgain.map(e => e.id -> e.deliveries.value), List(first -> 2L))
+
+    send(xadd("x:m2", OneOrMore.unsafeFrom(List(Key("a") -> 3))))
+    val both =
+      OneOrMore.unsafeFrom(List(Key("x:m") -> StreamFrom.after(StreamId(0L, 0L)), Key("x:m2") -> StreamFrom.after(StreamId(0L, 0L))))
+    def read(reply: Option[Seq[KV[Seq[StreamEntry[Int]]]]]) = reply.toList.flatten.flatMap(_.value.map(_.id))
+    assertEquals(read(send(xread[Int](both))).size, 3)
+    assertEquals(read(send(xread[Int](both, StreamReadLimits.maxCount(2L)))), List(first, second))
+    assertEquals(read(send(blocking.xread[Int](both, 100L, StreamReadLimits.maxCount(1L)))), List(first))
+    assertEquals(read(send(xread[Int](both, StreamReadLimits.maxSize(1L)))), List(first))
+
+    send(
+      xreadgroup[Int](
+        "grp",
+        "c4",
+        OneOrMore.unsafeFrom(List(Key("x:m") -> StreamGroupFrom.pendingAfter(StreamId(0L, 0L)))),
+        StreamReadLimits.maxCount(1L)
+      )
+    )
+    val info = send(xinfostreamfull[Int]("x:m"))
+    assert(info.others.contains("entries-added"))
+    assert(info.groups.head.others.contains("nacked-count"))
+  }
+
   test("a redis client gives entries back to the group with the commands of Redis 8.10") {
     import laserdisc.redis_8_10.*
     import streamtypes.*
@@ -139,6 +179,10 @@ abstract class StreamClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assertEquals(send(xtrim("x:s", StreamTrim.maxLen(1L))).value, 1L)
     assertEquals(send(xtrim("x:s", StreamTrim.minId(third))).value, 0L)
     assertEquals(send(xrange[Int]("x:s", StreamBound.min, StreamBound.max)).map(_.id), Seq(third))
+
+    val fourth = send(xadd("x:s", StreamTrim.maxLenExact(1L), OneOrMore.unsafeFrom(List(Key("a") -> 5))))
+    assertEquals(send(xrange[Int]("x:s", StreamBound.min, StreamBound.max)).map(_.id), Seq(fourth))
+    assertEquals(send(xtrim("x:s", StreamTrim.minIdExact(fourth))).value, 0L)
   }
 
   test(s"a $dest client reads a stream as a consumer group, acknowledges entries and finds the pending ones") {
@@ -203,6 +247,20 @@ abstract class StreamClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
       send(xinfoconsumers("x:c", "grp")).map(c => c.name -> c.pending.value).toSet,
       Set(Key("c1") -> 0L, Key("c2") -> 0L, Key("c3") -> pending)
     )
+
+    val full = send(xinfostreamfull[Int]("x:c"))
+    assertEquals(full.length.value, 2L)
+    assertEquals(full.lastGeneratedId, third)
+    assertEquals(full.entries.map(e => e.id -> e.fields), Seq(first -> Seq(Key("a") -> 1), third -> Seq(Key("a") -> 3)))
+    assertEquals(send(xinfostreamfull[Int]("x:c", 1L)).entries.map(_.id), Seq(first))
+    val fullGroup = full.groups.map(g => g.name -> g.pendingCount.value)
+    assertEquals(fullGroup, Seq(Key("grp") -> pending))
+    assertEquals(full.groups.flatMap(_.pending.flatMap(_.consumer)).toSet, Set(Key("c3")))
+    assertEquals(
+      full.groups.flatMap(_.consumers.map(c => c.name -> c.pending.size)).toSet,
+      Set(Key("c1") -> 0, Key("c2") -> 0, Key("c3") -> pending.toInt)
+    )
+
     assertEquals(send(xsetid("x:c", StreamId(9999999999999L, 0L))), OK)
   }
 

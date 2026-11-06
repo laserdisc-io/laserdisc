@@ -23,7 +23,7 @@ package laserdisc
 package protocol
 
 final class BStreamPSpec extends BaseSpec with BStreamP {
-  import StreamP.{Entry, From, GroupFrom, Id, NoAck}
+  import StreamP.{ClaimedEntry, Entry, From, GroupFrom, Id, NoAck, ReadLimits}
 
   private def bulks(ss: String*): Arr = Arr(ss.map(Bulk(_)).toList)
   private val id                      = Id(NonNegLong(1L), NonNegLong(1L))
@@ -49,5 +49,46 @@ final class BStreamPSpec extends BaseSpec with BStreamP {
       bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "5", "BLOCK", "100", "NOACK", "STREAMS", "s", ">")
     )
     assertEquals(xreadgroup[Int](Key("g"), Key("c"), streams, NonNegLong(100L)).decode(NilArr), None)
+  }
+
+  private val keys = OneOrMoreKeys.unsafeFrom(List(Key("s")))
+
+  test("The blocking Stream protocol using xreadgroupclaim sends COUNT, BLOCK, CLAIM and NOACK before STREAMS") {
+    assertEquals(
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), NonNegLong(100L), PosLong(5L), NoAck).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "5", "BLOCK", "100", "CLAIM", "50", "NOACK", "STREAMS", "s", ">")
+    )
+    assertEquals(
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), NonNegLong(100L)).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "BLOCK", "100", "CLAIM", "50", "STREAMS", "s", ">")
+    )
+    assertEquals(xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), NonNegLong(100L)).decode(NilArr), None)
+    assertEquals(
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), NonNegLong(100L))
+        .decode(Arr(Arr(Bulk("s"), Arr(Arr(Bulk("1-1"), bulks("a", "1"), Num(0L), Num(0L)))))),
+      Some(Seq(KV(Key("s"), Seq(ClaimedEntry(id, Seq(Key("a") -> 1), NonNegLong(0L), NonNegLong(0L))))))
+    )
+  }
+
+  test("The blocking Stream protocol sends MAXCOUNT and MAXSIZE between COUNT and BLOCK") {
+    val limits = ReadLimits.maxCount(PosLong(2L))
+    val from   = OneOrMore.unsafeFrom(List(Key("s") -> From.latest))
+    val group  = OneOrMore.unsafeFrom(List(Key("s") -> GroupFrom.newEntries))
+    assertEquals(
+      xread[Int](from, NonNegLong(100L), limits).encode,
+      bulks("XREAD", "MAXCOUNT", "2", "BLOCK", "100", "STREAMS", "s", "$")
+    )
+    assertEquals(
+      xread[Int](from, NonNegLong(100L), PosLong(1L), limits).encode,
+      bulks("XREAD", "COUNT", "1", "MAXCOUNT", "2", "BLOCK", "100", "STREAMS", "s", "$")
+    )
+    assertEquals(
+      xreadgroup[Int](Key("g"), Key("c"), group, NonNegLong(100L), PosLong(1L), limits, NoAck).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "1", "MAXCOUNT", "2", "BLOCK", "100", "NOACK", "STREAMS", "s", ">")
+    )
+    assertEquals(
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), NonNegLong(100L), PosLong(1L), limits, NoAck).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "1", "MAXCOUNT", "2", "BLOCK", "100", "CLAIM", "50", "NOACK", "STREAMS", "s", ">")
+    )
   }
 }

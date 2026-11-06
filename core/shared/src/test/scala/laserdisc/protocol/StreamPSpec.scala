@@ -282,4 +282,223 @@ final class StreamPSpec extends BaseSpec with StreamP {
       Seq(StreamPending(StreamId(NonNegLong(1L), NonNegLong(1L)), None, None, NonNegLong(2L)))
     )
   }
+
+  test("The Stream protocol trims exactly with = when asked to") {
+    assertEquals(
+      xadd(Key("s"), StreamTrim.maxLenExact(NonNegLong(10L)), fields).encode,
+      bulks("XADD", "s", "MAXLEN", "=", "10", "*", "a", "1", "b", "2")
+    )
+    assertEquals(xtrim(Key("s"), StreamTrim.minIdExact(id1)).encode, bulks("XTRIM", "s", "MINID", "=", "1793590457192-0"))
+  }
+
+  private val fullStream = List[RESP](
+    Bulk("length"),
+    Num(2L),
+    Bulk("radix-tree-keys"),
+    Num(1L),
+    Bulk("radix-tree-nodes"),
+    Num(2L),
+    Bulk("last-generated-id"),
+    Bulk("2-1"),
+    Bulk("entries-added"),
+    Num(2L),
+    Bulk("entries"),
+    Arr(Arr(Bulk("1-1"), bulks("a", "1")))
+  )
+  private val c1 = Arr(
+    Bulk("name"),
+    Bulk("c1"),
+    Bulk("seen-time"),
+    Num(100L),
+    Bulk("active-time"),
+    Num(90L),
+    Bulk("pel-count"),
+    Num(1L),
+    Bulk("pending"),
+    Arr(Arr(Bulk("2-1"), Num(80L), Num(1L)))
+  )
+  private val neverActive =
+    Arr(
+      Bulk("name"),
+      Bulk("c2"),
+      Bulk("seen-time"),
+      Num(5L),
+      Bulk("active-time"),
+      Num(-1L),
+      Bulk("pel-count"),
+      Num(0L),
+      Bulk("pending"),
+      Arr(Nil)
+    )
+  private val idA = StreamId(NonNegLong(1L), NonNegLong(1L))
+  private val idB = StreamId(NonNegLong(2L), NonNegLong(1L))
+
+  test("The Stream protocol using xinfostreamfull sends FULL and COUNT, and reads the entries, groups, consumers and pending entries") {
+    assertEquals(xinfostreamfull[Int](Key("s")).encode, bulks("XINFO", "STREAM", "s", "FULL"))
+    assertEquals(xinfostreamfull[Int](Key("s"), NonNegLong(0L)).encode, bulks("XINFO", "STREAM", "s", "FULL", "COUNT", "0"))
+
+    // as Redis 8.10 replies, with an entry given back with XNACK and a consumer that never read anything
+    val group = Arr(
+      Bulk("name"),
+      Bulk("g"),
+      Bulk("last-delivered-id"),
+      Bulk("2-1"),
+      Bulk("entries-read"),
+      Num(2L),
+      Bulk("lag"),
+      NullBulk,
+      Bulk("pel-count"),
+      Num(2L),
+      Bulk("nacked-count"),
+      Num(1L),
+      Bulk("pending"),
+      Arr(Arr(Bulk("1-1"), Bulk(""), Num(0L), Num(0L)), Arr(Bulk("2-1"), Bulk("c1"), Num(80L), Num(1L))),
+      Bulk("consumers"),
+      Arr(c1, neverActive)
+    )
+    assertEquals(
+      xinfostreamfull[Int](Key("s")).decode(Arr(fullStream ++ List(Bulk("groups"), Arr(group)))),
+      StreamP.StreamInfoFull(
+        NonNegLong(2L),
+        NonNegLong(1L),
+        NonNegLong(2L),
+        idB,
+        Seq(StreamEntry(idA, Seq(Key("a") -> 1))),
+        Seq(
+          StreamP.GroupInfoFull(
+            Key("g"),
+            idB,
+            Some(NonNegLong(2L)),
+            None,
+            NonNegLong(2L),
+            Seq(
+              StreamP.GroupPendingFull(idA, None, NonNegLong(0L), NonNegLong(0L)),
+              StreamP.GroupPendingFull(idB, Some(Key("c1")), NonNegLong(80L), NonNegLong(1L))
+            ),
+            Seq(
+              StreamP.ConsumerInfoFull(
+                Key("c1"),
+                NonNegLong(100L),
+                Some(NonNegLong(90L)),
+                NonNegLong(1L),
+                Seq(StreamP.ConsumerPendingFull(idB, NonNegLong(80L), NonNegLong(1L)))
+              ),
+              StreamP.ConsumerInfoFull(Key("c2"), NonNegLong(5L), None, NonNegLong(0L), Nil)
+            ),
+            Map("nacked-count" -> "1")
+          )
+        ),
+        Map("entries-added" -> "2")
+      )
+    )
+  }
+
+  test("The Stream protocol using xinfostreamfull reads Redis 6.2's reply, without the later figures") {
+    val group = Arr(
+      Bulk("name"),
+      Bulk("g"),
+      Bulk("last-delivered-id"),
+      Bulk("1-1"),
+      Bulk("pel-count"),
+      Num(0L),
+      Bulk("pending"),
+      Arr(Nil),
+      Bulk("consumers"),
+      Arr(Arr(Bulk("name"), Bulk("c"), Bulk("seen-time"), Num(5L), Bulk("pel-count"), Num(0L), Bulk("pending"), Arr(Nil)))
+    )
+    assertEquals(
+      xinfostreamfull[Int](Key("s")).decode(Arr(fullStream ++ List(Bulk("groups"), Arr(group)))).map(_.groups),
+      Seq(
+        StreamP.GroupInfoFull(
+          Key("g"),
+          idA,
+          None,
+          None,
+          NonNegLong(0L),
+          Nil,
+          Seq(StreamP.ConsumerInfoFull(Key("c"), NonNegLong(5L), None, NonNegLong(0L), Nil)),
+          Map.empty
+        )
+      )
+    )
+  }
+
+  private val keys = OneOrMoreKeys.unsafeFrom(List(Key("s"), Key("t")))
+
+  test(
+    "The Stream protocol using xreadgroupclaim sends COUNT, CLAIM and NOACK, reads each key from > and reads the idle time and deliveries"
+  ) {
+    assertEquals(
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L)).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "CLAIM", "50", "STREAMS", "s", "t", ">", ">")
+    )
+    assertEquals(
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), PosLong(5L)).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "5", "CLAIM", "50", "STREAMS", "s", "t", ">", ">")
+    )
+    assertEquals(
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), StreamNoAck).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "CLAIM", "50", "NOACK", "STREAMS", "s", "t", ">", ">")
+    )
+    assertEquals(
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), PosLong(5L), StreamNoAck).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "5", "CLAIM", "50", "NOACK", "STREAMS", "s", "t", ">", ">")
+    )
+    assertEquals(
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L))
+        .decode(Arr(Arr(Bulk("s"), Arr(Arr(Bulk("1-1"), bulks("a", "1"), Num(60L), Num(2L)))))),
+      Some(Seq(KV(Key("s"), Seq(StreamClaimedEntry(idA, Seq(Key("a") -> 1), NonNegLong(60L), NonNegLong(2L))))))
+    )
+    assertEquals(xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L)).decode(NilArr), None)
+  }
+
+  test("The Stream protocol sends MAXCOUNT and MAXSIZE after COUNT, in xread, xreadgroup and xreadgroupclaim") {
+    val limits = StreamReadLimits.maxCount(PosLong(2L)).maxSize(PosLong(100L))
+    val from   = OneOrMore.unsafeFrom(List(Key("s") -> StreamFrom.latest))
+    val group  = OneOrMore.unsafeFrom(List(Key("s") -> StreamGroupFrom.newEntries))
+    assertEquals(xread[Int](from, limits).encode, bulks("XREAD", "MAXCOUNT", "2", "MAXSIZE", "100", "STREAMS", "s", "$"))
+    assertEquals(
+      xread[Int](from, PosLong(1L), StreamReadLimits.maxSize(PosLong(9L))).encode,
+      bulks("XREAD", "COUNT", "1", "MAXSIZE", "9", "STREAMS", "s", "$")
+    )
+    assertEquals(
+      xreadgroup[Int](Key("g"), Key("c"), group, limits).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "MAXCOUNT", "2", "MAXSIZE", "100", "STREAMS", "s", ">")
+    )
+    assertEquals(
+      xreadgroup[Int](Key("g"), Key("c"), group, PosLong(1L), limits).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "1", "MAXCOUNT", "2", "MAXSIZE", "100", "STREAMS", "s", ">")
+    )
+    assertEquals(
+      xreadgroup[Int](Key("g"), Key("c"), group, limits, StreamNoAck).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "MAXCOUNT", "2", "MAXSIZE", "100", "NOACK", "STREAMS", "s", ">")
+    )
+    assertEquals(
+      xreadgroup[Int](Key("g"), Key("c"), group, PosLong(1L), limits, StreamNoAck).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "1", "MAXCOUNT", "2", "MAXSIZE", "100", "NOACK", "STREAMS", "s", ">")
+    )
+    assertEquals(
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), PosLong(1L), limits, StreamNoAck).encode,
+      bulks(
+        "XREADGROUP",
+        "GROUP",
+        "g",
+        "c",
+        "COUNT",
+        "1",
+        "MAXCOUNT",
+        "2",
+        "MAXSIZE",
+        "100",
+        "CLAIM",
+        "50",
+        "NOACK",
+        "STREAMS",
+        "s",
+        "t",
+        ">",
+        ">"
+      )
+    )
+  }
 }

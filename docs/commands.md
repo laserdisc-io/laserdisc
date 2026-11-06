@@ -60,8 +60,9 @@ compile with `laserdisc.redis_8_2.*`.
 | Valkey 7.2 to 9.1 | `laserdisc.valkey_7_2.*`, `laserdisc.valkey_8_0.*`, `laserdisc.valkey_8_1.*`, `laserdisc.valkey_9_0.*`, `laserdisc.valkey_9_1.*` |
 | KeyDB | `laserdisc.redis_6_2.*` |
 
-Each import covers every patch release of its version: `laserdisc.redis_7_2.*`
-is for Redis 7.2.0 and later 7.2 releases.
+Each import matches the latest patch release of its version, so a command added
+in a patch release needs that release or a later one. For example, `HOTKEYS HELP`
+in `laserdisc.redis_8_6.*` needs Redis 8.6.1 or later.
 
 ## Commands laserdisc doesn't send
 

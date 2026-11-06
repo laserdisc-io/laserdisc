@@ -502,6 +502,7 @@ trait HotKeysCommands extends Features {
       "HOTKEYS STOP"
     )
 
+  /** Redis 8.6.1 */
   val help: Single.Aux[Seq[String]] = Protocol.help("HOTKEYS")
 
   def start(metrics: HotKeysMetrics): Single.Aux[OK]                          = Protocol("HOTKEYS", "START" :: metrics.params).as[Str, OK]

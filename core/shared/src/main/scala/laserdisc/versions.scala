@@ -64,11 +64,13 @@ trait SortedSetsValkey8_0 extends SortedSets7_2 with SortedSetScanNoScoresP
 trait Geo6_2       extends GeoBaseP with GeoExtP
 trait GeoValkey9_0 extends Geo6_2 with GeoSearchPolygonP
 
-trait Streams6_2 extends StreamBaseP with StreamGroupBaseP with StreamClaimAndInfoBaseP
-trait Streams7_0 extends Streams6_2 with StreamClaimDeletedP with StreamGroupEntriesReadP with StreamSetIdEntriesP
-trait Streams8_2 extends Streams7_0 with StreamRefPolicyP
-trait Streams8_6 extends Streams8_2 with StreamIdmpP
-trait Streams8_8 extends Streams8_6 with StreamNackP
+trait Streams6_2  extends StreamBaseP with StreamGroupBaseP with StreamClaimAndInfoBaseP
+trait Streams7_0  extends Streams6_2 with StreamClaimDeletedP with StreamGroupEntriesReadP with StreamSetIdEntriesP
+trait Streams8_2  extends Streams7_0 with StreamRefPolicyP
+trait Streams8_4  extends Streams8_2 with StreamReadGroupClaimP
+trait Streams8_6  extends Streams8_4 with StreamIdmpP
+trait Streams8_8  extends Streams8_6 with StreamNackP
+trait Streams8_10 extends Streams8_8 with StreamReadLimitsP
 
 trait Cluster6_2       extends ClusterBaseP
 trait Cluster7_0       extends Cluster6_2 with ClusterSlotsMetadataP with ClusterShardsP
@@ -103,7 +105,8 @@ trait ScriptValkey8_0 extends ScriptCommands with ScriptShowCommands
 /** The blocking commands, under `blocking` */
 trait Blocking6_2  extends BListBaseP with BListExtP with BSortedSetBaseP with BStreamBaseP
 trait Blocking7_0  extends Blocking6_2 with BListMPopP with BSortedSetMPopP
-trait Blocking8_10 extends Blocking7_0 with BListMoveManyP
+trait Blocking8_4  extends Blocking7_0 with BStreamReadGroupClaimP
+trait Blocking8_10 extends Blocking8_4 with BListMoveManyP with BStreamReadLimitsP
 
 trait Server6_2 extends ServerBaseP
 trait Server7_0 extends Server6_2 with ServerShutdownAndInfoP {
@@ -220,8 +223,11 @@ trait Redis8_2 extends Redis8_0 with Cluster8_2 with Streams8_2 with Strings8_2 
   override val streams: Streams8_2 = new Streams8_2 {}
   override val strings: Strings8_2 = new Strings8_2 {}
 }
-trait Redis8_4 extends Redis8_2 with Cluster8_4 with Strings8_4 {
+trait Redis8_4 extends Redis8_2 with Cluster8_4 with Streams8_4 with Strings8_4 {
+  override val blocking: Blocking8_4 = new Blocking8_4 {}
+
   override val cluster: Cluster8_4 = new Cluster8_4 {}
+  override val streams: Streams8_4 = new Streams8_4 {}
   override val strings: Strings8_4 = new Strings8_4 {}
 }
 trait Redis8_6 extends Redis8_4 with Server8_6 with Streams8_6 {
@@ -235,13 +241,14 @@ trait Redis8_8 extends Redis8_6 with ArrayP with SortedSets8_8 with Streams8_8 w
   override val streams: Streams8_8       = new Streams8_8 {}
   override val strings: Strings8_8       = new Strings8_8 {}
 }
-trait Redis8_10 extends Redis8_8 with Hashes8_10 with Lists8_10 with Server8_10 with Sets8_10 {
+trait Redis8_10 extends Redis8_8 with Hashes8_10 with Lists8_10 with Server8_10 with Sets8_10 with Streams8_10 {
   override val blocking: Blocking8_10 = new Blocking8_10 {}
 
   override val hashmaps: Hashes8_10 = new Hashes8_10 {}
   override val lists: Lists8_10     = new Lists8_10 {}
   override val server: Server8_10   = new Server8_10 {}
   override val sets: Sets8_10       = new Sets8_10 {}
+  override val streams: Streams8_10 = new Streams8_10 {}
 }
 
 /** Valkey started from Redis 7.2 */

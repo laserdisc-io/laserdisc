@@ -86,7 +86,8 @@ trait Client7_0       extends ClientCommands with ClientNoEvictCommands
 trait Client7_2       extends Client7_0 with ClientNoTouchCommands
 trait Client7_4       extends Client7_2 with ClientMaxAgeCommands
 trait ClientValkey8_0 extends Client7_4 with ClientCapaCommands
-trait ClientValkey8_1 extends ClientValkey8_0 with ClientImportSourceCommands
+trait ClientValkey8_1 extends ClientValkey8_0 with ClientImportSourceCommands with ClientListFilterCommands
+trait ClientValkey9_0 extends ClientValkey8_1 with ClientValkeyFilterCommands
 trait Config7_0       extends ConfigCommands with ConfigManyCommands
 
 /** The LATENCY and COMMAND commands, under `latency` and `command` */
@@ -132,7 +133,10 @@ trait ServerValkey8_0 extends Server7_2 {
 trait ServerValkey8_1 extends ServerValkey8_0 with ServerBgSaveCancelP with ServerCommandLogP {
   override lazy val client: ClientValkey8_1 = new ClientValkey8_1 {}
 }
-trait ServerValkey9_1 extends ServerValkey8_1 with ServerInfoTlsP
+trait ServerValkey9_0 extends ServerValkey8_1 with ServerShutdownSafeP {
+  override lazy val client: ClientValkey9_0 = new ClientValkey9_0 {}
+}
+trait ServerValkey9_1 extends ServerValkey9_0 with ServerInfoTlsP
 
 trait Scripting6_2       extends ScriptingBaseP
 trait Scripting7_0       extends Scripting6_2 with ScriptingFunctionsP
@@ -270,10 +274,11 @@ trait Valkey8_1 extends Valkey8_0 with ServerValkey8_1 with StringsValkey8_1 {
   override val server: ServerValkey8_1   = new ServerValkey8_1 {}
   override val strings: StringsValkey8_1 = new StringsValkey8_1 {}
 }
-trait Valkey9_0 extends Valkey8_1 with ClusterValkey9_0 with GeoValkey9_0 with HashesValkey9_0 with StringsValkey9_0 {
+trait Valkey9_0 extends Valkey8_1 with ClusterValkey9_0 with GeoValkey9_0 with HashesValkey9_0 with ServerValkey9_0 with StringsValkey9_0 {
   override val cluster: ClusterValkey9_0 = new ClusterValkey9_0 {}
   override val geo: GeoValkey9_0         = new GeoValkey9_0 {}
   override val hashmaps: HashesValkey9_0 = new HashesValkey9_0 {}
+  override val server: ServerValkey9_0   = new ServerValkey9_0 {}
   override val strings: StringsValkey9_0 = new StringsValkey9_0 {}
 }
 trait Valkey9_1 extends Valkey9_0 with ClusterValkey9_1 with HashesValkey9_1 with ServerValkey9_1 with StringsValkey9_1 {

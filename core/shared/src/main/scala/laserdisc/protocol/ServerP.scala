@@ -192,7 +192,7 @@ object ServerP {
     implicit val connectedClientsRead: Read[Bulk, ConnectedClients] = Read.instance { case Bulk(s) =>
       Right(
         ConnectedClients(
-          s.split(LF_CH).toIndexedSeq.map { clientData =>
+          s.split(LF_CH).toIndexedSeq.filter(_.nonEmpty).map { clientData =>
             new Parameters(clientData.split(SPACE_CH).collect { case KVPair(k, v) => k -> v }.toMap)
           }
         )
@@ -260,13 +260,18 @@ object ServerP {
     object normal  extends ClientType
     object master  extends ClientType
     object replica extends ClientType
+    object slave   extends ClientType
     object pubsub  extends ClientType
+    // from Valkey 8.0, where `client.primary` gives it
+    private[protocol] object primary extends ClientType
 
     implicit val clientTypeShow: Show[ClientType] = Show.instance {
       case `normal`  => "normal"
       case `master`  => "master"
       case `replica` => "replica"
+      case `slave`   => "slave"
       case `pubsub`  => "pubsub"
+      case `primary` => "primary"
     }
   }
 
@@ -313,12 +318,109 @@ object ServerP {
   object ClientFilter {
     private final val none = new ClientFilter(Nil)
 
+    // from Valkey 8.1, where `client.ids` gives it
+    private[protocol] def ids(ids: OneOrMore[NonNegLong]): ClientFilter = new ClientFilter("ID" :: ids.value.map(_.value.toString))
+
     def id(id: NonNegLong): ClientFilter                   = none.id(id)
     def address(host: Host, port: Port): ClientFilter      = none.address(host, port)
     def localAddress(host: Host, port: Port): ClientFilter = none.localAddress(host, port)
     def clientType(clientType: ClientType): ClientFilter   = none.clientType(clientType)
     def user(username: String): ClientFilter               = none.user(username)
     def skipMe(skip: Boolean): ClientFilter                = none.skipMe(skip)
+  }
+
+  /** The filters of CLIENT KILL and CLIENT LIST on Valkey 9.0: a client must match all of them, and the `not` ones must not match. `flags`
+    * and `capabilities` are the letters CLIENT LIST shows for them
+    */
+  final class ValkeyClientFilter private (val params: List[String]) {
+    import Show.{hostShow, portShow}
+
+    private def add(name: String, value: String): ValkeyClientFilter                 = new ValkeyClientFilter(params ++ List(name, value))
+    private def hostAndPort(host: Host, port: Port): String                          = s"${hostShow.show(host)}:${portShow.show(port)}"
+    private def idList(name: String, ids: OneOrMore[NonNegLong]): ValkeyClientFilter =
+      new ValkeyClientFilter(params ++ (name :: ids.value.map(_.value.toString)))
+
+    def ids(ids: OneOrMore[NonNegLong]): ValkeyClientFilter      = idList("ID", ids)
+    def clientType(clientType: ClientType): ValkeyClientFilter   = add("TYPE", ClientType.clientTypeShow.show(clientType))
+    def user(username: String): ValkeyClientFilter               = add("USER", username)
+    def address(host: Host, port: Port): ValkeyClientFilter      = add("ADDR", hostAndPort(host, port))
+    def localAddress(host: Host, port: Port): ValkeyClientFilter = add("LADDR", hostAndPort(host, port))
+    def ip(host: Host): ValkeyClientFilter                       = add("IP", hostShow.show(host))
+    def name(name: ConnectionName): ValkeyClientFilter           = add("NAME", name.value)
+    def flags(flags: Key): ValkeyClientFilter                    = add("FLAGS", flags.value)
+    def libName(name: Key): ValkeyClientFilter                   = add("LIB-NAME", name.value)
+    def libVersion(version: Key): ValkeyClientFilter             = add("LIB-VER", version.value)
+    def db(index: DbIndex): ValkeyClientFilter                   = add("DB", index.value.toString)
+    def capabilities(capabilities: Key): ValkeyClientFilter      = add("CAPA", capabilities.value)
+
+    /** Connected for longer than `seconds` */
+    def maxAge(seconds: PosLong): ValkeyClientFilter = add("MAXAGE", seconds.value.toString)
+
+    /** Idle for at least `seconds` */
+    def idle(seconds: PosLong): ValkeyClientFilter = add("IDLE", seconds.value.toString)
+
+    /** Whether to spare the client sending the command */
+    def skipMe(skip: Boolean): ValkeyClientFilter = add("SKIPME", if (skip) "yes" else "no")
+
+    def notIds(ids: OneOrMore[NonNegLong]): ValkeyClientFilter      = idList("NOT-ID", ids)
+    def notClientType(clientType: ClientType): ValkeyClientFilter   = add("NOT-TYPE", ClientType.clientTypeShow.show(clientType))
+    def notUser(username: String): ValkeyClientFilter               = add("NOT-USER", username)
+    def notAddress(host: Host, port: Port): ValkeyClientFilter      = add("NOT-ADDR", hostAndPort(host, port))
+    def notLocalAddress(host: Host, port: Port): ValkeyClientFilter = add("NOT-LADDR", hostAndPort(host, port))
+    def notIp(host: Host): ValkeyClientFilter                       = add("NOT-IP", hostShow.show(host))
+    def notName(name: ConnectionName): ValkeyClientFilter           = add("NOT-NAME", name.value)
+    def notFlags(flags: Key): ValkeyClientFilter                    = add("NOT-FLAGS", flags.value)
+    def notLibName(name: Key): ValkeyClientFilter                   = add("NOT-LIB-NAME", name.value)
+    def notLibVersion(version: Key): ValkeyClientFilter             = add("NOT-LIB-VER", version.value)
+    def notDb(index: DbIndex): ValkeyClientFilter                   = add("NOT-DB", index.value.toString)
+    def notCapabilities(capabilities: Key): ValkeyClientFilter      = add("NOT-CAPA", capabilities.value)
+  }
+  object ValkeyClientFilter {
+    private final val none = new ValkeyClientFilter(Nil)
+
+    def ids(ids: OneOrMore[NonNegLong]): ValkeyClientFilter         = none.ids(ids)
+    def clientType(clientType: ClientType): ValkeyClientFilter      = none.clientType(clientType)
+    def user(username: String): ValkeyClientFilter                  = none.user(username)
+    def address(host: Host, port: Port): ValkeyClientFilter         = none.address(host, port)
+    def localAddress(host: Host, port: Port): ValkeyClientFilter    = none.localAddress(host, port)
+    def ip(host: Host): ValkeyClientFilter                          = none.ip(host)
+    def name(name: ConnectionName): ValkeyClientFilter              = none.name(name)
+    def flags(flags: Key): ValkeyClientFilter                       = none.flags(flags)
+    def libName(name: Key): ValkeyClientFilter                      = none.libName(name)
+    def libVersion(version: Key): ValkeyClientFilter                = none.libVersion(version)
+    def db(index: DbIndex): ValkeyClientFilter                      = none.db(index)
+    def capabilities(capabilities: Key): ValkeyClientFilter         = none.capabilities(capabilities)
+    def maxAge(seconds: PosLong): ValkeyClientFilter                = none.maxAge(seconds)
+    def idle(seconds: PosLong): ValkeyClientFilter                  = none.idle(seconds)
+    def skipMe(skip: Boolean): ValkeyClientFilter                   = none.skipMe(skip)
+    def notIds(ids: OneOrMore[NonNegLong]): ValkeyClientFilter      = none.notIds(ids)
+    def notClientType(clientType: ClientType): ValkeyClientFilter   = none.notClientType(clientType)
+    def notUser(username: String): ValkeyClientFilter               = none.notUser(username)
+    def notAddress(host: Host, port: Port): ValkeyClientFilter      = none.notAddress(host, port)
+    def notLocalAddress(host: Host, port: Port): ValkeyClientFilter = none.notLocalAddress(host, port)
+    def notIp(host: Host): ValkeyClientFilter                       = none.notIp(host)
+    def notName(name: ConnectionName): ValkeyClientFilter           = none.notName(name)
+    def notFlags(flags: Key): ValkeyClientFilter                    = none.notFlags(flags)
+    def notLibName(name: Key): ValkeyClientFilter                   = none.notLibName(name)
+    def notLibVersion(version: Key): ValkeyClientFilter             = none.notLibVersion(version)
+    def notDb(index: DbIndex): ValkeyClientFilter                   = none.notDb(index)
+    def notCapabilities(capabilities: Key): ValkeyClientFilter      = none.notCapabilities(capabilities)
+  }
+
+  /** NOW, FORCE, SAFE and FAILOVER, for SHUTDOWN on Valkey 9.0: the first two as in [[ShutdownOptions]], then have the server refuse a
+    * shutdown it considers unsafe, and have a cluster primary fail over to a replica first, which needs cluster mode
+    */
+  final class ValkeyShutdownOptions private (val params: List[String]) {
+    def now: ValkeyShutdownOptions      = new ValkeyShutdownOptions(params :+ "NOW")
+    def force: ValkeyShutdownOptions    = new ValkeyShutdownOptions(params :+ "FORCE")
+    def safe: ValkeyShutdownOptions     = new ValkeyShutdownOptions(params :+ "SAFE")
+    def failover: ValkeyShutdownOptions = new ValkeyShutdownOptions(params :+ "FAILOVER")
+  }
+  object ValkeyShutdownOptions {
+    final val now: ValkeyShutdownOptions      = new ValkeyShutdownOptions(List("NOW"))
+    final val force: ValkeyShutdownOptions    = new ValkeyShutdownOptions(List("FORCE"))
+    final val safe: ValkeyShutdownOptions     = new ValkeyShutdownOptions(List("SAFE"))
+    final val failover: ValkeyShutdownOptions = new ValkeyShutdownOptions(List("FAILOVER"))
   }
 
   /** NOW and FORCE, for SHUTDOWN: don't wait for replicas to catch up, and shut down even if saving fails */
@@ -353,7 +455,7 @@ trait ClientCommands extends Features {
       "CLIENT HELP",
       "CLIENT ID",
       "CLIENT INFO",
-      "CLIENT KILL: ADDR ID LADDR MASTER NORMAL PUBSUB REPLICA SKIPME TYPE USER",
+      "CLIENT KILL: ADDR ID LADDR MASTER NORMAL PUBSUB REPLICA SKIPME SLAVE TYPE USER",
       "CLIENT LIST: ID MASTER NORMAL PUBSUB REPLICA TYPE",
       "CLIENT PAUSE: ALL WRITE",
       "CLIENT SETNAME",
@@ -408,7 +510,7 @@ trait ClientNoEvictCommands extends Features {
 /** CLIENT NO-TOUCH and CLIENT SETINFO: Redis 7.2 */
 trait ClientNoTouchCommands extends Features {
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("CLIENT NO-TOUCH: OFF ON", "CLIENT SETINFO: LIB-NAME LIB-VER")
+    super.supported ++ List("CLIENT KILL: NO YES", "CLIENT NO-TOUCH: OFF ON", "CLIENT SETINFO: LIB-NAME LIB-VER")
 
   /** Whether this connection's commands leave the keys' last access time as it was */
   def notouch(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "NO-TOUCH" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
@@ -420,9 +522,12 @@ trait ClientNoTouchCommands extends Features {
   def setlibversion(version: Key): Single.Aux[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-VER" :: version.value :: Nil).as[Str, OK]
 }
 
-/** CLIENT CAPA: Valkey 8.0 */
+/** CLIENT CAPA, and the primary client type for CLIENT KILL and CLIENT LIST: Valkey 8.0 */
 trait ClientCapaCommands extends Features {
-  override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT CAPA")
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT CAPA", "CLIENT KILL: PRIMARY")
+
+  /** Valkey's name for `master`, for wherever a client type is asked for */
+  val primary: ServerP.ClientType = ServerP.ClientType.primary
 
   /** Tells the server what this connection can handle, like `redirect`. A server takes names it doesn't know, and ignores them */
   def capa(capabilities: OneOrMore[Key]): Single.Aux[OK] = Protocol("CLIENT", "CAPA" :: capabilities.value.map(_.value)).as[Str, OK]
@@ -434,6 +539,42 @@ trait ClientImportSourceCommands extends Features {
 
   /** Whether this connection is an import source. Turning it on needs the server to be in import mode */
   def importsource(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "IMPORT-SOURCE" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
+}
+
+/** CLIENT KILL with several ids, and CLIENT LIST with the filters of CLIENT KILL: Valkey 8.1 */
+trait ClientListFilterCommands extends Features {
+  import ServerP.{ClientFilter, ConnectedClients}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("CLIENT LIST: ADDR LADDR MAXAGE NO SKIPME USER YES")
+
+  /** A filter for any of these clients, to go on from with the others */
+  def ids(ids: OneOrMore[NonNegLong]): ClientFilter = ClientFilter.ids(ids)
+
+  /** The clients that match every filter */
+  def list(filter: ClientFilter): Single.Aux[ConnectedClients] = Protocol("CLIENT", "LIST" :: filter.params).as[Bulk, ConnectedClients]
+
+  /** The clients that match every filter and have been connected for longer than `seconds` */
+  def list(filter: ClientFilter, seconds: PosLong): Single.Aux[ConnectedClients] =
+    Protocol("CLIENT", "LIST" *: filter.params *: "MAXAGE" *: seconds *: EmptyTuple).as[Bulk, ConnectedClients]
+}
+
+/** CLIENT KILL and CLIENT LIST with Valkey's own filters: Valkey 9.0 */
+trait ClientValkeyFilterCommands extends Features {
+  import ServerP.{ConnectedClients, ValkeyClientFilter}
+
+  private final val keywords = "CAPA DB FLAGS IDLE IP LIB-NAME LIB-VER NAME NOT-ADDR NOT-CAPA NOT-DB NOT-FLAGS NOT-ID NOT-IP NOT-LADDR " +
+    "NOT-LIB-NAME NOT-LIB-VER NOT-NAME NOT-TYPE NOT-USER"
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(s"CLIENT KILL: $keywords", s"CLIENT LIST: $keywords")
+
+  /** Closes the clients that match every filter, and replies how many it closed */
+  def kill(filter: ValkeyClientFilter): Single.Aux[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]
+
+  /** The clients that match every filter */
+  def list(filter: ValkeyClientFilter): Single.Aux[ConnectedClients] =
+    Protocol("CLIENT", "LIST" :: filter.params).as[Bulk, ConnectedClients]
 }
 
 /** CLIENT KILL with MAXAGE: Redis 7.4, Valkey 8.0 */
@@ -501,21 +642,23 @@ trait ServerBaseP extends ServerInspectionBaseP {
   import ServerP.{Info, InfoSection, Role, ShutdownFlag}
 
   object servertypes {
-    final val aclRules         = Acl.AclRules.none
-    final val aclSelectorRules = Acl.AclRulesWithSelectors.none
-    final val clientFilter     = ServerP.ClientFilter
-    final val clientType       = ServerP.ClientType
-    final val commandFilter    = ServerInspection.CommandFilter
-    final val flushMode        = ClusterManagement.FlushMode
-    final val slotStatsMetric  = ClusterManagement.SlotStatsMetric
-    final val commandLogType   = ServerInspection.CommandLogType
-    final val hotKeysMetrics   = ServerInspection.HotKeysMetrics
-    final val hotKeysOptions   = ServerInspection.HotKeysOptions
-    final val flag             = ShutdownFlag
-    final val info             = InfoSection
-    final val pauseMode        = ServerP.PauseMode
-    final val shutdownOptions  = ServerP.ShutdownOptions
-    final val unblockMode      = ServerP.UnblockMode
+    final val aclRules              = Acl.AclRules.none
+    final val aclSelectorRules      = Acl.AclRulesWithSelectors.none
+    final val clientFilter          = ServerP.ClientFilter
+    final val clientType            = ServerP.ClientType
+    final val valkeyClientFilter    = ServerP.ValkeyClientFilter
+    final val valkeyShutdownOptions = ServerP.ValkeyShutdownOptions
+    final val commandFilter         = ServerInspection.CommandFilter
+    final val flushMode             = ClusterManagement.FlushMode
+    final val slotStatsMetric       = ClusterManagement.SlotStatsMetric
+    final val commandLogType        = ServerInspection.CommandLogType
+    final val hotKeysMetrics        = ServerInspection.HotKeysMetrics
+    final val hotKeysOptions        = ServerInspection.HotKeysOptions
+    final val flag                  = ShutdownFlag
+    final val info                  = InfoSection
+    final val pauseMode             = ServerP.PauseMode
+    final val shutdownOptions       = ServerP.ShutdownOptions
+    final val unblockMode           = ServerP.UnblockMode
   }
 
   /** A piece of art made by the server, and its version, as text. It's in every server below but KeyDB */
@@ -593,6 +736,17 @@ trait ServerBaseP extends ServerInspectionBaseP {
   final val time: Single.Aux[Time] = Protocol("TIME", EmptyTuple).as[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], Time]
 }
 
+/** SHUTDOWN with SAFE and FAILOVER: Valkey 9.0 */
+trait ServerShutdownSafeP extends Features {
+  import ServerP.{ShutdownFlag, ValkeyShutdownOptions}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SHUTDOWN: FAILOVER SAFE")
+
+  final def shutdown(options: ValkeyShutdownOptions): Single.Aux[OK]                     = Protocol("SHUTDOWN", options.params).as[Str, OK]
+  final def shutdown(flag: ShutdownFlag, options: ValkeyShutdownOptions): Single.Aux[OK] =
+    Protocol("SHUTDOWN", flag *: options.params *: EmptyTuple).as[Str, OK]
+}
+
 /** SHUTDOWN with NOW, FORCE and ABORT, and INFO with several sections: Redis 7.0 */
 trait ServerShutdownAndInfoP extends Features {
   import ServerP.{Info, InfoSection, LatencyStatsSection, ShutdownFlag, ShutdownOptions}
@@ -657,6 +811,8 @@ trait ClientAllCommands
     with ClientMaxAgeCommands
     with ClientCapaCommands
     with ClientImportSourceCommands
+    with ClientListFilterCommands
+    with ClientValkeyFilterCommands
 trait ConfigAllCommands  extends ConfigCommands with ConfigManyCommands
 trait LatencyAllCommands extends LatencyCommands with LatencyHistogramCommands
 trait CommandAllCommands extends CommandCommands with CommandListCommands
@@ -666,6 +822,7 @@ trait AclAllCommands     extends AclCommands with AclSelectorCommands
 trait ServerP
     extends ServerBaseP
     with ServerShutdownAndInfoP
+    with ServerShutdownSafeP
     with ServerInfoRedis8P
     with ServerHotKeysP
     with ServerInfoTlsP

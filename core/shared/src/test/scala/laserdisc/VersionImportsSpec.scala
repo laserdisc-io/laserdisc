@@ -520,6 +520,48 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
+  test("only Valkey 8.0 and later have the primary client type, 8.1 CLIENT LIST with filters, and 9.0 its own filters and SHUTDOWN SAFE") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(client.list(servertypes.clientType.slave).frames, frame("CLIENT", "LIST", "TYPE", "slave"))
+      assert(compileErrors("""client.primary""").nonEmpty)
+      assert(compileErrors("""servertypes.clientType.primary""").nonEmpty)
+      assert(compileErrors("""client.list(servertypes.clientFilter.user("u"))""").nonEmpty)
+      assert(compileErrors("""client.ids(OneOrMore.unsafeFrom(List(NonNegLong(1L))))""").nonEmpty)
+      assert(compileErrors("""client.kill(servertypes.valkeyClientFilter.user("u"))""").nonEmpty)
+      assert(compileErrors("""shutdown(servertypes.valkeyShutdownOptions.safe)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(client.kill(servertypes.clientFilter.skipMe(false)).frames, frame("CLIENT", "KILL", "SKIPME", "no"))
+      assert(compileErrors("""client.primary""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_0.*
+      assertEquals(client.list(client.primary).frames, frame("CLIENT", "LIST", "TYPE", "primary"))
+      assert(compileErrors("""client.list(servertypes.clientFilter.user("u"))""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_1.*
+      assertEquals(client.list(servertypes.clientFilter.user("u")).frames, frame("CLIENT", "LIST", "USER", "u"))
+      assertEquals(client.list(client.ids(OneOrMore.unsafeFrom(List[NonNegLong](1L, 2L)))).frames, frame("CLIENT", "LIST", "ID", "1", "2"))
+      assert(compileErrors("""client.list(servertypes.valkeyClientFilter.idle(1L))""").nonEmpty)
+      assert(compileErrors("""shutdown(servertypes.valkeyShutdownOptions.safe)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_0.*
+      assertEquals(client.list(servertypes.valkeyClientFilter.idle(1L)).frames, frame("CLIENT", "LIST", "IDLE", "1"))
+      assertEquals(shutdown(servertypes.valkeyShutdownOptions.safe).frames, frame("SHUTDOWN", "SAFE"))
+      assertEquals(server.shutdown(servertypes.valkeyShutdownOptions.safe).frames, frame("SHUTDOWN", "SAFE"))
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(client.kill(servertypes.valkeyClientFilter.notName("n")).frames, frame("CLIENT", "KILL", "NOT-NAME", "n"))
+    }
+  }
+
   test("each version can ask INFO only for the sections it has") {
 
     {

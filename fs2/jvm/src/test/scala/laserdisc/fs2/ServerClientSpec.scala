@@ -23,7 +23,7 @@ package laserdisc
 package fs2
 
 import laserdisc.auto.*
-import laserdisc.protocol.ServerP.{InfoSection, InfoSectionKey}
+import laserdisc.protocol.ServerP.{ConnectedClients, InfoSection, InfoSectionKey}
 
 final class RedisServerClientSpec extends ServerClientSpec(6379, "redis") {
   test("a redis client reads the sections Redis 8 added under their names") {
@@ -47,6 +47,57 @@ final class ValkeyServerClientSpec extends ServerClientSpec(6381, "valkey") {
   }
 
   test("a valkey client sets its library and reads several settings with the commands of Valkey 9.1")(newer(valkey_9_1, valkey_9_1.client))
+
+  test("a valkey client finds clients with the filters of Valkey 9.1, and closes none when none match") {
+    val v = laserdisc.valkey_9_1
+    import v.servertypes
+
+    val f     = servertypes.valkeyClientFilter
+    val other = Host("192.0.2.1")
+    val port  = Port(1)
+    val me    = send(v.client.id)
+    val mine  = OneOrMore.unsafeFrom(List(me))
+    assertEquals(send(v.client.setname("ld-filter")), OK)
+    def ids(protocol: Protocol.Aux[ConnectedClients]) = send(protocol).clients.map(_.id[String].fold(e => fail(e.getMessage), identity))
+
+    assertEquals(ids(v.client.list(servertypes.clientFilter.user("default").skipMe(false).id(me))), Seq(me.value.toString))
+    assertEquals(ids(v.client.list(v.client.ids(mine).skipMe(false))), Seq(me.value.toString))
+    assertEquals(ids(v.client.list(servertypes.clientFilter.id(me), 999999L)), Nil)
+    assertEquals(ids(v.client.list(v.client.primary)), Nil)
+    assertEquals(send(v.client.kill(v.client.ids(OneOrMore.unsafeFrom(List[NonNegLong](999991L, 999992L))))).value, 0L)
+
+    assertEquals(ids(v.client.list(f.name("ld-filter"))), Seq(me.value.toString))
+    assertEquals(ids(v.client.list(f.ids(mine).db(0).flags("N").user("default").notIp(other))), Seq(me.value.toString))
+    assertEquals(ids(v.client.list(f.notIds(mine).name("ld-filter"))), Nil)
+    assertEquals(ids(v.client.list(f.ids(mine).idle(999999L))), Nil)
+    assertEquals(
+      ids(
+        v.client.list(
+          f.ids(mine)
+            .notClientType(servertypes.clientType.pubsub)
+            .notAddress(other, port)
+            .notLocalAddress(other, port)
+            .notName("nobody")
+            .notFlags("P")
+            .notLibName("nobody")
+            .notLibVersion("nobody")
+            .notDb(1)
+            .notCapabilities("r")
+        )
+      ),
+      Seq(me.value.toString)
+    )
+    assertEquals(ids(v.client.list(f.ids(mine).notUser("default"))), Nil)
+    assertEquals(ids(v.client.list(f.ids(mine).libName("nobody"))), Nil)
+    assertEquals(ids(v.client.list(f.ids(mine).libVersion("nobody"))), Nil)
+    assertEquals(ids(v.client.list(f.ids(mine).capabilities("r"))), Nil)
+    assertEquals(ids(v.client.list(f.ids(mine).address(other, port))), Nil)
+    assertEquals(ids(v.client.list(f.ids(mine).localAddress(other, port))), Nil)
+    assertEquals(ids(v.client.list(f.ids(mine).ip(other))), Nil)
+    assertEquals(send(v.client.kill(f.name("nobody").maxAge(5L))).value, 0L)
+
+    assertEquals(send(v.client.unsetname), OK)
+  }
 }
 
 abstract class ServerClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
@@ -88,6 +139,7 @@ abstract class ServerClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assert(send(v.client.list(OneOrMore.unsafeFrom(List(id)))).clients.size == 1)
     assert(send(v.client.list(servertypes.clientType.normal)).clients.nonEmpty)
     assertEquals(send(v.client.kill(servertypes.clientFilter.id(999999L))).value, 0L)
+    assertEquals(send(v.client.kill(servertypes.clientFilter.clientType(servertypes.clientType.slave))).value, 0L)
     assert(!send(v.client.unblock(999999L)))
     assertEquals(send(v.client.unpause), OK)
   }

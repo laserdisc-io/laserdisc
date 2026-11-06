@@ -208,6 +208,9 @@ lazy val cli = laserdiscCrossModule("cli")
       "org.scalameta" %%% "munit"       % V.munit % Test
     )
   )
+  .jsSettings(
+    scalaJSUseMainModuleInitializer := true
+  )
 
 lazy val circe = laserdiscCrossModule("circe", CrossType.Full)
   .dependsOn(core)

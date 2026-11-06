@@ -15,11 +15,11 @@ refined on Scala 2 and with Iron on Scala 3.
 
 ## Scala.js and Scala Native
 
-`laserdisc-core`, `laserdisc-circe` and `laserdisc-fs2` work on the JVM, Scala.js
-and Scala Native.
+`laserdisc-core`, `laserdisc-circe`, `laserdisc-fs2` and `laserdisc-cli` work on
+the JVM, Scala.js and Scala Native.
 
-On Scala.js, `laserdisc-fs2` runs on Node.js, not in browsers, because it needs
-network sockets.
+On Scala.js, `laserdisc-fs2` and `laserdisc-cli` run on Node.js, not in browsers,
+because they need network sockets.
 
 On Node.js 26, the connection can stop receiving replies when several arrive
 at once. The commands waiting for those replies time out, and the client then

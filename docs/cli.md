@@ -9,6 +9,13 @@ From a checkout of this repository, start it with the server's host and port:
 sbt "cli/run localhost 6379"
 ```
 
+On Scala.js, build it first, then start it with Node.js:
+
+```sh
+sbt "++3.9.0" cliJS/fastLinkJS
+node cli/.js/target/scala-3.9.0/laserdisc-cli-fastopt/main.js localhost 6379
+```
+
 Type a command and its arguments, separated by spaces, and press Enter:
 
 ```

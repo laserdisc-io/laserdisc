@@ -27,6 +27,7 @@ import protocol.*
   * family changed. The versions below are made of these, so a version and its families can't disagree
   */
 trait Strings6_2       extends StringBaseP with StringExtP
+trait StringsAlgo6_2   extends Strings6_2 with StringAlgoP
 trait Strings7_0       extends Strings6_2 with StringSetGetFlagP with StringBitUnitP with StringLcsP
 trait Strings8_2       extends Strings7_0 with StringBitopExtendedP
 trait Strings8_4       extends Strings8_2 with StringSetIfEqP with StringSetCompareP with StringDigestAndDelExP with StringMSetExP
@@ -182,9 +183,12 @@ trait Base6_2
   override private[laserdisc] def supported: List[String] = super.supported ++ blocking.supported
 }
 
-trait Redis6_2 extends Base6_2
+/** Redis 7.0 removed STRALGO, so the later versions go on from the base and not from this */
+trait Redis6_2 extends Base6_2 with StringAlgoP {
+  override val strings: StringsAlgo6_2 = new StringsAlgo6_2 {}
+}
 trait Redis7_0
-    extends Redis6_2
+    extends Base6_2
     with Cluster7_0
     with Keys7_0
     with Lists7_0

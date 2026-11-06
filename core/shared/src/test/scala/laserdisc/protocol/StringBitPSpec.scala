@@ -108,4 +108,29 @@ final class StringBitPSpec extends BaseSpec with StringP {
     )
     assertEquals(lcsidx(Key("a"), Key("b")).decode(Arr(Bulk("matches"), Arr(Nil), Bulk("len"), Num(0L))), LcsMatches(Nil, NonNegInt(0)))
   }
+
+  test("The String protocol using stralgolcs sends the keys or the strings, then the option, and reads what it asked for") {
+    def words(ss: String*): Arr = Arr(ss.map(Bulk(_)).toList)
+    val keys                    = StringP.StrAlgoInput.keys(Key("a"), Key("b"))
+    val strings                 = StringP.StrAlgoInput.strings(1, 2)
+    assertEquals(stralgolcs[String](keys).encode, words("STRALGO", "LCS", "KEYS", "a", "b"))
+    assertEquals(stralgolcs[String](strings).encode, words("STRALGO", "LCS", "STRINGS", "1", "2"))
+    assertEquals(stralgolcs[String](keys).decode(Bulk("mytext")), "mytext")
+    assertEquals(stralgolcslen(keys).encode, words("STRALGO", "LCS", "KEYS", "a", "b", "LEN"))
+    assertEquals(stralgolcslen(keys).decode(Num(6L)), NonNegInt(6))
+    assertEquals(stralgolcsidx(strings).encode, words("STRALGO", "LCS", "STRINGS", "1", "2", "IDX", "WITHMATCHLEN"))
+    assertEquals(
+      stralgolcsidx(keys, PosInt(4)).encode,
+      words("STRALGO", "LCS", "KEYS", "a", "b", "IDX", "MINMATCHLEN", "4", "WITHMATCHLEN")
+    )
+    // as Redis 6.2 and KeyDB reply
+    val reply = Arr(Bulk("matches"), Arr(Arr(Arr(Num(4L), Num(7L)), Arr(Num(5L), Num(8L)), Num(4L))), Bulk("len"), Num(6L))
+    assertEquals(
+      stralgolcsidx(keys).decode(reply),
+      StringP.LcsMatches(
+        Seq(StringP.LcsMatch(StringP.LcsRange(NonNegInt(4), NonNegInt(7)), StringP.LcsRange(NonNegInt(5), NonNegInt(8)), NonNegInt(4))),
+        NonNegInt(6)
+      )
+    )
+  }
 }

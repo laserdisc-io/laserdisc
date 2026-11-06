@@ -399,6 +399,37 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
+  test("only redis_6_2 has STRALGO, and every later version has LCS instead") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(
+        stralgolcslen(stringtypes.strAlgoInput.keys("a", "b")).frames,
+        frame("STRALGO", "LCS", "KEYS", "a", "b", "LEN")
+      )
+      assertEquals(
+        strings.stralgolcslen(stringtypes.strAlgoInput.keys("a", "b")).frames,
+        frame("STRALGO", "LCS", "KEYS", "a", "b", "LEN")
+      )
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(lcslen("a", "b").frames, frame("LCS", "a", "b", "LEN"))
+      assert(compileErrors("""stralgolcslen(stringtypes.strAlgoInput.keys("a", "b"))""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(lcslen("a", "b").frames, frame("LCS", "a", "b", "LEN"))
+      assert(compileErrors("""stralgolcslen(stringtypes.strAlgoInput.keys("a", "b"))""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(lcslen("a", "b").frames, frame("LCS", "a", "b", "LEN"))
+      assert(compileErrors("""stralgolcslen(stringtypes.strAlgoInput.keys("a", "b"))""").nonEmpty)
+    }
+  }
+
   test("redis_6_2 has BITFIELD and BITFIELD_RO, but not LCS, BITCOUNT with BIT or BITOP with DIFF") {
     import laserdisc.auto.*
     import laserdisc.redis_6_2.*

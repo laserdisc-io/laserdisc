@@ -75,7 +75,26 @@ final class RedisStringClientSpec extends StringClientSpec(6379, "redis") {
   }
 }
 
-final class KeyDbStringClientSpec extends StringClientSpec(6380, "keyDb")
+final class KeyDbStringClientSpec extends StringClientSpec(6380, "keyDb") {
+  test("a keyDb client compares strings with STRALGO") {
+    import laserdisc.redis_6_2.*
+    import stringtypes.strAlgoInput
+
+    send(del("s:a1", "s:a2"))
+    send(set("s:a1", "ohmytext"))
+    send(set("s:a2", "mynewtext"))
+    val keys    = strAlgoInput.keys("s:a1", "s:a2")
+    val strings = strAlgoInput.strings("ohmytext", "mynewtext")
+    assertEquals(send(stralgolcs[String](keys)), "mytext")
+    assertEquals(send(stralgolcs[String](strings)), "mytext")
+    assertEquals(send(stralgolcslen(keys)).value, 6)
+    assertEquals(send(stralgolcslen(strings)).value, 6)
+    assertEquals(send(stralgolcsidx(keys)).matches.size, 2)
+    val matches = send(stralgolcsidx(strings, 4))
+    assertEquals(matches.length.value, 6)
+    assertEquals(matches.matches, Seq(LcsMatch(LcsRange(NonNegInt(4), NonNegInt(7)), LcsRange(NonNegInt(5), NonNegInt(8)), NonNegInt(4))))
+  }
+}
 
 final class ValkeyStringClientSpec extends StringClientSpec(6381, "valkey") {
   test("a valkey client compares strings and counts bits with the commands of Valkey 9.1")(lcsAndBits(valkey_9_1))

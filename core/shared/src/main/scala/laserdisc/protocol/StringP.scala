@@ -144,6 +144,15 @@ object StringP {
       Incremented(value, increment)
     }
 
+  /** What STRALGO LCS compares: the values at two keys, or two values given directly */
+  sealed trait StrAlgoInput { def params: List[String] }
+  object StrAlgoInput       {
+    private final class Of(override final val params: List[String]) extends StrAlgoInput
+
+    def keys(key1: Key, key2: Key): StrAlgoInput             = new Of(List("KEYS", key1.value, key2.value))
+    def strings[A: Show](value1: A, value2: A): StrAlgoInput = new Of(List("STRINGS", Show[A].show(value1), Show[A].show(value2)))
+  }
+
   /** Where a match is, in each of the two strings LCS compares */
   final case class LcsRange(start: NonNegInt, end: NonNegInt)
   final case class LcsMatch(first: LcsRange, second: LcsRange, length: NonNegInt)
@@ -255,14 +264,15 @@ trait StringBaseP extends Features {
   private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
 
   object stringtypes {
-    final val bit      = Bit
-    final val bitfield = BitField
-    final val bitUnit  = BitUnit
-    final val bitwise  = Bitwise
-    final val expiry   = Expiry
-    final val flag     = Flag
-    final val increx   = IncrExOptions
-    final val compare  = Compare
+    final val bit          = Bit
+    final val bitfield     = BitField
+    final val bitUnit      = BitUnit
+    final val bitwise      = Bitwise
+    final val strAlgoInput = StringP.StrAlgoInput
+    final val expiry       = Expiry
+    final val flag         = Flag
+    final val increx       = IncrExOptions
+    final val compare      = Compare
 
     final def ifEq[A: Show](a: A): IfEq = IfEq(a)
   }
@@ -425,6 +435,28 @@ trait StringBitUnitP extends Features {
     Protocol("BITPOS", key *: bit *: start *: end *: unit *: EmptyTuple).using(RESPRead.instance(Read.numMinusOneIsNone[NonNegInt]))
 }
 
+/** STRALGO LCS: Redis 6.2 and KeyDB. Redis 7.0 replaced it with LCS */
+trait StringAlgoP extends Features {
+  import StringP.{LcsMatches, StrAlgoInput}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("STRALGO: IDX KEYS LCS LEN MINMATCHLEN STRINGS WITHMATCHLEN")
+
+  /** The longest common substring of the two values */
+  final def stralgolcs[A: Read[Bulk, _]](input: StrAlgoInput): Single.Aux[A] = Protocol("STRALGO", "LCS" :: input.params).as[Bulk, A]
+
+  /** The length of the longest common substring of the two values */
+  final def stralgolcslen(input: StrAlgoInput): Single.Aux[NonNegInt] =
+    Protocol("STRALGO", "LCS" :: input.params ++ List("LEN")).as[Num, NonNegInt]
+
+  /** Where the matches are in each value, with their lengths */
+  final def stralgolcsidx(input: StrAlgoInput): Single.Aux[LcsMatches] =
+    Protocol("STRALGO", "LCS" :: input.params ++ List("IDX", "WITHMATCHLEN")).using(RESPRead.instance(StringP.lcsMatches))
+  final def stralgolcsidx(input: StrAlgoInput, minMatchLength: PosInt): Single.Aux[LcsMatches] =
+    Protocol("STRALGO", "LCS" :: input.params ++ List("IDX", "MINMATCHLEN", minMatchLength.value.toString, "WITHMATCHLEN"))
+      .using(RESPRead.instance(StringP.lcsMatches))
+}
+
 /** LCS: Redis 7.0 */
 trait StringLcsP extends Features {
   import StringP.LcsMatches
@@ -525,6 +557,7 @@ trait StringP
     with StringSetIfEqP
     with StringSetCompareP
     with StringBitUnitP
+    with StringAlgoP
     with StringLcsP
     with StringBitopExtendedP
     with StringDigestAndDelExP

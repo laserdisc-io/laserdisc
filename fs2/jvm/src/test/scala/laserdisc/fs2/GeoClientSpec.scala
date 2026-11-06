@@ -48,6 +48,26 @@ abstract class GeoClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
   protected final def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
+  test(s"a $dest client stops GEORADIUS at the first matches with ANY") {
+    import laserdisc.redis_6_2.*
+    import geotypes.*
+
+    send(del("g:a", "g:b"))
+    send(
+      geoadd("g:a", OneOrMore.unsafeFrom(List(GeoPosition("Palermo", 38.115556, 13.361389), GeoPosition("Catania", 37.502669, 15.087269))))
+    )
+
+    val at  = GeoCoordinates(37.5, 15.0)
+    val any = GeoCount.any(1)
+    assertEquals(send(georadius("g:a", at, 300.0, GeoUnit.kilometers, any)).size, 1)
+    assertEquals(send(georadius("g:a", at, 300.0, GeoUnit.kilometers, any, Direction.asc)).size, 1)
+    assertEquals(send(georadius("g:a", "Palermo", 300.0, GeoUnit.kilometers, any)).size, 1)
+    assertEquals(send(georadius("g:a", at, 300.0, GeoUnit.kilometers, GeoCount.closest(1), Direction.asc)), Seq(Key("Catania")))
+    assertEquals(send(ro.georadius("g:a", at, 300.0, GeoUnit.kilometers, any)).size, 1)
+    assertEquals(send(ro.georadius("g:a", "Palermo", 300.0, GeoUnit.kilometers, any)).size, 1)
+    send(del("g:a", "g:b"))
+  }
+
   test(s"a $dest client adds with NX, XX and CH, and searches by radius and by box") {
     import laserdisc.redis_6_2.*
     import geotypes.*

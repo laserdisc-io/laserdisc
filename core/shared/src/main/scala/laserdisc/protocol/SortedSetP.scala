@@ -192,7 +192,7 @@ trait SortedSetBaseP extends Features {
       "ZPOPMAX",
       "ZPOPMIN",
       "ZRANDMEMBER: WITHSCORES",
-      "ZRANGE: WITHSCORES",
+      "ZRANGE: BYLEX BYSCORE LIMIT REV WITHSCORES",
       "ZRANGEBYLEX: LIMIT",
       "ZRANGEBYSCORE: LIMIT WITHSCORES",
       "ZRANGESTORE: BYLEX BYSCORE LIMIT REV",
@@ -334,6 +334,52 @@ trait SortedSetBaseP extends Features {
     Protocol("ZRANGE", key *: start *: stop *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
   final def zrangewithscores[A: Read[Bulk, _]](key: Key, start: Index, stop: Index): Single.Aux[Seq[(A, Double)]] =
     Protocol("ZRANGE", key *: start *: stop *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
+
+  /** The members in a range of scores or of names, in the one command that does what ZRANGEBYSCORE and ZRANGEBYLEX do. Scores of a range of
+    * names aren't something a server can reply with
+    */
+  final def zrange[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[A]] =
+    Protocol("ZRANGE", key *: range.min *: range.max *: "BYSCORE" *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
+  final def zrange[A: Read[Bulk, _]](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+    Protocol("ZRANGE", key *: range.min *: range.max *: "BYSCORE" *: "LIMIT" *: offset *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
+  final def zrange[A: Read[Bulk, _]](key: Key, range: LexRange): Single.Aux[Seq[A]] =
+    Protocol("ZRANGE", key *: range.min *: range.max *: "BYLEX" *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
+  final def zrange[A: Read[Bulk, _]](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+    Protocol("ZRANGE", key *: range.min *: range.max *: "BYLEX" *: "LIMIT" *: offset *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
+  final def zrangewithscores[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[(A, Double)]] =
+    Protocol("ZRANGE", key *: range.min *: range.max *: "BYSCORE" *: "WITHSCORES" *: EmptyTuple)
+      .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
+  final def zrangewithscores[A: Read[Bulk, _]](
+      key: Key,
+      range: ScoreRange,
+      offset: NonNegLong,
+      count: PosLong
+  ): Single.Aux[Seq[(A, Double)]] =
+    Protocol("ZRANGE", key *: range.min *: range.max *: "BYSCORE" *: "LIMIT" *: offset *: count *: "WITHSCORES" *: EmptyTuple)
+      .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
+
+  /** ZRANGE in reverse order, in the one command that does what ZREVRANGEBYSCORE and ZREVRANGEBYLEX do */
+  final def zrevrange[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[A]] =
+    Protocol("ZRANGE", key *: range.max *: range.min *: "BYSCORE" *: "REV" *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
+  final def zrevrange[A: Read[Bulk, _]](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+    Protocol("ZRANGE", key *: range.max *: range.min *: "BYSCORE" *: "REV" *: "LIMIT" *: offset *: count *: EmptyTuple)
+      .as[Arr.Of[Bulk], Seq[A]]
+  final def zrevrange[A: Read[Bulk, _]](key: Key, range: LexRange): Single.Aux[Seq[A]] =
+    Protocol("ZRANGE", key *: range.max *: range.min *: "BYLEX" *: "REV" *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
+  final def zrevrange[A: Read[Bulk, _]](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+    Protocol("ZRANGE", key *: range.max *: range.min *: "BYLEX" *: "REV" *: "LIMIT" *: offset *: count *: EmptyTuple)
+      .as[Arr.Of[Bulk], Seq[A]]
+  final def zrevrangewithscores[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[(A, Double)]] =
+    Protocol("ZRANGE", key *: range.max *: range.min *: "BYSCORE" *: "REV" *: "WITHSCORES" *: EmptyTuple)
+      .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
+  final def zrevrangewithscores[A: Read[Bulk, _]](
+      key: Key,
+      range: ScoreRange,
+      offset: NonNegLong,
+      count: PosLong
+  ): Single.Aux[Seq[(A, Double)]] =
+    Protocol("ZRANGE", key *: range.max *: range.min *: "BYSCORE" *: "REV" *: "LIMIT" *: offset *: count *: "WITHSCORES" *: EmptyTuple)
+      .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
   final def zrangebylex[A: Read[Bulk, _]](key: Key, range: LexRange): Single.Aux[Seq[A]] =
     Protocol("ZRANGEBYLEX", key *: range.min *: range.max *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]

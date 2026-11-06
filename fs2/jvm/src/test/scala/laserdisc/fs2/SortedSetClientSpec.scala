@@ -96,6 +96,32 @@ abstract class SortedSetClientSpec(p: Port, dest: String) extends LaserdiscFs2Su
     assertEquals(send(blocking.bzpopmax[String](b, 1)), Some(KV(Key("ss:b"), "m" -> 5.0)))
   }
 
+  test(s"a $dest client reads ranges of scores and of names with one ZRANGE") {
+    import laserdisc.redis_6_2.*
+    import sortedsettypes.{lexrange, scorerange}
+
+    send(del("ss:r", "ss:rl"))
+    send(zadd("ss:r", "a", 1.0, "b", 2.0, "c", 3.0))
+    val scores = scorerange.closed(1.0, 3.0)
+
+    assertEquals(send(zrange[String]("ss:r", scorerange.closed(1.0, 2.0))), Seq("a", "b"))
+    assertEquals(send(zrange[String]("ss:r", scores, 1L, 1L)), Seq("b"))
+    assertEquals(send(zrangewithscores[String]("ss:r", scorerange.closed(1.0, 2.0))), Seq("a" -> 1.0, "b" -> 2.0))
+    assertEquals(send(zrangewithscores[String]("ss:r", scores, 2L, 5L)), Seq("c" -> 3.0))
+    assertEquals(send(zrevrange[String]("ss:r", scores)), Seq("c", "b", "a"))
+    assertEquals(send(zrevrange[String]("ss:r", scores, 0L, 1L)), Seq("c"))
+    assertEquals(send(zrevrangewithscores[String]("ss:r", scores)), Seq("c" -> 3.0, "b" -> 2.0, "a" -> 1.0))
+    assertEquals(send(zrevrangewithscores[String]("ss:r", scores, 0L, 1L)), Seq("c" -> 3.0))
+
+    send(zadd("ss:rl", "a", 0.0, "b", 0.0, "c", 0.0))
+    val names = lexrange.closed("a", "b")
+    assertEquals(send(zrange[String]("ss:rl", names)), Seq("a", "b"))
+    assertEquals(send(zrange[String]("ss:rl", names, 1L, 1L)), Seq("b"))
+    assertEquals(send(zrevrange[String]("ss:rl", names)), Seq("b", "a"))
+    assertEquals(send(zrevrange[String]("ss:rl", names, 0L, 1L)), Seq("b"))
+    send(del("ss:r", "ss:rl"))
+  }
+
   test(s"a $dest client reads ranges with scores, and combines and stores sorted sets") {
     import laserdisc.redis_6_2.*
 

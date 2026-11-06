@@ -148,4 +148,32 @@ final class SortedSetPSpec extends BaseSpec with SortedSetP with BSortedSetP {
       assertEquals(protocol.decode(reply), o.map { case (r, s) => r -> s.value })
     }
   }
+
+  test("The SortedSet protocol using zrange and zrevrange sends a range of scores or of names, with REV, LIMIT and WITHSCORES") {
+    def frame(ps: String*): RESP = Arr(ps.map(Bulk(_)).toList)
+    val scores                   = sortedsettypes.scorerange.closed(ValidDouble(1.0), ValidDouble(3.0))
+    val names                    = sortedsettypes.lexrange.closed(Key("a"), Key("b"))
+    val (k, o, c)                = (Key("k"), NonNegLong(1L), PosLong(2L))
+
+    assertEquals(zrange[String](k, scores).encode, frame("ZRANGE", "k", "1.0", "3.0", "BYSCORE"))
+    assertEquals(zrange[String](k, scores, o, c).encode, frame("ZRANGE", "k", "1.0", "3.0", "BYSCORE", "LIMIT", "1", "2"))
+    assertEquals(zrange[String](k, names).encode, frame("ZRANGE", "k", "[a", "[b", "BYLEX"))
+    assertEquals(zrange[String](k, names, o, c).encode, frame("ZRANGE", "k", "[a", "[b", "BYLEX", "LIMIT", "1", "2"))
+    assertEquals(zrangewithscores[String](k, scores).encode, frame("ZRANGE", "k", "1.0", "3.0", "BYSCORE", "WITHSCORES"))
+    assertEquals(
+      zrangewithscores[String](k, scores, o, c).encode,
+      frame("ZRANGE", "k", "1.0", "3.0", "BYSCORE", "LIMIT", "1", "2", "WITHSCORES")
+    )
+    assertEquals(zrevrange[String](k, scores).encode, frame("ZRANGE", "k", "3.0", "1.0", "BYSCORE", "REV"))
+    assertEquals(zrevrange[String](k, scores, o, c).encode, frame("ZRANGE", "k", "3.0", "1.0", "BYSCORE", "REV", "LIMIT", "1", "2"))
+    assertEquals(zrevrange[String](k, names).encode, frame("ZRANGE", "k", "[b", "[a", "BYLEX", "REV"))
+    assertEquals(zrevrange[String](k, names, o, c).encode, frame("ZRANGE", "k", "[b", "[a", "BYLEX", "REV", "LIMIT", "1", "2"))
+    assertEquals(zrevrangewithscores[String](k, scores).encode, frame("ZRANGE", "k", "3.0", "1.0", "BYSCORE", "REV", "WITHSCORES"))
+    assertEquals(
+      zrevrangewithscores[String](k, scores, o, c).encode,
+      frame("ZRANGE", "k", "3.0", "1.0", "BYSCORE", "REV", "LIMIT", "1", "2", "WITHSCORES")
+    )
+    assertEquals(zrange[String](k, scores).decode(Arr(Bulk("a"))), Seq("a"))
+    assertEquals(zrangewithscores[String](k, scores).decode(Arr(Bulk("a"), Bulk("1"))), Seq("a" -> 1.0))
+  }
 }

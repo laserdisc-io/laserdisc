@@ -93,13 +93,17 @@ Some things still behave differently from Redis:
 ## Commands laserdisc doesn't send
 
 These commands aren't available on purpose, because they're meant for servers
-talking to each other, or because they would break or stall your connection:
+talking to each other, because they would break or stall your connection, or
+because they have no use on a connection shared by all your calls:
 
 | Command | Why |
 | --- | --- |
 | `PSYNC`, `SYNC`, `REPLCONF` | They turn the connection into a replication link |
 | `ASKING`, `RESTORE-ASKING`, `CLUSTER SYNCSLOTS`, `XIDMPRECORD` | Servers send these to each other |
 | `SCRIPT DEBUG` | It takes over the connection with an interactive debugger |
+| `DISCARD` | A transaction is sent whole, so there's never an open one to cancel |
+| `RESET` | It would log out and change the database for everyone sharing the connection |
+| `CLIENT REPLY` | Replies are matched to requests by their order, so a missing reply breaks the connection |
 | Dragonfly's `SHRINK`, `ADDREPLICAOF` | They aren't documented, so what they take and reply can't be relied on |
 | `DEBUG`, `PFDEBUG` | They can crash or stall a server, and their replies can change between versions |
 

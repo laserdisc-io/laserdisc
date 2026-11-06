@@ -363,4 +363,26 @@ abstract class HashPSpec extends BaseSpec with HashP {
       assertEquals(protocol.decode(Arr(Bulk(0L), Arr(fs.map(Bulk(_))))), Scan(NonNegLong(0L), Some(fs)))
     }
   }
+
+  property("The Hash protocol using hexpireat and hpexpire send the time and any condition before the fields") {
+    import hashtypes.*
+    forAll { (k: Key, t: NonNegLong, fs: OneOrMoreKeys) =>
+      val reply    = Arr(Num(1L))
+      val expected = Seq(HashFieldSet)
+      assertEquals(hexpireat(k, t, fs).encode, Arr(Bulk("HEXPIREAT") :: Bulk(k) :: Bulk(t) :: fields(fs)))
+      assertEquals(hexpireat(k, t, fs).decode(reply), expected)
+      assertEquals(
+        hexpireat(k, t, HashExpireCondition.nx, fs).encode,
+        Arr(Bulk("HEXPIREAT") :: Bulk(k) :: Bulk(t) :: Bulk("NX") :: fields(fs))
+      )
+      assertEquals(hexpireat(k, t, HashExpireCondition.nx, fs).decode(reply), expected)
+      assertEquals(hpexpire(k, t, fs).encode, Arr(Bulk("HPEXPIRE") :: Bulk(k) :: Bulk(t) :: fields(fs)))
+      assertEquals(hpexpire(k, t, fs).decode(reply), expected)
+      assertEquals(
+        hpexpire(k, t, HashExpireCondition.xx, fs).encode,
+        Arr(Bulk("HPEXPIRE") :: Bulk(k) :: Bulk(t) :: Bulk("XX") :: fields(fs))
+      )
+      assertEquals(hpexpire(k, t, HashExpireCondition.xx, fs).decode(reply), expected)
+    }
+  }
 }

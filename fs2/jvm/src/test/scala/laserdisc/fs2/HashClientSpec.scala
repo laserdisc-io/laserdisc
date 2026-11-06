@@ -68,7 +68,7 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     import version.*
     import hashtypes.*
     import noValues.hscannovalues
-    import expiry.{hexpire, hexpiretime, hpersist, hpexpireat, hpttl, httl}
+    import expiry.{hexpire, hexpireat, hexpiretime, hpersist, hpexpire, hpexpireat, hpttl, httl}
     import getSet.{hgetex, hsetex}
     import getDel.hgetdel
 
@@ -80,6 +80,11 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     val c  = OneOrMoreKeys.unsafeFrom(List(Key("c")))
     assertEquals(send(hexpire("h:e", 100L, ab)), Seq(HashFieldSet, HashFieldSet, HashNoField))
     assertEquals(send(hexpire("h:e", 100L, HashExpireCondition.nx, a)), Seq(HashFieldNotSet))
+    assertEquals(send(hpexpire("h:e", 100000L, a)), Seq(HashFieldSet))
+    assertEquals(send(hpexpire("h:e", 100000L, HashExpireCondition.nx, a)), Seq(HashFieldNotSet))
+    assertEquals(send(hexpireat("h:e", 4102444800L, a)), Seq(HashFieldSet))
+    assertEquals(send(hexpireat("h:e", 4102444800L, HashExpireCondition.nx, a)), Seq(HashFieldNotSet))
+    assertEquals(send(hexpire("h:e", 100L, a)), Seq(HashFieldSet))
     assertEquals(send(hpexpireat("h:e", 1L, c)), Seq(HashFieldDeleted))
     send(httl("h:e", a)) match {
       case Seq(HashFieldExpireAfter(ttl)) => assert(ttl.value > 0L && ttl.value <= 100L)

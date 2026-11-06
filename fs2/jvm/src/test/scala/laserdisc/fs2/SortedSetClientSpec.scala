@@ -157,4 +157,83 @@ abstract class SortedSetClientSpec(p: Port, dest: String) extends LaserdiscFs2Su
     assert(send(zrandmember[String]("ss:x")).exists(Set("a", "b", "c")))
     assertEquals(send(zrandmemberswithscores[String]("ss:x", 3)).toSet, Set("a" -> 1.0, "b" -> 2.0, "c" -> 3.0))
   }
+
+  test(s"a $dest client counts, ranks, increments and removes") {
+    import laserdisc.redis_6_2.*
+    import sortedsettypes.{flag, lexrange, scorerange}
+
+    send(del("ss:c", "ss:n"))
+    assertEquals(send(zcard("ss:c")), None)
+    assertEquals(send(zadd("ss:c", "a", 1.0, "b", 2.0, "c", 3.0)).value, 3)
+    assertEquals(send(zcard("ss:c")).map(_.value), Some(3))
+    assertEquals(send(zaddch("ss:c", "a", 1.5, "d", 4.0)).value, 2)
+    assertEquals(send(zaddch("ss:c", flag.xx, "a", 1.0, "z", 9.0)).value, 1)
+    assertEquals(send(zaddchincr("ss:c", "d", 1.0)), 5.0)
+    assertEquals(send(zaddchincr("ss:c", flag.nx, "d", 1.0)), None)
+
+    val middle = scorerange.closed(2.0, 3.0)
+    assertEquals(send(zcount("ss:c", middle)).value, 2)
+    assertEquals(send(zincrby("ss:c", "a", 0.5)), 1.5)
+    assertEquals(send(zrank("ss:c", "a")).map(_.value), Some(0))
+    assertEquals(send(zrevrank("ss:c", "a")).map(_.value), Some(3))
+    assertEquals(send(zrank("ss:c", "z")), None)
+
+    assertEquals(send(zrangebyscore[String]("ss:c", middle)), Seq("b", "c"))
+    assertEquals(send(zrangebyscore[String]("ss:c", middle, 1L, 1L)), Seq("c"))
+    assertEquals(send(zrevrangebyscore[String]("ss:c", middle)), Seq("c", "b"))
+    assertEquals(send(zrevrangebyscore[String]("ss:c", middle, 1L, 1L)), Seq("b"))
+    assertEquals(send(zrangebyscorewithscores[String]("ss:c", middle)), Seq("b" -> 2.0, "c" -> 3.0))
+    assertEquals(send(zrangebyscorewithscores[String]("ss:c", middle, 0L, 1L)), Seq("b" -> 2.0))
+    assertEquals(send(zrevrangebyscorewithscores[String]("ss:c", middle)), Seq("c" -> 3.0, "b" -> 2.0))
+    assertEquals(send(zrevrangebyscorewithscores[String]("ss:c", middle, 0L, 1L)), Seq("c" -> 3.0))
+    assertEquals(send(zrandmembers[String]("ss:c", 2)).size, 2)
+
+    assertEquals(send(zrem("ss:c", "a", "z")).value, 1)
+    assertEquals(send(zremrangebyscore("ss:c", scorerange.closed(2.0, 2.0))).value, 1)
+    assertEquals(send(zremrangebyrank("ss:c", 0L, 0L)).value, 1)
+
+    send(zadd("ss:n", "a", 0.0, "b", 0.0, "c", 0.0))
+    val names = lexrange.closed("a", "b")
+    assertEquals(send(zlexcount("ss:n", names)).value, 2)
+    assertEquals(send(zrangebylex[String]("ss:n", names)), Seq("a", "b"))
+    assertEquals(send(zrangebylex[String]("ss:n", names, 1L, 1L)), Seq("b"))
+    assertEquals(send(zrevrangebylex[String]("ss:n", names)), Seq("b", "a"))
+    assertEquals(send(zrevrangebylex[String]("ss:n", names, 1L, 1L)), Seq("a"))
+    assertEquals(send(zremrangebylex("ss:n", names)).value, 2)
+  }
+
+  test(s"a $dest client stores combined sorted sets with weights and an aggregate") {
+    import laserdisc.redis_6_2.*
+    import sortedsettypes.aggregate
+
+    send(del("ss:p", "ss:q", "ss:d"))
+    send(zadd("ss:p", "a", 1.0, "b", 2.0))
+    send(zadd("ss:q", "b", 10.0, "c", 20.0))
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("ss:p"), Key("ss:q")))
+    val w  = TwoOrMoreWeightedKeys.unsafeFrom(List(Key("ss:p") -> ValidDouble(2.0), Key("ss:q") -> ValidDouble(1.0)))
+
+    assertEquals(send(zinterstore(ks, "ss:d")).value, 1)
+    assertEquals(send(zscore("ss:d", "b")), Some(12.0))
+    assertEquals(send(zinterstore(ks, "ss:d", aggregate.max)).value, 1)
+    assertEquals(send(zscore("ss:d", "b")), Some(10.0))
+    assertEquals(send(zinterstoreweighted(w, "ss:d")).value, 1)
+    assertEquals(send(zscore("ss:d", "b")), Some(14.0))
+    assertEquals(send(zinterstoreweighted(w, "ss:d", aggregate.min)).value, 1)
+    assertEquals(send(zscore("ss:d", "b")), Some(4.0))
+
+    assertEquals(send(zunionstore(ks, "ss:d")).value, 3)
+    assertEquals(send(zunionstore(ks, "ss:d", aggregate.max)).value, 3)
+    assertEquals(send(zunionstoreweighted(w, "ss:d")).value, 3)
+    assertEquals(send(zscore("ss:d", "a")), Some(2.0))
+    assertEquals(send(zunionstoreweighted(w, "ss:d", aggregate.max)).value, 3)
+    assertEquals(send(zscore("ss:d", "b")), Some(10.0))
+
+    assertEquals(send(zinterweighted[String](w)), Seq("b"))
+    assertEquals(send(zinterweighted[String](w, aggregate.max)), Seq("b"))
+    assertEquals(send(zunionweighted[String](w)), Seq("a", "b", "c"))
+    assertEquals(send(zunionweighted[String](w, aggregate.min)), Seq("a", "b", "c"))
+    assertEquals(send(zunionwithscores[String](ks)), Seq("a" -> 1.0, "b" -> 12.0, "c" -> 20.0))
+    assertEquals(send(zunionwithscores[String](ks, aggregate.max)), Seq("a" -> 1.0, "b" -> 10.0, "c" -> 20.0))
+  }
 }

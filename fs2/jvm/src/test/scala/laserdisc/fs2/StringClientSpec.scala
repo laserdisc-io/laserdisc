@@ -23,7 +23,8 @@ package laserdisc
 package fs2
 
 import laserdisc.auto.*
-import laserdisc.protocol.StringP.{LcsMatch, LcsRange}
+import laserdisc.protocol.KeyP.TTLResponse
+import laserdisc.protocol.StringP.{Bit, LcsMatch, LcsRange}
 
 final class RedisStringClientSpec extends StringClientSpec(6379, "redis") {
   test("a redis client compares strings and counts bits with the commands of Redis 8.10")(lcsAndBits(redis_8_10))
@@ -163,5 +164,49 @@ abstract class StringClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     val keys = OneOrMoreKeys.unsafeFrom(List(Key("s:m1"), Key("s:m2")))
     assertEquals(send(mget[Int *: Option[Int] *: EmptyTuple](keys)), 1 *: Option.empty[Int] *: EmptyTuple)
     assertEquals(send(mget[Seq[Option[Int]]](keys)), Seq(Some(1), None))
+  }
+
+  test(s"a $dest client appends, counts up and down and works on parts of a string") {
+    import laserdisc.redis_6_2.*
+
+    send(del("s:a", "s:n", "s:f", "s:r", "s:b", "s:d"))
+    assertEquals(send(append("s:a", "foo")).value, 3)
+    assertEquals(send(append("s:a", "bar")).value, 6)
+    assertEquals(send(getrange[String]("s:a", 1L, 3L)), "oob")
+    assertEquals(send(setrange("s:a", 3, "BAR")).value, 6)
+    assertEquals(send(get[String]("s:a")), Some("fooBAR"))
+
+    send(set("s:n", 10))
+    assertEquals(send(incrby[Long]("s:n", 5L)), 15L)
+    assertEquals(send(decrby[Long]("s:n", 3L)), 12L)
+    assertEquals(send(decr[Long]("s:n")), 11L)
+    send(set("s:f", 1.5))
+    assertEquals(send(incrbyfloat("s:f", 1.25)), 2.75)
+
+    send(setbit("s:b", 3L, stringtypes.bit.set))
+    assertEquals(send(getbit("s:b", 3L)), stringtypes.bit.set: Bit)
+    assertEquals(send(getbit("s:b", 4L)), stringtypes.bit.unset: Bit)
+    assertEquals(send(bitopnot("s:b", "s:d")).value, 1)
+  }
+
+  test(s"a $dest client sets only what is missing, and sets with an expiry") {
+    import laserdisc.redis_6_2.*
+
+    send(del("s:nx", "s:mx", "s:ex", "s:px"))
+    assert(send(setnx("s:nx", 1)))
+    assert(!send(setnx("s:nx", 2)))
+    assert(send(msetnx(OneOrMore.unsafeFrom(List(Key("s:mx") -> 1)))))
+    assert(!send(msetnx(OneOrMore.unsafeFrom(List(Key("s:mx") -> 2)))))
+
+    assertEquals(send(setex("s:ex", "v", 100L)), OK)
+    send(ttl("s:ex")) match {
+      case TTLResponse.ExpireAfter(left) => assert(left.value <= 100L)
+      case other                         => fail(s"expected a TTL, got $other")
+    }
+    assertEquals(send(psetex("s:px", 100000L, "v")), OK)
+    send(pttl("s:px")) match {
+      case TTLResponse.ExpireAfter(left) => assert(left.value <= 100000L)
+      case other                         => fail(s"expected a TTL, got $other")
+    }
   }
 }

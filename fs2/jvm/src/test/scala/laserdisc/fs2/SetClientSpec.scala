@@ -76,4 +76,33 @@ abstract class SetClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
     assertEquals(send(spop[String]("s:none", 2)), Seq.empty)
     assertEquals(send(srandmembers[String]("s:none", 2)), Seq.empty)
   }
+
+  test(s"a $dest client adds, moves, removes and combines members") {
+    import laserdisc.redis_6_2.*
+
+    send(del("s:x", "s:y", "s:d", "s:e"))
+    assertEquals(send(scard("s:x")), None)
+    assertEquals(send(srandmember[String]("s:x")), None)
+    assertEquals(send(sadd("s:x", "a", "b", "c")).value, 3)
+    assertEquals(send(sadd("s:y", "b", "c", "d")).value, 3)
+
+    assertEquals(send(scard("s:x")).map(_.value), Some(3))
+    assert(send(sismember("s:x", "a")))
+    assert(!send(sismember("s:x", "z")))
+    assertEquals(send(smembers[String]("s:x")).toSet, Set("a", "b", "c"))
+    assert(send(srandmember[String]("s:x")).exists(Set("a", "b", "c")))
+    assertEquals(send(srandmembers[String]("s:x", 2)).size, 2)
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("s:x"), Key("s:y")))
+    assertEquals(send(sdiff[String](ks)), Seq("a"))
+    assertEquals(send(sinter[String](ks)).toSet, Set("b", "c"))
+    assertEquals(send(sunion[String](ks)).toSet, Set("a", "b", "c", "d"))
+    assertEquals(send(sdiffstore(ks, "s:d")).value, 1)
+    assertEquals(send(sinterstore(ks, "s:d")).value, 2)
+    assertEquals(send(sunionstore(ks, "s:d")).value, 4)
+
+    assert(send(smove("s:x", "s:e", "a")))
+    assert(!send(smove("s:x", "s:e", "a")))
+    assertEquals(send(srem("s:x", "b", "z")).value, 1)
+  }
 }

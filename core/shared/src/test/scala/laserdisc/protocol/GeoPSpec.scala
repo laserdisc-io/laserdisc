@@ -1030,21 +1030,21 @@ abstract class GeoPSpec extends BaseSpec with GeoP {
 
   test("The Geo protocol using georadius takes a count that can stop at the first matches, on all four commands") {
     def frame(ps: String*): RESP = Arr(ps.map(Bulk(_)).toList)
-    val (k, m, at)               = (Key("k"), Key("m"), GeoCoordinates(Latitude(10.0), Longitude(20.0)))
-    val (radius, km)             = (NonNegDouble(5.0), GeoUnit.kilometers)
+    val (k, m, at)               = (Key("k"), Key("m"), GeoCoordinates(Latitude(10.5), Longitude(20.5)))
+    val (radius, km)             = (NonNegDouble(5.5), GeoUnit.kilometers)
     val any                      = GeoCount.any(PosInt(2))
 
-    assertEquals(georadius(k, at, radius, km, any).encode, frame("GEORADIUS", "k", "20.0", "10.0", "5.0", "km", "COUNT", "2", "ANY"))
+    assertEquals(georadius(k, at, radius, km, any).encode, frame("GEORADIUS", "k", "20.5", "10.5", "5.5", "km", "COUNT", "2", "ANY"))
     assertEquals(
       georadius(k, at, radius, km, any, Direction.asc).encode,
-      frame("GEORADIUS", "k", "20.0", "10.0", "5.0", "km", "COUNT", "2", "ANY", "ASC")
+      frame("GEORADIUS", "k", "20.5", "10.5", "5.5", "km", "COUNT", "2", "ANY", "ASC")
     )
     assertEquals(
       georadius(k, m, radius, km, GeoCount.closest(PosInt(2))).encode,
-      frame("GEORADIUSBYMEMBER", "k", "m", "5.0", "km", "COUNT", "2")
+      frame("GEORADIUSBYMEMBER", "k", "m", "5.5", "km", "COUNT", "2")
     )
-    assertEquals(georadius(k, m, radius, km, any).encode, frame("GEORADIUSBYMEMBER", "k", "m", "5.0", "km", "COUNT", "2", "ANY"))
-    assertEquals(ro.georadius(k, at, radius, km, any).encode, frame("GEORADIUS_RO", "k", "20.0", "10.0", "5.0", "km", "COUNT", "2", "ANY"))
-    assertEquals(ro.georadius(k, m, radius, km, any).encode, frame("GEORADIUSBYMEMBER_RO", "k", "m", "5.0", "km", "COUNT", "2", "ANY"))
+    assertEquals(georadius(k, m, radius, km, any).encode, frame("GEORADIUSBYMEMBER", "k", "m", "5.5", "km", "COUNT", "2", "ANY"))
+    assertEquals(ro.georadius(k, at, radius, km, any).encode, frame("GEORADIUS_RO", "k", "20.5", "10.5", "5.5", "km", "COUNT", "2", "ANY"))
+    assertEquals(ro.georadius(k, m, radius, km, any).encode, frame("GEORADIUSBYMEMBER_RO", "k", "m", "5.5", "km", "COUNT", "2", "ANY"))
   }
 }

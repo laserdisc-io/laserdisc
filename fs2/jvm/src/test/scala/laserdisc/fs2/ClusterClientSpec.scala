@@ -39,6 +39,25 @@ final class RedisClusterClientSpec extends ClusterClientSpec(7100, "redis", redi
 final class KeyDbClusterClientSpec extends ClusterClientSpec(7110, "keyDb", redis_6_2.cluster)
 
 final class ValkeyClusterClientSpec extends ClusterClientSpec(7120, "valkey", valkey_7_2.cluster) {
+  test("a valkey cluster client walks through the keys with the commands of Valkey 9.1") {
+    val v = valkey_9_1
+    import v.clustertypes.*
+
+    @tailrec def walk(cursor: ClusterScanCursor, options: ClusterScanOptions, found: Seq[Key]): Seq[Key] = {
+      val step = send(v.clusterscan(cursor, options))
+      if (step.finished) found ++ step.keys else walk(step.cursor, options, found ++ step.keys)
+    }
+
+    val keys = List(Key("cs:a"), Key("cs:b"), Key("cs:c"))
+    keys.foreach(k => send(v.set(k, "x")))
+    val all = ClusterScanOptions.pattern(GlobPattern("cs:*")).count(100)
+
+    assertEquals(walk(ClusterScanCursor.start, all, Nil).toSet, keys.toSet)
+    assertEquals(walk(ClusterScanCursor.start, all.ofType(protocol.KeyP.Type.hash), Nil), Nil)
+    assert(send(v.clusterscan(ClusterScanCursor.start)).cursor.value.nonEmpty)
+    keys.foreach(k => send(v.del(k)))
+  }
+
   test("a valkey cluster client reads the hostname a node announces, with the nodes and the slots") {
     import valkey_7_2.config
     hostname(config.set(OneOrMore.unsafeFrom(List(Key("cluster-announce-hostname") -> "my.host.example"))))
@@ -57,7 +76,7 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
   private def result[A](on: String, sent: IO[Maybe[A]]): A =
     sent.unsafeRunSync()(using runtime).fold(e => fail(s"$dest $on replied with an error: ${e.getMessage}"), identity)
 
-  private def send[A](protocol: Protocol.Aux[A]): A               = result("master", client.send(protocol))
+  protected final def send[A](protocol: Protocol.Aux[A]): A       = result("master", client.send(protocol))
   private def sendTo[A](port: Port)(protocol: Protocol.Aux[A]): A =
     result(s"on $port", RedisClient[IO].to("127.0.0.1", port).use(_.send(protocol)))
 

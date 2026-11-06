@@ -42,6 +42,7 @@ trait Keys7_2 extends Keys7_0 with KeyWaitAofP
 trait Hashes6_2       extends HashBaseP with HashExtP
 trait Hashes7_4       extends Hashes6_2 with HashScanNoValuesP with HashFieldExpiryP
 trait Hashes8_0       extends Hashes7_4 with HashGetSetExpiryP with HashGetDelP
+trait Hashes8_10      extends Hashes8_0 with HashImportP
 trait HashesValkey8_0 extends Hashes6_2 with HashScanNoValuesP
 trait HashesValkey9_0 extends HashesValkey8_0 with HashFieldExpiryP with HashGetSetExpiryP
 trait HashesValkey9_1 extends HashesValkey9_0 with HashGetDelP with HashSetExKeyConditionP
@@ -76,16 +77,22 @@ trait Cluster8_2       extends Cluster7_2 with ClusterSlotStatsP
 trait Cluster8_4       extends Cluster8_2 with ClusterMigrationP
 trait ClusterValkey8_0 extends Cluster7_2 with ClusterSlotStatsP with ClusterSetSlotTimeoutP
 trait ClusterValkey9_0 extends ClusterValkey8_0 with ClusterReplicateNoOneP with ClusterSlotMigrationsP
+trait ClusterValkey9_1 extends ClusterValkey9_0 with ClusterScanP
 
 /** The CLIENT and CONFIG commands, under `client` and `config` */
-trait Client7_0 extends ClientCommands with ClientNoEvictCommands
-trait Client7_2 extends Client7_0 with ClientNoTouchCommands
-trait Client7_4 extends Client7_2 with ClientMaxAgeCommands
-trait Config7_0 extends ConfigCommands with ConfigManyCommands
+trait Client7_0       extends ClientCommands with ClientNoEvictCommands
+trait Client7_2       extends Client7_0 with ClientNoTouchCommands
+trait Client7_4       extends Client7_2 with ClientMaxAgeCommands
+trait ClientValkey8_0 extends Client7_4 with ClientCapaCommands
+trait ClientValkey8_1 extends ClientValkey8_0 with ClientImportSourceCommands
+trait Config7_0       extends ConfigCommands with ConfigManyCommands
 
 /** The LATENCY and COMMAND commands, under `latency` and `command` */
 trait Latency7_0 extends LatencyCommands with LatencyHistogramCommands
 trait Command7_0 extends CommandCommands with CommandListCommands
+
+/** The MODULE commands, under `module` */
+trait Module7_0 extends ModuleCommands with ModuleLoadExCommands
 
 /** The ACL commands, under `acl` */
 trait Acl7_0 extends AclCommands with AclSelectorCommands
@@ -104,6 +111,7 @@ trait Server7_0 extends Server6_2 with ServerShutdownAndInfoP {
   override lazy val config: Config7_0   = new Config7_0 {}
   override lazy val latency: Latency7_0 = new Latency7_0 {}
   override lazy val command: Command7_0 = new Command7_0 {}
+  override lazy val module: Module7_0   = new Module7_0 {}
   override lazy val acl: Acl7_0         = new Acl7_0 {}
 }
 trait Server7_2 extends Server7_0 {
@@ -116,9 +124,11 @@ trait Server8_0       extends Server7_4 with ServerInfoRedis8P
 trait Server8_6       extends Server8_0 with ServerHotKeysP
 trait Server8_10      extends Server8_6 with ServerBackupP
 trait ServerValkey8_0 extends Server7_2 {
-  override lazy val client: Client7_4 = new Client7_4 {}
+  override lazy val client: ClientValkey8_0 = new ClientValkey8_0 {}
 }
-trait ServerValkey8_1 extends ServerValkey8_0 with ServerBgSaveCancelP with ServerCommandLogP
+trait ServerValkey8_1 extends ServerValkey8_0 with ServerBgSaveCancelP with ServerCommandLogP {
+  override lazy val client: ClientValkey8_1 = new ClientValkey8_1 {}
+}
 trait ServerValkey9_1 extends ServerValkey8_1 with ServerInfoTlsP
 
 trait Scripting6_2       extends ScriptingBaseP
@@ -225,12 +235,13 @@ trait Redis8_8 extends Redis8_6 with ArrayP with SortedSets8_8 with Streams8_8 w
   override val streams: Streams8_8       = new Streams8_8 {}
   override val strings: Strings8_8       = new Strings8_8 {}
 }
-trait Redis8_10 extends Redis8_8 with Lists8_10 with Server8_10 with Sets8_10 {
+trait Redis8_10 extends Redis8_8 with Hashes8_10 with Lists8_10 with Server8_10 with Sets8_10 {
   override val blocking: Blocking8_10 = new Blocking8_10 {}
 
-  override val lists: Lists8_10   = new Lists8_10 {}
-  override val server: Server8_10 = new Server8_10 {}
-  override val sets: Sets8_10     = new Sets8_10 {}
+  override val hashmaps: Hashes8_10 = new Hashes8_10 {}
+  override val lists: Lists8_10     = new Lists8_10 {}
+  override val server: Server8_10   = new Server8_10 {}
+  override val sets: Sets8_10       = new Sets8_10 {}
 }
 
 /** Valkey started from Redis 7.2 */
@@ -258,7 +269,8 @@ trait Valkey9_0 extends Valkey8_1 with ClusterValkey9_0 with GeoValkey9_0 with H
   override val hashmaps: HashesValkey9_0 = new HashesValkey9_0 {}
   override val strings: StringsValkey9_0 = new StringsValkey9_0 {}
 }
-trait Valkey9_1 extends Valkey9_0 with HashesValkey9_1 with ServerValkey9_1 with StringsValkey9_1 {
+trait Valkey9_1 extends Valkey9_0 with ClusterValkey9_1 with HashesValkey9_1 with ServerValkey9_1 with StringsValkey9_1 {
+  override val cluster: ClusterValkey9_1 = new ClusterValkey9_1 {}
   override val hashmaps: HashesValkey9_1 = new HashesValkey9_1 {}
   override val server: ServerValkey9_1   = new ServerValkey9_1 {}
   override val strings: StringsValkey9_1 = new StringsValkey9_1 {}

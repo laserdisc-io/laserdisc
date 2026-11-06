@@ -43,6 +43,30 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis"
     assertEquals(send(hotkeys.get), None)
   }
 
+  test("a redis client reads the documentation of every command with the commands of Redis 8.10")(docs(redis_8_10))
+
+  test("a redis client takes its art and imports a hash from a fieldset with the commands of Redis 8.10") {
+    val v      = redis_8_10
+    val fields = OneOrMoreKeys.unsafeFrom(List(Key("z"), Key("a"), Key("m")))
+
+    assert(send(v.lolwut).nonEmpty)
+    assert(send(v.lolwut(8)).nonEmpty)
+
+    send(v.del("i:hi"))
+    assertEquals(send(v.himportprepare("i:fs", fields)), OK)
+    assertEquals(send(v.himportset("i:hi", "i:fs", OneOrMore.unsafeFrom(List("one", "two", "three")))), OK)
+    assertEquals(send(v.hget[String]("i:hi", "z")), Some("one"))
+    assertEquals(send(v.hget[String]("i:hi", "a")), Some("two"))
+    assertEquals(send(v.hget[String]("i:hi", "m")), Some("three"))
+    assert(failure(v.himportset("i:hi", "i:fs", OneOrMore.unsafeFrom(List("too few")))).contains("does not match"))
+    assertEquals(send(v.himportdiscard("i:fs")), true)
+    assertEquals(send(v.himportdiscard("i:fs")), false)
+    assert(failure(v.himportset("i:hi", "i:fs", OneOrMore.unsafeFrom(List("x")))).contains("no such fieldset"))
+    send(v.himportprepare("i:fs2", fields))
+    assertEquals(send(v.himportdiscardall), NonNegInt(1))
+    send(v.del("i:hi"))
+  }
+
   test("a redis client reads the help of what Redis 8.10 adds") {
     val v = redis_8_10
     List(v.function.help, v.hotkeys.help, v.backup.help).foreach(help => assert(send(help).nonEmpty))
@@ -65,6 +89,18 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis"
 final class KeyDbInspectionClientSpec extends InspectionClientSpec(6380, "keyDb")
 
 final class ValkeyInspectionClientSpec extends InspectionClientSpec(6381, "valkey") {
+  test("a valkey client reads the documentation of every command with the commands of Valkey 9.1")(docs(valkey_9_1))
+
+  test("a valkey client takes its art, and tells what its connection can do with the commands of Valkey 9.1") {
+    val v = valkey_9_1
+
+    assert(send(v.lolwut).nonEmpty)
+    assert(send(v.lolwut(8)).nonEmpty)
+    assertEquals(send(v.client.capa(OneOrMore.unsafeFrom(List(Key("redirect"))))), OK)
+    assertEquals(send(v.client.importsource(on = false)), OK)
+    assert(failure(v.client.importsource(on = true)).contains("import mode"))
+  }
+
   test("a valkey client reads the help of what Valkey 9.1 adds") {
     val v = valkey_9_1
     List(v.function.help, v.commandlog.help).foreach(help => assert(send(help).nonEmpty))
@@ -83,6 +119,32 @@ final class ValkeyInspectionClientSpec extends InspectionClientSpec(6381, "valke
 abstract class InspectionClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
+
+  protected final def failure[A](protocol: Protocol.Aux[A]): String =
+    client.send(protocol).unsafeRunSync()(using runtime).fold(_.getMessage, a => fail(s"$dest should have failed but replied $a"))
+
+  protected final def docs(v: Redis7_0): Unit = {
+    val everyCommand = send(v.command.docs)
+    assert(everyCommand.size > 100, everyCommand.size)
+
+    val xinfo = send(v.command.docs(OneOrMore.unsafeFrom(List(Key("xinfo"), Key("nosuchcommand")))))
+    assertEquals(xinfo.map(_.name), Seq("xinfo"))
+    assert(xinfo.flatMap(_.subcommands).exists(_.name == "xinfo|groups"), xinfo)
+    val set = send(v.command.docs(OneOrMore.unsafeFrom(List(Key("set"))))).head
+    assert(set.summary.nonEmpty && set.history.nonEmpty && set.arguments.exists(_.arguments.nonEmpty), set)
+  }
+
+  test(s"a $dest client gets what a string holds with SUBSTR, checks its HyperLogLog, and is told when it can't load modules") {
+    val v = laserdisc.redis_6_2
+
+    send(v.set("i:substr", "hello"))
+    assertEquals(send(v.substr[String]("i:substr", 1L, 3L)), "ell")
+    send(v.del("i:substr"))
+    assertEquals(send(v.pfselftest), OK)
+    assert(failure(v.module.load("/nosuchmodule.so")).nonEmpty)
+    assert(failure(v.module.load("/nosuchmodule.so", OneOrMore.unsafeFrom(List[Value](1)))).nonEmpty)
+    assert(failure(v.module.unload("nosuchmodule")).nonEmpty)
+  }
 
   test(s"a $dest client reads the help of each family") {
     val v = laserdisc.redis_6_2

@@ -421,8 +421,33 @@ trait HashGetDelP extends Features {
     Protocol("HGETDEL", key *: HashP.fields(fields) *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
 }
 
+/** HIMPORT: Redis 8.10
+  *
+  * A fieldset belongs to the connection, and a client shares one connection, so two parts of an app using the same name replace each
+  * other's fieldset: use names that are unique to each. It's gone when the client reconnects
+  */
+trait HashImportP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("HIMPORT DISCARD", "HIMPORT DISCARDALL", "HIMPORT PREPARE", "HIMPORT SET")
+
+  /** Remembers the fields under a name for `himportset`, replacing any fieldset of that name */
+  final def himportprepare(name: Key, fields: OneOrMoreKeys): Single.Aux[OK] =
+    Protocol("HIMPORT", "PREPARE" :: name.value :: fields.value.map(_.value)).as[Str, OK]
+
+  /** Sets the hash from one value per field of the fieldset, in the order the fields were given to `himportprepare` */
+  final def himportset[A: Show](key: Key, name: Key, values: OneOrMore[A]): Single.Aux[OK] =
+    Protocol("HIMPORT", "SET" *: key *: name *: values.value *: EmptyTuple).as[Str, OK]
+
+  /** Forgets the fieldset, and replies whether there was one */
+  final def himportdiscard(name: Key): Single.Aux[Boolean] = Protocol("HIMPORT", "DISCARD" :: name.value :: Nil).as[Num, Boolean]
+
+  /** Forgets every fieldset of this connection, and replies how many there were */
+  final val himportdiscardall: Single.Aux[NonNegInt] = Protocol("HIMPORT", "DISCARDALL").as[Num, NonNegInt]
+}
+
 trait HashP
     extends HashBaseP
+    with HashImportP
     with HashExtP
     with HashScanNoValuesP
     with HashFieldExpiryP

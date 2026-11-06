@@ -99,6 +99,106 @@ object ServerInspection {
     }
   }
 
+  /** An argument of COMMAND DOCS: its name, its type (like `key` or `oneof`), what it's shown as, which of the command's key specifications
+    * it's for, the word that comes before it, its summary, when it arrived and when it was deprecated, its flags (like `optional`) and the
+    * arguments inside it
+    */
+  final case class CommandArgument(
+      name: String,
+      argumentType: String,
+      displayText: Option[String],
+      keySpecIndex: Option[NonNegInt],
+      token: Option[String],
+      summary: Option[String],
+      since: Option[String],
+      deprecatedSince: Option[String],
+      flags: Seq[String],
+      arguments: Seq[CommandArgument]
+  )
+
+  /** COMMAND DOCS of a command. Commands of modules leave out much of it
+    *
+    * @param module
+    *   the module the command comes from
+    * @param replacedBy
+    *   what to use instead of a deprecated command
+    * @param history
+    *   each version that changed the command, with what changed
+    */
+  final case class CommandDoc(
+      name: String,
+      summary: Option[String],
+      since: Option[String],
+      group: Option[String],
+      complexity: Option[String],
+      module: Option[String],
+      flags: Seq[String],
+      deprecatedSince: Option[String],
+      replacedBy: Option[String],
+      history: Seq[(String, String)],
+      arguments: Seq[CommandArgument],
+      subcommands: Seq[CommandDoc]
+  )
+
+  private implicit lazy val commandArgument: Read[Record, CommandArgument] = Read.record("command argument") { f =>
+    for {
+      name            <- f.bulk[String]("name")
+      argumentType    <- f.bulk[String]("type")
+      displayText     <- f.optionalBulk[String]("display_text")
+      keySpecIndex    <- f.optionalNum[NonNegInt]("key_spec_index")
+      token           <- f.optionalBulk[String]("token")
+      summary         <- f.optionalBulk[String]("summary")
+      since           <- f.optionalBulk[String]("since")
+      deprecatedSince <- f.optionalBulk[String]("deprecated_since")
+      flags           <- f.optional[Texts, Seq[String]]("flags")
+      arguments       <- f.optional[Records, Seq[CommandArgument]]("arguments")
+    } yield CommandArgument(
+      name,
+      argumentType,
+      displayText,
+      keySpecIndex,
+      token,
+      summary,
+      since,
+      deprecatedSince,
+      flags.getOrElse(Nil),
+      arguments.getOrElse(Nil)
+    )
+  }
+
+  // a reply gives the name of a command next to the rest of it
+  private implicit lazy val unnamedCommandDoc: Read[Record, String => CommandDoc] = Read.record("command docs") { f =>
+    for {
+      summary         <- f.optionalBulk[String]("summary")
+      since           <- f.optionalBulk[String]("since")
+      group           <- f.optionalBulk[String]("group")
+      complexity      <- f.optionalBulk[String]("complexity")
+      module          <- f.optionalBulk[String]("module")
+      flags           <- f.optional[Texts, Seq[String]]("doc_flags")
+      deprecatedSince <- f.optionalBulk[String]("deprecated_since")
+      replacedBy      <- f.optionalBulk[String]("replaced_by")
+      history         <- f.optional[Arr.Of[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]], Seq[String *: String *: EmptyTuple]]("history")
+      arguments       <- f.optional[Records, Seq[CommandArgument]]("arguments")
+      subcommands     <- f.optional[Arr.OfPairs[Bulk, Record], Seq[(String, String => CommandDoc)]]("subcommands")
+    } yield CommandDoc(
+      _,
+      summary,
+      since,
+      group,
+      complexity,
+      module,
+      flags.getOrElse(Nil),
+      deprecatedSince,
+      replacedBy,
+      history.getOrElse(Nil).map { case version *: change *: _ => version -> change },
+      arguments.getOrElse(Nil),
+      subcommands.getOrElse(Nil).map { case (name, doc) => doc(name) }
+    )
+  }
+
+  private[protocol] final lazy val commandDocs: Read[Arr.OfPairs[Bulk, Record], Seq[CommandDoc]] =
+    Read[Arr.OfPairs[Bulk, Record], Seq[(String, String => CommandDoc)]].map(_.map { case (name, doc) => doc(name) })
+
   /** COMMAND INFO of a command: its arity (negative when it takes at least that many arguments), flags, where its keys are and its ACL
     * categories. Redis 7.0 also replies with tips, key specifications and subcommands, which are left out here
     */
@@ -221,7 +321,7 @@ object ServerInspection {
 
 /** SLOWLOG, MEMORY and MODULE LIST: Redis 6.2 */
 trait ServerInspectionBaseP extends Features {
-  import ServerInspection.{LogEntry, MemoryStats, ModuleInfo}
+  import ServerInspection.{LogEntry, MemoryStats}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -231,13 +331,11 @@ trait ServerInspectionBaseP extends Features {
       "MEMORY PURGE",
       "MEMORY STATS",
       "MEMORY USAGE: SAMPLES",
-      "MODULE HELP",
-      "MODULE LIST",
       "SLOWLOG GET",
       "SLOWLOG HELP",
       "SLOWLOG LEN",
       "SLOWLOG RESET"
-    )
+    ) ++ module.supported
 
   object slowlog {
     val help: Single.Aux[Seq[String]] = Protocol.help("SLOWLOG")
@@ -271,10 +369,45 @@ trait ServerInspectionBaseP extends Features {
       Protocol("MEMORY", "USAGE" *: key *: "SAMPLES" *: samples *: EmptyTuple).as[OrNullBulk[Num], Option[NonNegLong]]
   }
 
-  object module {
-    val help: Single.Aux[Seq[String]]     = Protocol.help("MODULE")
-    val list: Single.Aux[Seq[ModuleInfo]] = Protocol("MODULE", "LIST").using(RESPRead.instance(ServerInspection.moduleInfos))
-  }
+  lazy val module: ModuleCommands = new ModuleCommands {}
+}
+
+/** MODULE: Redis 6.2. Servers refuse LOAD and UNLOAD unless they were started with `enable-module-command` */
+trait ModuleCommands extends Features {
+  import ServerInspection.ModuleInfo
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("MODULE HELP", "MODULE LIST", "MODULE LOAD", "MODULE UNLOAD")
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("MODULE")
+
+  val list: Single.Aux[Seq[ModuleInfo]] = Protocol("MODULE", "LIST").using(RESPRead.instance(ServerInspection.moduleInfos))
+
+  /** Loads the module at that path on the server */
+  def load(path: Key): Single.Aux[OK]                         = Protocol("MODULE", "LOAD" :: path.value :: Nil).as[Str, OK]
+  def load(path: Key, args: OneOrMore[Value]): Single.Aux[OK] =
+    Protocol("MODULE", "LOAD" :: path.value :: args.value.map(_.shown)).as[Str, OK]
+
+  /** Unloads the module of that name */
+  def unload(name: Key): Single.Aux[OK] = Protocol("MODULE", "UNLOAD" :: name.value :: Nil).as[Str, OK]
+}
+
+/** MODULE LOADEX: Redis 7.0 */
+trait ModuleLoadExCommands extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("MODULE LOADEX: ARGS CONFIG")
+
+  private def configs(values: OneOrMore[(Key, Value)]): List[String] =
+    values.value.flatMap { case (name, value) => List("CONFIG", name.value, value.shown) }
+  private def arguments(values: OneOrMore[Value]): List[String] = "ARGS" :: values.value.map(_.shown)
+
+  /** Loads the module at that path on the server, setting its configuration */
+  def loadex(path: Key): Single.Aux[OK]                                  = Protocol("MODULE", "LOADEX" :: path.value :: Nil).as[Str, OK]
+  def loadex(path: Key, config: OneOrMore[(Key, Value)]): Single.Aux[OK] =
+    Protocol("MODULE", "LOADEX" :: path.value :: configs(config)).as[Str, OK]
+  def loadexargs(path: Key, args: OneOrMore[Value]): Single.Aux[OK] =
+    Protocol("MODULE", "LOADEX" :: path.value :: arguments(args)).as[Str, OK]
+  def loadex(path: Key, config: OneOrMore[(Key, Value)], args: OneOrMore[Value]): Single.Aux[OK] =
+    Protocol("MODULE", "LOADEX" :: path.value :: (configs(config) ++ arguments(args))).as[Str, OK]
 }
 
 /** LATENCY: Redis 6.2 */
@@ -335,12 +468,17 @@ trait CommandCommands extends Features {
     Protocol("COMMAND", "INFO" :: names.value.map(_.value)).using(RESPRead.instance(ServerInspection.commandInfos))
 }
 
-/** COMMAND LIST and COMMAND GETKEYSANDFLAGS: Redis 7.0 */
+/** COMMAND DOCS, COMMAND LIST and COMMAND GETKEYSANDFLAGS: Redis 7.0 */
 trait CommandListCommands extends Features {
-  import ServerInspection.{CommandFilter, KeyAndFlags}
+  import ServerInspection.{CommandDoc, CommandFilter, KeyAndFlags}
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("COMMAND GETKEYSANDFLAGS", "COMMAND LIST: ACLCAT FILTERBY MODULE PATTERN")
+    super.supported ++ List("COMMAND DOCS", "COMMAND GETKEYSANDFLAGS", "COMMAND LIST: ACLCAT FILTERBY MODULE PATTERN")
+
+  /** The documentation of every command, or of the given ones, leaving out names the server doesn't know */
+  lazy val docs: Single.Aux[Seq[CommandDoc]] = Protocol("COMMAND", "DOCS").using(RESPRead.instance(ServerInspection.commandDocs))
+  def docs(names: OneOrMore[Key]): Single.Aux[Seq[CommandDoc]] =
+    Protocol("COMMAND", "DOCS" :: names.value.map(_.value)).using(RESPRead.instance(ServerInspection.commandDocs))
 
   /** The keys a command would use, with what it would do to each, without running it */
   def getkeysandflags(command: Single): Single.Aux[Seq[KeyAndFlags]] =

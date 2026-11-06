@@ -158,6 +158,54 @@ object ClusterManagement {
 
   private[protocol] final def slotRanges(slots: OneOrMore[(Slot, Slot)]): List[String] = ranges(slots)
   private[protocol] final val nonNegLong: Read[Num, NonNegLong]                        = num
+
+  /** Where a CLUSTERSCAN has got to */
+  final case class ScanCursor(value: String)
+  object ScanCursor {
+    final val start: ScanCursor = ScanCursor("0")
+  }
+
+  /** A step of CLUSTERSCAN: the keys found, and the cursor for the next step. It's `finished` when the cursor is back at the start */
+  final case class Scan(cursor: ScanCursor, keys: Seq[Key]) {
+    def finished: Boolean = cursor == ScanCursor.start
+  }
+  private[protocol] final val scan: Read[Arr.AsTuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple], Scan] =
+    Read[Arr.AsTuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple], String *: Seq[Key] *: EmptyTuple].map { case cursor *: keys *: _ =>
+      Scan(ScanCursor(cursor), keys)
+    }
+
+  /** The options of CLUSTERSCAN: the keys matching a pattern, about how many to look at in a step, the keys of a type, and those of one
+    * slot
+    */
+  final class ScanOptions private (val params: List[String]) {
+    def pattern(pattern: GlobPattern): ScanOptions = new ScanOptions(params ++ List("MATCH", pattern.value))
+    def count(keys: PosInt): ScanOptions           = new ScanOptions(params ++ List("COUNT", keys.value.toString))
+    def ofType(keyType: KeyP.Type): ScanOptions    = new ScanOptions(params ++ List("TYPE", KeyP.Type.typeShow.show(keyType)))
+    def slot(slot: Slot): ScanOptions              = new ScanOptions(params ++ List("SLOT", slot.value.toString))
+  }
+  object ScanOptions {
+    private final val none = new ScanOptions(Nil)
+
+    def pattern(pattern: GlobPattern): ScanOptions = none.pattern(pattern)
+    def count(keys: PosInt): ScanOptions           = none.count(keys)
+    def ofType(keyType: KeyP.Type): ScanOptions    = none.ofType(keyType)
+    def slot(slot: Slot): ScanOptions              = none.slot(slot)
+  }
+}
+
+/** CLUSTERSCAN: Valkey 9.1 */
+trait ClusterScanP extends Features {
+  import ClusterManagement.{Scan, ScanCursor, ScanOptions}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("CLUSTERSCAN: COUNT MATCH SLOT TYPE")
+
+  /** A step through the keys of the cluster, from `ClusterScanCursor.start`. A cursor names a slot, so the next step must go to the node
+    * serving that slot, while a client connected to one node can only walk what that node serves
+    */
+  final def clusterscan(cursor: ScanCursor): Single.Aux[Scan] =
+    Protocol("CLUSTERSCAN", cursor.value :: Nil).using(RESPRead.instance(ClusterManagement.scan))
+  final def clusterscan(cursor: ScanCursor, options: ScanOptions): Single.Aux[Scan] =
+    Protocol("CLUSTERSCAN", cursor.value :: options.params).using(RESPRead.instance(ClusterManagement.scan))
 }
 
 /** CLUSTER SHARDS, CLUSTER LINKS, CLUSTER ADDSLOTSRANGE and CLUSTER DELSLOTSRANGE: Redis 7.0 */

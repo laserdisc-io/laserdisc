@@ -420,6 +420,22 @@ trait ClientNoTouchCommands extends Features {
   def setlibversion(version: Key): Single.Aux[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-VER" :: version.value :: Nil).as[Str, OK]
 }
 
+/** CLIENT CAPA: Valkey 8.0 */
+trait ClientCapaCommands extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT CAPA")
+
+  /** Tells the server what this connection can handle, like `redirect`. A server takes names it doesn't know, and ignores them */
+  def capa(capabilities: OneOrMore[Key]): Single.Aux[OK] = Protocol("CLIENT", "CAPA" :: capabilities.value.map(_.value)).as[Str, OK]
+}
+
+/** CLIENT IMPORT-SOURCE: Valkey 8.1 */
+trait ClientImportSourceCommands extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT IMPORT-SOURCE: OFF ON")
+
+  /** Whether this connection is an import source. Turning it on needs the server to be in import mode */
+  def importsource(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "IMPORT-SOURCE" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
+}
+
 /** CLIENT KILL with MAXAGE: Redis 7.4, Valkey 8.0 */
 trait ClientMaxAgeCommands extends Features {
   import ServerP.ClientFilter
@@ -473,6 +489,7 @@ trait ServerBaseP extends ServerInspectionBaseP {
       "FLUSHDB: ASYNC SYNC",
       "INFO",
       "LASTSAVE",
+      "LOLWUT: VERSION",
       "REPLICAOF: NO ONE",
       "ROLE",
       "SAVE",
@@ -500,6 +517,10 @@ trait ServerBaseP extends ServerInspectionBaseP {
     final val shutdownOptions  = ServerP.ShutdownOptions
     final val unblockMode      = ServerP.UnblockMode
   }
+
+  /** A piece of art made by the server, and its version, as text. It's in every server below but KeyDB */
+  final val lolwut: Single.Aux[String]                  = Protocol("LOLWUT", EmptyTuple).as[Bulk, String]
+  final def lolwut(version: PosInt): Single.Aux[String] = Protocol("LOLWUT", "VERSION" *: version *: EmptyTuple).as[Bulk, String]
 
   lazy val client: ClientCommands = new ClientCommands {}
 
@@ -629,10 +650,17 @@ trait ServerBgSaveCancelP extends Features {
   final val bgsavecancel: Single.Aux[String] = Protocol("BGSAVE", "CANCEL").as[Str, String]
 }
 
-trait ClientAllCommands  extends ClientCommands with ClientNoEvictCommands with ClientNoTouchCommands with ClientMaxAgeCommands
+trait ClientAllCommands
+    extends ClientCommands
+    with ClientNoEvictCommands
+    with ClientNoTouchCommands
+    with ClientMaxAgeCommands
+    with ClientCapaCommands
+    with ClientImportSourceCommands
 trait ConfigAllCommands  extends ConfigCommands with ConfigManyCommands
 trait LatencyAllCommands extends LatencyCommands with LatencyHistogramCommands
 trait CommandAllCommands extends CommandCommands with CommandListCommands
+trait ModuleAllCommands  extends ModuleCommands with ModuleLoadExCommands
 trait AclAllCommands     extends AclCommands with AclSelectorCommands
 
 trait ServerP
@@ -648,5 +676,6 @@ trait ServerP
   override lazy val config: ConfigAllCommands   = new ConfigAllCommands {}
   override lazy val latency: LatencyAllCommands = new LatencyAllCommands {}
   override lazy val command: CommandAllCommands = new CommandAllCommands {}
+  override lazy val module: ModuleAllCommands   = new ModuleAllCommands {}
   override lazy val acl: AclAllCommands         = new AclAllCommands {}
 }

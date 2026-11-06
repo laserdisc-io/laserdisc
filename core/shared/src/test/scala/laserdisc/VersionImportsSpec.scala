@@ -879,6 +879,130 @@ final class VersionImportsSpec extends BaseSpec {
     assert(compileErrors("""redis_8_10.commandlog.help""").nonEmpty)
   }
 
+  test("SUBSTR, LOLWUT, PFSELFTEST and MODULE LOAD are on every version") {
+    val v = redis_6_2
+    assertEquals(v.substr[String](Key("k"), Index(0L), Index(1L)).frames, frame("SUBSTR", "k", "0", "1"))
+    assertEquals(v.lolwut.frames, frame("LOLWUT"))
+    assertEquals(v.lolwut(PosInt(8)).frames, frame("LOLWUT", "VERSION", "8"))
+    assertEquals(v.pfselftest.frames, frame("PFSELFTEST"))
+    assertEquals(v.module.load(Key("/m.so")).frames, frame("MODULE", "LOAD", "/m.so"))
+    assertEquals(
+      v.module.load(Key("/m.so"), OneOrMore.unsafeFrom(List[protocol.Value](1, "x"))).frames,
+      frame("MODULE", "LOAD", "/m.so", "1", "x")
+    )
+    assertEquals(v.module.unload(Key("m")).frames, frame("MODULE", "UNLOAD", "m"))
+    assert(compileErrors("""redis_6_2.module.loadex(Key("/m.so"))""").nonEmpty)
+    assert(compileErrors("""redis_6_2.command.docs""").nonEmpty)
+  }
+
+  test("MODULE LOADEX and COMMAND DOCS are from Redis 7.0") {
+    val module = redis_7_0.module
+    val config = OneOrMore.unsafeFrom(List[(Key, protocol.Value)](Key("a") -> 1, Key("b") -> "x"))
+    val args   = OneOrMore.unsafeFrom(List[protocol.Value](2, "y"))
+
+    assertEquals(module.loadex(Key("/m.so")).frames, frame("MODULE", "LOADEX", "/m.so"))
+    assertEquals(module.loadex(Key("/m.so"), config).frames, frame("MODULE", "LOADEX", "/m.so", "CONFIG", "a", "1", "CONFIG", "b", "x"))
+    assertEquals(module.loadexargs(Key("/m.so"), args).frames, frame("MODULE", "LOADEX", "/m.so", "ARGS", "2", "y"))
+    assertEquals(
+      module.loadex(Key("/m.so"), config, args).frames,
+      frame("MODULE", "LOADEX", "/m.so", "CONFIG", "a", "1", "CONFIG", "b", "x", "ARGS", "2", "y")
+    )
+    assertEquals(redis_7_0.command.docs.frames, frame("COMMAND", "DOCS"))
+    assertEquals(redis_7_0.command.docs(OneOrMore.unsafeFrom(List(Key("get")))).frames, frame("COMMAND", "DOCS", "get"))
+  }
+
+  test("HIMPORT is from Redis 8.10") {
+    val v      = redis_8_10
+    val fields = OneOrMoreKeys.unsafeFrom(List(Key("f1"), Key("f2")))
+
+    assertEquals(v.himportprepare(Key("n"), fields).frames, frame("HIMPORT", "PREPARE", "n", "f1", "f2"))
+    assertEquals(v.himportset(Key("k"), Key("n"), OneOrMore.unsafeFrom(List(1, 2))).frames, frame("HIMPORT", "SET", "k", "n", "1", "2"))
+    assertEquals(v.himportdiscard(Key("n")).frames, frame("HIMPORT", "DISCARD", "n"))
+    assertEquals(v.himportdiscard(Key("n")).decode(Num(1L)), true)
+    assertEquals(v.himportdiscardall.frames, frame("HIMPORT", "DISCARDALL"))
+    assertEquals(v.hashmaps.himportdiscardall.decode(Num(2L)), NonNegInt(2))
+    assert(compileErrors("""redis_8_8.himportdiscardall""").nonEmpty)
+  }
+
+  test("CLIENT CAPA is from Valkey 8.0, and CLIENT IMPORT-SOURCE from Valkey 8.1") {
+    assertEquals(valkey_8_0.client.capa(OneOrMore.unsafeFrom(List(Key("redirect")))).frames, frame("CLIENT", "CAPA", "redirect"))
+    assertEquals(valkey_8_1.client.importsource(on = true).frames, frame("CLIENT", "IMPORT-SOURCE", "ON"))
+    assertEquals(valkey_8_1.client.importsource(on = false).frames, frame("CLIENT", "IMPORT-SOURCE", "OFF"))
+    assert(compileErrors("""valkey_7_2.client.capa(OneOrMore.unsafeFrom(List(Key("redirect"))))""").nonEmpty)
+    assert(compileErrors("""redis_8_10.client.capa(OneOrMore.unsafeFrom(List(Key("redirect"))))""").nonEmpty)
+    assert(compileErrors("""valkey_8_0.client.importsource(on = true)""").nonEmpty)
+  }
+
+  test("CLUSTERSCAN is from Valkey 9.1") {
+    val v = valkey_9_1
+    import v.clustertypes.*
+
+    assertEquals(v.clusterscan(ClusterScanCursor.start).frames, frame("CLUSTERSCAN", "0"))
+    assertEquals(
+      v.clusterscan(
+        ClusterScanCursor("0-{06S}-0"),
+        ClusterScanOptions.pattern(GlobPattern("a*")).count(PosInt(5)).ofType(protocol.KeyP.Type.string).slot(Slot(7))
+      ).frames,
+      frame("CLUSTERSCAN", "0-{06S}-0", "MATCH", "a*", "COUNT", "5", "TYPE", "string", "SLOT", "7")
+    )
+
+    val step = v.clusterscan(ClusterScanCursor.start)
+    assertEquals(step.decode(Arr(Bulk("0-{06S}-0"), Arr(Nil))).map(_.finished), false)
+    val done = step.decode(Arr(Bulk("0"), Arr(Bulk("a"), Bulk("b"))))
+    assertEquals(done.map(_.finished), true)
+    assertEquals(done.map(_.keys), Seq(Key("a"), Key("b")))
+    assert(compileErrors("""valkey_9_0.clusterscan(valkey_9_1.clustertypes.ClusterScanCursor.start)""").nonEmpty)
+    assert(compileErrors("""redis_8_10.clusterscan(valkey_9_1.clustertypes.ClusterScanCursor.start)""").nonEmpty)
+  }
+
+  test("COMMAND DOCS reads a command with its history, nested arguments and subcommands, and one of a module with little of it") {
+    val argument = Arr(
+      Bulk("name"),
+      Bulk("condition"),
+      Bulk("type"),
+      Bulk("oneof"),
+      Bulk("flags"),
+      Arr(Str("optional")),
+      Bulk("arguments"),
+      Arr(Arr(Bulk("name"), Bulk("nx"), Bulk("type"), Bulk("pure-token"), Bulk("token"), Bulk("NX")))
+    )
+    val doc = Arr(
+      Bulk("summary"),
+      Bulk("Sets"),
+      Bulk("since"),
+      Bulk("1.0.0"),
+      Bulk("group"),
+      Bulk("string"),
+      Bulk("complexity"),
+      Bulk("O(1)"),
+      Bulk("doc_flags"),
+      Arr(Str("deprecated")),
+      Bulk("deprecated_since"),
+      Bulk("6.2.0"),
+      Bulk("replaced_by"),
+      Bulk("`NEW`"),
+      Bulk("history"),
+      Arr(Arr(Bulk("2.6.12"), Bulk("Added EX"))),
+      Bulk("arguments"),
+      Arr(argument),
+      Bulk("subcommands"),
+      Arr(Bulk("set|sub"), Arr(Bulk("summary"), Bulk("Sub")))
+    )
+    val docs = redis_7_0.command.docs.decode(Arr(Bulk("set"), doc, Bulk("vadd"), Arr(Bulk("module"), Bulk("vectorset"))))
+
+    assert(docs.isRight, docs)
+    val Seq(set, vadd) = docs.toOption.get: @unchecked
+    assertEquals(set.name, "set")
+    assertEquals(set.history, Seq("2.6.12" -> "Added EX"))
+    assertEquals(set.flags, Seq("deprecated"))
+    assertEquals(set.replacedBy, Some("`NEW`"))
+    assertEquals(set.arguments.map(a => (a.name, a.argumentType, a.flags)), Seq(("condition", "oneof", Seq("optional"))))
+    assertEquals(set.arguments.flatMap(_.arguments).map(a => a.name -> a.token), Seq("nx" -> Some("NX")))
+    assertEquals(set.subcommands.map(s => s.name -> s.summary), Seq("set|sub" -> Some("Sub")))
+    assertEquals(vadd.module, Some("vectorset"))
+    assertEquals((vadd.summary, vadd.history, vadd.arguments, vadd.subcommands), (None, Nil, Nil, Nil))
+  }
+
   test("PUBSUB is on every version, and shard channels from Redis 7.0") {
     {
       import laserdisc.redis_6_2.*

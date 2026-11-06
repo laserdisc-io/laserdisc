@@ -248,7 +248,8 @@ trait StringBaseP extends Features {
       "SETEX",
       "SETNX",
       "SETRANGE",
-      "STRLEN"
+      "STRLEN",
+      "SUBSTR"
     )
 
   private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
@@ -369,6 +370,10 @@ trait StringBaseP extends Features {
     Protocol("SETRANGE", key *: offset *: value *: EmptyTuple).as[Num, NonNegInt]
 
   final def strlen(key: Key): Single.Aux[NonNegInt] = Protocol("STRLEN", key *: EmptyTuple).as[Num, NonNegInt]
+
+  /** The older name of GETRANGE, which servers still have */
+  final def substr[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single.Aux[A] =
+    Protocol("SUBSTR", key *: start *: end *: EmptyTuple).as[Bulk, A]
 }
 
 /** Redis 7.0 allowed NX and XX with GET */

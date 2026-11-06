@@ -330,6 +330,9 @@ trait ClusterBaseP extends Features {
     final type ClusterLinkState         = ClusterP.LinkState
     final type ClusterMigratingSlotType = ClusterP.SlotType.MigratingSlot
     final type ClusterNode              = ClusterP.Node
+    final type ClusterScan              = ClusterManagement.Scan
+    final type ClusterScanCursor        = ClusterManagement.ScanCursor
+    final type ClusterScanOptions       = ClusterManagement.ScanOptions
     final type ClusterNodes             = ClusterP.Nodes
     final type ClusterRangeSlotType     = ClusterP.SlotType.Range
     final type ClusterResetMode         = ClusterP.ResetMode
@@ -353,6 +356,8 @@ trait ClusterBaseP extends Features {
     final val ClusterSetSlotMode       = ClusterP.SetSlotMode
     final val ClusterSlotInfo          = ClusterP.SlotInfo
     final val ClusterSlotNode          = ClusterP.SlotNode
+    final val ClusterScanCursor        = ClusterManagement.ScanCursor
+    final val ClusterScanOptions       = ClusterManagement.ScanOptions
     final val ClusterSingleSlotType    = ClusterP.SlotType.Single
     final val ClusterSlots             = ClusterP.Slots
   }
@@ -437,3 +442,4 @@ trait ClusterP
     with ClusterSetSlotTimeoutP
     with ClusterReplicateNoOneP
     with ClusterSlotMigrationsP
+    with ClusterScanP

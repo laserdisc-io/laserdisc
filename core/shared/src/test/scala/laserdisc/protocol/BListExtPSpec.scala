@@ -24,7 +24,7 @@ package protocol
 
 import org.scalacheck.Prop.forAll
 
-final class BListExtPSpec extends BListPSpec {
+final class BListExtPSpec extends BListPSpec with ExtPArguments {
   test("The Blocking List extended protocol using blpop fails to compile given key but missing read instance") {
     assertCompileErrors(
       compileErrors("""blpop[Bar](Key("a"))"""),
@@ -424,5 +424,103 @@ final class BListExtPSpec extends BListPSpec {
       assertEquals(protocol.encode, Arr(Bulk("BRPOP"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4), Bulk(k5), Bulk(pi)))
       protocol.decode(Arr(Bulk(k1), Bulk(i))).onRight(_ contains KV(k1, Foo(i)))
     }
+  }
+
+  //format: off
+  private val seconds = PosInt(7)
+
+  test("The Blocking List extended protocol using blpop sends in order from 1 to 22 keys") {
+    assertEquals(blpop[String](k1).encode, frame("BLPOP", "k1", "0"))
+    assertEquals(blpop[String](k1, k2).encode, frame("BLPOP", "k1", "k2", "0"))
+    assertEquals(blpop[String](k1, k2, k3).encode, frame("BLPOP", "k1", "k2", "k3", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21", "0"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21, k22).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21", "k22", "0"))
+  }
+  test("The Blocking List extended protocol using blpop sends in order from 1 to 21 keys, with a timeout") {
+    assertEquals(blpop[String](k1, seconds).encode, frame("BLPOP", "k1", "7"))
+    assertEquals(blpop[String](k1, k2, seconds).encode, frame("BLPOP", "k1", "k2", "7"))
+    assertEquals(blpop[String](k1, k2, k3, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "7"))
+    assertEquals(blpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21, seconds).encode, frame("BLPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21", "7"))
+  }
+  test("The Blocking List extended protocol using brpop sends in order from 1 to 22 keys") {
+    assertEquals(brpop[String](k1).encode, frame("BRPOP", "k1", "0"))
+    assertEquals(brpop[String](k1, k2).encode, frame("BRPOP", "k1", "k2", "0"))
+    assertEquals(brpop[String](k1, k2, k3).encode, frame("BRPOP", "k1", "k2", "k3", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21", "0"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21, k22).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21", "k22", "0"))
+  }
+  test("The Blocking List extended protocol using brpop sends in order from 1 to 21 keys, with a timeout") {
+    assertEquals(brpop[String](k1, seconds).encode, frame("BRPOP", "k1", "7"))
+    assertEquals(brpop[String](k1, k2, seconds).encode, frame("BRPOP", "k1", "k2", "7"))
+    assertEquals(brpop[String](k1, k2, k3, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "7"))
+    assertEquals(brpop[String](k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21, seconds).encode, frame("BRPOP", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21", "7"))
   }
 }

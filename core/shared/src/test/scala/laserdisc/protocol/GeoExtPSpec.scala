@@ -24,7 +24,7 @@ package protocol
 
 import org.scalacheck.Prop.forAll
 
-final class GeoExtPSpec extends GeoPSpec {
+final class GeoExtPSpec extends GeoPSpec with ExtPArguments {
   import geotypes.*
 
   property("The Geo extended protocol using geoadd roundtrips successfully given key and position1") {
@@ -133,5 +133,98 @@ final class GeoExtPSpec extends GeoPSpec {
       assertEquals(protocol.encode, Arr(Bulk("GEOPOS") :: Bulk(k) :: List(Bulk(m1), Bulk(m2), Bulk(m3), Bulk(m4), Bulk(m5))))
       assertEquals(protocol.decode(oneOrMoreGeoCoordinatesOptionToArr(ocs)), ocs.value)
     }
+  }
+
+  //format: off
+  private val p1 = GeoPosition(k1, Latitude(10.5), Longitude(20.5))
+  private val p2 = GeoPosition(k2, Latitude(10.5), Longitude(20.5))
+  private val p3 = GeoPosition(k3, Latitude(10.5), Longitude(20.5))
+  private val p4 = GeoPosition(k4, Latitude(10.5), Longitude(20.5))
+  private val p5 = GeoPosition(k5, Latitude(10.5), Longitude(20.5))
+  private val p6 = GeoPosition(k6, Latitude(10.5), Longitude(20.5))
+  private val p7 = GeoPosition(k7, Latitude(10.5), Longitude(20.5))
+  private val p8 = GeoPosition(k8, Latitude(10.5), Longitude(20.5))
+  private val p9 = GeoPosition(k9, Latitude(10.5), Longitude(20.5))
+  private val p10 = GeoPosition(k10, Latitude(10.5), Longitude(20.5))
+  private val p11 = GeoPosition(k11, Latitude(10.5), Longitude(20.5))
+  private val p12 = GeoPosition(k12, Latitude(10.5), Longitude(20.5))
+  private val p13 = GeoPosition(k13, Latitude(10.5), Longitude(20.5))
+  private val p14 = GeoPosition(k14, Latitude(10.5), Longitude(20.5))
+  private val p15 = GeoPosition(k15, Latitude(10.5), Longitude(20.5))
+  private val p16 = GeoPosition(k16, Latitude(10.5), Longitude(20.5))
+  private val p17 = GeoPosition(k17, Latitude(10.5), Longitude(20.5))
+  private val p18 = GeoPosition(k18, Latitude(10.5), Longitude(20.5))
+  private val p19 = GeoPosition(k19, Latitude(10.5), Longitude(20.5))
+  private val p20 = GeoPosition(k20, Latitude(10.5), Longitude(20.5))
+  private val p21 = GeoPosition(k21, Latitude(10.5), Longitude(20.5))
+
+  test("The Geo extended protocol using geoadd sends in order from 1 to 21 positions") {
+    assertEquals(geoadd(k, p1).encode, frame("GEOADD", "k", "20.5", "10.5", "k1"))
+    assertEquals(geoadd(k, p1, p2).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2"))
+    assertEquals(geoadd(k, p1, p2, p3).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3"))
+    assertEquals(geoadd(k, p1, p2, p3, p4).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11", "20.5", "10.5", "k12"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11", "20.5", "10.5", "k12", "20.5", "10.5", "k13"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11", "20.5", "10.5", "k12", "20.5", "10.5", "k13", "20.5", "10.5", "k14"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11", "20.5", "10.5", "k12", "20.5", "10.5", "k13", "20.5", "10.5", "k14", "20.5", "10.5", "k15"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11", "20.5", "10.5", "k12", "20.5", "10.5", "k13", "20.5", "10.5", "k14", "20.5", "10.5", "k15", "20.5", "10.5", "k16"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11", "20.5", "10.5", "k12", "20.5", "10.5", "k13", "20.5", "10.5", "k14", "20.5", "10.5", "k15", "20.5", "10.5", "k16", "20.5", "10.5", "k17"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11", "20.5", "10.5", "k12", "20.5", "10.5", "k13", "20.5", "10.5", "k14", "20.5", "10.5", "k15", "20.5", "10.5", "k16", "20.5", "10.5", "k17", "20.5", "10.5", "k18"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18, p19).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11", "20.5", "10.5", "k12", "20.5", "10.5", "k13", "20.5", "10.5", "k14", "20.5", "10.5", "k15", "20.5", "10.5", "k16", "20.5", "10.5", "k17", "20.5", "10.5", "k18", "20.5", "10.5", "k19"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18, p19, p20).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11", "20.5", "10.5", "k12", "20.5", "10.5", "k13", "20.5", "10.5", "k14", "20.5", "10.5", "k15", "20.5", "10.5", "k16", "20.5", "10.5", "k17", "20.5", "10.5", "k18", "20.5", "10.5", "k19", "20.5", "10.5", "k20"))
+    assertEquals(geoadd(k, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18, p19, p20, p21).encode, frame("GEOADD", "k", "20.5", "10.5", "k1", "20.5", "10.5", "k2", "20.5", "10.5", "k3", "20.5", "10.5", "k4", "20.5", "10.5", "k5", "20.5", "10.5", "k6", "20.5", "10.5", "k7", "20.5", "10.5", "k8", "20.5", "10.5", "k9", "20.5", "10.5", "k10", "20.5", "10.5", "k11", "20.5", "10.5", "k12", "20.5", "10.5", "k13", "20.5", "10.5", "k14", "20.5", "10.5", "k15", "20.5", "10.5", "k16", "20.5", "10.5", "k17", "20.5", "10.5", "k18", "20.5", "10.5", "k19", "20.5", "10.5", "k20", "20.5", "10.5", "k21"))
+  }
+  test("The Geo extended protocol using geohash sends in order from 1 to 21 members") {
+    assertEquals(geohash(k, k1).encode, frame("GEOHASH", "k", "k1"))
+    assertEquals(geohash(k, k1, k2).encode, frame("GEOHASH", "k", "k1", "k2"))
+    assertEquals(geohash(k, k1, k2, k3).encode, frame("GEOHASH", "k", "k1", "k2", "k3"))
+    assertEquals(geohash(k, k1, k2, k3, k4).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20"))
+    assertEquals(geohash(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21).encode, frame("GEOHASH", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21"))
+  }
+  test("The Geo extended protocol using geopos sends in order from 1 to 21 members") {
+    assertEquals(geopos(k, k1).encode, frame("GEOPOS", "k", "k1"))
+    assertEquals(geopos(k, k1, k2).encode, frame("GEOPOS", "k", "k1", "k2"))
+    assertEquals(geopos(k, k1, k2, k3).encode, frame("GEOPOS", "k", "k1", "k2", "k3"))
+    assertEquals(geopos(k, k1, k2, k3, k4).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20"))
+    assertEquals(geopos(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21).encode, frame("GEOPOS", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21"))
   }
 }

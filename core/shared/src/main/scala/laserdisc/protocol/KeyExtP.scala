@@ -25,8 +25,6 @@ package protocol
 import Protocol.Single
 
 trait KeyExtP { this: KeyBaseP =>
-  import keytypes.*
-
   //format: off
   //DEL
   final def del(key1: Key): Single.Aux[NonNegInt] =
@@ -120,74 +118,6 @@ trait KeyExtP { this: KeyBaseP =>
   final def exists(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key, key22: Key): Single.Aux[Option[PosInt]] =
     exists(OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: key22 :: Nil))
 
-  //MIGRATE
-  final def migrate(key1: Key, key2: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: Nil), host, port, dbIndex, timeout)
-  final def migrate(key1: Key, key2: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: Nil), host, port, dbIndex, timeout, mode)
-  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyMigrateMode): Single.Aux[Either[NOKEY, OK]] =
-    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: Nil), host, port, dbIndex, timeout, mode)
-
   //TOUCH
   final def touch(key1: Key): Single.Aux[NonNegInt] =
     touch(OneOrMoreKeys.unsafeFrom(key1 :: Nil))
@@ -279,5 +209,77 @@ trait KeyExtP { this: KeyBaseP =>
     unlink(OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: Nil))
   final def unlink(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key, key22: Key): Single.Aux[NonNegInt] =
     unlink(OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: key22 :: Nil))
+  //format: on
+}
+
+trait KeyMigrateExtP { this: KeyMigrateP =>
+  //format: off
+  //MIGRATE
+  final def migrate(key1: Key, key2: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: Nil), host, port, dbIndex, timeout)
+  final def migrate(key1: Key, key2: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: Nil), host, port, dbIndex, timeout, mode)
+  final def migrate(key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt, mode: KeyP.MigrateMode): Single.Aux[Either[NOKEY, OK]] =
+    migrate(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: Nil), host, port, dbIndex, timeout, mode)
   //format: on
 }

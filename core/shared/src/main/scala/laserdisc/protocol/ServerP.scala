@@ -444,9 +444,9 @@ object ServerP {
 
 }
 
-/** CLIENT: Redis 6.2 */
-trait ClientCommands extends Features {
-  import ServerP.{ClientFilter, ClientInfo, ClientType, ConnectedClients, PauseMode, UnblockMode}
+/** CLIENT without UNBLOCK and CLIENT KILL's filters: Redis 6.2 */
+trait ClientCoreCommands extends Features {
+  import ServerP.{ClientInfo, ClientType, ConnectedClients, PauseMode}
   import Show.{hostShow, portShow}
 
   override private[laserdisc] def supported: List[String] =
@@ -455,11 +455,10 @@ trait ClientCommands extends Features {
       "CLIENT HELP",
       "CLIENT ID",
       "CLIENT INFO",
-      "CLIENT KILL: ADDR ID LADDR MASTER NORMAL PUBSUB REPLICA SKIPME SLAVE TYPE USER",
+      "CLIENT KILL",
       "CLIENT LIST: ID MASTER NORMAL PUBSUB REPLICA TYPE",
       "CLIENT PAUSE: ALL WRITE",
       "CLIENT SETNAME",
-      "CLIENT UNBLOCK: ERROR TIMEOUT",
       "CLIENT UNPAUSE"
     )
 
@@ -474,9 +473,6 @@ trait ClientCommands extends Features {
   def kill(host: Host, port: Port): Single.Aux[OK] =
     Protocol("CLIENT", "KILL" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Str, OK]
 
-  /** Closes the clients that match every filter, and replies how many it closed */
-  def kill(filter: ClientFilter): Single.Aux[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]
-
   val list: Single.Aux[ConnectedClients]                         = Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
   def list(clientType: ClientType): Single.Aux[ConnectedClients] =
     Protocol("CLIENT", "LIST" *: "TYPE" *: clientType *: EmptyTuple).as[Bulk, ConnectedClients]
@@ -489,14 +485,28 @@ trait ClientCommands extends Features {
 
   def setname(connectionName: ConnectionName): Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[Str, OK]
 
+  val unpause: Single.Aux[OK] = Protocol("CLIENT", "UNPAUSE").as[Str, OK]
+
+  val unsetname: Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
+}
+
+/** CLIENT: Redis 6.2 */
+trait ClientCommands extends ClientCoreCommands {
+  import ServerP.{ClientFilter, UnblockMode}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "CLIENT KILL: ADDR ID LADDR MASTER NORMAL PUBSUB REPLICA SKIPME SLAVE TYPE USER",
+      "CLIENT UNBLOCK: ERROR TIMEOUT"
+    )
+
+  /** Closes the clients that match every filter, and replies how many it closed */
+  def kill(filter: ClientFilter): Single.Aux[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]
+
   /** Unblocks a client waiting in a blocking command, and replies whether there was one */
   def unblock(id: NonNegLong): Single.Aux[Boolean]                    = Protocol("CLIENT", "UNBLOCK" *: id *: EmptyTuple).as[Num, Boolean]
   def unblock(id: NonNegLong, mode: UnblockMode): Single.Aux[Boolean] =
     Protocol("CLIENT", "UNBLOCK" *: id *: mode *: EmptyTuple).as[Num, Boolean]
-
-  val unpause: Single.Aux[OK] = Protocol("CLIENT", "UNPAUSE").as[Str, OK]
-
-  val unsetname: Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
 }
 
 /** CLIENT NO-EVICT: Redis 7.0 */
@@ -507,19 +517,23 @@ trait ClientNoEvictCommands extends Features {
   def noevict(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "NO-EVICT" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
 }
 
-/** CLIENT NO-TOUCH and CLIENT SETINFO: Redis 7.2 */
-trait ClientNoTouchCommands extends Features {
-  override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("CLIENT KILL: NO YES", "CLIENT NO-TOUCH: OFF ON", "CLIENT SETINFO: LIB-NAME LIB-VER")
-
-  /** Whether this connection's commands leave the keys' last access time as it was */
-  def notouch(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "NO-TOUCH" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
+/** CLIENT SETINFO: Redis 7.2 */
+trait ClientSetInfoCommands extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT SETINFO: LIB-NAME LIB-VER")
 
   /** The name of the library this connection uses, shown by CLIENT LIST */
   def setlibname(name: Key): Single.Aux[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-NAME" :: name.value :: Nil).as[Str, OK]
 
   /** The version of the library this connection uses, shown by CLIENT LIST */
   def setlibversion(version: Key): Single.Aux[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-VER" :: version.value :: Nil).as[Str, OK]
+}
+
+/** CLIENT NO-TOUCH, with CLIENT SETINFO: Redis 7.2 */
+trait ClientNoTouchCommands extends ClientSetInfoCommands {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT KILL: NO YES", "CLIENT NO-TOUCH: OFF ON")
+
+  /** Whether this connection's commands leave the keys' last access time as it was */
+  def notouch(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "NO-TOUCH" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
 }
 
 /** CLIENT CAPA, and the primary client type for CLIENT KILL and CLIENT LIST: Valkey 8.0 */
@@ -619,25 +633,22 @@ trait ConfigManyCommands extends Features {
     Protocol("CONFIG", "SET" *: parameters.value *: EmptyTuple).as[Str, OK]
 }
 
-trait ServerBaseP extends ServerInspectionBaseP {
+trait ServerCoreP extends ServerInspectionCoreP {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
-      "BGREWRITEAOF",
       "BGSAVE: SCHEDULE",
       "DBSIZE",
-      "FAILOVER: ABORT FORCE TIMEOUT TO",
       "FLUSHALL: ASYNC SYNC",
       "FLUSHDB: ASYNC SYNC",
       "INFO",
       "LASTSAVE",
-      "LOLWUT: VERSION",
       "REPLICAOF: NO ONE",
       "ROLE",
       "SAVE",
       "SHUTDOWN: NOSAVE SAVE",
       "SLAVEOF: NO ONE",
       "TIME"
-    ) ++ client.supported ++ config.supported ++ latency.supported ++ command.supported ++ acl.supported
+    )
 
   import ServerP.{Info, InfoSection, Role, ShutdownFlag}
 
@@ -661,23 +672,6 @@ trait ServerBaseP extends ServerInspectionBaseP {
     final val unblockMode           = ServerP.UnblockMode
   }
 
-  /** A piece of art made by the server, and its version, as text. It's in every server below but KeyDB */
-  final val lolwut: Single.Aux[String]                  = Protocol("LOLWUT", EmptyTuple).as[Bulk, String]
-  final def lolwut(version: PosInt): Single.Aux[String] = Protocol("LOLWUT", "VERSION" *: version *: EmptyTuple).as[Bulk, String]
-
-  lazy val client: ClientCommands = new ClientCommands {}
-
-  lazy val config: ConfigCommands = new ConfigCommands {}
-
-  lazy val latency: LatencyCommands = new LatencyCommands {}
-
-  lazy val command: CommandCommands = new CommandCommands {}
-
-  lazy val acl: AclCommands = new AclCommands {}
-
-  /** Replies with the server's message, like "Background append only file rewriting started" */
-  final val bgrewriteaof: Single.Aux[String] = Protocol("BGREWRITEAOF", EmptyTuple).as[Str, String]
-
   /** Replies with the server's message, like "Background saving started" */
   final val bgsave: Single.Aux[String] = Protocol("BGSAVE", EmptyTuple).as[Str, String]
 
@@ -685,14 +679,6 @@ trait ServerBaseP extends ServerInspectionBaseP {
   final val bgsaveschedule: Single.Aux[String] = Protocol("BGSAVE", "SCHEDULE").as[Str, String]
 
   final val dbsize: Single.Aux[NonNegLong] = Protocol("DBSIZE", EmptyTuple).as[Num, NonNegLong]
-
-  /** FAILOVER: hands the primary role to a replica that has caught up, outside a cluster (CLUSTER FAILOVER is `failover`) */
-  final val replicafailover: Single.Aux[OK]                        = Protocol("FAILOVER", EmptyTuple).as[Str, OK]
-  final def replicafailover(milliseconds: PosLong): Single.Aux[OK] =
-    Protocol("FAILOVER", "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
-  final def replicafailover(host: Host, port: Port): Single.Aux[OK] = Protocol("FAILOVER", "TO" *: host *: port *: EmptyTuple).as[Str, OK]
-  final def replicafailover(host: Host, port: Port, milliseconds: PosLong): Single.Aux[OK] =
-    Protocol("FAILOVER", "TO" *: host *: port *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
 
   /** FAILOVER to that replica even if it hasn't caught up when the time is up */
   final def replicafailoverforce(host: Host, port: Port, milliseconds: PosLong): Single.Aux[OK] =
@@ -734,6 +720,41 @@ trait ServerBaseP extends ServerInspectionBaseP {
   final val slaveofnoone: Single.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
   final val time: Single.Aux[Time] = Protocol("TIME", EmptyTuple).as[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], Time]
+}
+
+/** LOLWUT, BGREWRITEAOF and FAILOVER, and CLIENT, CONFIG, LATENCY, COMMAND and ACL under their names. Redis 6.2 */
+trait ServerBaseP extends ServerCoreP with ServerInspectionBaseP {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "BGREWRITEAOF",
+      "FAILOVER: ABORT FORCE TIMEOUT TO",
+      "LOLWUT: VERSION"
+    ) ++ client.supported ++ config.supported ++ latency.supported ++ command.supported ++ acl.supported
+
+  /** A piece of art made by the server, and its version, as text. It's in every server below but KeyDB */
+  final val lolwut: Single.Aux[String]                  = Protocol("LOLWUT", EmptyTuple).as[Bulk, String]
+  final def lolwut(version: PosInt): Single.Aux[String] = Protocol("LOLWUT", "VERSION" *: version *: EmptyTuple).as[Bulk, String]
+
+  lazy val client: ClientCommands = new ClientCommands {}
+
+  lazy val config: ConfigCommands = new ConfigCommands {}
+
+  lazy val latency: LatencyCommands = new LatencyCommands {}
+
+  lazy val command: CommandCommands = new CommandCommands {}
+
+  lazy val acl: AclCommands = new AclCommands {}
+
+  /** Replies with the server's message, like "Background append only file rewriting started" */
+  final val bgrewriteaof: Single.Aux[String] = Protocol("BGREWRITEAOF", EmptyTuple).as[Str, String]
+
+  /** FAILOVER: hands the primary role to a replica that has caught up, outside a cluster (CLUSTER FAILOVER is `failover`) */
+  final val replicafailover: Single.Aux[OK]                        = Protocol("FAILOVER", EmptyTuple).as[Str, OK]
+  final def replicafailover(milliseconds: PosLong): Single.Aux[OK] =
+    Protocol("FAILOVER", "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
+  final def replicafailover(host: Host, port: Port): Single.Aux[OK] = Protocol("FAILOVER", "TO" *: host *: port *: EmptyTuple).as[Str, OK]
+  final def replicafailover(host: Host, port: Port, milliseconds: PosLong): Single.Aux[OK] =
+    Protocol("FAILOVER", "TO" *: host *: port *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
 }
 
 /** SHUTDOWN with SAFE and FAILOVER: Valkey 9.0 */

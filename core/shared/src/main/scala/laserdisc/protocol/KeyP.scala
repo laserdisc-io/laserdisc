@@ -188,20 +188,14 @@ object KeyP {
 trait KeyBaseP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
-      "COPY: DB REPLACE",
+      "COPY: REPLACE",
       "DEL",
       "DUMP",
       "EXISTS",
       "EXPIRE",
       "EXPIREAT",
       "KEYS",
-      "MIGRATE: AUTH AUTH2 COPY KEYS REPLACE",
       "MOVE",
-      "OBJECT ENCODING",
-      "OBJECT FREQ",
-      "OBJECT HELP",
-      "OBJECT IDLETIME",
-      "OBJECT REFCOUNT",
       "PERSIST",
       "PEXPIRE",
       "PEXPIREAT",
@@ -252,12 +246,6 @@ trait KeyBaseP extends Features {
 
   import keytypes.*
 
-  private implicit final val str2NOKEYOrOK: Read[Str, Either[NOKEY, OK]] = Read.instance {
-    case Str("NOKEY") => Right(Left(NOKEY))
-    case Str("OK")    => Right(Right(OK))
-    case Str(other)   => Left(RESPDecErr(s"Unexpected string for Read[Str, (NOKEY | OK)]. Was $other"))
-  }
-
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
   private implicit final val str2OptionType: Read[Str, Option[KeyType]] = Read.instance {
@@ -274,12 +262,8 @@ trait KeyBaseP extends Features {
 
   final def copy(source: Key, destination: Key): Single.Aux[Boolean] =
     Protocol("COPY", source *: destination *: EmptyTuple).as[Num, Boolean]
-  final def copy(source: Key, destination: Key, db: DbIndex): Single.Aux[Boolean] =
-    Protocol("COPY", source *: destination *: "DB" *: db *: EmptyTuple).as[Num, Boolean]
   final def copy(source: Key, destination: Key, replace: KeyReplace): Single.Aux[Boolean] =
     Protocol("COPY", source *: destination *: replace *: EmptyTuple).as[Num, Boolean]
-  final def copy(source: Key, destination: Key, db: DbIndex, replace: KeyReplace): Single.Aux[Boolean] =
-    Protocol("COPY", source *: destination *: "DB" *: db *: replace *: EmptyTuple).as[Num, Boolean]
 
   final def del(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]
 
@@ -295,84 +279,7 @@ trait KeyBaseP extends Features {
 
   final def keys(pattern: GlobPattern): Single.Aux[Seq[Key]] = Protocol("KEYS", pattern *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
 
-  final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: EmptyTuple).as[Str, Either[NOKEY, OK]]
-  final def migrate(keys: TwoOrMoreKeys, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
-    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: "KEYS" *: keys.value *: EmptyTuple).as[Str, Either[NOKEY, OK]]
-  final def migrate(
-      key: Key,
-      host: Host,
-      port: Port,
-      dbIndex: DbIndex,
-      timeout: NonNegInt,
-      mode: KeyMigrateMode
-  ): Single.Aux[Either[NOKEY, OK]] =
-    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: mode.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
-  final def migrate(
-      keys: TwoOrMoreKeys,
-      host: Host,
-      port: Port,
-      dbIndex: DbIndex,
-      timeout: NonNegInt,
-      mode: KeyMigrateMode
-  ): Single.Aux[Either[NOKEY, OK]] =
-    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: mode.params *: "KEYS" *: keys.value *: EmptyTuple)
-      .as[Str, Either[NOKEY, OK]]
-  final def migrate(
-      key: Key,
-      host: Host,
-      port: Port,
-      dbIndex: DbIndex,
-      timeout: NonNegInt,
-      auth: KeyMigrateAuth
-  ): Single.Aux[Either[NOKEY, OK]] =
-    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: auth.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
-  final def migrate(
-      keys: TwoOrMoreKeys,
-      host: Host,
-      port: Port,
-      dbIndex: DbIndex,
-      timeout: NonNegInt,
-      auth: KeyMigrateAuth
-  ): Single.Aux[Either[NOKEY, OK]] =
-    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: auth.params *: "KEYS" *: keys.value *: EmptyTuple)
-      .as[Str, Either[NOKEY, OK]]
-  final def migrate(
-      key: Key,
-      host: Host,
-      port: Port,
-      dbIndex: DbIndex,
-      timeout: NonNegInt,
-      mode: KeyMigrateMode,
-      auth: KeyMigrateAuth
-  ): Single.Aux[Either[NOKEY, OK]] =
-    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: mode.params *: auth.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
-  final def migrate(
-      keys: TwoOrMoreKeys,
-      host: Host,
-      port: Port,
-      dbIndex: DbIndex,
-      timeout: NonNegInt,
-      mode: KeyMigrateMode,
-      auth: KeyMigrateAuth
-  ): Single.Aux[Either[NOKEY, OK]] =
-    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: mode.params *: auth.params *: "KEYS" *: keys.value *: EmptyTuple)
-      .as[Str, Either[NOKEY, OK]]
-
   final def move(key: Key, db: DbIndex): Single.Aux[Boolean] = Protocol("MOVE", key *: db *: EmptyTuple).as[Num, Boolean]
-
-  object obj {
-    val help: Single.Aux[Seq[String]] = Protocol.help("OBJECT")
-
-    def encoding(key: Key): Single.Aux[Option[KeyEncoding]] =
-      Protocol("OBJECT", "ENCODING" :: key.value :: Nil).as[OrNullBulk[Bulk], Option[KeyEncoding]]
-
-    def freq(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
-
-    def idletime(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).as[Num, NonNegInt]
-
-    def refcount(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "REFCOUNT" :: key.value :: Nil).as[Num, NonNegInt]
-  }
 
   final def persist(key: Key): Single.Aux[Boolean] = Protocol("PERSIST", key).as[Num, Boolean]
 
@@ -519,4 +426,117 @@ trait KeyWaitAofP extends Features {
     Protocol("WAITAOF", local *: replicas *: timeout *: EmptyTuple).using(RESPRead.instance(KeyP.localAndReplicas))
 }
 
-trait KeyP extends KeyBaseP with KeyExtP with KeyExpireConditionP with KeySortReadOnlyP with KeyWaitAofP
+/** COPY to another database */
+trait KeyCopyDbP extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("COPY: DB")
+
+  final def copy(source: Key, destination: Key, db: DbIndex): Single.Aux[Boolean] =
+    Protocol("COPY", source *: destination *: "DB" *: db *: EmptyTuple).as[Num, Boolean]
+  final def copy(source: Key, destination: Key, db: DbIndex, replace: KeyP.Replace): Single.Aux[Boolean] =
+    Protocol("COPY", source *: destination *: "DB" *: db *: replace *: EmptyTuple).as[Num, Boolean]
+}
+
+/** MIGRATE */
+trait KeyMigrateP extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("MIGRATE: AUTH AUTH2 COPY KEYS REPLACE")
+
+  private implicit final val str2NOKEYOrOK: Read[Str, Either[NOKEY, OK]] = Read.instance {
+    case Str("NOKEY") => Right(Left(NOKEY))
+    case Str("OK")    => Right(Right(OK))
+    case Str(other)   => Left(RESPDecErr(s"Unexpected string for Read[Str, (NOKEY | OK)]. Was $other"))
+  }
+
+  final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: EmptyTuple).as[Str, Either[NOKEY, OK]]
+  final def migrate(keys: TwoOrMoreKeys, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: "KEYS" *: keys.value *: EmptyTuple).as[Str, Either[NOKEY, OK]]
+  final def migrate(
+      key: Key,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt,
+      mode: KeyP.MigrateMode
+  ): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: mode.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
+  final def migrate(
+      keys: TwoOrMoreKeys,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt,
+      mode: KeyP.MigrateMode
+  ): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: mode.params *: "KEYS" *: keys.value *: EmptyTuple)
+      .as[Str, Either[NOKEY, OK]]
+  final def migrate(
+      key: Key,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt,
+      auth: KeyP.MigrateAuth
+  ): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: auth.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
+  final def migrate(
+      keys: TwoOrMoreKeys,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt,
+      auth: KeyP.MigrateAuth
+  ): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: auth.params *: "KEYS" *: keys.value *: EmptyTuple)
+      .as[Str, Either[NOKEY, OK]]
+  final def migrate(
+      key: Key,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt,
+      mode: KeyP.MigrateMode,
+      auth: KeyP.MigrateAuth
+  ): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: mode.params *: auth.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
+  final def migrate(
+      keys: TwoOrMoreKeys,
+      host: Host,
+      port: Port,
+      dbIndex: DbIndex,
+      timeout: NonNegInt,
+      mode: KeyP.MigrateMode,
+      auth: KeyP.MigrateAuth
+  ): Single.Aux[Either[NOKEY, OK]] =
+    Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: mode.params *: auth.params *: "KEYS" *: keys.value *: EmptyTuple)
+      .as[Str, Either[NOKEY, OK]]
+}
+
+/** OBJECT */
+trait KeyObjectP extends Features {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("OBJECT ENCODING", "OBJECT FREQ", "OBJECT HELP", "OBJECT IDLETIME", "OBJECT REFCOUNT")
+
+  object obj {
+    val help: Single.Aux[Seq[String]] = Protocol.help("OBJECT")
+
+    def encoding(key: Key): Single.Aux[Option[KeyP.Encoding]] =
+      Protocol("OBJECT", "ENCODING" :: key.value :: Nil).as[OrNullBulk[Bulk], Option[KeyP.Encoding]]
+
+    def freq(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
+
+    def idletime(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).as[Num, NonNegInt]
+
+    def refcount(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "REFCOUNT" :: key.value :: Nil).as[Num, NonNegInt]
+  }
+}
+
+trait KeyP
+    extends KeyBaseP
+    with KeyExtP
+    with KeyCopyDbP
+    with KeyMigrateP
+    with KeyMigrateExtP
+    with KeyObjectP
+    with KeyExpireConditionP
+    with KeySortReadOnlyP
+    with KeyWaitAofP

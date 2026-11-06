@@ -36,7 +36,7 @@ trait StringsValkey8_1 extends Strings7_0 with StringSetIfEqP
 trait StringsValkey9_0 extends StringsValkey8_1 with StringDelIfEqP
 trait StringsValkey9_1 extends StringsValkey9_0 with StringMSetExP
 
-trait Keys6_2 extends KeyBaseP with KeyExtP
+trait Keys6_2 extends KeyBaseP with KeyExtP with KeyCopyDbP with KeyMigrateP with KeyMigrateExtP with KeyObjectP
 trait Keys7_0 extends Keys6_2 with KeyExpireConditionP with KeySortReadOnlyP
 trait Keys7_2 extends Keys7_0 with KeyWaitAofP
 

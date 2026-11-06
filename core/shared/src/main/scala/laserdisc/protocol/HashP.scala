@@ -274,26 +274,15 @@ trait HashScanNoValuesP extends Features {
 }
 
 /** Expiry of single fields: Redis 7.4, Valkey 9.0 */
-trait HashFieldExpiryP extends Features {
-  import HashP.{ExpireCondition, FieldExpireResponse, FieldExpireTimeResponse, FieldPersistResponse, FieldTTLResponse}
+trait HashFieldExpiryCoreP extends Features {
+  import HashP.{ExpireCondition, FieldExpireResponse, FieldExpireTimeResponse, FieldTTLResponse}
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List(
-      "HEXPIRE: FIELDS GT LT NX XX",
-      "HEXPIREAT: FIELDS GT LT NX XX",
-      "HEXPIRETIME: FIELDS",
-      "HPERSIST: FIELDS",
-      "HPEXPIRE: FIELDS GT LT NX XX",
-      "HPEXPIREAT: FIELDS GT LT NX XX",
-      "HPEXPIRETIME: FIELDS",
-      "HPTTL: FIELDS",
-      "HTTL: FIELDS"
-    )
+    super.supported ++ List("HEXPIRE: FIELDS GT LT NX XX", "HPEXPIRETIME: FIELDS", "HTTL: FIELDS")
 
   private final val expireResponses     = RESPRead[Arr.Of[Num], Seq[FieldExpireResponse]]
   private final val ttlResponses        = RESPRead[Arr.Of[Num], Seq[FieldTTLResponse]]
   private final val expireTimeResponses = RESPRead[Arr.Of[Num], Seq[FieldExpireTimeResponse]]
-  private final val persistResponses    = RESPRead[Arr.Of[Num], Seq[FieldPersistResponse]]
 
   final def hexpire(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HEXPIRE", key *: seconds *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
@@ -304,6 +293,31 @@ trait HashFieldExpiryP extends Features {
       fields: OneOrMoreKeys
   ): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HEXPIRE", key *: seconds *: condition *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
+
+  final def hpexpiretime(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireTimeResponse]] =
+    Protocol("HPEXPIRETIME", key *: HashP.fields(fields) *: EmptyTuple).using(expireTimeResponses)
+
+  final def httl(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldTTLResponse]] =
+    Protocol("HTTL", key *: HashP.fields(fields) *: EmptyTuple).using(ttlResponses)
+}
+
+trait HashFieldExpiryP extends HashFieldExpiryCoreP {
+  import HashP.{ExpireCondition, FieldExpireResponse, FieldExpireTimeResponse, FieldPersistResponse, FieldTTLResponse}
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "HEXPIREAT: FIELDS GT LT NX XX",
+      "HEXPIRETIME: FIELDS",
+      "HPERSIST: FIELDS",
+      "HPEXPIRE: FIELDS GT LT NX XX",
+      "HPEXPIREAT: FIELDS GT LT NX XX",
+      "HPTTL: FIELDS"
+    )
+
+  private final val expireResponses     = RESPRead[Arr.Of[Num], Seq[FieldExpireResponse]]
+  private final val ttlResponses        = RESPRead[Arr.Of[Num], Seq[FieldTTLResponse]]
+  private final val expireTimeResponses = RESPRead[Arr.Of[Num], Seq[FieldExpireTimeResponse]]
+  private final val persistResponses    = RESPRead[Arr.Of[Num], Seq[FieldPersistResponse]]
 
   final def hexpireat(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HEXPIREAT", key *: seconds *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
@@ -341,14 +355,9 @@ trait HashFieldExpiryP extends Features {
   final def hpersist(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldPersistResponse]] =
     Protocol("HPERSIST", key *: HashP.fields(fields) *: EmptyTuple).using(persistResponses)
 
-  final def hpexpiretime(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireTimeResponse]] =
-    Protocol("HPEXPIRETIME", key *: HashP.fields(fields) *: EmptyTuple).using(expireTimeResponses)
-
   final def hpttl(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldTTLResponse]] =
     Protocol("HPTTL", key *: HashP.fields(fields) *: EmptyTuple).using(ttlResponses)
 
-  final def httl(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldTTLResponse]] =
-    Protocol("HTTL", key *: HashP.fields(fields) *: EmptyTuple).using(ttlResponses)
 }
 
 /** HGETEX and HSETEX: Redis 8.0, Valkey 9.0 */

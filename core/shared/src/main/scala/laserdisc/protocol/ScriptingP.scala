@@ -118,11 +118,11 @@ object ScriptingP {
 }
 
 /** SCRIPT, under `script`. Redis 6.2 */
-trait ScriptCommands extends Features {
+trait ScriptCoreCommands extends Features {
   import ClusterManagement.FlushMode
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("SCRIPT EXISTS", "SCRIPT FLUSH: ASYNC SYNC", "SCRIPT HELP", "SCRIPT KILL", "SCRIPT LOAD")
+    super.supported ++ List("SCRIPT EXISTS", "SCRIPT FLUSH: ASYNC SYNC", "SCRIPT HELP", "SCRIPT LOAD")
 
   val help: Single.Aux[Seq[String]] = Protocol.help("SCRIPT")
 
@@ -134,11 +134,16 @@ trait ScriptCommands extends Features {
   val flush: Single.Aux[OK]                  = Protocol("SCRIPT", "FLUSH").as[Str, OK]
   def flush(mode: FlushMode): Single.Aux[OK] = Protocol("SCRIPT", "FLUSH" *: mode *: EmptyTuple).as[Str, OK]
 
-  /** Stops the script running, if it hasn't written anything */
-  val kill: Single.Aux[OK] = Protocol("SCRIPT", "KILL").as[Str, OK]
-
   /** Puts the script in the cache, without running it, and replies with its SHA1 digest, for EVALSHA */
   def load(script: String): Single.Aux[Sha1] = Protocol("SCRIPT", "LOAD" :: script :: Nil).using(RESPRead.instance(ScriptingP.sha1))
+}
+
+/** SCRIPT with KILL, under `script`. Redis 6.2 */
+trait ScriptCommands extends ScriptCoreCommands {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SCRIPT KILL")
+
+  /** Stops the script running, if it hasn't written anything */
+  val kill: Single.Aux[OK] = Protocol("SCRIPT", "KILL").as[Str, OK]
 }
 
 /** SCRIPT SHOW, under `script`: Valkey 8.0 */
@@ -154,10 +159,10 @@ trait ScriptShowCommands extends Features {
   * A script replies with whatever it returns, so you say how to read it, as with `eval[Num, Long]`. The keys are KEYS in the script and the
   * arguments ARGV
   */
-trait ScriptingBaseP extends Features {
+trait ScriptingCoreP extends Features {
   import ScriptingP.keysAndArgs
 
-  override private[laserdisc] def supported: List[String] = super.supported ++ List("EVAL", "EVALSHA") ++ script.supported
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("EVAL", "EVALSHA")
 
   object scriptingtypes {
     final type ScriptingEngine        = ScriptingP.Engine
@@ -181,8 +186,6 @@ trait ScriptingBaseP extends Features {
     final val ScriptingWithCode      = ScriptingP.WithCode
   }
 
-  lazy val script: ScriptCommands = new ScriptCommands {}
-
   private[protocol] final def run[R, A](command: String, first: String, keys: List[Key], args: List[Value])(
       R: RESPRead.Aux[R, A]
   ): Single.Aux[A] = Protocol(command, first :: keysAndArgs(keys, args)).using(R)
@@ -203,6 +206,12 @@ trait ScriptingBaseP extends Features {
     run("EVALSHA", sha.value, Nil, args.value)(R)
   final def evalsha[R, A](sha: Sha1, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
     run("EVALSHA", sha.value, keys.value, args.value)(R)
+}
+
+trait ScriptingBaseP extends ScriptingCoreP {
+  override private[laserdisc] def supported: List[String] = super.supported ++ script.supported
+
+  lazy val script: ScriptCommands = new ScriptCommands {}
 }
 
 /** FUNCTION, under `function`. Redis 7.0 */
@@ -260,12 +269,9 @@ trait FunctionCommands extends Features {
   val stats: Single.Aux[Stats] = Protocol("FUNCTION", "STATS").using(RESPRead.instance(ScriptingP.stats))
 }
 
-/** EVAL_RO, EVALSHA_RO, FCALL and FCALL_RO, and FUNCTION under `function`. Redis 7.0 */
-trait ScriptingFunctionsP extends ScriptingBaseP {
-  override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("EVAL_RO", "EVALSHA_RO", "FCALL", "FCALL_RO") ++ function.supported
-
-  lazy val function: FunctionCommands = new FunctionCommands {}
+/** EVAL_RO and EVALSHA_RO: Redis 7.0 */
+trait ScriptingReadOnlyP extends ScriptingCoreP {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("EVAL_RO", "EVALSHA_RO")
 
   /** EVAL of a script that only reads, which may run on a replica */
   final def evalro[R, A](script: String)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] = run("EVAL_RO", script, Nil, Nil)(R)
@@ -284,6 +290,13 @@ trait ScriptingFunctionsP extends ScriptingBaseP {
     run("EVALSHA_RO", sha.value, Nil, args.value)(R)
   final def evalsharo[R, A](sha: Sha1, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
     run("EVALSHA_RO", sha.value, keys.value, args.value)(R)
+}
+
+/** EVAL_RO, EVALSHA_RO, FCALL and FCALL_RO, and FUNCTION under `function`. Redis 7.0 */
+trait ScriptingFunctionsP extends ScriptingBaseP with ScriptingReadOnlyP {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("FCALL", "FCALL_RO") ++ function.supported
+
+  lazy val function: FunctionCommands = new FunctionCommands {}
 
   /** Calls a function of a loaded library */
   final def fcall[R, A](function: Key)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] = run("FCALL", function.value, Nil, Nil)(R)

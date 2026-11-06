@@ -24,15 +24,14 @@ package protocol
 
 import Protocol.Single
 
-trait ConnectionP extends Features {
+trait ConnectionBaseP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "AUTH",
       "ECHO",
       "PING",
       "QUIT",
-      "SELECT",
-      "SWAPDB"
+      "SELECT"
     )
 
   private implicit final val pongRead: Read[Str, PONG] = Read.instance {
@@ -50,6 +49,12 @@ trait ConnectionP extends Features {
   final val quit: Single.Aux[OK] = Protocol("QUIT", EmptyTuple).as[Str, OK]
 
   final def select(index: DbIndex): Single.Aux[OK] = Protocol("SELECT", index).as[Str, OK]
+}
+
+trait ConnectionSwapDbP extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SWAPDB")
 
   final def swapdb(index1: DbIndex, index2: DbIndex): Single.Aux[OK] = Protocol("SWAPDB", index1 :: index2 :: Nil).as[Str, OK]
 }
+
+trait ConnectionP extends ConnectionBaseP with ConnectionSwapDbP

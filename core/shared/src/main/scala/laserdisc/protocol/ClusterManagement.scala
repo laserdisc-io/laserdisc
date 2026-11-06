@@ -209,11 +209,19 @@ trait ClusterScanP extends Features {
 }
 
 /** CLUSTER SHARDS, CLUSTER LINKS, CLUSTER ADDSLOTSRANGE and CLUSTER DELSLOTSRANGE: Redis 7.0 */
-trait ClusterShardsP extends Features {
-  import ClusterManagement.{ClusterLink, Shard, slotRanges}
+trait ClusterShardsCoreP extends Features {
+  import ClusterManagement.Shard
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("CLUSTER SHARDS")
+
+  final val shards: Single.Aux[Seq[Shard]] = Protocol("CLUSTER", "SHARDS").using(RESPRead.instance(ClusterManagement.shards))
+}
+
+trait ClusterShardsP extends ClusterShardsCoreP {
+  import ClusterManagement.{ClusterLink, slotRanges}
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("CLUSTER ADDSLOTSRANGE", "CLUSTER DELSLOTSRANGE", "CLUSTER LINKS", "CLUSTER SHARDS")
+    super.supported ++ List("CLUSTER ADDSLOTSRANGE", "CLUSTER DELSLOTSRANGE", "CLUSTER LINKS")
 
   /** Serves the slots of each range, from the first to the last of it */
   final def addslotsrange(ranges: OneOrMore[(Slot, Slot)]): Single.Aux[OK] =
@@ -222,7 +230,6 @@ trait ClusterShardsP extends Features {
     Protocol("CLUSTER", "DELSLOTSRANGE" :: slotRanges(ranges)).as[Str, OK]
 
   final val links: Single.Aux[Seq[ClusterLink]] = Protocol("CLUSTER", "LINKS").using(RESPRead.instance(ClusterManagement.links))
-  final val shards: Single.Aux[Seq[Shard]]      = Protocol("CLUSTER", "SHARDS").using(RESPRead.instance(ClusterManagement.shards))
 }
 
 /** CLUSTER MYSHARDID: Redis 7.2 */

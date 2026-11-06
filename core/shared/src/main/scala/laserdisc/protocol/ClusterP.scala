@@ -288,34 +288,17 @@ object ClusterP {
   }
 }
 
-trait ClusterBaseP extends Features {
+trait ClusterCoreP extends Features {
   // the nodes of CLUSTER SLOTS as Redis 6.2 and KeyDB send them, or with the metadata servers send from Redis 7.0
   protected def slotsRead: RESPRead[ClusterP.Slots] = RESPRead.instance(ClusterP.Slots.anyNodes)
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
-      "CLUSTER ADDSLOTS",
-      "CLUSTER BUMPEPOCH",
-      "CLUSTER COUNT-FAILURE-REPORTS",
-      "CLUSTER COUNTKEYSINSLOT",
-      "CLUSTER DELSLOTS",
-      "CLUSTER FAILOVER: FORCE TAKEOVER",
-      "CLUSTER FLUSHSLOTS",
-      "CLUSTER FORGET",
-      "CLUSTER GETKEYSINSLOT",
       "CLUSTER HELP",
       "CLUSTER INFO",
       "CLUSTER KEYSLOT",
-      "CLUSTER MEET",
       "CLUSTER MYID",
       "CLUSTER NODES",
-      "CLUSTER REPLICAS",
-      "CLUSTER REPLICATE",
-      "CLUSTER RESET: HARD SOFT",
-      "CLUSTER SAVECONFIG",
-      "CLUSTER SET-CONFIG-EPOCH",
-      "CLUSTER SETSLOT: IMPORTING MIGRATING NODE STABLE",
-      "CLUSTER SLAVES",
       "CLUSTER SLOTS",
       "READONLY",
       "READWRITE"
@@ -366,9 +349,46 @@ trait ClusterBaseP extends Features {
 
   final val clusterhelp: Single.Aux[Seq[String]] = Protocol.help("CLUSTER")
 
-  final def addslots(slots: OneOrMore[Slot]): Single.Aux[OK] = Protocol("CLUSTER", "ADDSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
-
   final val clusterinfo: Single.Aux[ClusterInfo] = Protocol("CLUSTER", "INFO").as[Bulk, ClusterInfo]
+
+  final def keyslot(key: Key): Single.Aux[Slot] = Protocol("CLUSTER", "KEYSLOT" *: key *: EmptyTuple).as[Num, Slot]
+
+  final val nodes: Single.Aux[ClusterNodes] = Protocol("CLUSTER", "NODES").as[Bulk, ClusterNodes]
+
+  final val readonly: Single.Aux[OK] = Protocol("READONLY", EmptyTuple).as[Str, OK]
+
+  final val readwrite: Single.Aux[OK] = Protocol("READWRITE", EmptyTuple).as[Str, OK]
+
+  final val slots: Single.Aux[ClusterSlots] = Protocol("CLUSTER", "SLOTS").using(slotsRead)
+
+  final val myid: Single.Aux[NodeId] = Protocol("CLUSTER", "MYID").using(RESPRead.instance(ClusterManagement.nodeId))
+}
+
+trait ClusterBaseP extends ClusterCoreP {
+  import clustertypes.*
+
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List(
+      "CLUSTER ADDSLOTS",
+      "CLUSTER BUMPEPOCH",
+      "CLUSTER COUNT-FAILURE-REPORTS",
+      "CLUSTER COUNTKEYSINSLOT",
+      "CLUSTER DELSLOTS",
+      "CLUSTER FAILOVER: FORCE TAKEOVER",
+      "CLUSTER FLUSHSLOTS",
+      "CLUSTER FORGET",
+      "CLUSTER GETKEYSINSLOT",
+      "CLUSTER MEET",
+      "CLUSTER REPLICAS",
+      "CLUSTER REPLICATE",
+      "CLUSTER RESET: HARD SOFT",
+      "CLUSTER SAVECONFIG",
+      "CLUSTER SET-CONFIG-EPOCH",
+      "CLUSTER SETSLOT: IMPORTING MIGRATING NODE STABLE",
+      "CLUSTER SLAVES"
+    )
+
+  final def addslots(slots: OneOrMore[Slot]): Single.Aux[OK] = Protocol("CLUSTER", "ADDSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
 
   final def countfailurereports(nodeId: NodeId): Single.Aux[NonNegInt] =
     Protocol("CLUSTER", "COUNT-FAILURE-REPORTS" *: nodeId *: EmptyTuple).as[Num, NonNegInt]
@@ -386,15 +406,7 @@ trait ClusterBaseP extends Features {
   final def getkeysinslot(slot: Slot, count: PosInt): Single.Aux[Seq[Key]] =
     Protocol("CLUSTER", "GETKEYSINSLOT" *: slot *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
 
-  final def keyslot(key: Key): Single.Aux[Slot] = Protocol("CLUSTER", "KEYSLOT" *: key *: EmptyTuple).as[Num, Slot]
-
   final def meet(host: Host, port: Port): Single.Aux[OK] = Protocol("CLUSTER", "MEET" *: host *: port *: EmptyTuple).as[Str, OK]
-
-  final val nodes: Single.Aux[ClusterNodes] = Protocol("CLUSTER", "NODES").as[Bulk, ClusterNodes]
-
-  final val readonly: Single.Aux[OK] = Protocol("READONLY", EmptyTuple).as[Str, OK]
-
-  final val readwrite: Single.Aux[OK] = Protocol("READWRITE", EmptyTuple).as[Str, OK]
 
   final def replicas(nodeId: NodeId): Single.Aux[ClusterNodes] =
     Protocol("CLUSTER", "REPLICAS" *: nodeId *: EmptyTuple).as[Arr.Of[Bulk], ClusterNodes]
@@ -416,15 +428,11 @@ trait ClusterBaseP extends Features {
   final def slaves(nodeId: NodeId): Single.Aux[ClusterNodes] =
     Protocol("CLUSTER", "SLAVES" *: nodeId *: EmptyTuple).as[Arr.Of[Bulk], ClusterNodes]
 
-  final val slots: Single.Aux[ClusterSlots] = Protocol("CLUSTER", "SLOTS").using(slotsRead)
-
   /** Gives this node a new config epoch, and replies with the server's message: BUMPED or STILL, with the epoch */
   final val bumpepoch: Single.Aux[String] = Protocol("CLUSTER", "BUMPEPOCH").as[Str, String]
 
   /** Forgets every slot this node serves */
   final val flushslots: Single.Aux[OK] = Protocol("CLUSTER", "FLUSHSLOTS").as[Str, OK]
-
-  final val myid: Single.Aux[NodeId] = Protocol("CLUSTER", "MYID").using(RESPRead.instance(ClusterManagement.nodeId))
 }
 
 /** CLUSTER SLOTS with the metadata of each node: Redis 7.0 and Valkey */

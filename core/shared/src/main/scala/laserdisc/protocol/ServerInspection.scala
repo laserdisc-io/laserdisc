@@ -319,23 +319,12 @@ object ServerInspection {
     protocol.command :: protocol.parameters.toList.collect { case Bulk(s) => s }
 }
 
-/** SLOWLOG, MEMORY and MODULE LIST: Redis 6.2 */
-trait ServerInspectionBaseP extends Features {
-  import ServerInspection.{LogEntry, MemoryStats}
+/** SLOWLOG: Redis 6.2 */
+trait ServerInspectionCoreP extends Features {
+  import ServerInspection.LogEntry
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List(
-      "MEMORY DOCTOR",
-      "MEMORY HELP",
-      "MEMORY MALLOC-STATS",
-      "MEMORY PURGE",
-      "MEMORY STATS",
-      "MEMORY USAGE: SAMPLES",
-      "SLOWLOG GET",
-      "SLOWLOG HELP",
-      "SLOWLOG LEN",
-      "SLOWLOG RESET"
-    ) ++ module.supported
+    super.supported ++ List("SLOWLOG GET", "SLOWLOG HELP", "SLOWLOG LEN", "SLOWLOG RESET")
 
   object slowlog {
     val help: Single.Aux[Seq[String]] = Protocol.help("SLOWLOG")
@@ -348,40 +337,65 @@ trait ServerInspectionBaseP extends Features {
     val reset: Single.Aux[OK]       = Protocol("SLOWLOG", "RESET").as[Str, OK]
   }
 
-  object memory {
-    val help: Single.Aux[Seq[String]] = Protocol.help("MEMORY")
+}
 
-    /** The server's advice about its memory use, as text */
-    val doctor: Single.Aux[String] = Protocol("MEMORY", "DOCTOR").as[Bulk, String]
+/** MEMORY without DOCTOR and PURGE, under `memory`. Redis 6.2 */
+trait MemoryCoreCommands extends Features {
+  import ServerInspection.MemoryStats
 
-    /** The memory allocator's own statistics, as text */
-    val mallocstats: Single.Aux[String] = Protocol("MEMORY", "MALLOC-STATS").as[Bulk, String]
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("MEMORY HELP", "MEMORY MALLOC-STATS", "MEMORY STATS", "MEMORY USAGE: SAMPLES")
 
-    val purge: Single.Aux[OK]          = Protocol("MEMORY", "PURGE").as[Str, OK]
-    val stats: Single.Aux[MemoryStats] = Protocol("MEMORY", "STATS").using(RESPRead.instance(ServerInspection.memoryStats))
+  val help: Single.Aux[Seq[String]] = Protocol.help("MEMORY")
 
-    /** How many bytes the key and its value use, or `None` when it doesn't exist */
-    def usage(key: Key): Single.Aux[Option[NonNegLong]] =
-      Protocol("MEMORY", "USAGE" :: key.value :: Nil).as[OrNullBulk[Num], Option[NonNegLong]]
+  /** The memory allocator's own statistics, as text */
+  val mallocstats: Single.Aux[String] = Protocol("MEMORY", "MALLOC-STATS").as[Bulk, String]
 
-    /** Like `usage`, estimating a collection from `samples` of its elements, or from all of them when 0 */
-    def usage(key: Key, samples: NonNegInt): Single.Aux[Option[NonNegLong]] =
-      Protocol("MEMORY", "USAGE" *: key *: "SAMPLES" *: samples *: EmptyTuple).as[OrNullBulk[Num], Option[NonNegLong]]
-  }
+  val stats: Single.Aux[MemoryStats] = Protocol("MEMORY", "STATS").using(RESPRead.instance(ServerInspection.memoryStats))
+
+  /** How many bytes the key and its value use, or `None` when it doesn't exist */
+  def usage(key: Key): Single.Aux[Option[NonNegLong]] =
+    Protocol("MEMORY", "USAGE" :: key.value :: Nil).as[OrNullBulk[Num], Option[NonNegLong]]
+
+  /** Like `usage`, estimating a collection from `samples` of its elements, or from all of them when 0 */
+  def usage(key: Key, samples: NonNegInt): Single.Aux[Option[NonNegLong]] =
+    Protocol("MEMORY", "USAGE" *: key *: "SAMPLES" *: samples *: EmptyTuple).as[OrNullBulk[Num], Option[NonNegLong]]
+}
+
+/** MEMORY, under `memory`. Redis 6.2 */
+trait MemoryCommands extends MemoryCoreCommands {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("MEMORY DOCTOR", "MEMORY PURGE")
+
+  /** The server's advice about its memory use, as text */
+  val doctor: Single.Aux[String] = Protocol("MEMORY", "DOCTOR").as[Bulk, String]
+
+  val purge: Single.Aux[OK] = Protocol("MEMORY", "PURGE").as[Str, OK]
+}
+
+/** MEMORY under `memory`, and MODULE under `module`. Redis 6.2 */
+trait ServerInspectionBaseP extends ServerInspectionCoreP {
+  override private[laserdisc] def supported: List[String] = super.supported ++ memory.supported ++ module.supported
+
+  lazy val memory: MemoryCommands = new MemoryCommands {}
 
   lazy val module: ModuleCommands = new ModuleCommands {}
 }
 
-/** MODULE: Redis 6.2. Servers refuse LOAD and UNLOAD unless they were started with `enable-module-command` */
-trait ModuleCommands extends Features {
+/** MODULE LIST, under `module`. Redis 6.2 */
+trait ModuleListCommands extends Features {
   import ServerInspection.ModuleInfo
 
-  override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("MODULE HELP", "MODULE LIST", "MODULE LOAD", "MODULE UNLOAD")
-
-  val help: Single.Aux[Seq[String]] = Protocol.help("MODULE")
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("MODULE LIST")
 
   val list: Single.Aux[Seq[ModuleInfo]] = Protocol("MODULE", "LIST").using(RESPRead.instance(ServerInspection.moduleInfos))
+}
+
+/** MODULE: Redis 6.2. Servers refuse LOAD and UNLOAD unless they were started with `enable-module-command` */
+trait ModuleCommands extends ModuleListCommands {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("MODULE HELP", "MODULE LOAD", "MODULE UNLOAD")
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("MODULE")
 
   /** Loads the module at that path on the server */
   def load(path: Key): Single.Aux[OK]                         = Protocol("MODULE", "LOAD" :: path.value :: Nil).as[Str, OK]
@@ -410,12 +424,21 @@ trait ModuleLoadExCommands extends Features {
     Protocol("MODULE", "LOADEX" :: path.value :: (configs(config) ++ arguments(args))).as[Str, OK]
 }
 
+/** LATENCY LATEST: Redis 6.2 */
+trait LatencyLatestCommands extends Features {
+  import ServerInspection.LatencyEvent
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("LATENCY LATEST")
+
+  val latest: Single.Aux[Seq[LatencyEvent]] = Protocol("LATENCY", "LATEST").using(RESPRead.instance(ServerInspection.latencyEvents))
+}
+
 /** LATENCY: Redis 6.2 */
-trait LatencyCommands extends Features {
-  import ServerInspection.{LatencyEvent, LatencySample}
+trait LatencyCommands extends LatencyLatestCommands {
+  import ServerInspection.LatencySample
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("LATENCY DOCTOR", "LATENCY GRAPH", "LATENCY HELP", "LATENCY HISTORY", "LATENCY LATEST", "LATENCY RESET")
+    super.supported ++ List("LATENCY DOCTOR", "LATENCY GRAPH", "LATENCY HELP", "LATENCY HISTORY", "LATENCY RESET")
 
   val help: Single.Aux[Seq[String]] = Protocol.help("LATENCY")
 
@@ -427,8 +450,6 @@ trait LatencyCommands extends Features {
 
   def history(event: Key): Single.Aux[Seq[LatencySample]] =
     Protocol("LATENCY", "HISTORY" :: event.value :: Nil).using(RESPRead.instance(ServerInspection.latencySamples))
-
-  val latest: Single.Aux[Seq[LatencyEvent]] = Protocol("LATENCY", "LATEST").using(RESPRead.instance(ServerInspection.latencyEvents))
 
   /** Forgets every event, or the given ones, and replies how many it forgot */
   val reset: Single.Aux[NonNegInt]                         = Protocol("LATENCY", "RESET").as[Num, NonNegInt]
@@ -448,24 +469,29 @@ trait LatencyHistogramCommands extends Features {
     Protocol("LATENCY", "HISTOGRAM" :: commands.value.map(_.value)).using(RESPRead.instance(ServerInspection.latencyHistograms))
 }
 
-/** COMMAND: Redis 6.2 */
-trait CommandCommands extends Features {
+/** COMMAND without GETKEYS: Redis 6.2 */
+trait CommandCoreCommands extends Features {
   import ServerInspection.CommandInfo
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("COMMAND COUNT", "COMMAND GETKEYS", "COMMAND HELP", "COMMAND INFO")
+    super.supported ++ List("COMMAND COUNT", "COMMAND HELP", "COMMAND INFO")
 
   val help: Single.Aux[Seq[String]] = Protocol.help("COMMAND")
 
   val count: Single.Aux[NonNegInt] = Protocol("COMMAND", "COUNT").as[Num, NonNegInt]
 
-  /** The keys a command would use, without running it */
-  def getkeys(command: Single): Single.Aux[Seq[Key]] =
-    Protocol("COMMAND", "GETKEYS" :: ServerInspection.argumentsOf(command)).as[Arr.Of[Bulk], Seq[Key]]
-
   /** The information of each command, or `None` for a name the server doesn't know */
   def info(names: OneOrMore[Key]): Single.Aux[Seq[Option[CommandInfo]]] =
     Protocol("COMMAND", "INFO" :: names.value.map(_.value)).using(RESPRead.instance(ServerInspection.commandInfos))
+}
+
+/** COMMAND: Redis 6.2 */
+trait CommandCommands extends CommandCoreCommands {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("COMMAND GETKEYS")
+
+  /** The keys a command would use, without running it */
+  def getkeys(command: Single): Single.Aux[Seq[Key]] =
+    Protocol("COMMAND", "GETKEYS" :: ServerInspection.argumentsOf(command)).as[Arr.Of[Bulk], Seq[Key]]
 }
 
 /** COMMAND DOCS, COMMAND LIST and COMMAND GETKEYSANDFLAGS: Redis 7.0 */

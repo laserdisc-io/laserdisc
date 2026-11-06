@@ -240,17 +240,20 @@ trait AclCommands extends Features {
   val whoami: Single.Aux[String] = Protocol("ACL", "WHOAMI").as[Bulk, String]
 }
 
-/** ACL DRYRUN and ACL SETUSER with selectors: Redis 7.0 */
-trait AclSelectorCommands extends AclCommands {
-  import Acl.{AclRulesWithSelectors, AclUser}
-
-  override protected def maybeUser: RESPRead[Option[AclUser]] = Acl.maybeUser7_0
-
+/** ACL DRYRUN: Redis 7.0 */
+trait AclDryRunCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("ACL DRYRUN")
 
   /** Whether the user may run the command, without running it: `None` when it may, or the reason when it may not */
   def dryrun(user: Key, command: Single): Single.Aux[Option[String]] =
     Protocol("ACL", "DRYRUN" :: user.value :: ServerInspection.argumentsOf(command)).using(RESPRead.okOrMessage)
+}
+
+/** ACL DRYRUN and ACL SETUSER with selectors: Redis 7.0 */
+trait AclSelectorCommands extends AclCommands with AclDryRunCommands {
+  import Acl.{AclRulesWithSelectors, AclUser}
+
+  override protected def maybeUser: RESPRead[Option[AclUser]] = Acl.maybeUser7_0
 
   def setuser(user: Key, rules: AclRulesWithSelectors): Single.Aux[OK] =
     Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]

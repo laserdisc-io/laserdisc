@@ -625,6 +625,30 @@ final class VersionImportsSpec extends BaseSpec {
     assert(compileErrors("""xsetid("a", streamtypes.StreamId(1L, 1L), 1L, streamtypes.StreamId(1L, 1L))""").nonEmpty)
   }
 
+  test("every version has SUBSCRIBE, PSUBSCRIBE and MONITOR, and only Redis and Valkey 7.0 and later, and Dragonfly, SSUBSCRIBE") {
+    val channels = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(subscribe[String](channels).confirmations, Set("a"))
+      assertEquals(monitor.confirmations, Set("OK"))
+      assert(compileErrors("""ssubscribe[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))))""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(ssubscribe[String](channels).confirmations, Set("a"))
+    }
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(ssubscribe[String](channels).confirmations, Set("a"))
+    }
+    {
+      import laserdisc.dragonfly_2_0.*
+      assertEquals(ssubscribe[String](channels).confirmations, Set("a"))
+      assertEquals(server.monitor.confirmations, Set("OK"))
+    }
+  }
+
   test("redis imports don't have Dragonfly's own commands") {
     import laserdisc.auto.*
     import laserdisc.redis_8_10.*

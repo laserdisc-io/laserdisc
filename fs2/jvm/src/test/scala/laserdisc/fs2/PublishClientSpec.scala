@@ -39,7 +39,7 @@ abstract class PublishClientSpec(p: Port, dest: String) extends LaserdiscFs2Suit
   private def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
-  // laserdisc can't read messages yet, but a second client can still subscribe, for the others to see
+  // a subscriber that stays quiet, for the others to see
   private def subscribed[A](command: String, name: String)(f: =>A): A =
     RedisClient[IO]
       .to("127.0.0.1", p)

@@ -633,7 +633,7 @@ trait ConfigManyCommands extends Features {
     Protocol("CONFIG", "SET" *: parameters.value *: EmptyTuple).as[Str, OK]
 }
 
-trait ServerCoreP extends ServerInspectionCoreP {
+trait ServerCoreP extends ServerInspectionCoreP with MonitorP {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "BGSAVE: SCHEDULE",

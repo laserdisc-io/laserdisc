@@ -59,13 +59,11 @@ trait PubSubShardCommands extends PubSubCommands {
     Protocol("PUBSUB", "SHARDNUMSUB" :: channels.value.map(_.value)).as[Arr.OfPairs[Bulk, Num], Seq[(Key, NonNegInt)]]
 }
 
-trait PublishP extends Features {
+trait PublishP extends SubscribeP {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "PUBLISH"
     ) ++ pubsub.supported
-
-  // TODO work out all pub/sub system properly
 
   lazy val pubsub: PubSubCommands = new PubSubCommands {}
 
@@ -74,7 +72,7 @@ trait PublishP extends Features {
 }
 
 /** SPUBLISH, and PUBSUB for shard channels under `pubsub`. Redis 7.0 */
-trait PublishShardP extends PublishP {
+trait PublishShardP extends PublishP with SubscribeShardP {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SPUBLISH")
 
   override lazy val pubsub: PubSubShardCommands = new PubSubShardCommands {}

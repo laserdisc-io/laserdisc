@@ -70,7 +70,7 @@ final class StringPSpec extends BaseSpec with StringP {
   }
 
   property("The String protocol using getbit reads a bit") {
-    forAll { (k: Key, o: PosLong) =>
+    forAll { (k: Key, o: StringLength) =>
       assertEquals(getbit(k, o).encode, Arr(Bulk("GETBIT"), Bulk(k), Bulk(o)))
       assertEquals(getbit(k, o).decode(Num(0L)), stringtypes.bit.unset)
       assertEquals(getbit(k, o).decode(Num(1L)), stringtypes.bit.set)

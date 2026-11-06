@@ -186,6 +186,9 @@ abstract class StringClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     send(setbit("s:b", 3L, stringtypes.bit.set))
     assertEquals(send(getbit("s:b", 3L)), stringtypes.bit.set: Bit)
     assertEquals(send(getbit("s:b", 4L)), stringtypes.bit.unset: Bit)
+    assertEquals(send(getbit("s:b", 0L)), stringtypes.bit.unset: Bit)
+    send(setbit("s:b", 0L, stringtypes.bit.set))
+    assertEquals(send(getbit("s:b", 0L)), stringtypes.bit.set: Bit)
     assertEquals(send(bitopnot("s:b", "s:d")).value, 1)
   }
 

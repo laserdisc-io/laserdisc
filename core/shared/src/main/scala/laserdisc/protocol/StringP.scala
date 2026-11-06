@@ -310,7 +310,7 @@ trait StringBaseP extends Features {
 
   final def get[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("GET", key).as[OrNullBulk[Bulk], Option[A]]
 
-  final def getbit(key: Key, offset: PosLong): Single.Aux[Bit] = Protocol("GETBIT", key *: offset *: EmptyTuple).as[Num, Bit]
+  final def getbit(key: Key, offset: StringLength): Single.Aux[Bit] = Protocol("GETBIT", key *: offset *: EmptyTuple).as[Num, Bit]
 
   final def getrange[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single.Aux[A] =
     Protocol("GETRANGE", key *: start *: end *: EmptyTuple).as[Bulk, A]

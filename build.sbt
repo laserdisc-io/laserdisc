@@ -78,6 +78,14 @@ val startUpRedisServers = List(
   WorkflowStep.Run(commands = List("docker run -p 6379:6379 -d redis:alpine"), name = Some("Start up Redis")),
   WorkflowStep.Run(commands = List("docker run -p 6380:6379 -d eqalpha/keydb"), name = Some("Start up KeyDb")),
   WorkflowStep.Run(commands = List("docker run -p 6381:6379 -d valkey/valkey:alpine"), name = Some("Start up Valkey")),
+  WorkflowStep.Run(
+    commands = List("docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest"),
+    name = Some("Start up Dragonfly")
+  ),
+  WorkflowStep.Run(
+    commands = List("docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated"),
+    name = Some("Start up Dragonfly in cluster mode")
+  ),
   startUpCluster("Redis", "redis:alpine", "redis-server", 7100),
   startUpCluster("KeyDb", "eqalpha/keydb", "keydb-server", 7110),
   startUpCluster("Valkey", "valkey/valkey:alpine", "valkey-server", 7120)

@@ -51,6 +51,8 @@ final class ValkeyHashClientSpec extends HashClientSpec(6381, "valkey") {
   }
 }
 
+final class DragonflyHashClientSpec extends HashClientSpec(6382, "dragonfly")
+
 abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)

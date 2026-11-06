@@ -62,6 +62,8 @@ final class ValkeyListClientSpec extends ListClientSpec(6381, "valkey") {
   }
 }
 
+final class DragonflyListClientSpec extends ListClientSpec(6382, "dragonfly")
+
 abstract class ListClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)

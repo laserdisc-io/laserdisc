@@ -79,6 +79,23 @@ final class VersionsSpec extends BaseSpec {
     println(s"--- $name: laserdisc has ${ours.size} of ${has.size} commands, missing ${missingKeywords.size} keywords of those")
   }
 
+  // Dragonfly has no COMMAND DOCS, so its list has names only: what it accepts of each command is for its live tests to check
+  private def checkNames(features: Features, name: String): Unit = {
+    val has  = server(name).keySet
+    val ours = covered(features).keySet.map(_.split(' ').head)
+
+    val notOnServer = (ours -- has).toList.sorted
+    assert(notOnServer.isEmpty, s"$name doesn't have: ${notOnServer.mkString(", ")}")
+
+    val missing = (has -- ours).toList.sorted
+    Files.createDirectories(reports)
+    Files.write(
+      reports.resolve(s"$name.txt"),
+      (s"Commands (${missing.size}):" :: missing).mkString("", "\n", "\n").getBytes(UTF_8)
+    )
+    println(s"--- $name: laserdisc has ${ours.size} of ${has.size} commands")
+  }
+
   test("redis_6_2 matches Redis 6.2")(check(redis_6_2, "redis-6.2"))
   test("redis_7_0 matches Redis 7.0")(check(redis_7_0, "redis-7.0"))
   test("redis_7_2 matches Redis 7.2")(check(redis_7_2, "redis-7.2"))
@@ -94,6 +111,8 @@ final class VersionsSpec extends BaseSpec {
   test("valkey_8_1 matches Valkey 8.1")(check(valkey_8_1, "valkey-8.1"))
   test("valkey_9_0 matches Valkey 9.0")(check(valkey_9_0, "valkey-9.0"))
   test("valkey_9_1 matches Valkey 9.1")(check(valkey_9_1, "valkey-9.1"))
+
+  test("dragonfly_2_0 only has commands Dragonfly 2.0 lists")(checkNames(dragonfly_2_0, "dragonfly-2.0"))
 
   test("a version claiming something its server doesn't have fails") {
     object wrong extends Redis8_2 with protocol.StringSetIfEqP

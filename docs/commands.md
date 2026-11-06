@@ -58,11 +58,37 @@ compile with `laserdisc.redis_8_2.*`.
 | --- | --- |
 | Redis 6.2 to 8.10 | `laserdisc.redis_6_2.*`, `laserdisc.redis_7_0.*`, `laserdisc.redis_7_2.*`, `laserdisc.redis_7_4.*`, `laserdisc.redis_8_0.*`, `laserdisc.redis_8_2.*`, `laserdisc.redis_8_4.*`, `laserdisc.redis_8_6.*`, `laserdisc.redis_8_8.*`, `laserdisc.redis_8_10.*` |
 | Valkey 7.2 to 9.1 | `laserdisc.valkey_7_2.*`, `laserdisc.valkey_8_0.*`, `laserdisc.valkey_8_1.*`, `laserdisc.valkey_9_0.*`, `laserdisc.valkey_9_1.*` |
+| Dragonfly 2.0 | `laserdisc.dragonfly_2_0.*` |
 | KeyDB | `laserdisc.redis_6_2.*` |
 
 Each import matches the latest patch release of its version, so a command added
 in a patch release needs that release or a later one. For example, `HOTKEYS HELP`
 in `laserdisc.redis_8_6.*` needs Redis 8.6.1 or later.
+
+KeyDB's latest release is based on Redis 6.2, so use `laserdisc.redis_6_2.*`. It
+doesn't have `LOLWUT`, and laserdisc doesn't have KeyDB's own commands.
+
+## Dragonfly
+
+`laserdisc.dragonfly_2_0.*` has only what Dragonfly accepts. That leaves out, for
+example, `MIGRATE`, `OBJECT`, `SWAPDB`, `FUNCTION` and most of `CLUSTER`. It also
+adds Dragonfly's own commands: `prepend`, `saddex`, `fieldexpire`, `fieldttl`,
+`stick`, `clthrottle`, `rm` and `repltakeover`.
+
+Some things still behave differently from Redis:
+
+- `CLUSTER` only works when Dragonfly runs in cluster mode, with
+  `--cluster_mode=emulated` or `--cluster_mode=yes`.
+- `role` replies with Dragonfly's own type, which has each server's state and no
+  replication offsets.
+- `SORT` ignores `BY`, and `GET` gives an empty value for a missing key.
+- `INFO` with the `default` or `everything` section replies with nothing. Use
+  `info` with no section, or the `all` section.
+- `ACL SETUSER` refuses the rules `reset`, `hashedPassword` and
+  `removeHashedPassword`, which you can still write because other servers have them.
+- `ACL LOAD`, `ACL SAVE` and `CONFIG REWRITE` need Dragonfly to have been started
+  with those files.
+- `PUBSUB SHARDCHANNELS` and `PUBSUB SHARDNUMSUB` need cluster mode.
 
 ## Commands laserdisc doesn't send
 
@@ -74,6 +100,7 @@ talking to each other, or because they would break or stall your connection:
 | `PSYNC`, `SYNC`, `REPLCONF` | They turn the connection into a replication link |
 | `ASKING`, `RESTORE-ASKING`, `CLUSTER SYNCSLOTS`, `XIDMPRECORD` | Servers send these to each other |
 | `SCRIPT DEBUG` | It takes over the connection with an interactive debugger |
+| Dragonfly's `SHRINK`, `ADDREPLICAOF` | They aren't documented, so what they take and reply can't be relied on |
 | `DEBUG`, `PFDEBUG` | They can crash or stall a server, and their replies can change between versions |
 
 ## Arguments

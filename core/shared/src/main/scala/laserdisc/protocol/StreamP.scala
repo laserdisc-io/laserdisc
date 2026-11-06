@@ -112,8 +112,11 @@ object StreamP {
     */
   final case class PendingEntry(id: Id, consumer: Option[Key], idleMilliseconds: Option[NonNegLong], deliveries: NonNegLong)
 
-  private final type PendingSummaryReply =
-    Arr.AsTuple[Num *: OrNullBulk[Bulk] *: OrNullBulk[Bulk] *: OrNilArr[Arr.Of[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]]] *: EmptyTuple]
+  // Dragonfly sends how many entries a consumer has as a number
+  private final type PendingSummaryReply = Arr.AsTuple[
+    Num *: OrNullBulk[Bulk] *: OrNullBulk[Bulk] *: OrNilArr[Arr.Of[Arr.AsTuple[Bulk *: OneOf[Bulk *: Num *: EmptyTuple] *: EmptyTuple]]] *:
+      EmptyTuple
+  ]
   private[protocol] final val pendingSummary: Read[PendingSummaryReply, PendingSummary] =
     Read[PendingSummaryReply, NonNegLong *: Option[Id] *: Option[Id] *: Option[Seq[(Key, NonNegLong)]] *: EmptyTuple].map {
       case count *: smallest *: largest *: consumers *: _ => PendingSummary(count, smallest, largest, consumers.getOrElse(Nil))

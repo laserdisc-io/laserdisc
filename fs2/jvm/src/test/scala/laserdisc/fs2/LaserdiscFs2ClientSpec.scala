@@ -36,6 +36,8 @@ final class KeyDbClientSpec  extends ClientSpecIo(6380, "keyDb")
 final class ValkeyClientSpec extends ClientSpecIo(6381, "valkey")
 
 object LaserdiscFs2ClientSpec {
+  final class DragonflyClientSpecIo extends ClientSpecIo(6382, "dragonfly")
+
   abstract class ClientSpecIo(p: Port, dest: String) extends LaserdiscFs2ClientSpec(p, dest)
 }
 

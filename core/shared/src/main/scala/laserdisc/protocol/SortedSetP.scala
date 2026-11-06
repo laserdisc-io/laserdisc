@@ -60,6 +60,17 @@ object SortedSetP {
   }
 
   /** MIN and MAX, for ZMPOP and BZMPOP */
+  // a member or nil, or the member in an array as Dragonfly sends it
+  private[protocol] final def oneMember[A: Read[Bulk, _]]: Read[OneOf[NullBulk *: Bulk *: Arr.Of[Bulk] *: EmptyTuple], Option[A]] =
+    Read.instance {
+      _.value match {
+        case bulk: Bulk               => Read[Bulk, A].read(bulk).map(Some(_))
+        case Arr((bulk: Bulk) :: Nil) => Read[Bulk, A].read(bulk).map(Some(_))
+        case Arr(Nil) | NullBulk      => Right(None)
+        case other                    => Left(RESPDecErr(s"Unexpected reply to ZRANDMEMBER. Was $other"))
+      }
+    }
+
   sealed trait Pop
   object Pop {
     object min extends Pop
@@ -324,7 +335,8 @@ trait SortedSetBaseP extends Features {
   final def zpopmin[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Seq[(A, Double)]] =
     Protocol("ZPOPMIN", key *: count *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
-  final def zrandmember[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("ZRANDMEMBER", key).as[OrNullBulk[Bulk], Option[A]]
+  final def zrandmember[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] =
+    Protocol("ZRANDMEMBER", key).using(RESPRead.instance(SortedSetP.oneMember[A]))
   final def zrandmembers[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[A]] =
     Protocol("ZRANDMEMBER", key *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
   final def zrandmemberswithscores[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[(A, Double)]] =

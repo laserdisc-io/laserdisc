@@ -643,14 +643,13 @@ trait ServerCoreP extends ServerInspectionCoreP {
       "INFO",
       "LASTSAVE",
       "REPLICAOF: NO ONE",
-      "ROLE",
       "SAVE",
       "SHUTDOWN: NOSAVE SAVE",
       "SLAVEOF: NO ONE",
       "TIME"
     )
 
-  import ServerP.{Info, InfoSection, Role, ShutdownFlag}
+  import ServerP.{Info, InfoSection, ShutdownFlag}
 
   object servertypes {
     final val aclRules              = Acl.AclRules.none
@@ -699,7 +698,7 @@ trait ServerCoreP extends ServerInspectionCoreP {
 
   final val flushdbsync: Single.Aux[OK] = Protocol("FLUSHDB", "SYNC").as[Str, OK]
 
-  final val info: Single.Aux[Info]                       = info(servertypes.info.default)
+  final val info: Single.Aux[Info]                       = Protocol("INFO", EmptyTuple).as[Bulk, Info]
   final def info(section: InfoSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
 
   final val lastsave: Single.Aux[NonNegLong] = Protocol("LASTSAVE", EmptyTuple).as[Num, NonNegLong]
@@ -707,8 +706,6 @@ trait ServerCoreP extends ServerInspectionCoreP {
   final def replicaof(host: Host, port: Port): Single.Aux[OK] = Protocol("REPLICAOF", host *: port *: EmptyTuple).as[Str, OK]
 
   final val replicaofnoone: Single.Aux[OK] = Protocol("REPLICAOF", "NO" :: "ONE" :: Nil).as[Str, OK]
-
-  final val role: Single.Aux[Role] = Protocol("ROLE", EmptyTuple).using(RESPRead.instance(Role.roleRead))
 
   final val save: Single.Aux[OK] = Protocol("SAVE", EmptyTuple).as[Str, OK]
 
@@ -719,17 +716,24 @@ trait ServerCoreP extends ServerInspectionCoreP {
 
   final val slaveofnoone: Single.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
-  final val time: Single.Aux[Time] = Protocol("TIME", EmptyTuple).as[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], Time]
+  final val time: Single.Aux[Time] =
+    Protocol("TIME", EmptyTuple)
+      .as[OneOf[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple] *: Arr.AsTuple[Num *: Num *: EmptyTuple] *: EmptyTuple], Time]
 }
 
-/** LOLWUT, BGREWRITEAOF and FAILOVER, and CLIENT, CONFIG, LATENCY, COMMAND and ACL under their names. Redis 6.2 */
+/** LOLWUT, BGREWRITEAOF, FAILOVER and ROLE, and CLIENT, CONFIG, LATENCY, COMMAND and ACL under their names. Redis 6.2 */
 trait ServerBaseP extends ServerCoreP with ServerInspectionBaseP {
+  import ServerP.Role
+
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "BGREWRITEAOF",
       "FAILOVER: ABORT FORCE TIMEOUT TO",
-      "LOLWUT: VERSION"
+      "LOLWUT: VERSION",
+      "ROLE"
     ) ++ client.supported ++ config.supported ++ latency.supported ++ command.supported ++ acl.supported
+
+  final val role: Single.Aux[Role] = Protocol("ROLE", EmptyTuple).using(RESPRead.instance(Role.roleRead))
 
   /** A piece of art made by the server, and its version, as text. It's in every server below but KeyDB */
   final val lolwut: Single.Aux[String]                  = Protocol("LOLWUT", EmptyTuple).as[Bulk, String]
@@ -768,21 +772,31 @@ trait ServerShutdownSafeP extends Features {
     Protocol("SHUTDOWN", flag *: options.params *: EmptyTuple).as[Str, OK]
 }
 
-/** SHUTDOWN with NOW, FORCE and ABORT, and INFO with several sections: Redis 7.0 */
-trait ServerShutdownAndInfoP extends Features {
-  import ServerP.{Info, InfoSection, LatencyStatsSection, ShutdownFlag, ShutdownOptions}
+/** SHUTDOWN with NOW and FORCE: Redis 7.0 */
+trait ServerShutdownOptionsP extends Features {
+  import ServerP.{ShutdownFlag, ShutdownOptions}
 
-  override private[laserdisc] def supported: List[String] = super.supported ++ List("SHUTDOWN: ABORT FORCE NOW")
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SHUTDOWN: FORCE NOW")
 
   final def shutdown(options: ShutdownOptions): Single.Aux[OK]                     = Protocol("SHUTDOWN", options.params).as[Str, OK]
   final def shutdown(flag: ShutdownFlag, options: ShutdownOptions): Single.Aux[OK] =
     Protocol("SHUTDOWN", flag *: options.params *: EmptyTuple).as[Str, OK]
+}
 
-  /** Stops a shutdown that is waiting for replicas to catch up */
-  final val shutdownabort: Single.Aux[OK] = Protocol("SHUTDOWN", "ABORT").as[Str, OK]
+/** INFO with several sections, and INFO LATENCYSTATS: Redis 7.0 */
+trait ServerInfoManyP extends Features {
+  import ServerP.{Info, InfoSection, LatencyStatsSection}
 
   final def info(sections: OneOrMore[InfoSection]): Single.Aux[Info] = Protocol("INFO", sections.value).as[Bulk, Info]
   final def info(section: LatencyStatsSection): Single.Aux[Info]     = Protocol("INFO", section).as[Bulk, Info]
+}
+
+/** SHUTDOWN with NOW, FORCE and ABORT, and INFO with several sections: Redis 7.0 */
+trait ServerShutdownAndInfoP extends ServerShutdownOptionsP with ServerInfoManyP {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SHUTDOWN: ABORT")
+
+  /** Stops a shutdown that is waiting for replicas to catch up */
+  final val shutdownabort: Single.Aux[OK] = Protocol("SHUTDOWN", "ABORT").as[Str, OK]
 }
 
 /** INFO THREADS and INFO KEYSIZES: Redis 8.0 */

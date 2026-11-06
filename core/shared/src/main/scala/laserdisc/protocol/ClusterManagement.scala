@@ -28,6 +28,13 @@ import Protocol.Single
 object ClusterManagement {
   private[protocol] final val nodeId: Read[Bulk, NodeId] = Read.instancePF("Bulk(NodeId)") { case Bulk(NodeId(id)) => id }
 
+  // Dragonfly sends a simple string
+  private[protocol] final val nodeIdOfText: Read[OneOf[Bulk *: Str *: EmptyTuple], NodeId] = {
+    implicit val bulk: Read[Bulk, NodeId] = nodeId
+    implicit val str: Read[Str, NodeId]   = Read.instancePF("Str(NodeId)") { case Str(NodeId(id)) => id }
+    Read[OneOf[Bulk *: Str *: EmptyTuple], NodeId]
+  }
+
   private final val num = Read.num2NonNegLongRead
 
   private final def ranges(slots: OneOrMore[(Slot, Slot)]): List[String] = slots.value.flatMap { case (from, to) =>

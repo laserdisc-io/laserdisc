@@ -33,6 +33,8 @@ final class ValkeyPublishClientSpec extends PublishClientSpec(6381, "valkey") {
   test("a valkey client reads shard channels, and publishes to them, with the commands of Valkey 7.2")(shards(valkey_7_2))
 }
 
+final class DragonflyPublishClientSpec extends PublishClientSpec(6382, "dragonfly")
+
 abstract class PublishClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   private def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)

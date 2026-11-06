@@ -2,12 +2,14 @@
 
 ## Running the tests
 
-Some tests talk to real servers. Start Redis, KeyDB and Valkey with Docker:
+Some tests talk to real servers. Start Redis, KeyDB, Valkey and Dragonfly with Docker:
 
 ```sh
 docker run -p 6379:6379 -d redis:alpine
 docker run -p 6380:6379 -d eqalpha/keydb
 docker run -p 6381:6379 -d valkey/valkey:alpine
+docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest
+docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated
 ```
 
 Some of them also need a cluster of each. The steps that start those are in

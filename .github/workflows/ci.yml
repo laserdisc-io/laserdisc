@@ -86,6 +86,12 @@ jobs:
       - name: Start up Valkey
         run: 'docker run -p 6381:6379 -d valkey/valkey:alpine'
 
+      - name: Start up Dragonfly
+        run: 'docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest'
+
+      - name: Start up Dragonfly in cluster mode
+        run: 'docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated'
+
       - name: Start up a Redis cluster
         run: 'docker run -p 7100:7100 -p 7101:7101 -p 7102:7102 -p 7103:7103 -d --entrypoint sh redis:alpine -c ''redis-server --port 7100 --cluster-enabled yes --cluster-config-file nodes-7100.conf --protected-mode no --daemonize yes; redis-server --port 7101 --cluster-enabled yes --cluster-config-file nodes-7101.conf --protected-mode no --daemonize yes; redis-server --port 7102 --cluster-enabled yes --cluster-config-file nodes-7102.conf --protected-mode no --daemonize yes; exec redis-server --port 7103 --cluster-enabled yes --cluster-config-file nodes-7103.conf --protected-mode no'''
 
@@ -447,6 +453,12 @@ jobs:
 
       - name: Start up Valkey
         run: 'docker run -p 6381:6379 -d valkey/valkey:alpine'
+
+      - name: Start up Dragonfly
+        run: 'docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest'
+
+      - name: Start up Dragonfly in cluster mode
+        run: 'docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated'
 
       - name: Start up a Redis cluster
         run: 'docker run -p 7100:7100 -p 7101:7101 -p 7102:7102 -p 7103:7103 -d --entrypoint sh redis:alpine -c ''redis-server --port 7100 --cluster-enabled yes --cluster-config-file nodes-7100.conf --protected-mode no --daemonize yes; redis-server --port 7101 --cluster-enabled yes --cluster-config-file nodes-7101.conf --protected-mode no --daemonize yes; redis-server --port 7102 --cluster-enabled yes --cluster-config-file nodes-7102.conf --protected-mode no --daemonize yes; exec redis-server --port 7103 --cluster-enabled yes --cluster-config-file nodes-7103.conf --protected-mode no'''

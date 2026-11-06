@@ -91,6 +91,26 @@ object Acl {
   /** ACL GETUSER: the user's flags (like `on`), the SHA-256 of its passwords, and its command, key and channel rules, as rule text like
     * `~app:*`. Redis 7.0 adds selectors, and Valkey 9.0 the databases the user may use
     */
+  // Dragonfly replies in simple strings, with a string of rules or an empty array for none
+  private[protocol] final val maybeUserDragonfly: RESPRead[Option[AclUser]] = {
+    def text(resp: RESP): String = resp match {
+      case Str(s)  => s
+      case Bulk(s) => s
+      case _       => ""
+    }
+    implicit val user: Read[Arr, AclUser] = Read.instance { reply =>
+      val fields             = reply.elements.grouped(2).collect { case Seq(name, value) => text(name) -> value }.toMap
+      def many(name: String) = fields.get(name) match {
+        case Some(Arr(elements)) => elements.map(text)
+        case Some(other)         => text(other).split(' ').toList.filter(_.nonEmpty)
+        case None                => Nil
+      }
+      def rules(name: String) = many(name).mkString(" ")
+      Right(AclUser(many("flags"), many("passwords"), rules("commands"), rules("keys"), rules("channels"), Nil, None))
+    }
+    RESPRead[OrNullBulk[Arr], Option[AclUser]]
+  }
+
   final case class AclUser(
       flags: Seq[String],
       passwords: Seq[String],
@@ -203,15 +223,16 @@ trait AclCommands extends Features {
   val help: Single.Aux[Seq[String]] = Protocol.help("ACL")
 
   /** The ACL categories, or the commands of one */
-  val cat: Single.Aux[Seq[String]]                = Protocol("ACL", "CAT").as[Arr.Of[Bulk], Seq[String]]
-  def cat(category: Key): Single.Aux[Seq[String]] = Protocol("ACL", "CAT" :: category.value :: Nil).as[Arr.Of[Bulk], Seq[String]]
+  val cat: Single.Aux[Seq[String]]                = Protocol("ACL", "CAT").as[Texts, Seq[String]]
+  def cat(category: Key): Single.Aux[Seq[String]] = Protocol("ACL", "CAT" :: category.value :: Nil).as[Texts, Seq[String]]
 
   /** Deletes the users, and replies how many it deleted */
   def deluser(users: OneOrMoreKeys): Single.Aux[NonNegLong] = Protocol("ACL", "DELUSER" :: users.value.map(_.value)).as[Num, NonNegLong]
 
   /** A random password, as hex: 256 bits, or `bits` */
-  val genpass: Single.Aux[String]               = Protocol("ACL", "GENPASS").as[Bulk, String]
-  def genpass(bits: PosInt): Single.Aux[String] = Protocol("ACL", "GENPASS" *: bits *: EmptyTuple).as[Bulk, String]
+  val genpass: Single.Aux[String]               = Protocol("ACL", "GENPASS").as[OneOf[Bulk *: Str *: EmptyTuple], String]
+  def genpass(bits: PosInt): Single.Aux[String] =
+    Protocol("ACL", "GENPASS" *: bits *: EmptyTuple).as[OneOf[Bulk *: Str *: EmptyTuple], String]
 
   /** The user's rules, or `None` when there's no such user */
   def getuser(user: Key): Single.Aux[Option[AclUser]] =
@@ -220,7 +241,7 @@ trait AclCommands extends Features {
   protected def maybeUser: RESPRead[Option[AclUser]] = Acl.maybeUser6_2
 
   /** Every user's rules, as the lines of an ACL file */
-  val list: Single.Aux[Seq[String]] = Protocol("ACL", "LIST").as[Arr.Of[Bulk], Seq[String]]
+  val list: Single.Aux[Seq[String]] = Protocol("ACL", "LIST").as[Texts, Seq[String]]
 
   val load: Single.Aux[OK] = Protocol("ACL", "LOAD").as[Str, OK]
 
@@ -235,7 +256,7 @@ trait AclCommands extends Features {
   /** Creates the user, or changes it, applying the rules in order */
   def setuser(user: Key, rules: AclRules): Single.Aux[OK] = Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 
-  val users: Single.Aux[Seq[String]] = Protocol("ACL", "USERS").as[Arr.Of[Bulk], Seq[String]]
+  val users: Single.Aux[Seq[String]] = Protocol("ACL", "USERS").as[Texts, Seq[String]]
 
   val whoami: Single.Aux[String] = Protocol("ACL", "WHOAMI").as[Bulk, String]
 }
@@ -247,6 +268,11 @@ trait AclDryRunCommands extends Features {
   /** Whether the user may run the command, without running it: `None` when it may, or the reason when it may not */
   def dryrun(user: Key, command: Single): Single.Aux[Option[String]] =
     Protocol("ACL", "DRYRUN" :: user.value :: ServerInspection.argumentsOf(command)).using(RESPRead.okOrMessage)
+}
+
+/** ACL as Dragonfly has it: without selectors, and it refuses the rules `reset`, `hashedPassword` and `removeHashedPassword` */
+trait AclDragonflyCommands extends AclCommands with AclDryRunCommands {
+  override protected def maybeUser: RESPRead[Option[Acl.AclUser]] = Acl.maybeUserDragonfly
 }
 
 /** ACL DRYRUN and ACL SETUSER with selectors: Redis 7.0 */

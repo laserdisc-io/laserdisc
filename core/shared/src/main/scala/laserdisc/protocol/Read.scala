@@ -259,6 +259,12 @@ trait ReadInstances1 extends ReadLabelledInstances {
   ): Read[Arr.AsTuple[Bulk *: E *: EmptyTuple], KV[A]] =
     instance(arr => TupleRead.read(R, "Arr.AsTuple")(arr.elements).map { case k *: a *: _ => KV(k, a) })
 
+  // Dragonfly sends TIME's parts as numbers
+  implicit final val numsAsTuple2Time: Read[Arr.AsTuple[Num *: Num *: EmptyTuple], Time] =
+    Read[Arr.AsTuple[Num *: Num *: EmptyTuple], NonNegLong *: NonNegLong *: EmptyTuple].map { case timestamp *: elapsed *: _ =>
+      Time(timestamp, elapsed)
+    }
+
   implicit final val arrAsTuple2Time: Read[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], Time] =
     Read[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple], NonNegLong *: NonNegLong *: EmptyTuple].map { case ts *: em *: _ => Time(ts, em) }
 }

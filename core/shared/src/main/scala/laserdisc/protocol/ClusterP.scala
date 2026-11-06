@@ -361,7 +361,7 @@ trait ClusterCoreP extends Features {
 
   final val slots: Single.Aux[ClusterSlots] = Protocol("CLUSTER", "SLOTS").using(slotsRead)
 
-  final val myid: Single.Aux[NodeId] = Protocol("CLUSTER", "MYID").using(RESPRead.instance(ClusterManagement.nodeId))
+  final val myid: Single.Aux[NodeId] = Protocol("CLUSTER", "MYID").using(RESPRead.instance(ClusterManagement.nodeIdOfText))
 }
 
 trait ClusterBaseP extends ClusterCoreP {

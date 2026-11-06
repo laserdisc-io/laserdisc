@@ -211,7 +211,8 @@ object ServerInspection {
       step: Int,
       aclCategories: Seq[String]
   )
-  private type CommandInfoReply = Arr.AsTupleThen[Bulk *: Num *: Arr.Of[Str] *: Num *: Num *: Num *: Arr.Of[Str] *: EmptyTuple, RESP]
+  private type CommandInfoReply =
+    Arr.AsTupleThen[OneOf[Bulk *: Str *: EmptyTuple] *: Num *: Arr.Of[Str] *: Num *: Num *: Num *: Arr.Of[Str] *: EmptyTuple, RESP]
   private implicit final val commandInfo: Read[CommandInfoReply, CommandInfo] =
     Read[CommandInfoReply, String *: Int *: Seq[String] *: Int *: Int *: Int *: Seq[String] *: EmptyTuple].map {
       case name *: arity *: flags *: first *: last *: step *: categories *: _ =>
@@ -249,7 +250,15 @@ object ServerInspection {
       arguments <- f.optional[Texts, Seq[String]]("args")
     } yield ModuleInfo(name, version, path, arguments.getOrElse(Nil))
   }
-  private[protocol] final val moduleInfos: Read[Records, Seq[ModuleInfo]] = Read[Records, Seq[ModuleInfo]]
+
+  // Dragonfly's names are simple strings, and it only sends a module's name and version
+  private final type DragonflyModuleReply = Arr.AsTuple[Str *: Str *: Str *: Num *: EmptyTuple]
+  private implicit final val dragonflyModuleInfo: Read[DragonflyModuleReply, ModuleInfo] =
+    Read[DragonflyModuleReply, String *: String *: String *: Long *: EmptyTuple].map { case _ *: name *: _ *: version *: _ =>
+      ModuleInfo(name, version, None, Nil)
+    }
+  private[protocol] final val moduleInfos: Read[OneOf[Records *: Arr.Of[DragonflyModuleReply] *: EmptyTuple], Seq[ModuleInfo]] =
+    Read[OneOf[Records *: Arr.Of[DragonflyModuleReply] *: EmptyTuple], Seq[ModuleInfo]]
 
   /** SLOW, LARGE-REQUEST and LARGE-REPLY, for COMMANDLOG: Valkey 8.1 */
   sealed trait CommandLogType

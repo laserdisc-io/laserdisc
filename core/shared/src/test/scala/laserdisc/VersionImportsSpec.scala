@@ -593,6 +593,71 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
+  test("dragonfly_2_0 has what Dragonfly accepts, and not the commands it lacks") {
+    import laserdisc.auto.*
+    import laserdisc.dragonfly_2_0.*
+
+    assertEquals(prepend("a", "b").frames, frame("PREPEND", "a", "b"))
+    assertEquals(strings.digest("a").frames, frame("DIGEST", "a"))
+    assertEquals(dragonfly.stick(OneOrMoreKeys.unsafeFrom(List(Key("a")))).frames, frame("STICK", "a"))
+    assertEquals(client.kill(1L).frames, frame("CLIENT", "KILL", "ID", "1"))
+    assert(compileErrors("""lolwut""").nonEmpty)
+    assert(compileErrors("""bgrewriteaof""").nonEmpty)
+    assert(compileErrors("""replicafailover""").nonEmpty)
+    assert(compileErrors("""swapdb(1, 2)""").nonEmpty)
+    assert(compileErrors("""pfselftest""").nonEmpty)
+    assert(compileErrors("""obj.help""").nonEmpty)
+    assert(compileErrors("""copy("a", "b", 1)""").nonEmpty)
+    assert(compileErrors("""migrate("a", Host("h.example"), Port(1), 0, 0)""").nonEmpty)
+    assert(compileErrors("""lcs[String]("a", "b")""").nonEmpty)
+    assert(compileErrors("""fcall[Num, Long]("f")""").nonEmpty)
+    assert(compileErrors("""function.list""").nonEmpty)
+    assert(compileErrors("""script.kill""").nonEmpty)
+    assert(compileErrors("""latency.doctor""").nonEmpty)
+    assert(compileErrors("""command.getkeys(get[String]("a"))""").nonEmpty)
+    assert(compileErrors("""module.help""").nonEmpty)
+    assert(compileErrors("""memory.doctor""").nonEmpty)
+    assert(compileErrors("""client.unblock(1L)""").nonEmpty)
+    assert(compileErrors("""client.kill(servertypes.clientFilter.user("u"))""").nonEmpty)
+    assert(compileErrors("""countkeysinslot(1)""").nonEmpty)
+    assert(compileErrors("""hpersist("a", OneOrMoreKeys.unsafeFrom(List(Key("b"))))""").nonEmpty)
+    assert(compileErrors("""shutdownabort""").nonEmpty)
+    assert(compileErrors("""xsetid("a", streamtypes.StreamId(1L, 1L), 1L, streamtypes.StreamId(1L, 1L))""").nonEmpty)
+  }
+
+  test("redis imports don't have Dragonfly's own commands") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_10.*
+
+    assertEquals(strlen("a").frames, frame("STRLEN", "a"))
+    assert(compileErrors("""prepend("a", "b")""").nonEmpty)
+    assert(compileErrors("""rm(0L)""").nonEmpty)
+  }
+
+  test("dragonfly_2_0's families add up to it") {
+    val v        = laserdisc.dragonfly_2_0
+    val families = List[protocol.Features](
+      v.cluster,
+      v.connection,
+      v.dragonfly,
+      v.geo,
+      v.hashmaps,
+      v.hyperloglog,
+      v.keys,
+      v.lists,
+      v.publish,
+      v.scripting,
+      v.server,
+      v.sets,
+      v.sortedsets,
+      v.streams,
+      v.strings,
+      v.transaction,
+      v.blocking
+    )
+    assertEquals(families.flatMap(_.supported).toSet, v.supported.toSet)
+  }
+
   test("each version can ask INFO only for the sections it has") {
 
     {

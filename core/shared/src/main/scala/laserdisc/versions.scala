@@ -292,6 +292,84 @@ trait Valkey9_1 extends Valkey9_0 with ClusterValkey9_1 with HashesValkey9_1 wit
   override val strings: StringsValkey9_1 = new StringsValkey9_1 {}
 }
 
+/** Dragonfly, made of the features it accepts, as `COMMAND DOCS` doesn't say */
+trait ClusterDragonfly2_0 extends ClusterCoreP with ClusterShardsCoreP
+trait GeoDragonfly2_0     extends Geo6_2
+trait HashesDragonfly2_0  extends HashBaseP with HashExtP with HashScanNoValuesP with HashFieldExpiryCoreP with HashGetSetExpiryP
+trait KeysDragonfly2_0    extends KeyBaseP with KeyExtP with KeyExpireConditionP with KeySortReadOnlyP
+trait StreamsDragonfly2_0
+    extends StreamBaseP
+    with StreamGroupBaseP
+    with StreamClaimAndInfoBaseP
+    with StreamClaimDeletedP
+    with StreamGroupEntriesReadP
+trait StringsDragonfly2_0     extends Strings6_2 with StringSetGetFlagP with StringBitUnitP with StringDigestAndDelExP
+trait HyperLogLogDragonfly2_0 extends HyperLogLogBaseP with HyperLogLogExtP
+
+trait ClientDragonfly2_0  extends ClientCoreCommands with ClientSetInfoCommands with ClientDragonflyKillCommands
+trait LatencyDragonfly2_0 extends LatencyLatestCommands with LatencyHistogramCommands
+
+trait ServerDragonfly2_0 extends ServerCoreP with ServerShutdownOptionsP with ServerInfoManyP {
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ client.supported ++ config.supported ++ latency.supported ++ command.supported ++ acl.supported ++
+      memory.supported ++ module.supported
+
+  lazy val client: ClientDragonfly2_0   = new ClientDragonfly2_0 {}
+  lazy val config: ConfigCommands       = new ConfigCommands {}
+  lazy val latency: LatencyDragonfly2_0 = new LatencyDragonfly2_0 {}
+  lazy val command: CommandCoreCommands = new CommandCoreCommands {}
+  lazy val acl: AclDragonflyCommands    = new AclDragonflyCommands {}
+  lazy val memory: MemoryCoreCommands   = new MemoryCoreCommands {}
+  lazy val module: ModuleListCommands   = new ModuleListCommands {}
+}
+
+trait ScriptingDragonfly2_0 extends ScriptingReadOnlyP {
+  override private[laserdisc] def supported: List[String] = super.supported ++ script.supported
+
+  lazy val script: ScriptCoreCommands = new ScriptCoreCommands {}
+}
+
+trait Dragonfly2_0
+    extends ClusterDragonfly2_0
+    with ConnectionBaseP
+    with DragonflyP
+    with GeoDragonfly2_0
+    with HashesDragonfly2_0
+    with HyperLogLogDragonfly2_0
+    with KeysDragonfly2_0
+    with Lists7_0
+    with PublishShardP
+    with ScriptingDragonfly2_0
+    with ServerDragonfly2_0
+    with Sets7_0
+    with SortedSets7_2
+    with StreamsDragonfly2_0
+    with StringsDragonfly2_0
+    with TransactionP {
+  val blocking: Blocking7_0 = new Blocking7_0 {}
+
+  val cluster: ClusterDragonfly2_0         = new ClusterDragonfly2_0 {}
+  val connection: ConnectionBaseP          = new ConnectionBaseP {}
+  val dragonfly: DragonflyP                = new DragonflyP {}
+  val geo: GeoDragonfly2_0                 = new GeoDragonfly2_0 {}
+  val hashmaps: HashesDragonfly2_0         = new HashesDragonfly2_0 {}
+  val hyperloglog: HyperLogLogDragonfly2_0 = new HyperLogLogDragonfly2_0 {}
+  val keys: KeysDragonfly2_0               = new KeysDragonfly2_0 {}
+  val lists: Lists7_0                      = new Lists7_0 {}
+  val publish: PublishShardP               = new PublishShardP {}
+  val scripting: ScriptingDragonfly2_0     = new ScriptingDragonfly2_0 {}
+  val server: ServerDragonfly2_0           = new ServerDragonfly2_0 {}
+  val sets: Sets7_0                        = new Sets7_0 {}
+  val sortedsets: SortedSets7_2            = new SortedSets7_2 {}
+  val streams: StreamsDragonfly2_0         = new StreamsDragonfly2_0 {}
+  val strings: StringsDragonfly2_0         = new StringsDragonfly2_0 {}
+  val transaction: TransactionP            = new TransactionP {}
+
+  override private[laserdisc] def supported: List[String] = super.supported ++ blocking.supported
+}
+
+object dragonfly_2_0 extends Dragonfly2_0
+
 object redis_6_2  extends Redis6_2
 object redis_7_0  extends Redis7_0
 object redis_7_2  extends Redis7_2

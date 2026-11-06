@@ -145,8 +145,8 @@ package object laserdisc {
     Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec
   final type IndexRef            = True
   final type KeyRef              = OneOrMoreRef And Forall[NoControlChar]
-  final type LatitudeRef         = Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
-  final type LongitudeRef        = Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
+  final type LatitudeRef         = NonNaN And Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
+  final type LongitudeRef        = NonNaN And Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
   final type NodeIdRef           = MatchesRegex[NodeIdRegexWit.T]
   final type NOKEYRef            = Equal[NOKEYEqWit.T]
   final type NonNegRef           = NonNegative
@@ -219,8 +219,8 @@ package object laserdisc {
   object Host                  extends RefinedTypeOps[Host, String]
   object Index                 extends RefinedTypeOps.Numeric[Index, Long]
   object Key                   extends RefinedTypeOps[Key, String]
-  object Latitude              extends RefinedTypeOps.Numeric[Latitude, Double]
-  object Longitude             extends RefinedTypeOps.Numeric[Longitude, Double]
+  object Latitude              extends RefinedTypeOps[Latitude, Double]
+  object Longitude             extends RefinedTypeOps[Longitude, Double]
   object NodeId                extends RefinedTypeOps[NodeId, String]
   object NonNegInt             extends RefinedTypeOps.Numeric[NonNegInt, Int]
   object NonNegLong            extends RefinedTypeOps.Numeric[NonNegLong, Long]

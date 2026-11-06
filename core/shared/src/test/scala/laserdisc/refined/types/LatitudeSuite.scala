@@ -28,7 +28,7 @@ final class LatitudeSuite extends BaseSpec {
   test("Latitude fails to compile given out of range Double (< -85.05112878D)") {
     assertCompileErrors(
       compileErrors("Latitude(-85.05112879D)"),
-      """|error: Left predicate of (!(-85.05112879 < -85.05112878) && !(-85.05112879 > 85.05112878)) failed: Predicate (-85.05112879 < -85.05112878) did not fail.
+      """|error: Right predicate of ((-85.05112879 != NaN) && (!(-85.05112879 < -85.05112878) && !(-85.05112879 > 85.05112878))) failed: Left predicate of (!(-85.05112879 < -85.05112878) && !(-85.05112879 > 85.05112878)) failed: Predicate (-85.05112879 < -85.05112878) did not fail.
          |Latitude(-85.05112879D)
          |        ^
          |""".stripMargin,
@@ -39,7 +39,7 @@ final class LatitudeSuite extends BaseSpec {
   test("Latitude fails to compile given out of range Double (> 85.05112878D)") {
     assertCompileErrors(
       compileErrors("Latitude(85.05112879D)"),
-      """|error: Right predicate of (!(85.05112879 < -85.05112878) && !(85.05112879 > 85.05112878)) failed: Predicate (85.05112879 > 85.05112878) did not fail.
+      """|error: Right predicate of ((85.05112879 != NaN) && (!(85.05112879 < -85.05112878) && !(85.05112879 > 85.05112878))) failed: Right predicate of (!(85.05112879 < -85.05112878) && !(85.05112879 > 85.05112878)) failed: Predicate (85.05112879 > 85.05112878) did not fail.
          |Latitude(85.05112879D)
          |        ^
          |""".stripMargin,
@@ -59,6 +59,10 @@ final class LatitudeSuite extends BaseSpec {
 
   test("Key compiles given edge cases (85.05112878D)") {
     Latitude(85.05112878d)
+  }
+
+  test("Latitude fails at runtime given NaN") {
+    intercept[IllegalArgumentException](Latitude.unsafeFrom(Double.NaN))
   }
 
   property("Latitude refines correctly provided non literal cases of in range Doubles (-85.05112878D <= d <= 85.05112878D)") {

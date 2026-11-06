@@ -497,10 +497,13 @@ trait StreamGroupBaseP extends Features {
       "XGROUP CREATECONSUMER",
       "XGROUP DELCONSUMER",
       "XGROUP DESTROY",
+      "XGROUP HELP",
       "XGROUP SETID: $",
       "XPENDING: IDLE",
       "XREADGROUP: COUNT GROUP NOACK STREAMS"
     )
+
+  final val xgrouphelp: Single.Aux[Seq[String]] = Protocol.help("XGROUP")
 
   /** Acknowledges the entries, and replies how many were pending */
   final def xack(key: Key, group: Key, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
@@ -625,9 +628,12 @@ trait StreamClaimAndInfoBaseP extends Features {
       "XCLAIM: FORCE IDLE JUSTID LASTID RETRYCOUNT TIME",
       "XINFO CONSUMERS",
       "XINFO GROUPS",
+      "XINFO HELP",
       "XINFO STREAM",
       "XSETID"
     )
+
+  final val xinfohelp: Single.Aux[Seq[String]] = Protocol.help("XINFO")
 
   private final def claim(key: Key, group: Key, consumer: Key, minIdleMilliseconds: NonNegLong, ids: OneOrMore[Id]): List[String] =
     key.value :: group.value :: consumer.value :: minIdleMilliseconds.value.toString :: ids.value.map(_.toString)

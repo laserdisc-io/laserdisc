@@ -846,6 +846,39 @@ final class VersionImportsSpec extends BaseSpec {
     assertEquals(redis_7_0.server.client.noevict(on = true).command, "CLIENT")
   }
 
+  test("every family with subcommands has HELP, on the version that has the family") {
+    val redis = redis_8_10
+    val help  = Seq(
+      "ACL"        -> redis.acl.help,
+      "BACKUP"     -> redis.backup.help,
+      "CLIENT"     -> redis.client.help,
+      "CLUSTER"    -> redis.clusterhelp,
+      "COMMAND"    -> redis.command.help,
+      "COMMANDLOG" -> valkey_8_1.commandlog.help,
+      "CONFIG"     -> redis.config.help,
+      "FUNCTION"   -> redis.function.help,
+      "HOTKEYS"    -> redis.hotkeys.help,
+      "LATENCY"    -> redis.latency.help,
+      "MEMORY"     -> redis.memory.help,
+      "MODULE"     -> redis.module.help,
+      "OBJECT"     -> redis.obj.help,
+      "PUBSUB"     -> redis.pubsub.help,
+      "SCRIPT"     -> redis.script.help,
+      "SLOWLOG"    -> redis.slowlog.help,
+      "XGROUP"     -> redis.xgrouphelp,
+      "XINFO"      -> redis.xinfohelp
+    )
+    help.foreach { case (command, protocol) =>
+      assertEquals(protocol.frames, frame(command, "HELP"))
+      assertEquals(protocol.decode(Arr(Str("a line"), Str("another"))), Seq("a line", "another"))
+    }
+    assertEquals(redis_6_2.slowlog.help.frames, frame("SLOWLOG", "HELP"))
+    assert(compileErrors("""redis_6_2.function.help""").nonEmpty)
+    assert(compileErrors("""redis_8_4.hotkeys.help""").nonEmpty)
+    assert(compileErrors("""redis_8_8.backup.help""").nonEmpty)
+    assert(compileErrors("""redis_8_10.commandlog.help""").nonEmpty)
+  }
+
   test("PUBSUB is on every version, and shard channels from Redis 7.0") {
     {
       import laserdisc.redis_6_2.*

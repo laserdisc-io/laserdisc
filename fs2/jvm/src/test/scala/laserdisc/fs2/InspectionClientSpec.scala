@@ -43,6 +43,11 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis"
     assertEquals(send(hotkeys.get), None)
   }
 
+  test("a redis client reads the help of what Redis 8.10 adds") {
+    val v = redis_8_10
+    List(v.function.help, v.hotkeys.help, v.backup.help).foreach(help => assert(send(help).nonEmpty))
+  }
+
   test("a redis client starts, reads and aborts a backup with the commands of Redis 8.10") {
     val v = redis_8_10
     import v.backup
@@ -60,6 +65,11 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis"
 final class KeyDbInspectionClientSpec extends InspectionClientSpec(6380, "keyDb")
 
 final class ValkeyInspectionClientSpec extends InspectionClientSpec(6381, "valkey") {
+  test("a valkey client reads the help of what Valkey 9.1 adds") {
+    val v = valkey_9_1
+    List(v.function.help, v.commandlog.help).foreach(help => assert(send(help).nonEmpty))
+  }
+
   test("a valkey client reads the command log with the commands of Valkey 9.1") {
     val v = valkey_9_1
     import v.{commandlog, servertypes}
@@ -73,6 +83,25 @@ final class ValkeyInspectionClientSpec extends InspectionClientSpec(6381, "valke
 abstract class InspectionClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
+
+  test(s"a $dest client reads the help of each family") {
+    val v = laserdisc.redis_6_2
+    List(
+      v.acl.help,
+      v.client.help,
+      v.command.help,
+      v.config.help,
+      v.latency.help,
+      v.memory.help,
+      v.module.help,
+      v.obj.help,
+      v.pubsub.help,
+      v.script.help,
+      v.slowlog.help,
+      v.xgrouphelp,
+      v.xinfohelp
+    ).foreach(help => assert(send(help).nonEmpty))
+  }
 
   test(s"a $dest client reads the slow log, memory use, latency, commands and modules") {
     val v = laserdisc.redis_6_2

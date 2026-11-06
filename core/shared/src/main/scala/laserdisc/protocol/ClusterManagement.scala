@@ -291,12 +291,13 @@ trait ServerBackupP extends Features {
   import ClusterManagement.BackupStatus
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("BACKUP ABORT", "BACKUP CLEANUP", "BACKUP LIST", "BACKUP SEAL", "BACKUP START", "BACKUP STATUS")
+    super.supported ++ List("BACKUP ABORT", "BACKUP CLEANUP", "BACKUP HELP", "BACKUP LIST", "BACKUP SEAL", "BACKUP START", "BACKUP STATUS")
 
   /** A backup of the server's data into its `backupdirname` directory: started, then sealed when complete, then cleaned up. An aborted
     * backup is left as failed until it is cleaned up
     */
   object backup {
+    val help: Single.Aux[Seq[String]]    = Protocol.help("BACKUP")
     val start: Single.Aux[OK]            = Protocol("BACKUP", "START").as[Str, OK]
     val status: Single.Aux[BackupStatus] = Protocol("BACKUP", "STATUS").using(RESPRead.instance(ClusterManagement.backupStatus))
     val list: Single.Aux[Seq[String]]    = Protocol("BACKUP", "LIST").as[Arr.Of[Bulk], Seq[String]]

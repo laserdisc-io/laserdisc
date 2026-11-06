@@ -226,17 +226,21 @@ trait ServerInspectionBaseP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "MEMORY DOCTOR",
+      "MEMORY HELP",
       "MEMORY MALLOC-STATS",
       "MEMORY PURGE",
       "MEMORY STATS",
       "MEMORY USAGE: SAMPLES",
+      "MODULE HELP",
       "MODULE LIST",
       "SLOWLOG GET",
+      "SLOWLOG HELP",
       "SLOWLOG LEN",
       "SLOWLOG RESET"
     )
 
   object slowlog {
+    val help: Single.Aux[Seq[String]] = Protocol.help("SLOWLOG")
 
     /** The 10 most recent entries */
     val get: Single.Aux[Seq[LogEntry]]                = Protocol("SLOWLOG", "GET").using(RESPRead.instance(ServerInspection.logEntries))
@@ -247,6 +251,7 @@ trait ServerInspectionBaseP extends Features {
   }
 
   object memory {
+    val help: Single.Aux[Seq[String]] = Protocol.help("MEMORY")
 
     /** The server's advice about its memory use, as text */
     val doctor: Single.Aux[String] = Protocol("MEMORY", "DOCTOR").as[Bulk, String]
@@ -267,6 +272,7 @@ trait ServerInspectionBaseP extends Features {
   }
 
   object module {
+    val help: Single.Aux[Seq[String]]     = Protocol.help("MODULE")
     val list: Single.Aux[Seq[ModuleInfo]] = Protocol("MODULE", "LIST").using(RESPRead.instance(ServerInspection.moduleInfos))
   }
 }
@@ -276,7 +282,9 @@ trait LatencyCommands extends Features {
   import ServerInspection.{LatencyEvent, LatencySample}
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("LATENCY DOCTOR", "LATENCY GRAPH", "LATENCY HISTORY", "LATENCY LATEST", "LATENCY RESET")
+    super.supported ++ List("LATENCY DOCTOR", "LATENCY GRAPH", "LATENCY HELP", "LATENCY HISTORY", "LATENCY LATEST", "LATENCY RESET")
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("LATENCY")
 
   /** The server's advice about its latency, as text */
   val doctor: Single.Aux[String] = Protocol("LATENCY", "DOCTOR").as[Bulk, String]
@@ -311,7 +319,10 @@ trait LatencyHistogramCommands extends Features {
 trait CommandCommands extends Features {
   import ServerInspection.CommandInfo
 
-  override private[laserdisc] def supported: List[String] = super.supported ++ List("COMMAND COUNT", "COMMAND GETKEYS", "COMMAND INFO")
+  override private[laserdisc] def supported: List[String] =
+    super.supported ++ List("COMMAND COUNT", "COMMAND GETKEYS", "COMMAND HELP", "COMMAND INFO")
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("COMMAND")
 
   val count: Single.Aux[NonNegInt] = Protocol("COMMAND", "COUNT").as[Num, NonNegInt]
 
@@ -345,7 +356,15 @@ trait HotKeysCommands extends Features {
   import ServerInspection.{HotKeys, HotKeysMetrics, HotKeysOptions}
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("HOTKEYS GET", "HOTKEYS RESET", "HOTKEYS START: COUNT CPU DURATION METRICS NET SAMPLE SLOTS", "HOTKEYS STOP")
+    super.supported ++ List(
+      "HOTKEYS GET",
+      "HOTKEYS HELP",
+      "HOTKEYS RESET",
+      "HOTKEYS START: COUNT CPU DURATION METRICS NET SAMPLE SLOTS",
+      "HOTKEYS STOP"
+    )
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("HOTKEYS")
 
   def start(metrics: HotKeysMetrics): Single.Aux[OK]                          = Protocol("HOTKEYS", "START" :: metrics.params).as[Str, OK]
   def start(metrics: HotKeysMetrics, options: HotKeysOptions): Single.Aux[OK] =
@@ -367,9 +386,12 @@ trait CommandLogCommands extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "COMMANDLOG GET: LARGE-REPLY LARGE-REQUEST SLOW",
+      "COMMANDLOG HELP",
       "COMMANDLOG LEN: LARGE-REPLY LARGE-REQUEST SLOW",
       "COMMANDLOG RESET: LARGE-REPLY LARGE-REQUEST SLOW"
     )
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("COMMANDLOG")
 
   /** Every entry of the log */
   def get(log: CommandLogType): Single.Aux[Seq[LogEntry]] =

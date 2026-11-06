@@ -63,6 +63,18 @@ compile with `laserdisc.redis_8_2.*`.
 Each import covers every patch release of its version: `laserdisc.redis_7_2.*`
 is for Redis 7.2.0 and later 7.2 releases.
 
+## Commands laserdisc doesn't send
+
+These commands aren't available on purpose, because they're meant for servers
+talking to each other, or because they would break or stall your connection:
+
+| Command | Why |
+| --- | --- |
+| `PSYNC`, `SYNC`, `REPLCONF` | They turn the connection into a replication link |
+| `ASKING`, `RESTORE-ASKING`, `CLUSTER SYNCSLOTS`, `XIDMPRECORD` | Servers send these to each other |
+| `SCRIPT DEBUG` | It takes over the connection with an interactive debugger |
+| `DEBUG`, `PFDEBUG` | They can crash or stall a server, and their replies can change between versions |
+
 ## Arguments
 
 Arguments use types that only accept valid values. For example, a `Key` is a

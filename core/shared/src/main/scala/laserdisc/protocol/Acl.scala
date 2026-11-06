@@ -190,6 +190,7 @@ trait AclCommands extends Features {
       "ACL DELUSER",
       "ACL GENPASS",
       "ACL GETUSER",
+      "ACL HELP",
       "ACL LIST",
       "ACL LOAD",
       "ACL LOG: RESET",
@@ -198,6 +199,8 @@ trait AclCommands extends Features {
       "ACL USERS",
       "ACL WHOAMI"
     )
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("ACL")
 
   /** The ACL categories, or the commands of one */
   val cat: Single.Aux[Seq[String]]                = Protocol("ACL", "CAT").as[Arr.Of[Bulk], Seq[String]]

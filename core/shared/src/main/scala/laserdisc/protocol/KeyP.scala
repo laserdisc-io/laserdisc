@@ -199,6 +199,7 @@ trait KeyBaseP extends Features {
       "MOVE",
       "OBJECT ENCODING",
       "OBJECT FREQ",
+      "OBJECT HELP",
       "OBJECT IDLETIME",
       "OBJECT REFCOUNT",
       "PERSIST",
@@ -361,6 +362,8 @@ trait KeyBaseP extends Features {
   final def move(key: Key, db: DbIndex): Single.Aux[Boolean] = Protocol("MOVE", key *: db *: EmptyTuple).as[Num, Boolean]
 
   object obj {
+    val help: Single.Aux[Seq[String]] = Protocol.help("OBJECT")
+
     def encoding(key: Key): Single.Aux[Option[KeyEncoding]] =
       Protocol("OBJECT", "ENCODING" :: key.value :: Nil).as[OrNullBulk[Bulk], Option[KeyEncoding]]
 

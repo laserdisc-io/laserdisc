@@ -105,6 +105,10 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
     (master, replica, other)
   }
 
+  test(s"a cluster client reads the help of CLUSTER") {
+    assert(send(clusterhelp).nonEmpty)
+  }
+
   test(s"a cluster client reads the nodes of a cluster, with when they were last heard from and where they are") {
     val (master, replica, other) = ids
     val all                      = send(nodes).nodes.map(n => n.id -> n).toMap

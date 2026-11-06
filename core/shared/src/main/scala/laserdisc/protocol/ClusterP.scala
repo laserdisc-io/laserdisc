@@ -303,6 +303,7 @@ trait ClusterBaseP extends Features {
       "CLUSTER FLUSHSLOTS",
       "CLUSTER FORGET",
       "CLUSTER GETKEYSINSLOT",
+      "CLUSTER HELP",
       "CLUSTER INFO",
       "CLUSTER KEYSLOT",
       "CLUSTER MEET",
@@ -357,6 +358,8 @@ trait ClusterBaseP extends Features {
   }
 
   import clustertypes.*
+
+  final val clusterhelp: Single.Aux[Seq[String]] = Protocol.help("CLUSTER")
 
   final def addslots(slots: OneOrMore[Slot]): Single.Aux[OK] = Protocol("CLUSTER", "ADDSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
 

@@ -350,6 +350,7 @@ trait ClientCommands extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "CLIENT GETNAME",
+      "CLIENT HELP",
       "CLIENT ID",
       "CLIENT INFO",
       "CLIENT KILL: ADDR ID LADDR MASTER NORMAL PUBSUB REPLICA SKIPME TYPE USER",
@@ -359,6 +360,8 @@ trait ClientCommands extends Features {
       "CLIENT UNBLOCK: ERROR TIMEOUT",
       "CLIENT UNPAUSE"
     )
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("CLIENT")
 
   val getname: Single.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").as[OrNullBulk[Bulk], Option[ConnectionName]]
 
@@ -433,7 +436,9 @@ trait ConfigCommands extends Features {
   import ServerP.Configuration
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("CONFIG GET", "CONFIG RESETSTAT", "CONFIG REWRITE", "CONFIG SET")
+    super.supported ++ List("CONFIG GET", "CONFIG HELP", "CONFIG RESETSTAT", "CONFIG REWRITE", "CONFIG SET")
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("CONFIG")
 
   def get(parameter: GlobPattern): Single.Aux[Configuration] =
     Protocol("CONFIG", "GET" :: parameter.value :: Nil).as[Arr.OfPairs[Bulk, Bulk], Configuration]

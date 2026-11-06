@@ -27,7 +27,9 @@ import Protocol.Single
 /** PUBSUB, under `pubsub`. Redis 6.2 */
 trait PubSubCommands extends Features {
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("PUBSUB CHANNELS", "PUBSUB NUMPAT", "PUBSUB NUMSUB")
+    super.supported ++ List("PUBSUB CHANNELS", "PUBSUB HELP", "PUBSUB NUMPAT", "PUBSUB NUMSUB")
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("PUBSUB")
 
   /** The channels with a subscriber, or those whose name matches the pattern */
   val channels: Single.Aux[Seq[Key]]                       = Protocol("PUBSUB", "CHANNELS").as[Arr.Of[Bulk], Seq[Key]]

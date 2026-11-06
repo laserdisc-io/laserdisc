@@ -40,6 +40,9 @@ sealed trait Protocol {
 object Protocol {
   final type Aux[A0] = Protocol { type A = A0 }
 
+  // the lines of text a command's HELP subcommand replies with
+  private[protocol] final def help(command: String): Single.Aux[Seq[String]] = Protocol(command, "HELP").as[Arr.Of[Str], Seq[String]]
+
   /** A single Redis command */
   sealed trait Single extends Protocol { self =>
     def command: String

@@ -122,7 +122,9 @@ trait ScriptCommands extends Features {
   import ClusterManagement.FlushMode
 
   override private[laserdisc] def supported: List[String] =
-    super.supported ++ List("SCRIPT EXISTS", "SCRIPT FLUSH: ASYNC SYNC", "SCRIPT KILL", "SCRIPT LOAD")
+    super.supported ++ List("SCRIPT EXISTS", "SCRIPT FLUSH: ASYNC SYNC", "SCRIPT HELP", "SCRIPT KILL", "SCRIPT LOAD")
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("SCRIPT")
 
   /** Whether each script is in the cache */
   def exists(shas: OneOrMore[Sha1]): Single.Aux[Seq[Boolean]] =
@@ -213,12 +215,15 @@ trait FunctionCommands extends Features {
       "FUNCTION DELETE",
       "FUNCTION DUMP",
       "FUNCTION FLUSH: ASYNC SYNC",
+      "FUNCTION HELP",
       "FUNCTION KILL",
       "FUNCTION LIST: LIBRARYNAME WITHCODE",
       "FUNCTION LOAD: REPLACE",
       "FUNCTION RESTORE: APPEND FLUSH REPLACE",
       "FUNCTION STATS"
     )
+
+  val help: Single.Aux[Seq[String]] = Protocol.help("FUNCTION")
 
   /** Deletes the library and its functions */
   def delete(library: Key): Single.Aux[OK] = Protocol("FUNCTION", "DELETE" :: library.value :: Nil).as[Str, OK]

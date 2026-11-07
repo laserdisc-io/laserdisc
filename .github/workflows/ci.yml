@@ -458,6 +458,54 @@ jobs:
       - name: Check headers and formatting, and run the tests
         run: sbt '++ ${{ matrix.scala }}' 'project ${{ matrix.project }}' headerCheckAll scalafmtCheckAll test
 
+  server-versions:
+    name: Server versions
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04]
+        scala: [3.9.0]
+        java: [temurin@17]
+        import: [redis_6_2, redis_7_0, redis_7_2, redis_7_4, redis_8_0, redis_8_2, redis_8_4, redis_8_6, redis_8_8, redis_8_10, valkey_7_2, valkey_8_0, valkey_8_1, valkey_9_0, valkey_9_1]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout current branch (full)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Setup Java (temurin@17)
+        id: setup-java-temurin-17
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Test the import against its server
+        run: test-setup/matrix.sh ${{ matrix.import }}
+
   coverage:
     name: Check coverage
     strategy:

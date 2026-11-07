@@ -112,6 +112,20 @@ ThisBuild / githubWorkflowAddedJobs ++= List(
         name = Some("Check headers and formatting, and run the tests")
       )
   ),
+  // each version's import against a server of that version: see test-setup/matrix.sh
+  WorkflowJob(
+    id = "server-versions",
+    name = "Server versions",
+    scalas = List(scala_3),
+    javas = List(githubWorkflowJavaVersions.value.head),
+    matrixAdds = Map(
+      "import" -> (List("6_2", "7_0", "7_2", "7_4", "8_0", "8_2", "8_4", "8_6", "8_8", "8_10").map("redis_" + _) ++
+        List("7_2", "8_0", "8_1", "9_0", "9_1").map("valkey_" + _))
+    ),
+    matrixFailFast = Some(false),
+    steps = githubWorkflowJobSetup.value.toList :+
+      WorkflowStep.Run(commands = List("test-setup/matrix.sh ${{ matrix.import }}"), name = Some("Test the import against its server"))
+  ),
   WorkflowJob(
     id = "coverage",
     name = "Check coverage",

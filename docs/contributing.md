@@ -32,6 +32,23 @@ Then run them for every Scala version and platform:
 sbt +integration/test +integrationJS/test +integrationNative/test
 ```
 
+### One server version
+
+CI also tests each version's import against a server of that version. To do the
+same for one version, give its import to `test-setup/matrix.sh`:
+
+```sh
+test-setup/matrix.sh redis_7_4
+```
+
+It starts the server and a cluster of it in containers, runs the tests for that
+version, and removes the containers. To keep it clear of servers you already
+run, move its ports with `LASERDISC_PORT_OFFSET`:
+
+```sh
+LASERDISC_PORT_OFFSET=40000 test-setup/matrix.sh valkey_9_0
+```
+
 ## Coverage
 
 Each published module has to reach the minimums with its own tests. Tests also

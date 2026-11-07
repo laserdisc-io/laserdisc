@@ -875,6 +875,29 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
+  test("XADD can leave an id's sequence to the server from Redis 7.0, on Valkey and on Dragonfly") {
+    import laserdisc.auto.*
+    val fields = OneOrMore.unsafeFrom(List(Key("a") -> 1))
+
+    {
+      import laserdisc.redis_6_2.*
+      val _ = fields
+      assert(compileErrors("""xadd("s", streamtypes.StreamIdAt(5L), fields)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(xadd("s", streamtypes.StreamIdAt(5L), fields).frames, frame("XADD", "s", "5-*", "a", "1"))
+    }
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(xadd("s", streamtypes.StreamIdAt(5L), fields).frames, frame("XADD", "s", "5-*", "a", "1"))
+    }
+    {
+      import laserdisc.dragonfly_2_0.*
+      assertEquals(xadd("s", streamtypes.StreamIdAt(5L), fields).frames, frame("XADD", "s", "5-*", "a", "1"))
+    }
+  }
+
   test("only Redis 8.2 and later have the stream reference policies, and only Redis 8.6 and later idempotent XADD") {
     import laserdisc.auto.*
 

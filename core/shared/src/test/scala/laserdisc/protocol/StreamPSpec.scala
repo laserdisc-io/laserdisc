@@ -252,6 +252,50 @@ final class StreamPSpec extends BaseSpec with StreamP {
     )
   }
 
+  test("The Stream protocol using xadd with only an id's milliseconds lets the server pick the sequence") {
+    val at = StreamIdAt(NonNegLong(5L))
+    val t  = StreamTrim.maxLen(NonNegLong(10L))
+    assertEquals(xadd(Key("s"), at, fields).encode, bulks("XADD", "s", "5-*", "a", "1", "b", "2"))
+    assertEquals(xadd(Key("s"), at, t, fields).encode, bulks("XADD", "s", "MAXLEN", "10", "5-*", "a", "1", "b", "2"))
+    assertEquals(xadd(Key("s"), StreamNoMkStream, at, fields).encode, bulks("XADD", "s", "NOMKSTREAM", "5-*", "a", "1", "b", "2"))
+    assertEquals(
+      xadd(Key("s"), StreamNoMkStream, at, t, fields).encode,
+      bulks("XADD", "s", "NOMKSTREAM", "MAXLEN", "10", "5-*", "a", "1", "b", "2")
+    )
+    assertEquals(
+      xadd(Key("s"), at, t, StreamRefPolicy.acked, fields).encode,
+      bulks("XADD", "s", "ACKED", "MAXLEN", "10", "5-*", "a", "1", "b", "2")
+    )
+    assertEquals(
+      xadd(Key("s"), StreamNoMkStream, at, t, StreamRefPolicy.acked, fields).encode,
+      bulks("XADD", "s", "NOMKSTREAM", "ACKED", "MAXLEN", "10", "5-*", "a", "1", "b", "2")
+    )
+    assertEquals(xadd(Key("s"), at, fields).decode(Bulk("5-0")), StreamId(NonNegLong(5L), NonNegLong(0L)))
+    assertEquals(xadd(Key("s"), StreamNoMkStream, at, fields).decode(NullBulk), None)
+  }
+
+  test("The Stream protocol using idempotent XADD sends NOMKSTREAM and the policy before IDMP, and the trim after it") {
+    val idmp = StreamIdmp.of(Key("p"), Key("i"))
+    val t    = StreamTrim.maxLen(NonNegLong(10L))
+    assertEquals(
+      xadd(Key("s"), idmp, t, StreamRefPolicy.keepRef, fields).encode,
+      bulks("XADD", "s", "KEEPREF", "IDMP", "p", "i", "MAXLEN", "10", "*", "a", "1", "b", "2")
+    )
+    assertEquals(
+      xadd(Key("s"), StreamNoMkStream, idmp, fields).encode,
+      bulks("XADD", "s", "NOMKSTREAM", "IDMP", "p", "i", "*", "a", "1", "b", "2")
+    )
+    assertEquals(
+      xadd(Key("s"), StreamNoMkStream, idmp, t, fields).encode,
+      bulks("XADD", "s", "NOMKSTREAM", "IDMP", "p", "i", "MAXLEN", "10", "*", "a", "1", "b", "2")
+    )
+    assertEquals(
+      xadd(Key("s"), StreamNoMkStream, idmp, t, StreamRefPolicy.keepRef, fields).encode,
+      bulks("XADD", "s", "NOMKSTREAM", "KEEPREF", "IDMP", "p", "i", "MAXLEN", "10", "*", "a", "1", "b", "2")
+    )
+    assertEquals(xadd(Key("s"), StreamNoMkStream, idmp, fields).decode(NullBulk), None)
+  }
+
   test("The Stream protocol using Redis 8.6's idempotent XADD and XCFGSET sends them") {
     assertEquals(
       xadd(Key("s"), StreamIdmp.of(Key("p1"), Key("i1")), fields).encode,

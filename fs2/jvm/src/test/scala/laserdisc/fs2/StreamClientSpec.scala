@@ -53,6 +53,25 @@ final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
     assertEquals(again, once)
     assertEquals(send(xlen("x:r")).value, 1L)
     assertEquals(send(xcfgset("x:r", StreamIdmpConfig.duration(60L).maxSize(100L))), OK)
+
+    val idmp = StreamIdmp.of("producer", "order-2")
+    assertEquals(send(xadd("x:missing", StreamNoMkStream, idmp, OneOrMore.unsafeFrom(List(Key("a") -> 3)))), None)
+    assert(
+      send(
+        xadd("x:r", StreamNoMkStream, idmp, StreamTrim.maxLen(10L), StreamRefPolicy.keepRef, OneOrMore.unsafeFrom(List(Key("a") -> 3)))
+      ).isDefined
+    )
+    assertEquals(
+      send(xadd("x:r", idmp, StreamTrim.maxLen(10L), StreamRefPolicy.keepRef, OneOrMore.unsafeFrom(List(Key("a") -> 3)))),
+      send(xadd("x:r", idmp, OneOrMore.unsafeFrom(List(Key("a") -> 3))))
+    )
+
+    send(del("x:at"))
+    assertEquals(send(xadd("x:at", StreamIdAt(5L), OneOrMore.unsafeFrom(List(Key("a") -> 1)))), StreamId(5L, 0L))
+    assertEquals(
+      send(xadd("x:at", StreamIdAt(5L), StreamTrim.maxLen(10L), StreamRefPolicy.keepRef, OneOrMore.unsafeFrom(List(Key("a") -> 1)))),
+      StreamId(5L, 1L)
+    )
   }
 
   test("a redis client takes over idle entries with XREADGROUP's CLAIM, and limits whole reads with MAXCOUNT and MAXSIZE") {
@@ -121,6 +140,15 @@ final class ValkeyStreamClientSpec extends StreamClientSpec(6381, "valkey") {
   test("a valkey client reads the replies of Redis 7.0's import, which takes only what's replied from that version on")(
     repliesFrom7_0(valkey_9_1)
   )
+
+  test("a valkey client leaves an entry's sequence to the server") {
+    import laserdisc.valkey_9_1.*
+    import streamtypes.*
+
+    send(del("x:at"))
+    assertEquals(send(xadd("x:at", StreamIdAt(5L), OneOrMore.unsafeFrom(List(Key("a") -> 1)))), StreamId(5L, 0L))
+    assertEquals(send(xadd("x:at", StreamNoMkStream, StreamIdAt(5L), OneOrMore.unsafeFrom(List(Key("a") -> 1)))), Some(StreamId(5L, 1L)))
+  }
 }
 
 abstract class StreamClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {

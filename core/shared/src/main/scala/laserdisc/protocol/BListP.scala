@@ -77,6 +77,15 @@ trait BListMoveManyP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("BLMOVEM: BULK COUNT EXACTLY LEFT OBO RIGHT")
 
+  /** Moves one element like `blmove`, replying with a list */
+  final def blmovem[A: Read[Bulk, _]](
+      source: Key,
+      destination: Key,
+      from: Side,
+      to: Side,
+      seconds: BlockingSeconds
+  ): Single.Aux[Option[Seq[A]]] =
+    Protocol("BLMOVEM", source *: destination *: from *: to *: seconds *: EmptyTuple).as[OrNilArr[Arr.Of[Bulk]], Option[Seq[A]]]
   final def blmovem[A: Read[Bulk, _]](
       source: Key,
       destination: Key,

@@ -22,7 +22,7 @@
 package laserdisc
 package protocol
 
-import shapeless.{LabelledGeneric, Nat, Witness}
+import shapeless.{LabelledGeneric, Nat, Refute, Witness}
 import shapeless.labelled.FieldType
 import shapeless.ops.hlist.Length
 import shapeless.ops.nat.GTEq.>=
@@ -41,6 +41,7 @@ private[protocol] trait RESPParamWriteProductInstances {
       @nowarn ev0: Length.Aux[L, N],
       @nowarn ev1: N >= _1,
       @nowarn ev2: LUBConstraint[L, FieldType[?, ?]],
+      @nowarn ev3: Refute[Show[P]],
       rpw: RESPParamWrite[L]
   ): RESPParamWrite[P] = rpw.contramap(gen.to)
 }

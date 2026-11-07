@@ -66,7 +66,7 @@ trait Geo6_2       extends GeoBaseP with GeoExtP
 trait GeoValkey9_0 extends Geo6_2 with GeoSearchPolygonP
 
 trait Streams6_2  extends StreamBaseP with StreamGroupBaseP with StreamClaimAndInfoBaseP
-trait Streams7_0  extends Streams6_2 with StreamClaimDeletedP with StreamGroupEntriesReadP with StreamSetIdEntriesP
+trait Streams7_0  extends Streams6_2 with StreamClaimDeletedP with StreamGroupEntriesReadP with StreamSetIdEntriesP with StreamIdAtP
 trait Streams8_2  extends Streams7_0 with StreamRefPolicyP
 trait Streams8_4  extends Streams8_2 with StreamReadGroupClaimP
 trait Streams8_6  extends Streams8_4 with StreamIdmpP
@@ -303,6 +303,7 @@ trait StreamsDragonfly2_0
     with StreamClaimAndInfoBaseP
     with StreamClaimDeletedP
     with StreamGroupEntriesReadP
+    with StreamIdAtP
 trait StringsDragonfly2_0     extends Strings6_2 with StringSetGetFlagP with StringBitUnitP with StringDigestAndDelExP
 trait HyperLogLogDragonfly2_0 extends HyperLogLogBaseP with HyperLogLogExtP
 

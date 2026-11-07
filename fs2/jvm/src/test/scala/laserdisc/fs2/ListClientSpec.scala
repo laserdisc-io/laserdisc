@@ -42,6 +42,8 @@ final class RedisListClientSpec extends ListClientSpec(6379, "redis") {
       Some(Seq("d", "c"))
     )
     assertEquals(send(lrange[String]("l:d", 0L, -1L)), Seq("d", "c", "a", "b"))
+    assertEquals(send(lmovem[String]("l:d", "l:s", ListSide.left, ListSide.left)), Some(Seq("d")))
+    assertEquals(send(blocking.blmovem[String]("l:d", "l:s", ListSide.left, ListSide.left, 1.0)), Some(Seq("c")))
   }
 }
 

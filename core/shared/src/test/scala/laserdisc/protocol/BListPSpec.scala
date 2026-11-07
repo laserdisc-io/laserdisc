@@ -160,6 +160,13 @@ abstract class BListPSpec extends BaseSpec with BListP {
     }
   }
 
+  property("The Blocking List protocol using blmovem without an amount and order sends the timeout last") {
+    forAll { (s: Key, d: Key, t: BlockingSeconds) =>
+      val protocol = blmovem[String](s, d, ListP.Side.left, ListP.Side.left, t)
+      assertEquals(protocol.encode, Arr(Bulk("BLMOVEM"), Bulk(s), Bulk(d), Bulk("LEFT"), Bulk("LEFT"), Bulk(t)))
+    }
+  }
+
   property("The Blocking List protocol using blmovem sends the timeout before the amount") {
     forAll { (s: Key, d: Key, c: PosInt, t: BlockingSeconds) =>
       val protocol = blmovem[String](s, d, ListP.Side.left, ListP.Side.left, ListP.Amount.upTo(c), ListP.Order.oneByOne, t)

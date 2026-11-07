@@ -210,6 +210,9 @@ trait ListMoveManyP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("LMOVEM: BULK COUNT EXACTLY LEFT OBO RIGHT")
 
+  /** Moves one element like `lmove`, replying with a list */
+  final def lmovem[A: Read[Bulk, _]](source: Key, destination: Key, from: Side, to: Side): Single.Aux[Option[Seq[A]]] =
+    Protocol("LMOVEM", source *: destination *: from *: to *: EmptyTuple).as[OrNilArr[Arr.Of[Bulk]], Option[Seq[A]]]
   final def lmovem[A: Read[Bulk, _]](
       source: Key,
       destination: Key,

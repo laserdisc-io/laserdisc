@@ -486,6 +486,10 @@ trait StringBitopExtendedP extends Features {
 
   final def bitop(bitwise: ExtendedBitwise, keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
     Protocol("BITOP", bitwise *: destinationKey *: keys.value *: EmptyTuple).as[Num, NonNegInt]
+
+  /** ONE with a single key, which only copies it. DIFF, DIFF1 and ANDOR need at least two */
+  final def bitopone(key: Key, destinationKey: Key): Single.Aux[NonNegInt] =
+    Protocol("BITOP", "ONE" :: destinationKey.value :: key.value :: Nil).as[Num, NonNegInt]
 }
 
 /** DIGEST and DELEX: Redis 8.4 */

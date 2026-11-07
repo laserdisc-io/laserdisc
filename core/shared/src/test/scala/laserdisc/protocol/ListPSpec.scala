@@ -208,6 +208,14 @@ abstract class ListPSpec extends BaseSpec with ListP {
     }
   }
 
+  property("The List protocol using lmovem without an amount and order sends neither") {
+    forAll { (s: Key, d: Key, oss: Option[List[String]]) =>
+      val protocol = lmovem[String](s, d, ListSide.left, ListSide.right)
+      assertEquals(protocol.encode, Arr(Bulk("LMOVEM"), Bulk(s), Bulk(d), Bulk("LEFT"), Bulk("RIGHT")))
+      assertEquals(protocol.decode(oss.fold(NilArr: GenArr)(ss => Arr(ss.map(Bulk(_))))), oss)
+    }
+  }
+
   property("The List protocol using lmovem sends the amount and order, and reads the values moved, or None") {
     forAll { (s: Key, d: Key, c: PosInt, oss: Option[List[String]]) =>
       val protocol = lmovem[String](s, d, ListSide.left, ListSide.right, ListAmount.exactly(c), ListOrder.asBlock)

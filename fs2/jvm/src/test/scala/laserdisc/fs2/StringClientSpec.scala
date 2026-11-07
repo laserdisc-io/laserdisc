@@ -73,6 +73,8 @@ final class RedisStringClientSpec extends StringClientSpec(6379, "redis") {
     assertEquals(send(bitfieldro("s:d", u8)), Seq(0x30L))
     send(bitop(stringtypes.bitwise.one, xyz, "s:d"))
     assertEquals(send(bitfieldro("s:d", u8)), Seq(0xc3L))
+    send(bitopone("s:x", "s:d"))
+    assertEquals(send(bitfieldro("s:d", u8)), Seq(0xf0L))
   }
 }
 

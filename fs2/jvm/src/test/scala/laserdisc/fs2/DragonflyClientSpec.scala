@@ -216,7 +216,9 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(6382) {
 
   test("a dragonfly client reads a stream, its groups and its pending entries") {
     import streamtypes.*
-    send(del("df:x"))
+    send(del("df:x", "df:at"))
+    assertEquals(send(xadd("df:at", StreamIdAt(5L), OneOrMore.unsafeFrom(List(Key("a") -> 1)))), StreamId(5L, 0L))
+    assertEquals(send(xadd("df:at", StreamNoMkStream, StreamIdAt(5L), OneOrMore.unsafeFrom(List(Key("a") -> 1)))), Some(StreamId(5L, 1L)))
     send(xgroupcreate("df:x", "g", StreamFrom.latest, StreamMkStream))
     val first  = send(xadd("df:x", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
     val second = send(xadd("df:x", StreamTrim.maxLenExact(100L), OneOrMore.unsafeFrom(List(Key("a") -> 2))))

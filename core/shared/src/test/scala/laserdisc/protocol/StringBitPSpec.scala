@@ -74,6 +74,14 @@ final class StringBitPSpec extends BaseSpec with StringP {
     }
   }
 
+  property("The String protocol using bitopone sends ONE with a single key") {
+    forAll { (k: Key, d: Key, n: NonNegInt) =>
+      val protocol = bitopone(k, d)
+      assertEquals(protocol.encode, Arr(Bulk("BITOP"), Bulk("ONE"), Bulk(d), Bulk(k)))
+      assertEquals(protocol.decode(Num(n.value.toLong)), n)
+    }
+  }
+
   property("The String protocol using lcs, lcslen and lcsidx read the substring, its length and where the matches are") {
     forAll { (k1: Key, k2: Key, s: String, m: PosInt) =>
       assertEquals(lcs[String](k1, k2).encode, Arr(Bulk("LCS"), Bulk(k1), Bulk(k2)))

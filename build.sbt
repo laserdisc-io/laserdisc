@@ -127,6 +127,8 @@ def laserdiscCrossModule(path: String, crossType: CrossType = CrossType.Pure) = 
       // sbt-typelevel enables kind-projector with * placeholders: switch it to _ placeholders
       scalacOptions ++= (if (tlIsScala3.value) Seq("-Xkind-projector:underscores") else Seq("-P:kind-projector:underscore-placeholders")),
       scalacOptions --= (if (tlIsScala3.value) Seq("-Xkind-projector") else Seq.empty),
+      // sbt-typelevel's console options leave out compiler plugins, and Scala 2.12 stops on an option for a missing plugin
+      Compile / console / scalacOptions -= "-P:kind-projector:underscore-placeholders",
       scalacOptions ++= (if (scalaBinaryVersion.value == "2.13") Seq("-Wconf:cat=unused-nowarn:s") else Seq.empty)
     )
     .jvmSettings(

@@ -119,13 +119,18 @@ ThisBuild / githubWorkflowAddedJobs ++= List(
     javas = List(githubWorkflowJavaVersions.value.head),
     steps = githubWorkflowJobSetup.value.toList ++ startUpRedisServers :+
       WorkflowStep.Sbt(
+        // each published module has to reach the minimums with its own tests: tests also count towards what they depend on, so dependencies go first
         List(
           "coverage",
           "core/test",
-          "laws/test",
-          "fs2/test",
+          "core/coverageReport",
           "circe/test",
+          "circe/coverageReport",
+          "fs2/test",
+          "fs2/coverageReport",
           "cli/test",
+          "cli/coverageReport",
+          "laws/test",
           "integration/test",
           "laserdiscJVM/coverageAggregate"
         ),

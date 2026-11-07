@@ -34,13 +34,21 @@ sbt +integration/test +integrationJS/test +integrationNative/test
 
 ## Coverage
 
-This includes the integration tests, so it needs the same servers:
+Each published module has to reach the minimums with its own tests. Tests also
+count towards the modules they depend on, so run them in this order:
 
 ```sh
-sbt coverage core/test laws/test fs2/test circe/test cli/test integration/test laserdiscJVM/coverageAggregate
+sbt clean coverage \
+  core/test core/coverageReport \
+  circe/test circe/coverageReport \
+  fs2/test fs2/coverageReport \
+  cli/test cli/coverageReport \
+  laws/test integration/test laserdiscJVM/coverageAggregate
 ```
 
-The report is written to `.jvm/target/scala-2.13/scoverage-report/index.html`.
+This includes the integration tests, so it needs the same servers. Each module's
+report is written to its `target/scala-2.13/scoverage-report/index.html`, and the
+report for all of them to `.jvm/target/scala-2.13/scoverage-report/index.html`.
 
 ## Formatting
 

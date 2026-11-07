@@ -526,4 +526,4 @@ jobs:
         run: 'docker run -p 7120:7120 -p 7121:7121 -p 7122:7122 -p 7123:7123 -d --entrypoint sh valkey/valkey:alpine -c ''valkey-server --port 7120 --cluster-enabled yes --cluster-config-file nodes-7120.conf --protected-mode no --daemonize yes; valkey-server --port 7121 --cluster-enabled yes --cluster-config-file nodes-7121.conf --protected-mode no --daemonize yes; valkey-server --port 7122 --cluster-enabled yes --cluster-config-file nodes-7122.conf --protected-mode no --daemonize yes; exec valkey-server --port 7123 --cluster-enabled yes --cluster-config-file nodes-7123.conf --protected-mode no'''
 
       - name: Run tests with coverage
-        run: sbt '++ ${{ matrix.scala }}' coverage core/test laws/test fs2/test circe/test cli/test integration/test laserdiscJVM/coverageAggregate
+        run: sbt '++ ${{ matrix.scala }}' coverage core/test core/coverageReport circe/test circe/coverageReport fs2/test fs2/coverageReport cli/test cli/coverageReport laws/test integration/test laserdiscJVM/coverageAggregate

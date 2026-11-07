@@ -106,7 +106,8 @@ because they have no use on a connection shared by all your calls:
 | Command | Why |
 | --- | --- |
 | `PSYNC`, `SYNC`, `REPLCONF` | They turn the connection into a replication link |
-| `ASKING`, `RESTORE-ASKING`, `CLUSTER SYNCSLOTS`, `XIDMPRECORD` | Servers send these to each other |
+| `ASKING` | It's only for the command right after a cluster's ASK redirect, and laserdisc doesn't follow those redirects |
+| `RESTORE-ASKING`, `CLUSTER SYNCSLOTS`, `XIDMPRECORD` | Servers send these to each other |
 | `SCRIPT DEBUG` | It takes over the connection with an interactive debugger |
 | `UNSUBSCRIBE`, `PUNSUBSCRIBE`, `SUNSUBSCRIBE` | Closing a [subscription](subscribing.md) ends it |
 | `HELLO 3` | laserdisc reads protocol 2, so `hello` only asks for that |

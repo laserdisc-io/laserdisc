@@ -47,6 +47,10 @@ val client: Resource[IO, RedisClient[IO]] =
 When none of the servers can be reached, it waits 3 seconds before trying them
 all again.
 
+This doesn't make it a Redis Cluster client: laserdisc doesn't send each key to
+the node that holds it, or follow a cluster's `MOVED` and `ASK` redirects. On a
+cluster, a command for a key held by another node fails with a `MOVED` error.
+
 ## Sending commands
 
 `send` takes from 1 to 22 commands and sends them together. You get back one

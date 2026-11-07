@@ -93,17 +93,45 @@ val startUpRedisServers = List(
   startUpCluster("Valkey", "valkey/valkey:alpine", "valkey-server", 7120)
 )
 
-ThisBuild / githubWorkflowBuildPreamble ++= startUpRedisServers
-ThisBuild / githubWorkflowAddedJobs += WorkflowJob(
-  id = "coverage",
-  name = "Check coverage",
-  scalas = List(scala_213),
-  javas = List(githubWorkflowJavaVersions.value.head),
-  steps = githubWorkflowJobSetup.value.toList ++ startUpRedisServers :+
-    WorkflowStep.Sbt(
-      List("coverage", "core/test", "laws/test", "fs2/test", "circe/test", "cli/test", "laserdiscJVM/coverageAggregate"),
-      name = Some("Run tests with coverage")
-    )
+ThisBuild / githubWorkflowAddedJobs ++= List(
+  WorkflowJob(
+    id = "integration",
+    name = "Integration tests",
+    scalas = githubWorkflowScalaVersions.value.toList,
+    javas = githubWorkflowJavaVersions.value.toList,
+    matrixAdds = Map("project" -> List("integration", "integrationJS", "integrationNative")),
+    matrixExcs = List(
+      MatrixExclude(Map("scala" -> "2.12", "java" -> githubWorkflowJavaVersions.value.last.render)),
+      MatrixExclude(Map("scala" -> "3", "java" -> githubWorkflowJavaVersions.value.last.render)),
+      MatrixExclude(Map("project" -> "integrationJS", "java" -> githubWorkflowJavaVersions.value.last.render)),
+      MatrixExclude(Map("project" -> "integrationNative", "java" -> githubWorkflowJavaVersions.value.last.render))
+    ),
+    steps = githubWorkflowJobSetup.value.toList ++ startUpRedisServers :+
+      WorkflowStep.Sbt(
+        List("project ${{ matrix.project }}", "headerCheckAll", "scalafmtCheckAll", "test"),
+        name = Some("Check headers and formatting, and run the tests")
+      )
+  ),
+  WorkflowJob(
+    id = "coverage",
+    name = "Check coverage",
+    scalas = List(scala_213),
+    javas = List(githubWorkflowJavaVersions.value.head),
+    steps = githubWorkflowJobSetup.value.toList ++ startUpRedisServers :+
+      WorkflowStep.Sbt(
+        List(
+          "coverage",
+          "core/test",
+          "laws/test",
+          "fs2/test",
+          "circe/test",
+          "cli/test",
+          "integration/test",
+          "laserdiscJVM/coverageAggregate"
+        ),
+        name = Some("Run tests with coverage")
+      )
+  )
 )
 ThisBuild / tlSitePublishBranch := Some("master")
 
@@ -192,16 +220,14 @@ lazy val fs2 = laserdiscCrossModule("fs2", CrossType.Full)
   .dependsOn(core)
   .settings(
     libraryDependencies ++= Seq(
-      "co.fs2"         %%% "fs2-core"          % V.fs2,
-      "co.fs2"         %%% "fs2-io"            % V.fs2,
-      "co.fs2"         %%% "fs2-scodec"        % V.fs2,
-      "io.laserdisc"   %%% "log-effect-fs2"    % V.`log-effect`,
-      "org.typelevel"  %%% "cats-core"         % V.cats,
-      "org.typelevel"  %%% "cats-effect"       % V.`cats-effect`,
-      "org.scalacheck" %%% "scalacheck"        % V.scalacheck          % Test,
-      "org.scalameta"  %%% "munit"             % V.munit               % Test,
-      "org.scalameta"  %%% "munit-scalacheck"  % V.`munit-scalacheck`  % Test,
-      "org.typelevel"  %%% "munit-cats-effect" % V.`munit-cats-effect` % Test
+      "co.fs2"        %%% "fs2-core"          % V.fs2,
+      "co.fs2"        %%% "fs2-io"            % V.fs2,
+      "co.fs2"        %%% "fs2-scodec"        % V.fs2,
+      "io.laserdisc"  %%% "log-effect-fs2"    % V.`log-effect`,
+      "org.typelevel" %%% "cats-core"         % V.cats,
+      "org.typelevel" %%% "cats-effect"       % V.`cats-effect`,
+      "org.scalameta" %%% "munit"             % V.munit               % Test,
+      "org.typelevel" %%% "munit-cats-effect" % V.`munit-cats-effect` % Test
     )
   )
 

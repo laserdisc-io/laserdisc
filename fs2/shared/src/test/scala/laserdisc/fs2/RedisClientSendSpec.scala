@@ -22,7 +22,8 @@
 package laserdisc
 package fs2
 
-import cats.effect.IO
+import cats.effect.{Deferred, IO}
+import cats.syntax.all.*
 import laserdisc.redis_6_2.*
 import laserdisc.auto.*
 import laserdisc.fs2.FakeRedisServer.*
@@ -85,6 +86,34 @@ final class RedisClientSendSpec extends CatsEffectSuite {
       } yield {
         assertEquals(out, Left(ClientTerminated))
         assertEquals(after, Left(ClientTerminated))
+      }
+    }
+  }
+
+  test("sending no commands sends nothing") {
+    unusedPort.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use(client => client.send(EmptyTuple, 1.second).assertEquals(EmptyTuple))
+    }
+  }
+
+  test("a command its caller gave up on while it was queued isn't sent") {
+    (Deferred[IO, Unit], IO.ref(Vector.empty[RESP])).tupled.flatMap { case (connected, sent) =>
+      // takes nothing from the queue until it's told to
+      val channel: (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] = (_, onConnected) =>
+        commands =>
+          Stream.exec(onConnected >> connected.get) ++ commands.evalMap(command => sent.update(_ :+ command).as(Bulk(keyOf(command)): RESP))
+
+      RedisClient.impl.connection[IO](channel, List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+        for {
+          gaveUp   <- client.send(get[String]("late"), 200.millis).attempt
+          _        <- connected.complete(())
+          answered <- client.send(get[String]("k"), 2.seconds)
+          commands <- sent.get
+        } yield {
+          assert(gaveUp.left.exists(_.isInstanceOf[RequestTimedOut[?]]), s"expected a timeout, got $gaveUp")
+          assertEquals(answered, Right(Some("k")))
+          assertEquals(commands, Vector[RESP](Arr(Bulk("GET"), Bulk("k"))))
+        }
       }
     }
   }

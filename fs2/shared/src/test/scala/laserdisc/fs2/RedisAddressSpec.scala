@@ -22,33 +22,32 @@
 package laserdisc
 package fs2
 
-import java.util.concurrent.TimeUnit.SECONDS
+import cats.effect.IO
+import cats.syntax.eq.*
+import laserdisc.auto.*
+import munit.CatsEffectSuite
 
-import cats.effect.{Resource, Sync}
+final class RedisAddressSpec extends CatsEffectSuite {
+  private val address = RedisAddress("localhost", 6379)
 
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
-
-object MkResource {
-  sealed trait CanShutdown[A] { def shutdown[F[_]](implicit F: Sync[F]): A => F[Unit] }
-
-  object CanShutdown {
-    implicit val canShutdownExecutionContextExecutorService: CanShutdown[ExecutionContextExecutorService] =
-      new CanShutdown[ExecutionContextExecutorService] {
-        override def shutdown[F[_]](implicit F: Sync[F]): ExecutionContextExecutorService => F[Unit] =
-          ec =>
-            F.delay {
-              ec.shutdown()
-              ec.awaitTermination(3, SECONDS)
-              ()
-            }
-      }
+  test("an address gives its socket address") {
+    address.toSocketAddress[IO].map(_.toString).assertEquals("localhost:6379")
   }
 
-  private[laserdisc] final def apply[F[_]: Sync, A](acquire: =>F[A])(implicit A: CanShutdown[A]): Resource[F, A] =
-    Resource.make(acquire)(A.shutdown)
+  test("a host valid for Redis but too long for a socket address fails") {
+    val tooLong = Host.unsafeFrom(List.fill(4)("a" * 63).mkString("."))
+    RedisAddress(tooLong, 6379).toSocketAddress[IO].attempt.map { outcome =>
+      assertEquals(outcome.left.map(_.getClass.getSimpleName), Left("InvalidSocketAddress"))
+    }
+  }
 
-  /** Creates an execution context that will wait on shut down.
-    */
-  @inline final def of[F[_]: Sync](fe: F[ExecutionContextExecutorService]): Resource[F, ExecutionContext] =
-    MkResource(fe).widenRight[ExecutionContext]
+  test("addresses are equal when their host and port are") {
+    assert(address === RedisAddress("localhost", 6379))
+    assert(address =!= RedisAddress("localhost", 6380))
+    assert(address =!= RedisAddress("127.0.0.1", 6379))
+  }
+
+  test("an address shows as host:port") {
+    assertEquals(address.toString, "localhost:6379")
+  }
 }

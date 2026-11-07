@@ -80,6 +80,35 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
     }
   }
 
+  test("a reply nobody asked for drops the connection, and the client reconnects") {
+    val unsolicitedAtFirst = FakeRedisServer { (n, requests) =>
+      if (n == 1) Stream.emit(bulk("unsolicited")) ++ requests.drain else requests.as(bulk("back"))
+    }
+
+    unsolicitedAtFirst.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        // with a command waiting for its reply, the first reply to arrive would be taken for it
+        IO.sleep(500.millis) >> untilReplied(
+          client
+            .send(get[String]("k"), 1.second)
+            .map(_.flatMap(r => if (r.contains("back")) Right(r) else Left(new Exception(s"still $r"))))
+        ).assertEquals(Some("back"))
+      }
+    }
+  }
+
+  test("commands fail while no server can be reached") {
+    def untilUnavailable(client: RedisClient[IO]): IO[Throwable] =
+      client.send(get[String]("k"), 1.second).attempt.flatMap {
+        case Right(Left(failure)) if failure == ServerUnavailable => IO.pure(failure)
+        case _                                                    => IO.sleep(200.millis) >> untilUnavailable(client)
+      }
+
+    unusedPort.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use(untilUnavailable).assertEquals(ServerUnavailable: Throwable)
+    }
+  }
+
   test("the client reconnects when the server stops replying") {
     val silentAtFirst = FakeRedisServer { (n, commands) =>
       if (n == 1) commands.drain ++ Stream.never[IO] else commands.as(bulk("back"))

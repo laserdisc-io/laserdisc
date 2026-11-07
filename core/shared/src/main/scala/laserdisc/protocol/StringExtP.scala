@@ -69,50 +69,115 @@ trait StringExtP { this: StringBaseP =>
     bitop(bitwise, TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: Nil), destinationKey)
 
   //MGET
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: Nil))
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key, key22: Key): Single.Aux[A] =
-    mget[A](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: key22 :: Nil))
+  final def mget[A1](key1: Key)(
+      implicit ev: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: EmptyTuple)]
+  ): Single.Aux[A1] =
+    mget[A1 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: Nil)).map(_.head)
+  final def mget[A1, A2](key1: Key, key2: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: EmptyTuple, (A1, A2)]
+  ): Single.Aux[(A1, A2)] =
+    mget[A1 *: A2 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3](key1: Key, key2: Key, key3: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: EmptyTuple, (A1, A2, A3)]
+  ): Single.Aux[(A1, A2, A3)] =
+    mget[A1 *: A2 *: A3 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4](key1: Key, key2: Key, key3: Key, key4: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: EmptyTuple, (A1, A2, A3, A4)]
+  ): Single.Aux[(A1, A2, A3, A4)] =
+    mget[A1 *: A2 *: A3 *: A4 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: EmptyTuple, (A1, A2, A3, A4, A5)]
+  ): Single.Aux[(A1, A2, A3, A4, A5)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: EmptyTuple, (A1, A2, A3, A4, A5, A6)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: Nil)).map(ev1(_))
+  final def mget[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key, key22: Key)(
+      implicit ev0: Read[Arr.Of[OrNullBulk[Bulk]], (A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: A22 *: EmptyTuple)],
+      ev1: Tupled[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: A22 *: EmptyTuple, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22)]
+  ): Single.Aux[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22)] =
+    mget[A1 *: A2 *: A3 *: A4 *: A5 *: A6 *: A7 *: A8 *: A9 *: A10 *: A11 *: A12 *: A13 *: A14 *: A15 *: A16 *: A17 *: A18 *: A19 *: A20 *: A21 *: A22 *: EmptyTuple](OneOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: key22 :: Nil)).map(ev1(_))
 
   //MSET
   final def mset[A1: Show](key1: Key, value1: A1): Single.Aux[OK] =

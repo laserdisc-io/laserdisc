@@ -187,7 +187,8 @@ val fields  = OneOrMoreKeys.unsafeFrom(List(Key("age"), Key("email")))
 val profile = hmget[Int *: Option[String] *: EmptyTuple]("user:1", fields)
 ```
 
-`mget` works the same way for keys.
+`mget` works the same way for keys. When you don't know how many keys you'll
+have, it can also read them into a `Seq`, like `mget[Seq[Option[Int]]](keys)`.
 
 ## Scripts
 

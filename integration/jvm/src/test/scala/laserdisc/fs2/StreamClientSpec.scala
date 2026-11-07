@@ -24,13 +24,13 @@ package fs2
 
 import laserdisc.auto.*
 
-final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
-  test("a redis client reads the replies of Redis 7.0's import, which takes only what's replied from that version on")(
-    repliesFrom7_0(redis_8_10)
+final class RedisStreamClientSpec extends StreamClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis7_0]("a redis client reads the replies of Redis 7.0's import, which takes only what's replied from that version on")(v =>
+    repliesFrom7_0(v)
   )
 
-  test("a redis client deletes with reference policies and adds idempotently with the commands of Redis 8.10") {
-    import laserdisc.redis_8_10.*
+  since[Redis8_2]("a redis client deletes with reference policies, and trims") { v =>
+    import v.*
     import streamtypes.*
 
     send(del("x:r"))
@@ -48,6 +48,19 @@ final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
     assertEquals(send(xtrim("x:r", StreamTrim.maxLen(0L), StreamRefPolicy.delRef)).value, 1L)
     assert(second.milliseconds.value > 0L)
 
+    send(del("x:at"))
+    assertEquals(send(xadd("x:at", StreamIdAt(5L), OneOrMore.unsafeFrom(List(Key("a") -> 1)))), StreamId(5L, 0L))
+    assertEquals(
+      send(xadd("x:at", StreamIdAt(5L), StreamTrim.maxLen(10L), StreamRefPolicy.keepRef, OneOrMore.unsafeFrom(List(Key("a") -> 1)))),
+      StreamId(5L, 1L)
+    )
+  }
+
+  since[Redis8_6]("a redis client adds idempotently") { v =>
+    import v.*
+    import streamtypes.*
+
+    send(del("x:r"))
     val once  = send(xadd("x:r", StreamIdmp.of("producer", "order-1"), OneOrMore.unsafeFrom(List(Key("a") -> 3))))
     val again = send(xadd("x:r", StreamIdmp.of("producer", "order-1"), OneOrMore.unsafeFrom(List(Key("a") -> 3))))
     assertEquals(again, once)
@@ -65,17 +78,10 @@ final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
       send(xadd("x:r", idmp, StreamTrim.maxLen(10L), StreamRefPolicy.keepRef, OneOrMore.unsafeFrom(List(Key("a") -> 3)))),
       send(xadd("x:r", idmp, OneOrMore.unsafeFrom(List(Key("a") -> 3))))
     )
-
-    send(del("x:at"))
-    assertEquals(send(xadd("x:at", StreamIdAt(5L), OneOrMore.unsafeFrom(List(Key("a") -> 1)))), StreamId(5L, 0L))
-    assertEquals(
-      send(xadd("x:at", StreamIdAt(5L), StreamTrim.maxLen(10L), StreamRefPolicy.keepRef, OneOrMore.unsafeFrom(List(Key("a") -> 1)))),
-      StreamId(5L, 1L)
-    )
   }
 
-  test("a redis client takes over idle entries with XREADGROUP's CLAIM, and limits whole reads with MAXCOUNT and MAXSIZE") {
-    import laserdisc.redis_8_10.*
+  since[Redis8_4]("a redis client takes over idle entries with XREADGROUP's CLAIM") { v =>
+    import v.*
     import streamtypes.*
 
     send(del("x:m", "x:m2"))
@@ -91,6 +97,16 @@ final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
 
     val claimedAgain = send(blocking.xreadgroupclaim[Int]("grp", "c3", keys, 0L, 100L, 1L)).toList.flatten.flatMap(_.value)
     assertEquals(claimedAgain.map(e => e.id -> e.deliveries.value), List(first -> 2L))
+  }
+
+  since[Redis8_10]("a redis client limits whole reads with MAXCOUNT and MAXSIZE") { v =>
+    import v.*
+    import streamtypes.*
+
+    send(del("x:m", "x:m2"))
+    send(xgroupcreate("x:m", "grp", StreamFrom.latest, StreamMkStream))
+    val first  = send(xadd("x:m", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
+    val second = send(xadd("x:m", OneOrMore.unsafeFrom(List(Key("a") -> 2))))
 
     send(xadd("x:m2", OneOrMore.unsafeFrom(List(Key("a") -> 3))))
     val both =
@@ -114,8 +130,8 @@ final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
     assert(info.groups.head.others.contains("nacked-count"))
   }
 
-  test("a redis client gives entries back to the group with the commands of Redis 8.10") {
-    import laserdisc.redis_8_10.*
+  since[Redis8_8]("a redis client gives entries back to the group") { v =>
+    import v.*
     import streamtypes.*
 
     send(del("x:n"))
@@ -135,14 +151,14 @@ final class RedisStreamClientSpec extends StreamClientSpec(6379, "redis") {
     assertEquals(send(xnack("x:n", "grp", StreamNackMode.fail, ids, StreamNackOptions.force)).value, 1L)
   }
 }
-final class KeyDbStreamClientSpec  extends StreamClientSpec(6380, "keyDb")
-final class ValkeyStreamClientSpec extends StreamClientSpec(6381, "valkey") {
-  test("a valkey client reads the replies of Redis 7.0's import, which takes only what's replied from that version on")(
-    repliesFrom7_0(valkey_9_1)
+final class KeyDbStreamClientSpec  extends StreamClientSpec(LiveServers.port(6380), "keyDb")
+final class ValkeyStreamClientSpec extends StreamClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey7_2]("a valkey client reads the replies of Redis 7.0's import, which takes only what's replied from that version on")(v =>
+    repliesFrom7_0(v)
   )
 
-  test("a valkey client leaves an entry's sequence to the server") {
-    import laserdisc.valkey_9_1.*
+  since[Valkey9_1]("a valkey client leaves an entry's sequence to the server") { v =>
+    import v.*
     import streamtypes.*
 
     send(del("x:at"))
@@ -269,7 +285,10 @@ abstract class StreamClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assertEquals(info.lastGeneratedId, third)
     assertEquals(info.firstEntry.map(_.id), Some(first))
     // from Redis 7.0, claiming drops a deleted entry from the pending list; Redis 6.2 (and KeyDB) keeps it
-    val pending = if (dest == "keyDb") 3L else 2L
+    val pending = imported match {
+      case _: Redis7_0 => 2L
+      case _           => 3L
+    }
     assertEquals(send(xinfogroups("x:c")).map(g => g.name -> g.pending.value), Seq(Key("grp") -> pending))
     assertEquals(
       send(xinfoconsumers("x:c", "grp")).map(c => c.name -> c.pending.value).toSet,

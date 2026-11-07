@@ -24,9 +24,9 @@ package fs2
 
 import laserdisc.auto.*
 
-final class RedisSetClientSpec extends SetClientSpec(6379, "redis") {
-  test("a redis client counts differences and unions with the commands of Redis 8.10") {
-    import laserdisc.redis_8_10.*
+final class RedisSetClientSpec extends SetClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis7_0]("a redis client counts intersections") { v =>
+    import v.*
 
     send(del("s:a", "s:b"))
     send(sadd("s:a", OneOrMore.unsafeFrom(List(1, 2, 3, 4, 5))))
@@ -34,6 +34,17 @@ final class RedisSetClientSpec extends SetClientSpec(6379, "redis") {
 
     val ks = TwoOrMoreKeys.unsafeFrom(List(Key("s:a"), Key("s:b")))
     assertEquals(send(sintercard(ks)).value, 2)
+    assertEquals(send(sintercard(ks, 1)).value, 1)
+  }
+
+  since[Redis8_10]("a redis client counts differences and unions") { v =>
+    import v.*
+
+    send(del("s:a", "s:b"))
+    send(sadd("s:a", OneOrMore.unsafeFrom(List(1, 2, 3, 4, 5))))
+    send(sadd("s:b", OneOrMore.unsafeFrom(List(4, 5, 6, 7))))
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("s:a"), Key("s:b")))
     assertEquals(send(sdiffcard(ks)).value, 3)
     assertEquals(send(sdiffcard(ks, 2)).value, 2)
     assertEquals(send(sunioncard(ks)).value, 7)
@@ -43,11 +54,11 @@ final class RedisSetClientSpec extends SetClientSpec(6379, "redis") {
   }
 }
 
-final class KeyDbSetClientSpec extends SetClientSpec(6380, "keyDb")
+final class KeyDbSetClientSpec extends SetClientSpec(LiveServers.port(6380), "keyDb")
 
-final class ValkeySetClientSpec extends SetClientSpec(6381, "valkey") {
-  test("a valkey client counts intersections with the commands of Valkey 9.1") {
-    import laserdisc.valkey_9_1.*
+final class ValkeySetClientSpec extends SetClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey7_2]("a valkey client counts intersections") { v =>
+    import v.*
 
     send(del("s:a", "s:b"))
     send(sadd("s:a", OneOrMore.unsafeFrom(List(1, 2, 3))))
@@ -59,7 +70,7 @@ final class ValkeySetClientSpec extends SetClientSpec(6381, "valkey") {
   }
 }
 
-final class DragonflySetClientSpec extends SetClientSpec(6382, "dragonfly")
+final class DragonflySetClientSpec extends SetClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class SetClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol.Aux[A]): A =

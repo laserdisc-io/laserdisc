@@ -24,9 +24,9 @@ package fs2
 
 import laserdisc.auto.*
 
-final class RedisSortedSetClientSpec extends SortedSetClientSpec(6379, "redis") {
-  test("a redis client counts, pops and ranks with the commands of Redis 8.10") {
-    import laserdisc.redis_8_10.*
+final class RedisSortedSetClientSpec extends SortedSetClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis7_2]("a redis client counts, pops and ranks") { v =>
+    import v.*
 
     send(del("ss:x", "ss:y"))
     send(zadd("ss:x", "a", 1.0, "b", 2.0, "c", 3.0))
@@ -35,7 +35,6 @@ final class RedisSortedSetClientSpec extends SortedSetClientSpec(6379, "redis") 
     val ks = TwoOrMoreKeys.unsafeFrom(List(Key("ss:x"), Key("ss:y")))
     assertEquals(send(zintercard(ks)).value, 2)
     assertEquals(send(zintercard(ks, 1)).value, 1)
-    assertEquals(send(zinterwithscores[String](ks, sortedsettypes.aggregate.count)), Seq("b" -> 2.0, "c" -> 2.0))
     assertEquals(send(zrankwithscore("ss:y", "c")).map { case (rank, score) => rank.value -> score }, Some(1 -> 20.0))
     assertEquals(send(zrevrankwithscore("ss:y", "zz")), None)
 
@@ -44,13 +43,24 @@ final class RedisSortedSetClientSpec extends SortedSetClientSpec(6379, "redis") 
     assertEquals(send(blocking.bzmpop[String](x, sortedsettypes.pop.max, 2, 1.0)), Some(KV(Key("ss:x"), Seq("c" -> 3.0, "b" -> 2.0))))
     assertEquals(send(zmpop[String](x, sortedsettypes.pop.min, 1)), None)
   }
+
+  since[Redis8_8]("a redis client counts in how many sets each member is") { v =>
+    import v.*
+
+    send(del("ss:x", "ss:y"))
+    send(zadd("ss:x", "a", 1.0, "b", 2.0, "c", 3.0))
+    send(zadd("ss:y", "b", 10.0, "c", 20.0, "d", 30.0))
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("ss:x"), Key("ss:y")))
+    assertEquals(send(zinterwithscores[String](ks, sortedsettypes.aggregate.count)), Seq("b" -> 2.0, "c" -> 2.0))
+  }
 }
 
-final class KeyDbSortedSetClientSpec extends SortedSetClientSpec(6380, "keyDb")
+final class KeyDbSortedSetClientSpec extends SortedSetClientSpec(LiveServers.port(6380), "keyDb")
 
-final class ValkeySortedSetClientSpec extends SortedSetClientSpec(6381, "valkey") {
-  test("a valkey client scans without scores and pops with the commands of Valkey 9.1") {
-    import laserdisc.valkey_9_1.*
+final class ValkeySortedSetClientSpec extends SortedSetClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey8_0]("a valkey client scans without scores and pops") { v =>
+    import v.*
 
     send(del("ss:x"))
     send(zadd("ss:x", "a", 1.0, "b", 2.0))

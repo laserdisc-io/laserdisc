@@ -25,31 +25,35 @@ package fs2
 import laserdisc.auto.*
 import laserdisc.protocol.ServerP.{ConnectedClients, InfoSection, InfoSectionKey}
 
-final class RedisServerClientSpec extends ServerClientSpec(6379, "redis") {
-  test("a redis client reads the sections Redis 8 added under their names") {
-    import laserdisc.redis_8_10.{info, servertypes}
+final class RedisServerClientSpec extends ServerClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis8_0]("a redis client reads the sections Redis 8 added under their names") { v =>
+    import v.{info, servertypes}
 
     assert(send(info(servertypes.info.keysizes)).sections.contains(InfoSection.keysizes))
-    assert(send(info(servertypes.info.hotkeys)).sections.contains(InfoSection.hotkeys))
     assert(send(info(servertypes.info.everything)).sections.keySet.exists(_.isInstanceOf[InfoSectionKey.Other]))
   }
 
-  test("a redis client sets its library and reads several settings with the commands of Redis 8.10")(newer(redis_8_10, redis_8_10.client))
+  since[Redis8_6]("a redis client reads the hot keys section under its name") { v =>
+    import v.{info, servertypes}
+
+    assert(send(info(servertypes.info.hotkeys)).sections.contains(InfoSection.hotkeys))
+  }
+
+  since[Redis7_4]("a redis client sets its library and reads several settings")(v => newer(v, v.client))
 }
 
-final class KeyDbServerClientSpec extends ServerClientSpec(6380, "keyDb")
+final class KeyDbServerClientSpec extends ServerClientSpec(LiveServers.port(6380), "keyDb")
 
-final class ValkeyServerClientSpec extends ServerClientSpec(6381, "valkey") {
-  test("a valkey client reads the TLS section of Valkey 9.1 under its name") {
-    import laserdisc.valkey_9_1.{info, servertypes}
+final class ValkeyServerClientSpec extends ServerClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey9_1]("a valkey client reads the TLS section under its name") { v =>
+    import v.{info, servertypes}
 
     assert(send(info(servertypes.info.tls)).sections.contains(InfoSection.tls))
   }
 
-  test("a valkey client sets its library and reads several settings with the commands of Valkey 9.1")(newer(valkey_9_1, valkey_9_1.client))
+  since[Valkey8_0]("a valkey client sets its library and reads several settings")(v => newer(v, v.client))
 
-  test("a valkey client finds clients with the filters of Valkey 9.1, and closes none when none match") {
-    val v = laserdisc.valkey_9_1
+  since[Valkey9_1]("a valkey client finds clients with Valkey's filters, and closes none when none match") { v =>
     import v.servertypes
 
     val f     = servertypes.valkeyClientFilter

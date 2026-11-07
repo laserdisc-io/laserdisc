@@ -24,11 +24,11 @@ package fs2
 
 import laserdisc.auto.*
 
-final class RedisKeyClientSpec extends KeyClientSpec(6379, "redis") {
-  test("a redis client sets expiries with conditions and reads them with the commands of Redis 8.10")(expiries(redis_8_10))
+final class RedisKeyClientSpec extends KeyClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis7_2]("a redis client sets expiries with conditions and reads them")(v => expiries(v))
 
-  test("a redis client reads the type of an array or a module's key, and scans by it") {
-    import laserdisc.redis_8_10.*
+  since[Redis8_8]("a redis client reads the type of an array or a module's key, and scans by it") { v =>
+    import v.*
     import keytypes.*
 
     send(del("k:a", "k:v"))
@@ -44,10 +44,10 @@ final class RedisKeyClientSpec extends KeyClientSpec(6379, "redis") {
   }
 }
 
-final class KeyDbKeyClientSpec extends KeyClientSpec(6380, "keyDb")
+final class KeyDbKeyClientSpec extends KeyClientSpec(LiveServers.port(6380), "keyDb")
 
-final class ValkeyKeyClientSpec extends KeyClientSpec(6381, "valkey") {
-  test("a valkey client sets expiries with conditions and reads them with the commands of Valkey 9.1")(expiries(valkey_9_1))
+final class ValkeyKeyClientSpec extends KeyClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey7_2]("a valkey client sets expiries with conditions and reads them")(v => expiries(v))
 }
 
 abstract class KeyClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {

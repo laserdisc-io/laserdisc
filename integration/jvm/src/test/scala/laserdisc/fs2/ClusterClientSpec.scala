@@ -29,18 +29,17 @@ import laserdisc.protocol.ClusterP.{Flag, LinkState, SlotType}
 
 import scala.annotation.tailrec
 
-final class RedisClusterClientSpec extends ClusterClientSpec(7100, "redis", redis_7_0.cluster) {
-  test("a redis cluster client reads the hostname a node announces, with the nodes and the slots") {
-    import redis_7_0.config
+final class RedisClusterClientSpec extends ClusterClientSpec(LiveServers.port(7100), "redis", LiveServers.redis.cluster) {
+  since[Redis7_0]("a redis cluster client reads the hostname a node announces, with the nodes and the slots") { v =>
+    import v.config
     hostname(config.set(OneOrMore.unsafeFrom(List(Key("cluster-announce-hostname") -> "my.host.example"))))
   }
 }
 
-final class KeyDbClusterClientSpec extends ClusterClientSpec(7110, "keyDb", redis_6_2.cluster)
+final class KeyDbClusterClientSpec extends ClusterClientSpec(LiveServers.port(7110), "keyDb", redis_6_2.cluster)
 
-final class ValkeyClusterClientSpec extends ClusterClientSpec(7120, "valkey", valkey_7_2.cluster) {
-  test("a valkey cluster client walks through the keys with the commands of Valkey 9.1") {
-    val v = valkey_9_1
+final class ValkeyClusterClientSpec extends ClusterClientSpec(LiveServers.port(7120), "valkey", LiveServers.valkey.cluster) {
+  since[Valkey9_1]("a valkey cluster client walks through the keys") { v =>
     import v.clustertypes.*
 
     @tailrec def walk(cursor: ClusterScanCursor, options: ClusterScanOptions, found: Seq[Key]): Seq[Key] = {
@@ -58,8 +57,8 @@ final class ValkeyClusterClientSpec extends ClusterClientSpec(7120, "valkey", va
     keys.foreach(k => send(v.del(k)))
   }
 
-  test("a valkey cluster client reads the hostname a node announces, with the nodes and the slots") {
-    import valkey_7_2.config
+  since[Valkey7_2]("a valkey cluster client reads the hostname a node announces, with the nodes and the slots") { v =>
+    import v.config
     hostname(config.set(OneOrMore.unsafeFrom(List(Key("cluster-announce-hostname") -> "my.host.example"))))
   }
 }

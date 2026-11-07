@@ -24,12 +24,12 @@ package fs2
 
 import laserdisc.auto.*
 
-final class RedisGeoClientSpec extends GeoClientSpec(6379, "redis")
-final class KeyDbGeoClientSpec extends GeoClientSpec(6380, "keyDb")
+final class RedisGeoClientSpec extends GeoClientSpec(LiveServers.port(6379), "redis")
+final class KeyDbGeoClientSpec extends GeoClientSpec(LiveServers.port(6380), "keyDb")
 
-final class ValkeyGeoClientSpec extends GeoClientSpec(6381, "valkey") {
-  test("a valkey client searches inside a polygon with the commands of Valkey 9.1") {
-    import laserdisc.valkey_9_1.*
+final class ValkeyGeoClientSpec extends GeoClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey9_0]("a valkey client searches inside a polygon") { v =>
+    import v.*
     import geotypes.*
 
     send(del("g:p", "g:q"))
@@ -44,7 +44,7 @@ final class ValkeyGeoClientSpec extends GeoClientSpec(6381, "valkey") {
   }
 }
 
-final class DragonflyGeoClientSpec extends GeoClientSpec(6382, "dragonfly")
+final class DragonflyGeoClientSpec extends GeoClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class GeoClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol.Aux[A]): A =

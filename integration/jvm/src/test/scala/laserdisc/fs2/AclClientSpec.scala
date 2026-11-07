@@ -24,17 +24,17 @@ package fs2
 
 import laserdisc.auto.*
 
-final class RedisAclClientSpec extends AclClientSpec(6379, "redis") {
-  test("a redis client checks permissions and sets selectors with the commands of Redis 8.10")(selectors(redis_8_10))
+final class RedisAclClientSpec extends AclClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis7_2]("a redis client checks permissions and sets selectors")(v => selectors(v))
 }
 
-final class KeyDbAclClientSpec extends AclClientSpec(6380, "keyDb")
+final class KeyDbAclClientSpec extends AclClientSpec(LiveServers.port(6380), "keyDb")
 
-final class ValkeyAclClientSpec extends AclClientSpec(6381, "valkey") {
-  test("a valkey client checks permissions and sets selectors with the commands of Valkey 9.1")(selectors(valkey_9_1))
+final class ValkeyAclClientSpec extends AclClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey7_2]("a valkey client checks permissions and sets selectors")(v => selectors(v))
 
-  test("a valkey client limits a user and its selectors to databases") {
-    import valkey_9_1.{acl, servertypes}
+  since[Valkey9_1]("a valkey client limits a user and its selectors to databases") { v =>
+    import v.{acl, servertypes}
 
     val rules = servertypes.aclDatabaseRules
     assertEquals(

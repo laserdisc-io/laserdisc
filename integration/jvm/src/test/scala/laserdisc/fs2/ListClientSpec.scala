@@ -24,9 +24,9 @@ package fs2
 
 import laserdisc.auto.*
 
-final class RedisListClientSpec extends ListClientSpec(6379, "redis") {
-  test("a redis client moves several values at once with the commands of Redis 8.10") {
-    import laserdisc.redis_8_10.*
+final class RedisListClientSpec extends ListClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis8_10]("a redis client moves several values at once") { v =>
+    import v.*
     import listtypes.*
 
     send(del("l:s", "l:d"))
@@ -47,11 +47,11 @@ final class RedisListClientSpec extends ListClientSpec(6379, "redis") {
   }
 }
 
-final class KeyDbListClientSpec extends ListClientSpec(6380, "keyDb")
+final class KeyDbListClientSpec extends ListClientSpec(LiveServers.port(6380), "keyDb")
 
-final class ValkeyListClientSpec extends ListClientSpec(6381, "valkey") {
-  test("a valkey client pops from the first list that has values with the commands of Valkey 9.1") {
-    import laserdisc.valkey_9_1.*
+final class ValkeyListClientSpec extends ListClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey7_2]("a valkey client pops from the first list that has values") { v =>
+    import v.*
     import listtypes.*
 
     send(del("l:a", "l:b"))
@@ -64,7 +64,7 @@ final class ValkeyListClientSpec extends ListClientSpec(6381, "valkey") {
   }
 }
 
-final class DragonflyListClientSpec extends ListClientSpec(6382, "dragonfly")
+final class DragonflyListClientSpec extends ListClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class ListClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol.Aux[A]): A =

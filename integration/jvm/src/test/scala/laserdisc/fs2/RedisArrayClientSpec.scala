@@ -23,10 +23,8 @@ package laserdisc
 package fs2
 
 import laserdisc.auto.*
-import laserdisc.redis_8_10.*
-import laserdisc.redis_8_10.arraytypes.*
 
-final class ArrayClientSpec extends LaserdiscFs2Suite(6379) {
+final class RedisArrayClientSpec extends LaserdiscFs2Suite(LiveServers.port(6379)) {
   private def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"redis replied with an error: ${e.getMessage}", e), identity)
 
@@ -35,7 +33,10 @@ final class ArrayClientSpec extends LaserdiscFs2Suite(6379) {
 
   private def indexes(ns: NonNegLong*): OneOrMore[NonNegLong] = OneOrMore.unsafeFrom(ns.toList)
 
-  test("a redis client sets, gets, deletes and scans elements, with gaps") {
+  since[Redis8_8]("a redis client sets, gets, deletes and scans elements, with gaps") { v =>
+    import v.*
+    import v.arraytypes.*
+
     send(del("ar:s"))
     assertEquals(send(arset("ar:s", 0L, OneOrMore.unsafeFrom(List("x", "y", "z")))).value, 3L)
     assertEquals(send(armset("ar:s", OneOrMore.unsafeFrom(List[(NonNegLong, String)](NonNegLong(10L) -> "w")))).value, 1L)
@@ -58,7 +59,10 @@ final class ArrayClientSpec extends LaserdiscFs2Suite(6379) {
     assertEquals(send(arcount("ar:s")).value, 1L)
   }
 
-  test("a redis client inserts at the cursor, and uses a ring buffer") {
+  since[Redis8_8]("a redis client inserts at the cursor, and uses a ring buffer") { v =>
+    import v.*
+    import v.arraytypes.*
+
     send(del("ar:i", "ar:r"))
     assertEquals(send(arseek("ar:i", 3L)), false)
     assertEquals(send(arinsert("ar:i", OneOrMore.unsafeFrom(List("a", "b")))).value, 1L)
@@ -72,7 +76,10 @@ final class ArrayClientSpec extends LaserdiscFs2Suite(6379) {
     assertEquals(send(argetrange[String]("ar:r", 0L, 1L)), Seq(Some("c"), Some("b")))
   }
 
-  test("a redis client searches elements") {
+  since[Redis8_8]("a redis client searches elements") { v =>
+    import v.*
+    import v.arraytypes.*
+
     send(del("ar:g"))
     send(arset("ar:g", 0L, OneOrMore.unsafeFrom(List("aa", "Ab", "bc"))))
     val all  = (ArrayBound.min, ArrayBound.max)
@@ -95,7 +102,10 @@ final class ArrayClientSpec extends LaserdiscFs2Suite(6379) {
     )
   }
 
-  test("a redis client aggregates elements") {
+  since[Redis8_8]("a redis client aggregates elements") { v =>
+    import v.*
+    import v.arraytypes.*
+
     send(del("ar:n", "ar:d", "ar:none"))
     send(arset("ar:n", 0L, OneOrMore.unsafeFrom(List(1, 2, 3))))
     send(arset("ar:d", 0L, OneOrMore.unsafeFrom(List(1.5d, 2.5d))))
@@ -112,7 +122,10 @@ final class ArrayClientSpec extends LaserdiscFs2Suite(6379) {
     assertEquals(send(arop("ar:n", 0L, 5L, ArrayOp.matching(2))).value, 1L)
   }
 
-  test("a redis client reads an array's information") {
+  since[Redis8_8]("a redis client reads an array's information") { v =>
+    import v.*
+    import v.arraytypes.*
+
     send(del("ar:f"))
     assert(failure(arinfo("ar:f")).contains("no such key"))
     send(arset("ar:f", 3L, OneOrMore.unsafeFrom(List("x"))))

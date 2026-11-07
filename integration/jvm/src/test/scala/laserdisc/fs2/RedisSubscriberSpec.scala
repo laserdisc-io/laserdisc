@@ -29,21 +29,21 @@ import laserdisc.protocol.Feed
 
 import scala.concurrent.duration.*
 
-final class RedisRedisSubscriberSpec extends RedisSubscriberSpec(6379, "redis") {
-  test("a redis client is told which keys it read changed")(tracking(laserdisc.redis_8_10.client))
-  test("a redis client reads messages of shard channels")(shards(laserdisc.redis_8_10))
+final class RedisRedisSubscriberSpec extends RedisSubscriberSpec(LiveServers.port(6379), "redis") {
+  since[Redis7_0]("a redis client is told which keys it read changed")(v => tracking(v.client))
+  since[Redis7_0]("a redis client reads messages of shard channels")(v => shards(v))
   test("a redis client is told about a wrong password")(wrongPassword())
 }
-final class KeyDbRedisSubscriberSpec extends RedisSubscriberSpec(6380, "keyDb") {
+final class KeyDbRedisSubscriberSpec extends RedisSubscriberSpec(LiveServers.port(6380), "keyDb") {
   test("a keyDb client is told which keys it read changed")(tracking(laserdisc.redis_6_2.client))
   test("a keyDb client is told about a wrong password")(wrongPassword())
 }
-final class ValkeyRedisSubscriberSpec extends RedisSubscriberSpec(6381, "valkey") {
-  test("a valkey client is told which keys it read changed")(tracking(laserdisc.valkey_9_1.client))
-  test("a valkey client reads messages of shard channels")(shards(laserdisc.valkey_9_1))
+final class ValkeyRedisSubscriberSpec extends RedisSubscriberSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey7_2]("a valkey client is told which keys it read changed")(v => tracking(v.client))
+  since[Valkey7_2]("a valkey client reads messages of shard channels")(v => shards(v))
   test("a valkey client is told about a wrong password")(wrongPassword())
 }
-final class DragonflyRedisSubscriberSpec extends RedisSubscriberSpec(6382, "dragonfly") {
+final class DragonflyRedisSubscriberSpec extends RedisSubscriberSpec(LiveServers.port(6382), "dragonfly") {
   test("a dragonfly client reads messages of shard channels")(shards(laserdisc.dragonfly_2_0))
 }
 

@@ -24,15 +24,15 @@ package fs2
 
 import laserdisc.auto.*
 
-final class RedisScriptingClientSpec extends ScriptingClientSpec(6379, "redis") {
-  test("a redis client loads, calls and lists functions with the commands of Redis 8.10")(functions(redis_8_10))
+final class RedisScriptingClientSpec extends ScriptingClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis7_0]("a redis client loads, calls and lists functions")(v => functions(v))
 }
-final class KeyDbScriptingClientSpec  extends ScriptingClientSpec(6380, "keyDb")
-final class ValkeyScriptingClientSpec extends ScriptingClientSpec(6381, "valkey") {
-  test("a valkey client loads, calls and lists functions with the commands of Valkey 9.1")(functions(valkey_9_1))
+final class KeyDbScriptingClientSpec  extends ScriptingClientSpec(LiveServers.port(6380), "keyDb")
+final class ValkeyScriptingClientSpec extends ScriptingClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey7_2]("a valkey client loads, calls and lists functions")(v => functions(v))
 
-  test("a valkey client shows a cached script with the commands of Valkey 9.1") {
-    import laserdisc.valkey_9_1.*
+  since[Valkey8_0]("a valkey client shows a cached script") { v =>
+    import v.*
 
     val sha = send(script.load("return 'shown'"))
     assertEquals(send(script.show(sha)), "return 'shown'")

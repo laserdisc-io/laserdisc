@@ -27,7 +27,7 @@ import laserdisc.protocol.DragonflyP.{FieldExpireResult, FieldTtl, Rm, Throttle}
 import laserdisc.protocol.ServerP.InfoSection
 
 // what dragonfly_2_0 has, on the server it's for: the other Dragonfly specs extend those of the other servers, whose tests use redis_6_2
-final class DragonflyClientSpec extends LaserdiscFs2Suite(6382) {
+final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)) {
   import laserdisc.dragonfly_2_0.*
 
   private def send[A](protocol: Protocol.Aux[A]): A =
@@ -284,7 +284,7 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(6382) {
 }
 
 // a Dragonfly in its emulated cluster mode, which only reports on itself: the rest of CLUSTER isn't in it
-final class DragonflyClusterClientSpec extends LaserdiscFs2Suite(6383) {
+final class DragonflyClusterClientSpec extends LaserdiscFs2Suite(LiveServers.port(6383)) {
   import laserdisc.dragonfly_2_0.*
 
   private def send[A](protocol: Protocol.Aux[A]): A =

@@ -26,21 +26,17 @@ import laserdisc.auto.*
 
 final case class HashUser(name: String, age: Int, email: Option[String])
 
-final class RedisHashClientSpec extends HashClientSpec(6379, "redis") {
-  test("a redis client expires fields, reads them with an expiry and deletes them with the commands of Redis 8.10")(
-    fieldExpiry(redis_8_10, redis_8_10, redis_8_10, redis_8_10, redis_8_10)
-  )
+final class RedisHashClientSpec extends HashClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis8_0]("a redis client expires fields, reads them with an expiry and deletes them")(v => fieldExpiry(v, v, v, v, v))
 }
 
-final class KeyDbHashClientSpec extends HashClientSpec(6380, "keyDb")
+final class KeyDbHashClientSpec extends HashClientSpec(LiveServers.port(6380), "keyDb")
 
-final class ValkeyHashClientSpec extends HashClientSpec(6381, "valkey") {
-  test("a valkey client expires fields, reads them with an expiry and deletes them with the commands of Valkey 9.1")(
-    fieldExpiry(valkey_9_1, valkey_9_1, valkey_9_1, valkey_9_1, valkey_9_1)
-  )
+final class ValkeyHashClientSpec extends HashClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey9_1]("a valkey client expires fields, reads them with an expiry and deletes them")(v => fieldExpiry(v, v, v, v, v))
 
-  test("a valkey client sets fields only if the hash exists with the commands of Valkey 9.1") {
-    import laserdisc.valkey_9_1.*
+  since[Valkey9_1]("a valkey client sets fields only if the hash exists") { v =>
+    import v.*
     import hashtypes.*
 
     send(del("h:k"))
@@ -51,7 +47,7 @@ final class ValkeyHashClientSpec extends HashClientSpec(6381, "valkey") {
   }
 }
 
-final class DragonflyHashClientSpec extends HashClientSpec(6382, "dragonfly")
+final class DragonflyHashClientSpec extends HashClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol.Aux[A]): A =

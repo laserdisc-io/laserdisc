@@ -24,15 +24,21 @@ package fs2
 
 import laserdisc.auto.*
 
-final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis") {
-  test("a redis client reads histograms, lists commands and tracks hot keys with the commands of Redis 8.10") {
-    val v = redis_8_10
-    import v.{hotkeys, servertypes}
+final class RedisInspectionClientSpec extends InspectionClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis7_0]("a redis client reads histograms and lists commands") { v =>
+    import v.servertypes
 
     assert(send(v.latency.histogram(OneOrMore.unsafeFrom(List(Key("ping"))))).keySet.subsetOf(Set("ping")))
     assert(send(v.command.list(servertypes.commandFilter.pattern("xa*"))).contains("xadd"))
     assertEquals(send(v.command.getkeysandflags(v.set("i:a", 1))).map(_.key), Seq(Key("i:a")))
+  }
+
+  since[Redis8_0]("a redis client lists the modules Redis 8 comes with") { v =>
     assert(send(v.module.list).exists(_.name == "search"))
+  }
+
+  since[Redis8_6]("a redis client tracks hot keys") { v =>
+    import v.{hotkeys, servertypes}
 
     assertEquals(send(hotkeys.start(servertypes.hotKeysMetrics.cpuAndNet, servertypes.hotKeysOptions.count(5))), OK)
     send(v.set("i:hot", 1))
@@ -43,20 +49,21 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis"
     assertEquals(send(hotkeys.get), None)
   }
 
-  test("a redis client reads the documentation of every command with the commands of Redis 8.10")(docs(redis_8_10))
+  since[Redis7_0]("a redis client reads the documentation of every command")(v => docs(v))
 
-  test("a redis client reads the information of every command with the commands of Redis 8.10")(commandInfos(redis_8_10))
+  since[Redis7_0]("a redis client reads the information of every command")(v => commandInfos(v))
 
-  test("a redis client reads how many arguments a slow command had") {
-    assert(slowEntry(redis_8_10).totalArguments.nonEmpty)
+  since[Redis8_10]("a redis client reads how many arguments a slow command had") { v =>
+    assert(slowEntry(v).totalArguments.nonEmpty)
   }
 
-  test("a redis client takes its art and imports a hash from a fieldset with the commands of Redis 8.10") {
-    val v      = redis_8_10
-    val fields = OneOrMoreKeys.unsafeFrom(List(Key("z"), Key("a"), Key("m")))
-
+  since[Redis6_2]("a redis client takes its art") { v =>
     assert(send(v.lolwut).nonEmpty)
     assert(send(v.lolwut(8)).nonEmpty)
+  }
+
+  since[Redis8_10]("a redis client imports a hash from a fieldset") { v =>
+    val fields = OneOrMoreKeys.unsafeFrom(List(Key("z"), Key("a"), Key("m")))
 
     send(v.del("i:hi"))
     assertEquals(send(v.himportprepare("i:fs", fields)), OK)
@@ -73,13 +80,13 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis"
     send(v.del("i:hi"))
   }
 
-  test("a redis client reads the help of what Redis 8.10 adds") {
-    val v = redis_8_10
-    List(v.function.help, v.hotkeys.help, v.backup.help).foreach(help => assert(send(help).nonEmpty))
-  }
+  since[Redis7_0]("a redis client reads the help of FUNCTION")(v => assert(send(v.function.help).nonEmpty))
 
-  test("a redis client starts, reads and aborts a backup with the commands of Redis 8.10") {
-    val v = redis_8_10
+  since[Redis8_6]("a redis client reads the help of HOTKEYS")(v => assert(send(v.hotkeys.help).nonEmpty))
+
+  since[Redis8_10]("a redis client reads the help of BACKUP")(v => assert(send(v.backup.help).nonEmpty))
+
+  since[Redis8_10]("a redis client starts, reads and aborts a backup") { v =>
     import v.backup
 
     assertEquals(send(backup.start), OK)
@@ -92,39 +99,39 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis"
   }
 }
 
-final class KeyDbInspectionClientSpec extends InspectionClientSpec(6380, "keyDb") {
+final class KeyDbInspectionClientSpec extends InspectionClientSpec(LiveServers.port(6380), "keyDb") {
   test("a keyDb client reads a command with no tips, key specifications or subcommands") {
     val info = send(redis_6_2.command.info(OneOrMore.unsafeFrom(List(Key("get"))))).flatten
     assertEquals(info.map(i => (i.name, i.tips, i.keySpecifications, i.subcommands)), Seq(("get", Nil, Nil, Nil)))
   }
 }
 
-final class ValkeyInspectionClientSpec extends InspectionClientSpec(6381, "valkey") {
-  test("a valkey client reads the documentation of every command with the commands of Valkey 9.1")(docs(valkey_9_1))
+final class ValkeyInspectionClientSpec extends InspectionClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey7_2]("a valkey client reads the documentation of every command")(v => docs(v))
 
-  test("a valkey client reads the information of every command with the commands of Valkey 9.1")(commandInfos(valkey_9_1))
+  since[Valkey7_2]("a valkey client reads the information of every command")(v => commandInfos(v))
 
-  test("a valkey client reads a slow command with no total of arguments") {
-    assertEquals(slowEntry(valkey_9_1).totalArguments, None)
+  since[Valkey7_2]("a valkey client reads a slow command with no total of arguments") { v =>
+    assertEquals(slowEntry(v).totalArguments, None)
   }
 
-  test("a valkey client takes its art, and tells what its connection can do with the commands of Valkey 9.1") {
-    val v = valkey_9_1
-
+  since[Valkey7_2]("a valkey client takes its art, and reads the help of FUNCTION") { v =>
     assert(send(v.lolwut).nonEmpty)
     assert(send(v.lolwut(8)).nonEmpty)
+    assert(send(v.function.help).nonEmpty)
+  }
+
+  since[Valkey8_0]("a valkey client tells what its connection can do") { v =>
     assertEquals(send(v.client.capa(OneOrMore.unsafeFrom(List(Key("redirect"))))), OK)
+  }
+
+  since[Valkey8_1]("a valkey client turns import mode off, and reads the help of COMMANDLOG") { v =>
     assertEquals(send(v.client.importsource(on = false)), OK)
     assert(failure(v.client.importsource(on = true)).contains("import mode"))
+    assert(send(v.commandlog.help).nonEmpty)
   }
 
-  test("a valkey client reads the help of what Valkey 9.1 adds") {
-    val v = valkey_9_1
-    List(v.function.help, v.commandlog.help).foreach(help => assert(send(help).nonEmpty))
-  }
-
-  test("a valkey client reads the command log with the commands of Valkey 9.1") {
-    val v = valkey_9_1
+  since[Valkey8_1]("a valkey client reads the command log") { v =>
     import v.{commandlog, servertypes}
 
     assert(send(commandlog.len(servertypes.commandLogType.slow)).value >= 0L)

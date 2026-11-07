@@ -25,15 +25,15 @@ package fs2
 import cats.effect.IO
 import laserdisc.auto.*
 
-final class RedisPublishClientSpec extends PublishClientSpec(6379, "redis") {
-  test("a redis client reads shard channels, and publishes to them, with the commands of Redis 7.0")(shards(redis_7_0))
+final class RedisPublishClientSpec extends PublishClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis7_0]("a redis client reads shard channels, and publishes to them,")(v => shards(v))
 }
-final class KeyDbPublishClientSpec  extends PublishClientSpec(6380, "keyDb")
-final class ValkeyPublishClientSpec extends PublishClientSpec(6381, "valkey") {
-  test("a valkey client reads shard channels, and publishes to them, with the commands of Valkey 7.2")(shards(valkey_7_2))
+final class KeyDbPublishClientSpec  extends PublishClientSpec(LiveServers.port(6380), "keyDb")
+final class ValkeyPublishClientSpec extends PublishClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey7_2]("a valkey client reads shard channels, and publishes to them,")(v => shards(v))
 }
 
-final class DragonflyPublishClientSpec extends PublishClientSpec(6382, "dragonfly")
+final class DragonflyPublishClientSpec extends PublishClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class PublishClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   private def send[A](protocol: Protocol.Aux[A]): A =

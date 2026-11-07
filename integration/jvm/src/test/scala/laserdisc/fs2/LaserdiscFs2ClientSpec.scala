@@ -31,12 +31,12 @@ import laserdisc.fs2.LaserdiscFs2ClientSpec.ClientSpecIo
 import scala.collection.parallel.immutable.ParSeq
 import scala.concurrent.duration.*
 
-final class RedisClientSpec  extends ClientSpecIo(6379, "redis")
-final class KeyDbClientSpec  extends ClientSpecIo(6380, "keyDb")
-final class ValkeyClientSpec extends ClientSpecIo(6381, "valkey")
+final class RedisClientSpec  extends ClientSpecIo(LiveServers.port(6379), "redis")
+final class KeyDbClientSpec  extends ClientSpecIo(LiveServers.port(6380), "keyDb")
+final class ValkeyClientSpec extends ClientSpecIo(LiveServers.port(6381), "valkey")
 
 object LaserdiscFs2ClientSpec {
-  final class DragonflyClientSpecIo extends ClientSpecIo(6382, "dragonfly")
+  final class DragonflyClientSpecIo extends ClientSpecIo(LiveServers.port(6382), "dragonfly")
 
   abstract class ClientSpecIo(p: Port, dest: String) extends LaserdiscFs2ClientSpec(p, dest)
 }

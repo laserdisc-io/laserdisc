@@ -26,14 +26,13 @@ import laserdisc.auto.*
 import laserdisc.protocol.KeyP.TTLResponse
 import laserdisc.protocol.StringP.{Bit, LcsMatch, LcsRange}
 
-final class RedisStringClientSpec extends StringClientSpec(6379, "redis") {
-  test("a redis client compares strings and counts bits with the commands of Redis 8.10")(lcsAndBits(redis_8_10))
+final class RedisStringClientSpec extends StringClientSpec(LiveServers.port(6379), "redis") {
+  since[Redis7_0]("a redis client compares strings and counts bits")(v => lcsAndBits(v))
 
-  test("a redis client deletes on a match, sets several keys with an expiry and increments within bounds with the commands of Redis 8.10") {
-    import laserdisc.redis_8_10.*
-    import laserdisc.protocol.StringP.Incremented
+  since[Redis8_4]("a redis client deletes on a match and sets several keys with an expiry") { v =>
+    import v.*
 
-    send(del("s:a", "s:b", "s:n", "s:f"))
+    send(del("s:a", "s:b"))
     send(set("s:a", "hello"))
     val hash = send(digest("s:a")).getOrElse(fail("expected a digest"))
     assertEquals(send(digest("s:none")), None)
@@ -45,7 +44,13 @@ final class RedisStringClientSpec extends StringClientSpec(6379, "redis") {
       send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1, Key("s:b") -> 2)), stringtypes.flag.nx, stringtypes.expiry.seconds(100L)))
     )
     assert(!send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1)), stringtypes.flag.nx)))
+  }
 
+  since[Redis8_8]("a redis client increments within bounds") { v =>
+    import v.*
+    import laserdisc.protocol.StringP.Incremented
+
+    send(del("s:n", "s:f"))
     assertEquals(send(increx("s:n")), Incremented(1L, 1L))
     assertEquals(send(increx("s:n", 5L, stringtypes.increx.int.expiry(stringtypes.expiry.seconds(100L)))), Incremented(6L, 5L))
     assertEquals(send(increx("s:n", 5L, stringtypes.increx.int.upperBound(7L))), Incremented(6L, 0L))
@@ -53,8 +58,8 @@ final class RedisStringClientSpec extends StringClientSpec(6379, "redis") {
     assertEquals(send(increx("s:f", 1.5, stringtypes.increx.float.lowerBound(0.0))), Incremented(1.5, 1.5))
   }
 
-  test("a redis client combines bits with DIFF, DIFF1, ANDOR and ONE with the commands of Redis 8.10") {
-    import laserdisc.redis_8_10.*
+  since[Redis8_2]("a redis client combines bits with DIFF, DIFF1, ANDOR and ONE") { v =>
+    import v.*
 
     send(del("s:x", "s:y", "s:z", "s:d"))
     val bf = stringtypes.bitfield
@@ -78,7 +83,7 @@ final class RedisStringClientSpec extends StringClientSpec(6379, "redis") {
   }
 }
 
-final class KeyDbStringClientSpec extends StringClientSpec(6380, "keyDb") {
+final class KeyDbStringClientSpec extends StringClientSpec(LiveServers.port(6380), "keyDb") {
   test("a keyDb client compares strings with STRALGO") {
     import laserdisc.redis_6_2.*
     import stringtypes.strAlgoInput
@@ -99,16 +104,22 @@ final class KeyDbStringClientSpec extends StringClientSpec(6380, "keyDb") {
   }
 }
 
-final class ValkeyStringClientSpec extends StringClientSpec(6381, "valkey") {
-  test("a valkey client compares strings and counts bits with the commands of Valkey 9.1")(lcsAndBits(valkey_9_1))
+final class ValkeyStringClientSpec extends StringClientSpec(LiveServers.port(6381), "valkey") {
+  since[Valkey7_2]("a valkey client compares strings and counts bits")(v => lcsAndBits(v))
 
-  test("a valkey client deletes on a match and sets several keys with an expiry with the commands of Valkey 9.1") {
-    import laserdisc.valkey_9_1.*
+  since[Valkey9_0]("a valkey client deletes on a match") { v =>
+    import v.*
 
     send(del("s:a", "s:b"))
     send(set("s:a", "hello"))
     assert(!send(delifeq("s:a", "nope")))
     assert(send(delifeq("s:a", "hello")))
+  }
+
+  since[Valkey9_1]("a valkey client sets several keys with an expiry") { v =>
+    import v.*
+
+    send(del("s:a", "s:b"))
     assert(
       send(msetex(OneOrMore.unsafeFrom(List(Key("s:a") -> 1, Key("s:b") -> 2)), stringtypes.flag.nx, stringtypes.expiry.millis(100000L)))
     )
@@ -116,7 +127,7 @@ final class ValkeyStringClientSpec extends StringClientSpec(6381, "valkey") {
   }
 }
 
-final class DragonflyStringClientSpec extends StringClientSpec(6382, "dragonfly")
+final class DragonflyStringClientSpec extends StringClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class StringClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol.Aux[A]): A =

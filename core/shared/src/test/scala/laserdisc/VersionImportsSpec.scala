@@ -784,6 +784,11 @@ final class VersionImportsSpec extends BaseSpec {
       assertEquals(myshardid.frames, frame("CLUSTER", "MYSHARDID"))
       assertEquals(slotstats(Slot(0), Slot(1)).frames, frame("CLUSTER", "SLOT-STATS", "SLOTSRANGE", "0", "1"))
       assert(compileErrors("""trimslots(ranges)""").nonEmpty)
+      assert(compileErrors("""slotstatsbymemory""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_4.*
+      assertEquals(slotstatsbymemory.frames, frame("CLUSTER", "SLOT-STATS", "ORDERBY", "memory-bytes"))
     }
     {
       import laserdisc.redis_8_10.*
@@ -796,6 +801,7 @@ final class VersionImportsSpec extends BaseSpec {
       import laserdisc.valkey_8_0.*
       assertEquals(setslot(Slot(0), NonNegLong(5L)).frames, frame("CLUSTER", "SETSLOT", "0", "STABLE", "TIMEOUT", "5"))
       assert(compileErrors("""replicatenoone""").nonEmpty)
+      assert(compileErrors("""slotstatsbymemory""").nonEmpty)
     }
     {
       import laserdisc.valkey_9_1.*

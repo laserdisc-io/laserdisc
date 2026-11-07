@@ -269,6 +269,23 @@ trait ClusterSlotStatsP extends Features {
     Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: metric *: "LIMIT" *: limit *: direction *: EmptyTuple).using(stats)
 }
 
+/** CLUSTER SLOT-STATS ordered by memory: Redis 8.4 */
+trait ClusterSlotStatsMemoryP extends Features {
+  import ClusterManagement.SlotStats
+
+  private final val stats = RESPRead.instance(ClusterManagement.slotStats)
+
+  /** The figures of this node's slots, ordered by the memory they use. This needs the server's `cluster-slot-stats-enabled` setting */
+  final val slotstatsbymemory: Single.Aux[Seq[SlotStats]] =
+    Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: "memory-bytes" *: EmptyTuple).using(stats)
+  final def slotstatsbymemory(limit: PosInt): Single.Aux[Seq[SlotStats]] =
+    Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: "memory-bytes" *: "LIMIT" *: limit *: EmptyTuple).using(stats)
+  final def slotstatsbymemory(direction: Direction): Single.Aux[Seq[SlotStats]] =
+    Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: "memory-bytes" *: direction *: EmptyTuple).using(stats)
+  final def slotstatsbymemory(limit: PosInt, direction: Direction): Single.Aux[Seq[SlotStats]] =
+    Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: "memory-bytes" *: "LIMIT" *: limit *: direction *: EmptyTuple).using(stats)
+}
+
 /** CLUSTER MIGRATION and TRIMSLOTS: Redis 8.4 */
 trait ClusterMigrationP extends Features {
   import ClusterManagement.{SlotMigration, slotRanges}
@@ -335,6 +352,13 @@ trait ClusterSlotMigrationsP extends Features {
   /** Moves the slots of each range from this node to `node` */
   final def migrateslots(ranges: OneOrMore[(Slot, Slot)], node: NodeId): Single.Aux[OK] =
     Protocol("CLUSTER", "MIGRATESLOTS" :: "SLOTSRANGE" :: slotRanges(ranges) ++ List("NODE", node.value)).as[Str, OK]
+
+  /** Moves several groups of slots at once, each to its own node. The server refuses ranges that overlap */
+  final def migrateslots(groups: OneOrMore[(OneOrMore[(Slot, Slot)], NodeId)]): Single.Aux[OK] =
+    Protocol(
+      "CLUSTER",
+      "MIGRATESLOTS" :: groups.value.flatMap { case (ranges, node) => "SLOTSRANGE" :: slotRanges(ranges) ++ List("NODE", node.value) }
+    ).as[Str, OK]
 
   /** The migrations in progress and those finished recently */
   final val getslotmigrations: Single.Aux[Seq[SlotMigration]] =

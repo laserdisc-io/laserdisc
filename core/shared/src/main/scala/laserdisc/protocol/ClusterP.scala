@@ -449,6 +449,7 @@ trait ClusterP
     with ClusterShardsP
     with ClusterMyShardIdP
     with ClusterSlotStatsP
+    with ClusterSlotStatsMemoryP
     with ClusterMigrationP
     with ClusterSetSlotTimeoutP
     with ClusterReplicateNoOneP

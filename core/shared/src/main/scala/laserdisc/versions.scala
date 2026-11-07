@@ -77,7 +77,7 @@ trait Cluster6_2       extends ClusterBaseP
 trait Cluster7_0       extends Cluster6_2 with ClusterSlotsMetadataP with ClusterShardsP
 trait Cluster7_2       extends Cluster7_0 with ClusterMyShardIdP
 trait Cluster8_2       extends Cluster7_2 with ClusterSlotStatsP
-trait Cluster8_4       extends Cluster8_2 with ClusterMigrationP
+trait Cluster8_4       extends Cluster8_2 with ClusterSlotStatsMemoryP with ClusterMigrationP
 trait ClusterValkey8_0 extends Cluster7_2 with ClusterSlotStatsP with ClusterSetSlotTimeoutP
 trait ClusterValkey9_0 extends ClusterValkey8_0 with ClusterReplicateNoOneP with ClusterSlotMigrationsP
 trait ClusterValkey9_1 extends ClusterValkey9_0 with ClusterScanP

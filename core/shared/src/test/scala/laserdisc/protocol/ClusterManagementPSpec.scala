@@ -28,6 +28,7 @@ final class ClusterManagementPSpec extends BaseSpec with ClusterP with ServerBac
   private def bulks(ss: String*): Arr = Arr(ss.map(Bulk(_)).toList)
   private val ranges                  = OneOrMore.unsafeFrom(List(Slot(0) -> Slot(8000), Slot(8001) -> Slot(16383)))
   private val nodeId                  = NodeId("ce876dfaff2bd8f5e0bb0492031638025a16d583")
+  private val otherNodeId             = NodeId("f58728d7657ee5029ef63532d343b982738a1eda")
 
   test("The Cluster protocol using myid, bumpepoch and the slot range commands sends and reads what Redis does") {
     assertEquals(myid.decode(Bulk(nodeId.value)), nodeId)
@@ -90,6 +91,18 @@ final class ClusterManagementPSpec extends BaseSpec with ClusterP with ServerBac
     slotstats(SlotStatsMetric.keyCount).decode(reply).onRight(_ == Seq(SlotStats(Slot(15495), Map("key-count" -> 1L, "cpu-usec" -> 7L))))
   }
 
+  test("The Cluster protocol using slotstatsbymemory sends the order, and reads each slot's figures") {
+    assertEquals(slotstatsbymemory.encode, bulks("CLUSTER", "SLOT-STATS", "ORDERBY", "memory-bytes"))
+    assertEquals(slotstatsbymemory(PosInt(2)).encode, bulks("CLUSTER", "SLOT-STATS", "ORDERBY", "memory-bytes", "LIMIT", "2"))
+    assertEquals(slotstatsbymemory(Direction.asc).encode, bulks("CLUSTER", "SLOT-STATS", "ORDERBY", "memory-bytes", "ASC"))
+    assertEquals(
+      slotstatsbymemory(PosInt(2), Direction.desc).encode,
+      bulks("CLUSTER", "SLOT-STATS", "ORDERBY", "memory-bytes", "LIMIT", "2", "DESC")
+    )
+    val reply = Arr(Arr(Num(0L), Arr(Bulk("key-count"), Num(1L), Bulk("memory-bytes"), Num(56L))))
+    slotstatsbymemory.decode(reply).onRight(_ == Seq(SlotStats(Slot(0), Map("key-count" -> 1L, "memory-bytes" -> 56L))))
+  }
+
   test("The Cluster protocol using Redis's migration and Valkey's slot migrations sends and reads them") {
     assertEquals(migration.importslots(ranges).encode, bulks("CLUSTER", "MIGRATION", "IMPORT", "0", "8000", "8001", "16383"))
     assertEquals(migration.cancel(Key("t1")).encode, bulks("CLUSTER", "MIGRATION", "CANCEL", "ID", "t1"))
@@ -100,6 +113,25 @@ final class ClusterManagementPSpec extends BaseSpec with ClusterP with ServerBac
     assertEquals(
       migrateslots(ranges, nodeId).encode,
       bulks("CLUSTER", "MIGRATESLOTS", "SLOTSRANGE", "0", "8000", "8001", "16383", "NODE", nodeId.value)
+    )
+    assertEquals(
+      migrateslots(OneOrMore.unsafeFrom(List(ranges -> nodeId, OneOrMore.unsafeFrom(List(Slot(9) -> Slot(9))) -> otherNodeId))).encode,
+      bulks(
+        "CLUSTER",
+        "MIGRATESLOTS",
+        "SLOTSRANGE",
+        "0",
+        "8000",
+        "8001",
+        "16383",
+        "NODE",
+        nodeId.value,
+        "SLOTSRANGE",
+        "9",
+        "9",
+        "NODE",
+        otherNodeId.value
+      )
     )
     assertEquals(getslotmigrations.decode(Arr(Nil)), Seq.empty)
     assertEquals(flushslot(Slot(1), FlushMode.async).encode, bulks("CLUSTER", "FLUSHSLOT", "1", "ASYNC"))

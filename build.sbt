@@ -167,7 +167,7 @@ lazy val core = laserdiscCrossModule("core", CrossType.Full)
     initialCommands := s"""
       |import laserdisc.*
       |import laserdisc.auto.*
-      |import laserdisc.all.*
+      |import laserdisc.redis_8_10.*
       |""".stripMargin
   )
 

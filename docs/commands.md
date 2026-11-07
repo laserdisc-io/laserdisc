@@ -68,6 +68,12 @@ in `laserdisc.redis_8_6.*` needs Redis 8.6.1 or later.
 KeyDB's latest release is based on Redis 6.2, so use `laserdisc.redis_6_2.*`. It
 doesn't have `LOLWUT`, and laserdisc doesn't have KeyDB's own commands.
 
+An import also works with later versions of its server, so use the import for
+the oldest version you run. When you upgrade, upgrade your servers first and
+change the import afterwards. A later import can send commands an older server
+doesn't have, and can't read some of its replies. For example,
+`laserdisc.redis_7_0.*` can't read `XAUTOCLAIM` from Redis 6.2.
+
 ## Dragonfly
 
 `laserdisc.dragonfly_2_0.*` has only what Dragonfly accepts. That leaves out, for

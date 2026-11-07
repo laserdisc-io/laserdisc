@@ -182,9 +182,9 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
 
   test("a cluster client reads the state of the cluster") {
     ids
-    waitUntil("the cluster being ready")(send(clusterinfo).cluster_state[String] == Right("ok"))
-    assertEquals(send(clusterinfo).cluster_known_nodes[String], Right("3"))
-    assertEquals(send(clusterinfo).cluster_slots_assigned[String], Right("16384"))
+    waitUntil("the cluster being ready")(send(clusterinfo).get[String]("cluster_state") == Right("ok"))
+    assertEquals(send(clusterinfo).get[String]("cluster_known_nodes"), Right("3"))
+    assertEquals(send(clusterinfo).get[String]("cluster_slots_assigned"), Right("16384"))
   }
 
   // sets the hostname on the master with the command given, then reads it back

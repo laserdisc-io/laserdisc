@@ -54,9 +54,9 @@ final class ServerPSpec extends BaseSpec with ServerP {
         InfoSection.errorstats,
         InfoSectionKey.Other("search_version")
       ) &&
-      sections(InfoSection.server).redis_version[String] == Right("8.10.3") &&
-      sections(InfoSection.server).executable[String] == Right("/data/redis-server") &&
-      sections(InfoSection.keyspace).db0[String] == Right("keys=1,expires=0,avg_ttl=0")
+      sections(InfoSection.server).get[String]("redis_version") == Right("8.10.3") &&
+      sections(InfoSection.server).get[String]("executable") == Right("/data/redis-server") &&
+      sections(InfoSection.keyspace).get[String]("db0") == Right("keys=1,expires=0,avg_ttl=0")
     }
     assertEquals(info(servertypes.info.keysizes).encode, Arr(Bulk("INFO"), Bulk("keysizes")))
     assertEquals(info(servertypes.info.latencystats).encode, Arr(Bulk("INFO"), Bulk("latencystats")))
@@ -105,7 +105,7 @@ final class ServerPSpec extends BaseSpec with ServerP {
 
   test("The Server protocol using client.info reads the client's fields") {
     client.info.decode(Bulk("id=3 addr=127.0.0.1:50000 name=me db=0\n")).onRight { case ClientInfo(parameters) =>
-      parameters.id[String] == Right("3") && parameters.name[String] == Right("me")
+      parameters.get[String]("id") == Right("3") && parameters.get[String]("name") == Right("me")
     }
   }
 
@@ -333,5 +333,11 @@ final class ServerPSpec extends BaseSpec with ServerP {
     assert(role.decode(Arr(Bulk("nope"), Num(0L), Arr(Nil))).isLeft)
     assert(role.decode(Arr(Bulk("sentinel"), Num(0L), Arr(Nil))).isLeft)
     assert(role.decode(Arr(Bulk("master"), Num(0L))).isLeft)
+  }
+
+  test("The Server protocol using client.info says which field is missing") {
+    client.info.decode(Bulk("id=3")).onRight { clientInfo =>
+      clientInfo.parameters.get[String]("name").left.map(_.getMessage) == Left("no field name")
+    }
   }
 }

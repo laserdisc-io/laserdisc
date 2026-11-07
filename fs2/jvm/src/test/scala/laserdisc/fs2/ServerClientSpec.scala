@@ -58,7 +58,8 @@ final class ValkeyServerClientSpec extends ServerClientSpec(6381, "valkey") {
     val me    = send(v.client.id)
     val mine  = OneOrMore.unsafeFrom(List(me))
     assertEquals(send(v.client.setname("ld-filter")), OK)
-    def ids(protocol: Protocol.Aux[ConnectedClients]) = send(protocol).clients.map(_.id[String].fold(e => fail(e.getMessage), identity))
+    def ids(protocol: Protocol.Aux[ConnectedClients]) =
+      send(protocol).clients.map(_.get[String]("id").fold(e => fail(e.getMessage), identity))
 
     assertEquals(ids(v.client.list(servertypes.clientFilter.user("default").skipMe(false).id(me))), Seq(me.value.toString))
     assertEquals(ids(v.client.list(v.client.ids(mine).skipMe(false))), Seq(me.value.toString))
@@ -116,9 +117,9 @@ abstract class ServerClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assertEquals(send(clientCommands.kill(servertypes.clientFilter.id(999999L), 60L)).value, 0L)
 
     val settings = send(config.get(OneOrMore.unsafeFrom(List(GlobPattern("maxmemory-samples"), GlobPattern("timeout")))))
-    val samples  = settings.parameters.`maxmemory-samples`[String].fold(e => fail(e.getMessage), identity)
+    val samples  = settings.parameters.get[String]("maxmemory-samples").fold(e => fail(e.getMessage), identity)
     assertEquals(send(config.set(OneOrMore.unsafeFrom(List(Key("maxmemory-samples") -> samples)))), OK)
-    assert(settings.parameters.timeout[String].isRight)
+    assert(settings.parameters.get[String]("timeout").isRight)
 
     assertEquals(
       send(info(OneOrMore.unsafeFrom(List(servertypes.info.server, servertypes.info.cpu)))).sections.keySet,
@@ -132,10 +133,10 @@ abstract class ServerClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
 
     val all = send(info).sections
     assert(all.contains(InfoSection.server) && all.contains(InfoSection.keyspace))
-    assert(send(info(servertypes.info.server)).sections(InfoSection.server).redis_version[String].isRight)
+    assert(send(info(servertypes.info.server)).sections(InfoSection.server).get[String]("redis_version").isRight)
 
     val id = send(v.client.id)
-    assert(send(v.client.info).parameters.id[String] == Right(id.value.toString))
+    assert(send(v.client.info).parameters.get[String]("id") == Right(id.value.toString))
     assert(send(v.client.list(OneOrMore.unsafeFrom(List(id)))).clients.size == 1)
     assert(send(v.client.list(servertypes.clientType.normal)).clients.nonEmpty)
     assertEquals(send(v.client.kill(servertypes.clientFilter.id(999999L))).value, 0L)

@@ -24,17 +24,12 @@ package protocol
 
 import Protocol.Single
 
-import scala.annotation.nowarn
-
-@nowarn("msg=Unused import")
 object ClusterP {
-  import scala.language.dynamics
-
-  final class Info(private val properties: Map[String, String]) extends AnyVal with Dynamic {
-    def selectDynamic[A](field: String)(implicit R: Read[String, A]): Maybe[A] =
+  final class Info(private val properties: Map[String, String]) extends AnyVal {
+    def get[A](field: String)(implicit R: Read[String, A]): Maybe[A] =
       properties
         .get(field)
-        .toRight(RESPDecErr(s"no key $field of the expected type found"))
+        .toRight(RESPDecErr(s"no field $field"))
         .flatMap(R.read)
         .widenLeft[Throwable]
   }

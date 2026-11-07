@@ -24,11 +24,7 @@ package protocol
 
 import Protocol.Single
 
-import scala.annotation.nowarn
-
-@nowarn("msg=Unused import")
 object ServerP {
-  import scala.language.dynamics
 
   /** The name of a section in INFO's reply: one laserdisc names, or `Other` for one it doesn't, like a module's or KeyDB's */
   sealed trait InfoSectionKey
@@ -176,11 +172,11 @@ object ServerP {
       Read[OneOf[MasterReply *: SlaveReply *: SentinelReply *: EmptyTuple], Role]
   }
 
-  final class Parameters(private val properties: Map[String, String]) extends AnyVal with Dynamic {
-    def selectDynamic[A](field: String)(implicit R: Read[String, A]): Maybe[A] =
+  final class Parameters(private val properties: Map[String, String]) extends AnyVal {
+    def get[A](field: String)(implicit R: Read[String, A]): Maybe[A] =
       properties
         .get(field)
-        .toRight(RESPDecErr(s"no key $field of the provided type found"))
+        .toRight(RESPDecErr(s"no field $field"))
         .flatMap(R.read)
         .widenLeft[Throwable]
   }

@@ -204,6 +204,17 @@ lazy val fs2 = laserdiscCrossModule("fs2", CrossType.Full)
       "org.typelevel"  %%% "munit-cats-effect" % V.`munit-cats-effect` % Test
     )
   )
+
+// tests against real servers: not in the root's aggregate, so that `test` needs no containers. See docs/contributing.md
+lazy val integration = laserdiscCrossModule("integration", CrossType.Full)
+  .dependsOn(fs2)
+  .enablePlugins(NoPublishPlugin)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.scalameta" %%% "munit"             % V.munit               % Test,
+      "org.typelevel" %%% "munit-cats-effect" % V.`munit-cats-effect` % Test
+    )
+  )
   .jvmSettings(
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "2.12") Seq.empty

@@ -72,13 +72,14 @@ final class VersionImportsSpec extends BaseSpec {
     assert(compileErrors("""set("a", 2, stringtypes.expiry.persist)""").nonEmpty)
   }
 
-  test("a value without a Show gives laserdisc's message for set, and a type mismatch for setget") {
+  test("a value without a Show says so, for set and for setget") {
     import laserdisc.redis_8_10.*
     import laserdisc.auto.*
 
     assertEquals(set("a", 2).frames, frame("SET", "a", "2"))
     assert(compileErrors("""set("a", NoShow(1))""").contains("Show"))
-    assert(compileErrors("""setget[Int]("a", NoShow(1))""").nonEmpty)
+    assume(isScala3, "Scala 2 reports setget's only when the code is fully compiled, which compileErrors doesn't do")
+    assert(compileErrors("""setget[Int]("a", NoShow(1))""").contains("Show[NoShow]"))
   }
 
   test("redis_6_2 has setget, but not with NX or XX") {

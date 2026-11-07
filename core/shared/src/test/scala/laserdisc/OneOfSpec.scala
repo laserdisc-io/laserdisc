@@ -107,11 +107,11 @@ final class OneOfSpec extends BaseSpec {
 
   test("each alternative is listed once, as in a union") {
     assume(isScala3, "Scala 2 reports it only when the code is fully compiled, which compileErrors doesn't do")
-    val listedTwice = "The alternatives of a OneOf must be distinct types: one of them is listed more than once"
-    val twice       = compileErrors("""Protocol("CUSTOM", _: String *: EmptyTuple).as[OneOf[Bulk *: Bulk *: EmptyTuple], String]""")
-    val apart       =
+    def listedTwice(name: String) = s"The alternatives of a OneOf must be distinct types: $name is listed more than once"
+    val twice = compileErrors("""Protocol("CUSTOM", _: String *: EmptyTuple).as[OneOf[Bulk *: Bulk *: EmptyTuple], String]""")
+    val apart =
       compileErrors("""Protocol("CUSTOM", _: String *: EmptyTuple).as[OneOf[NullBulk *: Bulk *: NullBulk *: EmptyTuple], Option[String]]""")
-    assert(twice.contains(listedTwice), twice)
-    assert(apart.contains(listedTwice), apart)
+    assert(twice.contains(listedTwice("Bulk")), twice)
+    assert(apart.contains(listedTwice("NullBulk")), apart)
   }
 }

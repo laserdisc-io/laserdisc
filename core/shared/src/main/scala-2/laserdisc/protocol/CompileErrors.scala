@@ -23,10 +23,36 @@ package laserdisc
 package protocol
 
 import scala.annotation.compileTimeOnly
+import scala.language.experimental.macros
+import scala.reflect.macros.blackbox
 
 // found only when `H` is listed again, so that the error says so instead of the generic one about the reply's RESPRead, several implicits
 // up: the search succeeds, and using what it found doesn't compile (shapeless's @implicitAmbiguous is lost that deep)
 private[protocol] trait NotInListedTwice {
-  @compileTimeOnly("The alternatives of a OneOf must be distinct types: one of them is listed more than once")
-  implicit final def listedTwice[H, T <: Tuple]: NotIn[H, H *: T] = throw new IllegalStateException("never called: it doesn't compile")
+  implicit final def listedTwice[H, T <: Tuple]: NotIn[H, H *: T] = macro CompileErrors.listedTwice[H]
+}
+
+// found only when there's no Show for `A`, so that the error says so instead of a type mismatch with Value
+private[protocol] trait ValueWithoutShow {
+  implicit final def withoutShow[A](a: A): Value = macro CompileErrors.withoutShow[A]
+}
+
+// what these expand to doesn't compile. An error raised here would be lost in the implicit search, one found on what's left isn't
+object CompileErrors {
+  private def failing(c: blackbox.Context)(message: String): c.Tree = {
+    import c.universe._
+    q"""{
+      @_root_.scala.annotation.compileTimeOnly($message)
+      def compileError: _root_.scala.Nothing = throw new _root_.java.lang.IllegalStateException("never called: it doesn't compile")
+      compileError
+    }"""
+  }
+
+  def listedTwice[H: c.WeakTypeTag](c: blackbox.Context): c.Tree =
+    failing(c)(s"The alternatives of a OneOf must be distinct types: ${c.weakTypeOf[H]} is listed more than once")
+
+  def withoutShow[A: c.WeakTypeTag](c: blackbox.Context)(a: c.Tree): c.Tree = {
+    val _ = a
+    failing(c)(s"Implicit not found Show[${c.weakTypeOf[A]}], to send it as a value")
+  }
 }

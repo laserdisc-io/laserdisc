@@ -22,11 +22,28 @@
 package laserdisc
 package protocol
 
-import scala.compiletime.error
+import scala.quoted.*
 
 // found only when `H` is listed again, so that the error says so instead of the generic one about the reply's RESPRead, several implicits
 // up: the search succeeds, and expanding what it found doesn't compile
 private[protocol] trait NotInListedTwice {
-  inline implicit final def listedTwice[H, T <: Tuple]: NotIn[H, H *: T] =
-    error("The alternatives of a OneOf must be distinct types: one of them is listed more than once")
+  inline implicit final def listedTwice[H, T <: Tuple]: NotIn[H, H *: T] = ${ CompileErrors.listedTwice[H, NotIn[H, H *: T]] }
+}
+
+// found only when there's no Show for `A`, so that the error says so instead of a type mismatch with Value
+private[protocol] trait ValueWithoutShow {
+  inline implicit final def withoutShow[A](a: A): Value = ${ CompileErrors.withoutShow[A] }
+}
+
+object CompileErrors {
+  private def name[A: Type](using q: Quotes): String = {
+    import q.reflect.*
+    TypeRepr.of[A].show(using Printer.TypeReprShortCode)
+  }
+
+  def listedTwice[H: Type, R: Type](using q: Quotes): Expr[R] =
+    q.reflect.report.errorAndAbort(s"The alternatives of a OneOf must be distinct types: ${name[H]} is listed more than once")
+
+  def withoutShow[A: Type](using q: Quotes): Expr[Value] =
+    q.reflect.report.errorAndAbort(s"Implicit not found Show[${name[A]}], to send it as a value")
 }

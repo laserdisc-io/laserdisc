@@ -25,6 +25,6 @@ package protocol
 /** A value to send, for commands where you also choose the type of the reply: anything with a [[Show]] converts to it */
 final class Value(val shown: String) extends AnyVal
 
-object Value {
+object Value extends ValueWithoutShow {
   implicit final def fromShow[A](a: A)(implicit A: Show[A]): Value = new Value(A.show(a))
 }

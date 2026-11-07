@@ -84,7 +84,8 @@ val startUpRedisServers = List(
     name = Some("Start up Dragonfly")
   ),
   WorkflowStep.Run(
-    commands = List("docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated"),
+    commands =
+      List("docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated"),
     name = Some("Start up Dragonfly in cluster mode")
   ),
   startUpCluster("Redis", "redis:alpine", "redis-server", 7100),
@@ -153,10 +154,11 @@ lazy val core = laserdiscCrossModule("core", CrossType.Full)
         Seq("org.scodec" %%% "scodec-core" % V.`scodec-core_scala3`, "io.github.iltotore" %%% "iron" % V.iron)
       else
         Seq(
-          "org.scodec"  %%% "scodec-core"        % V.`scodec-core_scala2`,
-          "com.chuusai" %%% "shapeless"          % V.shapeless,
-          "eu.timepit"  %%% "refined"            % V.refined,
-          "eu.timepit"  %%% "refined-scalacheck" % V.refined % Test
+          "org.scodec"   %%% "scodec-core"        % V.`scodec-core_scala2`,
+          "com.chuusai"  %%% "shapeless"          % V.shapeless,
+          "eu.timepit"   %%% "refined"            % V.refined,
+          "org.scala-lang" % "scala-reflect"      % scalaVersion.value,
+          "eu.timepit"   %%% "refined-scalacheck" % V.refined % Test
         )
     }
   )

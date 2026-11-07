@@ -39,20 +39,6 @@ final class HyperLogLogExtPSpec extends HyperLogLogPSpec with ExtPArguments {
       assertEquals(protocol.decode(boolToNum(b)), b)
     }
   }
-  property("The HyperLogLog extended protocol using pfadd roundtrips successfully given key and element1, element2, element3") {
-    forAll { (k: Key, e1: Key, e2: Key, e3: Key, b: Boolean) =>
-      val protocol = pfadd(k, e1, e2, e3)
-      assertEquals(protocol.encode, Arr(Bulk("PFADD"), Bulk(k), Bulk(e1), Bulk(e2), Bulk(e3)))
-      assertEquals(protocol.decode(boolToNum(b)), b)
-    }
-  }
-  property("The HyperLogLog extended protocol using pfadd roundtrips successfully given key and element1, element2, element3, element4") {
-    forAll { (k: Key, e1: Key, e2: Key, e3: Key, e4: Key, b: Boolean) =>
-      val protocol = pfadd(k, e1, e2, e3, e4)
-      assertEquals(protocol.encode, Arr(Bulk("PFADD"), Bulk(k), Bulk(e1), Bulk(e2), Bulk(e3), Bulk(e4)))
-      assertEquals(protocol.decode(boolToNum(b)), b)
-    }
-  }
   property(
     "The HyperLogLog extended protocol using pfadd roundtrips successfully given key and element1, element2, element3, element4, element5"
   ) {
@@ -73,27 +59,6 @@ final class HyperLogLogExtPSpec extends HyperLogLogPSpec with ExtPArguments {
     forAll { (k1: Key, k2: Key, nni: NonNegInt) =>
       val protocol = pfcount(k1, k2)
       assertEquals(protocol.encode, Arr(Bulk("PFCOUNT"), Bulk(k1), Bulk(k2)))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
-    }
-  }
-  property("The HyperLogLog extended protocol using pfcount roundtrips successfully given key1, key2, key3") {
-    forAll { (k1: Key, k2: Key, k3: Key, nni: NonNegInt) =>
-      val protocol = pfcount(k1, k2, k3)
-      assertEquals(protocol.encode, Arr(Bulk("PFCOUNT"), Bulk(k1), Bulk(k2), Bulk(k3)))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
-    }
-  }
-  property("The HyperLogLog extended protocol using pfcount roundtrips successfully given key1, key2, key3, key4") {
-    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, nni: NonNegInt) =>
-      val protocol = pfcount(k1, k2, k3, k4)
-      assertEquals(protocol.encode, Arr(Bulk("PFCOUNT"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4)))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
-    }
-  }
-  property("The HyperLogLog extended protocol using pfcount roundtrips successfully given key1, key2, key3, key4, key5") {
-    forAll { (k1: Key, k2: Key, k3: Key, k4: Key, k5: Key, nni: NonNegInt) =>
-      val protocol = pfcount(k1, k2, k3, k4, k5)
-      assertEquals(protocol.encode, Arr(Bulk("PFCOUNT"), Bulk(k1), Bulk(k2), Bulk(k3), Bulk(k4), Bulk(k5)))
       assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
   }
@@ -133,51 +98,14 @@ final class HyperLogLogExtPSpec extends HyperLogLogPSpec with ExtPArguments {
   }
 
   //format: off
-  test("The HyperLogLog extended protocol using pfadd sends in order from 1 to 21 elements") {
+  test("The HyperLogLog extended protocol using pfadd sends in order any number of elements") {
     assertEquals(pfadd(k, k1).encode, frame("PFADD", "k", "k1"))
     assertEquals(pfadd(k, k1, k2).encode, frame("PFADD", "k", "k1", "k2"))
-    assertEquals(pfadd(k, k1, k2, k3).encode, frame("PFADD", "k", "k1", "k2", "k3"))
-    assertEquals(pfadd(k, k1, k2, k3, k4).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19"))
-    assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20"))
     assertEquals(pfadd(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21).encode, frame("PFADD", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21"))
   }
-  test("The HyperLogLog extended protocol using pfcount sends in order from 1 to 22 keys") {
+  test("The HyperLogLog extended protocol using pfcount sends in order any number of keys") {
     assertEquals(pfcount(k1).encode, frame("PFCOUNT", "k1"))
     assertEquals(pfcount(k1, k2).encode, frame("PFCOUNT", "k1", "k2"))
-    assertEquals(pfcount(k1, k2, k3).encode, frame("PFCOUNT", "k1", "k2", "k3"))
-    assertEquals(pfcount(k1, k2, k3, k4).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20"))
-    assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21"))
     assertEquals(pfcount(k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21, k22).encode, frame("PFCOUNT", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21", "k22"))
   }
   test("The HyperLogLog extended protocol using pfmerge sends in order from 2 to 21 keys") {

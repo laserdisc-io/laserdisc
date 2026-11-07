@@ -29,135 +29,15 @@ trait GeoExtP { this: GeoBaseP =>
 
   //format: off
   //GEOADD
-  final def geoadd(key: Key, position1: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition, position12: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: position12 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition, position12: GeoPosition, position13: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: position12 :: position13 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition, position12: GeoPosition, position13: GeoPosition, position14: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: position12 :: position13 :: position14 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition, position12: GeoPosition, position13: GeoPosition, position14: GeoPosition, position15: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: position12 :: position13 :: position14 :: position15 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition, position12: GeoPosition, position13: GeoPosition, position14: GeoPosition, position15: GeoPosition, position16: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: position12 :: position13 :: position14 :: position15 :: position16 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition, position12: GeoPosition, position13: GeoPosition, position14: GeoPosition, position15: GeoPosition, position16: GeoPosition, position17: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: position12 :: position13 :: position14 :: position15 :: position16 :: position17 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition, position12: GeoPosition, position13: GeoPosition, position14: GeoPosition, position15: GeoPosition, position16: GeoPosition, position17: GeoPosition, position18: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: position12 :: position13 :: position14 :: position15 :: position16 :: position17 :: position18 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition, position12: GeoPosition, position13: GeoPosition, position14: GeoPosition, position15: GeoPosition, position16: GeoPosition, position17: GeoPosition, position18: GeoPosition, position19: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: position12 :: position13 :: position14 :: position15 :: position16 :: position17 :: position18 :: position19 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition, position12: GeoPosition, position13: GeoPosition, position14: GeoPosition, position15: GeoPosition, position16: GeoPosition, position17: GeoPosition, position18: GeoPosition, position19: GeoPosition, position20: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: position12 :: position13 :: position14 :: position15 :: position16 :: position17 :: position18 :: position19 :: position20 :: Nil))
-  final def geoadd(key: Key, position1: GeoPosition, position2: GeoPosition, position3: GeoPosition, position4: GeoPosition, position5: GeoPosition, position6: GeoPosition, position7: GeoPosition, position8: GeoPosition, position9: GeoPosition, position10: GeoPosition, position11: GeoPosition, position12: GeoPosition, position13: GeoPosition, position14: GeoPosition, position15: GeoPosition, position16: GeoPosition, position17: GeoPosition, position18: GeoPosition, position19: GeoPosition, position20: GeoPosition, position21: GeoPosition): Single.Aux[NonNegInt] =
-    geoadd(key, OneOrMore.unsafeFrom(position1 :: position2 :: position3 :: position4 :: position5 :: position6 :: position7 :: position8 :: position9 :: position10 :: position11 :: position12 :: position13 :: position14 :: position15 :: position16 :: position17 :: position18 :: position19 :: position20 :: position21 :: Nil))
+  final def geoadd(key: Key, position: GeoPosition, positions: GeoPosition*): Single.Aux[NonNegInt] =
+    geoadd(key, OneOrMore.unsafeFrom(position :: positions.toList))
 
   //GEOHASH
-  final def geohash(key: Key, member1: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key, member17: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key, member17: Key, member18: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key, member17: Key, member18: Key, member19: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key, member17: Key, member18: Key, member19: Key, member20: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: member20 :: Nil))
-  final def geohash(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key, member17: Key, member18: Key, member19: Key, member20: Key, member21: Key): Single.Aux[Seq[Option[GeoHash]]] =
-    geohash(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: member20 :: member21 :: Nil))
+  final def geohash(key: Key, member: Key, members: Key*): Single.Aux[Seq[Option[GeoHash]]] =
+    geohash(key, OneOrMoreKeys.unsafeFrom(member :: members.toList))
 
   //GEOPOS
-  final def geopos(key: Key, member1: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key, member17: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key, member17: Key, member18: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key, member17: Key, member18: Key, member19: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key, member17: Key, member18: Key, member19: Key, member20: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: member20 :: Nil))
-  final def geopos(key: Key, member1: Key, member2: Key, member3: Key, member4: Key, member5: Key, member6: Key, member7: Key, member8: Key, member9: Key, member10: Key, member11: Key, member12: Key, member13: Key, member14: Key, member15: Key, member16: Key, member17: Key, member18: Key, member19: Key, member20: Key, member21: Key): Single.Aux[Seq[Option[GeoCoordinates]]] =
-    geopos(key, OneOrMoreKeys.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: member20 :: member21 :: Nil))
+  final def geopos(key: Key, member: Key, members: Key*): Single.Aux[Seq[Option[GeoCoordinates]]] =
+    geopos(key, OneOrMoreKeys.unsafeFrom(member :: members.toList))
   //format: on
 }

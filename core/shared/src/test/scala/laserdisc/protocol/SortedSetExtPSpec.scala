@@ -203,27 +203,9 @@ final class SortedSetExtPSpec extends BaseSpec with SortedSetP with ExtPArgument
     assertEquals(zinterstore(k1, s1, k2, s2, k3, s3, k4, s4, k5, s5, k6, s6, k7, s7, k8, s8, k9, s9, k10, s10, k11, s11, k12, s12, k13, s13, k14, s14, k15, s15, k16, s16, k17, s17, k18, s18, k19, s19, d, aggregate).encode, frame("ZINTERSTORE", "d", "19", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "WEIGHTS", "1.5", "2.5", "3.5", "4.5", "5.5", "6.5", "7.5", "8.5", "9.5", "10.5", "11.5", "12.5", "13.5", "14.5", "15.5", "16.5", "17.5", "18.5", "19.5", "AGGREGATE", "MAX"))
     assertEquals(zinterstore(k1, s1, k2, s2, k3, s3, k4, s4, k5, s5, k6, s6, k7, s7, k8, s8, k9, s9, k10, s10, k11, s11, k12, s12, k13, s13, k14, s14, k15, s15, k16, s16, k17, s17, k18, s18, k19, s19, k20, s20, d, aggregate).encode, frame("ZINTERSTORE", "d", "20", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "WEIGHTS", "1.5", "2.5", "3.5", "4.5", "5.5", "6.5", "7.5", "8.5", "9.5", "10.5", "11.5", "12.5", "13.5", "14.5", "15.5", "16.5", "17.5", "18.5", "19.5", "20.5", "AGGREGATE", "MAX"))
   }
-  test("The SortedSet extended protocol using zrem sends in order from 1 to 21 members") {
+  test("The SortedSet extended protocol using zrem sends in order any number of members") {
     assertEquals(zrem(k, m1).encode, frame("ZREM", "k", "m1"))
     assertEquals(zrem(k, m1, m2).encode, frame("ZREM", "k", "m1", "m2"))
-    assertEquals(zrem(k, m1, m2, m3).encode, frame("ZREM", "k", "m1", "m2", "m3"))
-    assertEquals(zrem(k, m1, m2, m3, m4).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18", "m19"))
-    assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18", "m19", "m20"))
     assertEquals(zrem(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21).encode, frame("ZREM", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18", "m19", "m20", "m21"))
   }
   test("The SortedSet extended protocol using zunionstore sends in order from 2 to 21 keys") {

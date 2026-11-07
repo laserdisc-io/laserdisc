@@ -28,92 +28,12 @@ trait SetExtP { this: SetBaseP =>
 
   //format: off
   //SADD
-  final def sadd[A: Show](key: Key, member1: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A, member19: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A, member19: A, member20: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: member20 :: Nil))
-  final def sadd[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A, member19: A, member20: A, member21: A): Single.Aux[NonNegInt] =
-    sadd(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: member20 :: member21 :: Nil))
+  final def sadd[A: Show](key: Key, member: A, members: A*): Single.Aux[NonNegInt] =
+    sadd(key, OneOrMore.unsafeFrom(member :: members.toList))
 
   //SDIFF
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: Nil))
-  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key, key22: Key): Single.Aux[Seq[A]] =
-    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: key22 :: Nil))
+  final def sdiff[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[A]] =
+    sdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
 
   //SDIFFSTORE
   final def sdiffstore(key1: Key, key2: Key, destinationKey: Key): Single.Aux[NonNegInt] =
@@ -158,48 +78,8 @@ trait SetExtP { this: SetBaseP =>
     sdiffstore(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: Nil), destinationKey)
 
   //SINTER
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: Nil))
-  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key, key22: Key): Single.Aux[Seq[A]] =
-    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: key22 :: Nil))
+  final def sinter[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[A]] =
+    sinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
 
   //SINTERSTORE
   final def sinterstore(key1: Key, key2: Key, destinationKey: Key): Single.Aux[NonNegInt] =
@@ -244,92 +124,12 @@ trait SetExtP { this: SetBaseP =>
     sinterstore(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: Nil), destinationKey)
 
   //SREM
-  final def srem[A: Show](key: Key, member1: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A, member19: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A, member19: A, member20: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: member20 :: Nil))
-  final def srem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A, member19: A, member20: A, member21: A): Single.Aux[NonNegInt] =
-    srem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: member20 :: member21 :: Nil))
+  final def srem[A: Show](key: Key, member: A, members: A*): Single.Aux[NonNegInt] =
+    srem(key, OneOrMore.unsafeFrom(member :: members.toList))
 
   //SUNION
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: Nil))
-  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, key3: Key, key4: Key, key5: Key, key6: Key, key7: Key, key8: Key, key9: Key, key10: Key, key11: Key, key12: Key, key13: Key, key14: Key, key15: Key, key16: Key, key17: Key, key18: Key, key19: Key, key20: Key, key21: Key, key22: Key): Single.Aux[Seq[A]] =
-    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: key3 :: key4 :: key5 :: key6 :: key7 :: key8 :: key9 :: key10 :: key11 :: key12 :: key13 :: key14 :: key15 :: key16 :: key17 :: key18 :: key19 :: key20 :: key21 :: key22 :: Nil))
+  final def sunion[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[A]] =
+    sunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
 
   //SUNIONSTORE
   final def sunionstore(key1: Key, key2: Key, destinationKey: Key): Single.Aux[NonNegInt] =

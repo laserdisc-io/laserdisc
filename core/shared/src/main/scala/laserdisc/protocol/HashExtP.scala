@@ -27,48 +27,8 @@ import Protocol.Single
 trait HashExtP { this: HashBaseP =>
   //format: off
   //HDEL
-  final def hdel(key: Key, field1: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key, field17: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key, field17: Key, field18: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key, field17: Key, field18: Key, field19: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: field19 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key, field17: Key, field18: Key, field19: Key, field20: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: field19 :: field20 :: Nil))
-  final def hdel(key: Key, field1: Key, field2: Key, field3: Key, field4: Key, field5: Key, field6: Key, field7: Key, field8: Key, field9: Key, field10: Key, field11: Key, field12: Key, field13: Key, field14: Key, field15: Key, field16: Key, field17: Key, field18: Key, field19: Key, field20: Key, field21: Key): Single.Aux[NonNegInt] =
-    hdel(key, OneOrMoreKeys.unsafeFrom(field1 :: field2 :: field3 :: field4 :: field5 :: field6 :: field7 :: field8 :: field9 :: field10 :: field11 :: field12 :: field13 :: field14 :: field15 :: field16 :: field17 :: field18 :: field19 :: field20 :: field21 :: Nil))
+  final def hdel(key: Key, field: Key, fields: Key*): Single.Aux[NonNegInt] =
+    hdel(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   //HMGET
   final def hmget[A1](key: Key, field1: Key)(

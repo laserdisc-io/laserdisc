@@ -39,27 +39,6 @@ final class HashExtPSpec extends HashPSpec with ExtPArguments {
       assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
   }
-  property("The Hash extended protocol using hdel roundtrips successfully given key and field1, field2, field3") {
-    forAll { (k: Key, f1: Key, f2: Key, f3: Key, nni: NonNegInt) =>
-      val protocol = hdel(k, f1, f2, f3)
-      assertEquals(protocol.encode, Arr(Bulk("HDEL"), Bulk(k), Bulk(f1), Bulk(f2), Bulk(f3)))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
-    }
-  }
-  property("The Hash extended protocol using hdel roundtrips successfully given key and field1, field2, field3, field4") {
-    forAll { (k: Key, f1: Key, f2: Key, f3: Key, f4: Key, nni: NonNegInt) =>
-      val protocol = hdel(k, f1, f2, f3, f4)
-      assertEquals(protocol.encode, Arr(Bulk("HDEL"), Bulk(k), Bulk(f1), Bulk(f2), Bulk(f3), Bulk(f4)))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
-    }
-  }
-  property("The Hash extended protocol using hdel roundtrips successfully given key and field1, field2, field3, field4, field5") {
-    forAll { (k: Key, f1: Key, f2: Key, f3: Key, f4: Key, f5: Key, nni: NonNegInt) =>
-      val protocol = hdel(k, f1, f2, f3, f4, f5)
-      assertEquals(protocol.encode, Arr(Bulk("HDEL"), Bulk(k), Bulk(f1), Bulk(f2), Bulk(f3), Bulk(f4), Bulk(f5)))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
-    }
-  }
   property("The Hash extended protocol using hmget roundtrips successfully given key and field1") {
     forAll { (k: Key, f1: Key) =>
       forAll { (v1: Int) =>
@@ -158,27 +137,9 @@ final class HashExtPSpec extends HashPSpec with ExtPArguments {
   }
 
   //format: off
-  test("The Hash extended protocol using hdel sends in order from 1 to 21 fields") {
+  test("The Hash extended protocol using hdel sends in order any number of fields") {
     assertEquals(hdel(k, k1).encode, frame("HDEL", "k", "k1"))
     assertEquals(hdel(k, k1, k2).encode, frame("HDEL", "k", "k1", "k2"))
-    assertEquals(hdel(k, k1, k2, k3).encode, frame("HDEL", "k", "k1", "k2", "k3"))
-    assertEquals(hdel(k, k1, k2, k3, k4).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19"))
-    assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20"))
     assertEquals(hdel(k, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21).encode, frame("HDEL", "k", "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20", "k21"))
   }
   test("The Hash extended protocol using hmget sends in order from 1 to 7 fields") {

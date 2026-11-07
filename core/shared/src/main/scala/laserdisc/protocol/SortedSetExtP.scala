@@ -365,48 +365,8 @@ trait SortedSetExtP { this: SortedSetBaseP =>
     zinterstoreweighted(TwoOrMoreWeightedKeys.unsafeFrom((key1 -> weight1) :: (key2 -> weight2) :: (key3 -> weight3) :: (key4 -> weight4) :: (key5 -> weight5) :: (key6 -> weight6) :: (key7 -> weight7) :: (key8 -> weight8) :: (key9 -> weight9) :: (key10 -> weight10) :: (key11 -> weight11) :: (key12 -> weight12) :: (key13 -> weight13) :: (key14 -> weight14) :: (key15 -> weight15) :: (key16 -> weight16) :: (key17 -> weight17) :: (key18 -> weight18) :: (key19 -> weight19) :: (key20 -> weight20) :: Nil), destinationKey, aggregate)
 
   //ZREM
-  final def zrem[A: Show](key: Key, member1: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A, member19: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A, member19: A, member20: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: member20 :: Nil))
-  final def zrem[A: Show](key: Key, member1: A, member2: A, member3: A, member4: A, member5: A, member6: A, member7: A, member8: A, member9: A, member10: A, member11: A, member12: A, member13: A, member14: A, member15: A, member16: A, member17: A, member18: A, member19: A, member20: A, member21: A): Single.Aux[NonNegInt] =
-    zrem(key, OneOrMore.unsafeFrom(member1 :: member2 :: member3 :: member4 :: member5 :: member6 :: member7 :: member8 :: member9 :: member10 :: member11 :: member12 :: member13 :: member14 :: member15 :: member16 :: member17 :: member18 :: member19 :: member20 :: member21 :: Nil))
+  final def zrem[A: Show](key: Key, member: A, members: A*): Single.Aux[NonNegInt] =
+    zrem(key, OneOrMore.unsafeFrom(member :: members.toList))
 
   //ZUNIONSTORE with no weights
   final def zunionstore(key1: Key, key2: Key, destinationKey: Key): Single.Aux[NonNegInt] =

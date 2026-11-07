@@ -28,91 +28,11 @@ trait ListExtP { this: ListBaseP =>
 
   //format: off
   //LPUSH
-  final def lpush[A: Show](key: Key, value1: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A, value17: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: value17 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A, value17: A, value18: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: value17 :: value18 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A, value17: A, value18: A, value19: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: value17 :: value18 :: value19 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A, value17: A, value18: A, value19: A, value20: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: value17 :: value18 :: value19 :: value20 :: Nil))
-  final def lpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A, value17: A, value18: A, value19: A, value20: A, value21: A): Single.Aux[PosInt] =
-    lpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: value17 :: value18 :: value19 :: value20 :: value21 :: Nil))
+  final def lpush[A: Show](key: Key, value: A, values: A*): Single.Aux[PosInt] =
+    lpush(key, OneOrMore.unsafeFrom(value :: values.toList))
 
   //RPUSH
-  final def rpush[A: Show](key: Key, value1: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A, value17: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: value17 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A, value17: A, value18: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: value17 :: value18 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A, value17: A, value18: A, value19: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: value17 :: value18 :: value19 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A, value17: A, value18: A, value19: A, value20: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: value17 :: value18 :: value19 :: value20 :: Nil))
-  final def rpush[A: Show](key: Key, value1: A, value2: A, value3: A, value4: A, value5: A, value6: A, value7: A, value8: A, value9: A, value10: A, value11: A, value12: A, value13: A, value14: A, value15: A, value16: A, value17: A, value18: A, value19: A, value20: A, value21: A): Single.Aux[PosInt] =
-    rpush(key, OneOrMore.unsafeFrom(value1 :: value2 :: value3 :: value4 :: value5 :: value6 :: value7 :: value8 :: value9 :: value10 :: value11 :: value12 :: value13 :: value14 :: value15 :: value16 :: value17 :: value18 :: value19 :: value20 :: value21 :: Nil))
+  final def rpush[A: Show](key: Key, value: A, values: A*): Single.Aux[PosInt] =
+    rpush(key, OneOrMore.unsafeFrom(value :: values.toList))
   //format: on
 }

@@ -39,27 +39,6 @@ final class ListExtPSpec extends ListPSpec with ExtPArguments {
       assertEquals(protocol.decode(Num(pi.value.toLong)), pi)
     }
   }
-  property("The List extended protocol using lpush roundtrips successfully given key and value1, value2, value3") {
-    forAll { (k: Key, v1: Int, v2: Int, v3: Int, pi: PosInt) =>
-      val protocol = lpush(k, v1, v2, v3)
-      assertEquals(protocol.encode, Arr(Bulk("LPUSH"), Bulk(k), Bulk(v1), Bulk(v2), Bulk(v3)))
-      assertEquals(protocol.decode(Num(pi.value.toLong)), pi)
-    }
-  }
-  property("The List extended protocol using lpush roundtrips successfully given key and value1, value2, value3, value4") {
-    forAll { (k: Key, v1: Int, v2: Int, v3: Int, v4: Int, pi: PosInt) =>
-      val protocol = lpush(k, v1, v2, v3, v4)
-      assertEquals(protocol.encode, Arr(Bulk("LPUSH"), Bulk(k), Bulk(v1), Bulk(v2), Bulk(v3), Bulk(v4)))
-      assertEquals(protocol.decode(Num(pi.value.toLong)), pi)
-    }
-  }
-  property("The List extended protocol using lpush roundtrips successfully given key and value1, value2, value3, value4, value5") {
-    forAll { (k: Key, v1: Int, v2: Int, v3: Int, v4: Int, v5: Int, pi: PosInt) =>
-      val protocol = lpush(k, v1, v2, v3, v4, v5)
-      assertEquals(protocol.encode, Arr(Bulk("LPUSH"), Bulk(k), Bulk(v1), Bulk(v2), Bulk(v3), Bulk(v4), Bulk(v5)))
-      assertEquals(protocol.decode(Num(pi.value.toLong)), pi)
-    }
-  }
   property("The List extended protocol using rpush roundtrips successfully given key and value1") {
     forAll { (k: Key, v1: Int, pi: PosInt) =>
       val protocol = rpush(k, v1)
@@ -74,73 +53,16 @@ final class ListExtPSpec extends ListPSpec with ExtPArguments {
       assertEquals(protocol.decode(Num(pi.value.toLong)), pi)
     }
   }
-  property("The List extended protocol using rpush roundtrips successfully given key and value1, value2, value3") {
-    forAll { (k: Key, v1: Int, v2: Int, v3: Int, pi: PosInt) =>
-      val protocol = rpush(k, v1, v2, v3)
-      assertEquals(protocol.encode, Arr(Bulk("RPUSH"), Bulk(k), Bulk(v1), Bulk(v2), Bulk(v3)))
-      assertEquals(protocol.decode(Num(pi.value.toLong)), pi)
-    }
-  }
-  property("The List extended protocol using rpush roundtrips successfully given key and value1, value2, value3, value4") {
-    forAll { (k: Key, v1: Int, v2: Int, v3: Int, v4: Int, pi: PosInt) =>
-      val protocol = rpush(k, v1, v2, v3, v4)
-      assertEquals(protocol.encode, Arr(Bulk("RPUSH"), Bulk(k), Bulk(v1), Bulk(v2), Bulk(v3), Bulk(v4)))
-      assertEquals(protocol.decode(Num(pi.value.toLong)), pi)
-    }
-  }
-  property("The List extended protocol using rpush roundtrips successfully given key and value1, value2, value3, value4, value5") {
-    forAll { (k: Key, v1: Int, v2: Int, v3: Int, v4: Int, v5: Int, pi: PosInt) =>
-      val protocol = rpush(k, v1, v2, v3, v4, v5)
-      assertEquals(protocol.encode, Arr(Bulk("RPUSH"), Bulk(k), Bulk(v1), Bulk(v2), Bulk(v3), Bulk(v4), Bulk(v5)))
-      assertEquals(protocol.decode(Num(pi.value.toLong)), pi)
-    }
-  }
 
   //format: off
-  test("The List extended protocol using lpush sends in order from 1 to 21 values") {
+  test("The List extended protocol using lpush sends in order any number of values") {
     assertEquals(lpush(k, m1).encode, frame("LPUSH", "k", "m1"))
     assertEquals(lpush(k, m1, m2).encode, frame("LPUSH", "k", "m1", "m2"))
-    assertEquals(lpush(k, m1, m2, m3).encode, frame("LPUSH", "k", "m1", "m2", "m3"))
-    assertEquals(lpush(k, m1, m2, m3, m4).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18", "m19"))
-    assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18", "m19", "m20"))
     assertEquals(lpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21).encode, frame("LPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18", "m19", "m20", "m21"))
   }
-  test("The List extended protocol using rpush sends in order from 1 to 21 values") {
+  test("The List extended protocol using rpush sends in order any number of values") {
     assertEquals(rpush(k, m1).encode, frame("RPUSH", "k", "m1"))
     assertEquals(rpush(k, m1, m2).encode, frame("RPUSH", "k", "m1", "m2"))
-    assertEquals(rpush(k, m1, m2, m3).encode, frame("RPUSH", "k", "m1", "m2", "m3"))
-    assertEquals(rpush(k, m1, m2, m3, m4).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18", "m19"))
-    assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18", "m19", "m20"))
     assertEquals(rpush(k, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21).encode, frame("RPUSH", "k", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16", "m17", "m18", "m19", "m20", "m21"))
   }
 }

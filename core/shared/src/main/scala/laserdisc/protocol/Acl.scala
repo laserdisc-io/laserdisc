@@ -319,7 +319,7 @@ trait AclSelectorCommands extends AclCommands with AclDryRunCommands {
     Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 }
 
-/** ACL SETUSER with the databases a user may use: Valkey 9.0 */
+/** ACL SETUSER with the databases a user may use: Valkey 9.1 */
 trait AclDatabaseCommands extends AclSelectorCommands {
   def setuser(user: Key, rules: Acl.AclRulesWithDatabases): Single.Aux[OK] =
     Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]

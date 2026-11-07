@@ -813,7 +813,7 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
-  test("only Valkey 9.0 and later have the ACL rules for databases") {
+  test("only Valkey 9.1 and later have the ACL rules for databases") {
     import laserdisc.auto.*
 
     {
@@ -821,11 +821,11 @@ final class VersionImportsSpec extends BaseSpec {
       assert(compileErrors("""acl.setuser("u", servertypes.aclDatabaseRules.allDatabases)""").nonEmpty)
     }
     {
-      import laserdisc.valkey_8_1.*
+      import laserdisc.valkey_9_0.*
       assert(compileErrors("""acl.setuser("u", servertypes.aclDatabaseRules.allDatabases)""").nonEmpty)
     }
     {
-      import laserdisc.valkey_9_0.*
+      import laserdisc.valkey_9_1.*
       assertEquals(acl.setuser("u", servertypes.aclDatabaseRules.allDatabases).frames, frame("ACL", "SETUSER", "u", "alldbs"))
     }
   }

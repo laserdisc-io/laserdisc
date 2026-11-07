@@ -725,6 +725,8 @@ trait ServerCoreP extends ServerInspectionCoreP with MonitorP {
 
   object servertypes {
     final val aclRules              = Acl.AclRules.none
+    final val aclDatabaseRules      = Acl.AclRulesWithDatabases.none
+    final val aclDragonflyRules     = Acl.AclDragonflyRules.none
     final val aclSelectorRules      = Acl.AclRulesWithSelectors.none
     final val clientFilter          = ServerP.ClientFilter
     final val clientType            = ServerP.ClientType
@@ -925,7 +927,7 @@ trait ConfigAllCommands  extends ConfigCommands with ConfigManyCommands
 trait LatencyAllCommands extends LatencyCommands with LatencyHistogramCommands
 trait CommandAllCommands extends CommandCommands with CommandListCommands
 trait ModuleAllCommands  extends ModuleCommands with ModuleLoadExCommands
-trait AclAllCommands     extends AclCommands with AclSelectorCommands
+trait AclAllCommands     extends AclCommands with AclDatabaseCommands
 
 trait ServerP
     extends ServerBaseP

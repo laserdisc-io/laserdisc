@@ -99,7 +99,8 @@ trait Command7_0 extends CommandCommands with CommandListCommands
 trait Module7_0 extends ModuleCommands with ModuleLoadExCommands
 
 /** The ACL commands, under `acl` */
-trait Acl7_0 extends AclCommands with AclSelectorCommands
+trait Acl7_0       extends AclCommands with AclSelectorCommands
+trait AclValkey9_0 extends Acl7_0 with AclDatabaseCommands
 
 /** The SCRIPT commands, under `script` */
 trait ScriptValkey8_0 extends ScriptCommands with ScriptShowCommands
@@ -136,6 +137,7 @@ trait ServerValkey8_1 extends ServerValkey8_0 with ServerBgSaveCancelP with Serv
 }
 trait ServerValkey9_0 extends ServerValkey8_1 with ServerShutdownSafeP {
   override lazy val client: ClientValkey9_0 = new ClientValkey9_0 {}
+  override lazy val acl: AclValkey9_0       = new AclValkey9_0 {}
 }
 trait ServerValkey9_1 extends ServerValkey9_0 with ServerInfoTlsP
 

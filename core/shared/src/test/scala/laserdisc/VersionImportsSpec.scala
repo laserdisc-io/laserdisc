@@ -806,6 +806,23 @@ final class VersionImportsSpec extends BaseSpec {
     }
   }
 
+  test("only Valkey 9.0 and later have the ACL rules for databases") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_8_10.*
+      assert(compileErrors("""acl.setuser("u", servertypes.aclDatabaseRules.allDatabases)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_1.*
+      assert(compileErrors("""acl.setuser("u", servertypes.aclDatabaseRules.allDatabases)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_0.*
+      assertEquals(acl.setuser("u", servertypes.aclDatabaseRules.allDatabases).frames, frame("ACL", "SETUSER", "u", "alldbs"))
+    }
+  }
+
   test("redis_6_2 has ACL, but not ACL DRYRUN or rules with selectors, which redis_7_0 has") {
     import laserdisc.auto.*
 

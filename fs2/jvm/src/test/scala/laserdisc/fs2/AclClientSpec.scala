@@ -32,6 +32,29 @@ final class KeyDbAclClientSpec extends AclClientSpec(6380, "keyDb")
 
 final class ValkeyAclClientSpec extends AclClientSpec(6381, "valkey") {
   test("a valkey client checks permissions and sets selectors with the commands of Valkey 9.1")(selectors(valkey_9_1))
+
+  test("a valkey client limits a user and its selectors to databases") {
+    import valkey_9_1.{acl, servertypes}
+
+    val rules = servertypes.aclDatabaseRules
+    assertEquals(
+      send(
+        acl.setuser(
+          "ld-acl-d",
+          rules.reset.databases(OneOrMore.unsafeFrom(List[DbIndex](0, 1))).selector(rules.databases(OneOrMore.unsafeFrom(List[DbIndex](2))))
+        )
+      ),
+      OK
+    )
+    val user = send(acl.getuser("ld-acl-d")).getOrElse(fail("expected the user"))
+    assertEquals(user.databases, Some("db=0,1"))
+    assertEquals(user.selectors.map(_.databases), Seq(Some("db=2")))
+    assertEquals(send(acl.setuser("ld-acl-d", rules.resetDatabases)), OK)
+    assertEquals(send(acl.getuser("ld-acl-d")).flatMap(_.databases), Some(""))
+    assertEquals(send(acl.setuser("ld-acl-d", rules.allDatabases)), OK)
+    assertEquals(send(acl.getuser("ld-acl-d")).flatMap(_.databases), Some("alldbs"))
+    assertEquals(send(acl.deluser(OneOrMoreKeys.unsafeFrom(List(Key("ld-acl-d"))))).value, 1L)
+  }
 }
 
 abstract class AclClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
@@ -51,6 +74,8 @@ abstract class AclClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
     assertEquals(send(acl.dryrun("ld-acl-s", set("w:1", 1))), None)
     assert(send(acl.dryrun("ld-acl-s", del("app:1"))).exists(_.contains("del")))
     assertEquals(send(acl.getuser("ld-acl-s")).map(_.selectors.map(_.keys)), Some(Seq("~w:*")))
+    assertEquals(send(acl.setuser("ld-acl-s", servertypes.aclSelectorRules.resetKeys.readWriteKeys("both:*"))), OK)
+    assertEquals(send(acl.getuser("ld-acl-s")).map(_.keys), Some("~both:*"))
     assertEquals(send(acl.deluser(OneOrMoreKeys.unsafeFrom(List(Key("ld-acl-s"))))).value, 1L)
   }
 

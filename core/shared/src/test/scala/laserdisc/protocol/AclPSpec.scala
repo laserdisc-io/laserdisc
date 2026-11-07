@@ -41,6 +41,33 @@ final class AclPSpec extends BaseSpec with ServerP {
         .readKeys(GlobPattern("r:*"))
         .selector(servertypes.aclSelectorRules.keys(GlobPattern("b:*")).allow(Key("set")))
     assertEquals(acl.setuser(Key("u"), withSelectors).encode, bulks("ACL", "SETUSER", "u", "on", "%R~r:*", "(~b:* +set)"))
+    assertEquals(
+      acl.setuser(Key("u"), servertypes.aclSelectorRules.readWriteKeys(GlobPattern("k:*"))).encode,
+      bulks("ACL", "SETUSER", "u", "%RW~k:*")
+    )
+  }
+
+  test("The ACL protocol using setuser sends the databases a user or selector may use") {
+    val rules = servertypes.aclDatabaseRules
+    assertEquals(
+      acl.setuser(Key("u"), rules.databases(OneOrMore.unsafeFrom(List(DbIndex(0), DbIndex(15))))).encode,
+      bulks("ACL", "SETUSER", "u", "db=0,15")
+    )
+    assertEquals(acl.setuser(Key("u"), rules.allDatabases).encode, bulks("ACL", "SETUSER", "u", "alldbs"))
+    assertEquals(acl.setuser(Key("u"), rules.resetDatabases).encode, bulks("ACL", "SETUSER", "u", "resetdbs"))
+    assertEquals(
+      acl.setuser(Key("u"), rules.selector(rules.databases(OneOrMore.unsafeFrom(List(DbIndex(1)))).keys(GlobPattern("b:*")))).encode,
+      bulks("ACL", "SETUSER", "u", "(db=1 ~b:*)")
+    )
+  }
+
+  test("The ACL protocol using setuser on Dragonfly sends the keys that may only be read or written") {
+    assertEquals(
+      dragonfly_2_0.acl
+        .setuser(Key("u"), dragonfly_2_0.servertypes.aclDragonflyRules.readKeys(GlobPattern("r:*")).readWriteKeys(GlobPattern("k:*")))
+        .encode,
+      bulks("ACL", "SETUSER", "u", "%R~r:*", "%RW~k:*")
+    )
   }
 
   test(
@@ -76,13 +103,33 @@ final class AclPSpec extends BaseSpec with ServerP {
       Bulk("databases"),
       Bulk("alldbs"),
       Bulk("selectors"),
-      Arr(bulks("commands", "-@all +set", "keys", "~b:*", "channels", ""))
+      Arr(bulks("commands", "-@all +set", "keys", "~b:*", "channels", "", "databases", "db=1"))
     )
     acl.getuser(Key("u")).decode(valkey).onRight {
-      _ == Some(AclUser(Seq("on"), Seq(hash), "-@all +get", "~a:*", "&c:*", Seq(AclSelector("-@all +set", "~b:*", "")), Some("alldbs")))
+      _ == Some(
+        AclUser(
+          Seq("on"),
+          Seq(hash),
+          "-@all +get",
+          "~a:*",
+          "&c:*",
+          Seq(AclSelector("-@all +set", "~b:*", "", Some("db=1"))),
+          Some("alldbs")
+        )
+      )
     }
     redis_6_2.acl.getuser(Key("u")).decode(valkey).onRight {
-      _ == Some(AclUser(Seq("on"), Seq(hash), "-@all +get", "~a:*", "&c:*", Seq(AclSelector("-@all +set", "~b:*", "")), Some("alldbs")))
+      _ == Some(
+        AclUser(
+          Seq("on"),
+          Seq(hash),
+          "-@all +get",
+          "~a:*",
+          "&c:*",
+          Seq(AclSelector("-@all +set", "~b:*", "", Some("db=1"))),
+          Some("alldbs")
+        )
+      )
     }
     assertEquals(acl.getuser(Key("nosuch")).decode(NullBulk), None)
     assert(acl.getuser(Key("nosuch")).decode(NilArr).isLeft)

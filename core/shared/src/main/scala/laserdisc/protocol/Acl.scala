@@ -70,23 +70,54 @@ object Acl {
     final val none: AclRules = new AclRules(Nil)
   }
 
-  /** The rules of Redis 7.0, which add keys that may only be read or only be written, and selectors: other sets of rules a command may
-    * match instead
-    */
-  final class AclRulesWithSelectors private (params: List[String]) extends Rules[AclRulesWithSelectors](params) {
-    override protected def next(params: List[String]): AclRulesWithSelectors = new AclRulesWithSelectors(params)
+  /** Rules that add keys that may only be read or only be written, or both, which is the same as `keys` */
+  abstract class KeyPermissionRules[Self] private[Acl] (params: List[String]) extends Rules[Self](params) {
+    def readKeys(pattern: GlobPattern): Self      = next(params :+ s"%R~${pattern.value}")
+    def writeKeys(pattern: GlobPattern): Self     = next(params :+ s"%W~${pattern.value}")
+    def readWriteKeys(pattern: GlobPattern): Self = next(params :+ s"%RW~${pattern.value}")
+  }
 
-    def readKeys(pattern: GlobPattern): AclRulesWithSelectors         = next(params :+ s"%R~${pattern.value}")
-    def writeKeys(pattern: GlobPattern): AclRulesWithSelectors        = next(params :+ s"%W~${pattern.value}")
-    def selector(rules: AclRulesWithSelectors): AclRulesWithSelectors = next(params :+ rules.params.mkString("(", " ", ")"))
-    def clearSelectors: AclRulesWithSelectors                         = next(params :+ "clearselectors")
+  /** Rules that add selectors: other sets of rules a command may match instead */
+  abstract class SelectorRules[Self <: Rules[Self]] private[Acl] (params: List[String]) extends KeyPermissionRules[Self](params) {
+    def selector(rules: Self): Self = next(params :+ rules.params.mkString("(", " ", ")"))
+    def clearSelectors: Self        = next(params :+ "clearselectors")
+  }
+
+  /** The rules of Redis 7.0, with keys that may only be read or only be written, and selectors */
+  final class AclRulesWithSelectors private (params: List[String]) extends SelectorRules[AclRulesWithSelectors](params) {
+    override protected def next(params: List[String]): AclRulesWithSelectors = new AclRulesWithSelectors(params)
   }
   object AclRulesWithSelectors {
     final val none: AclRulesWithSelectors = new AclRulesWithSelectors(Nil)
   }
 
-  /** A set of rules of a user's selectors */
-  final case class AclSelector(commands: String, keys: String, channels: String)
+  /** The rules of Dragonfly, which add keys that may only be read or only be written, but not selectors */
+  final class AclDragonflyRules private (params: List[String]) extends KeyPermissionRules[AclDragonflyRules](params) {
+    override protected def next(params: List[String]): AclDragonflyRules = new AclDragonflyRules(params)
+  }
+  object AclDragonflyRules {
+    final val none: AclDragonflyRules = new AclDragonflyRules(Nil)
+  }
+
+  /** The rules of Valkey 9.0, which add the databases a user, or a selector, may use. The server's own limit on them is not checked beyond
+    * what `DbIndex` takes
+    */
+  final class AclRulesWithDatabases private (params: List[String]) extends SelectorRules[AclRulesWithDatabases](params) {
+    override protected def next(params: List[String]): AclRulesWithDatabases = new AclRulesWithDatabases(params)
+
+    def allDatabases: AclRulesWithDatabases = next(params :+ "alldbs")
+
+    /** Only these databases, instead of the ones allowed before */
+    def databases(indexes: OneOrMore[DbIndex]): AclRulesWithDatabases =
+      next(params :+ indexes.value.map(Show[DbIndex].show).mkString("db=", ",", ""))
+    def resetDatabases: AclRulesWithDatabases = next(params :+ "resetdbs")
+  }
+  object AclRulesWithDatabases {
+    final val none: AclRulesWithDatabases = new AclRulesWithDatabases(Nil)
+  }
+
+  /** A set of rules of a user's selectors. Valkey 9.0 adds the databases the selector may use */
+  final case class AclSelector(commands: String, keys: String, channels: String, databases: Option[String])
 
   /** ACL GETUSER: the user's flags (like `on`), the SHA-256 of its passwords, and its command, key and channel rules, as rule text like
     * `~app:*`. Redis 7.0 adds selectors, and Valkey 9.0 the databases the user may use
@@ -130,10 +161,11 @@ object Acl {
 
   private implicit final val selector: Read[Record, AclSelector] = Read.record("ACL selector") { f =>
     for {
-      commands <- f.bulk[String]("commands")
-      keys     <- f.bulk[String]("keys")
-      channels <- f.bulk[String]("channels")
-    } yield AclSelector(commands, keys, channels)
+      commands  <- f.bulk[String]("commands")
+      keys      <- f.bulk[String]("keys")
+      channels  <- f.bulk[String]("channels")
+      databases <- f.optionalBulk[String]("databases")
+    } yield AclSelector(commands, keys, channels, databases)
   }
   // no such user is a null bulk string
   private final def maybeUser(read: Read[Record, AclUser]): RESPRead[Option[AclUser]] = {
@@ -273,6 +305,9 @@ trait AclDryRunCommands extends Features {
 /** ACL as Dragonfly has it: without selectors, and it refuses the rules `reset`, `hashedPassword` and `removeHashedPassword` */
 trait AclDragonflyCommands extends AclCommands with AclDryRunCommands {
   override protected def maybeUser: RESPRead[Option[Acl.AclUser]] = Acl.maybeUserDragonfly
+
+  def setuser(user: Key, rules: Acl.AclDragonflyRules): Single.Aux[OK] =
+    Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 }
 
 /** ACL DRYRUN and ACL SETUSER with selectors: Redis 7.0 */
@@ -282,5 +317,11 @@ trait AclSelectorCommands extends AclCommands with AclDryRunCommands {
   override protected def maybeUser: RESPRead[Option[AclUser]] = Acl.maybeUser7_0
 
   def setuser(user: Key, rules: AclRulesWithSelectors): Single.Aux[OK] =
+    Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
+}
+
+/** ACL SETUSER with the databases a user may use: Valkey 9.0 */
+trait AclDatabaseCommands extends AclSelectorCommands {
+  def setuser(user: Key, rules: Acl.AclRulesWithDatabases): Single.Aux[OK] =
     Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 }

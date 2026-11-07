@@ -29,18 +29,21 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   import org.scalacheck.{Arbitrary, Gen}
   import org.scalacheck.Gen.const
 
-  private implicit final val encodingShow: Show[KeyEncoding] = Show.unsafeFromToString
-
-  private implicit final val encodingArb: Arbitrary[KeyEncoding] = Arbitrary {
-    Gen.oneOf(
-      KeyEncoding.raw,
-      KeyEncoding.int,
-      KeyEncoding.ziplist,
-      KeyEncoding.intset,
-      KeyEncoding.hashtable,
-      KeyEncoding.skiplist
-    )
-  }
+  // each encoding, with what the server replies for it
+  private val encodings: List[(KeyEncoding, String)] = List(
+    KeyEncoding.raw                   -> "raw",
+    KeyEncoding.int                   -> "int",
+    KeyEncoding.embstr                -> "embstr",
+    KeyEncoding.ziplist               -> "ziplist",
+    KeyEncoding.listpack              -> "listpack",
+    KeyEncoding.quicklist             -> "quicklist",
+    KeyEncoding.intset                -> "intset",
+    KeyEncoding.hashtable             -> "hashtable",
+    KeyEncoding.skiplist              -> "skiplist",
+    KeyEncoding.stream                -> "stream",
+    KeyEncoding.slicedArray           -> "sliced-array",
+    KeyEncoding.other(Key("compact")) -> "compact"
+  )
   private implicit final val restoreEvictionArb: Arbitrary[KeyRestoreEviction] = Arbitrary {
     nonNegIntArb.arbitrary.flatMap(nni => Gen.oneOf(KeyIdleTimeEviction(nni), KeyFrequencyEviction(nni)))
   }
@@ -205,11 +208,12 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
     }
   }
 
-  property("The Key protocol using obj.encoding roundtrips successfully given key") {
-    forAll { (k: Key, oe: Option[KeyEncoding]) =>
+  property("The Key protocol using obj.encoding sends the key and reads each encoding, or None for a missing key") {
+    forAll { (k: Key) =>
       val protocol = obj.encoding(k)
       assertEquals(protocol.encode, Arr(Bulk("OBJECT"), Bulk("ENCODING"), Bulk(k)))
-      assertEquals(protocol.decode(oe.fold(NullBulk: GenBulk)(Bulk(_))), oe)
+      assertEquals(protocol.decode(NullBulk), None)
+      encodings.foreach { case (encoding, name) => assertEquals(protocol.decode(Bulk(name)), Some(encoding)) }
     }
   }
 

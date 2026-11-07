@@ -25,25 +25,38 @@ package protocol
 import Protocol.Single
 
 object KeyP {
+
+  /** What OBJECT ENCODING replies. `ziplist` is from Redis 6.2 and KeyDB, `listpack` from Redis 7.0 and Valkey, `slicedArray` is an
+    * array's, from Redis 8.8, and `other` is any encoding a later server adds
+    */
   sealed trait Encoding
   object Encoding {
-    case object raw        extends Encoding
-    case object int        extends Encoding
-    case object ziplist    extends Encoding
-    case object linkedlist extends Encoding
-    case object intset     extends Encoding
-    case object hashtable  extends Encoding
-    case object skiplist   extends Encoding
+    case object raw                   extends Encoding
+    case object int                   extends Encoding
+    case object embstr                extends Encoding
+    case object ziplist               extends Encoding
+    case object listpack              extends Encoding
+    case object quicklist             extends Encoding
+    case object intset                extends Encoding
+    case object hashtable             extends Encoding
+    case object skiplist              extends Encoding
+    case object stream                extends Encoding
+    case object slicedArray           extends Encoding
+    final case class other(name: Key) extends Encoding
 
     implicit final val bulk2EncodingRead: Read[Bulk, Encoding] = Read.instance {
-      case Bulk("raw")        => Right(raw)
-      case Bulk("int")        => Right(int)
-      case Bulk("ziplist")    => Right(ziplist)
-      case Bulk("linkedlist") => Right(linkedlist)
-      case Bulk("intset")     => Right(intset)
-      case Bulk("hashtable")  => Right(hashtable)
-      case Bulk("skiplist")   => Right(skiplist)
-      case Bulk(other)        => Left(RESPDecErr(s"Unexpected key encoding. Was $other"))
+      case Bulk("raw")          => Right(raw)
+      case Bulk("int")          => Right(int)
+      case Bulk("embstr")       => Right(embstr)
+      case Bulk("ziplist")      => Right(ziplist)
+      case Bulk("listpack")     => Right(listpack)
+      case Bulk("quicklist")    => Right(quicklist)
+      case Bulk("intset")       => Right(intset)
+      case Bulk("hashtable")    => Right(hashtable)
+      case Bulk("skiplist")     => Right(skiplist)
+      case Bulk("stream")       => Right(stream)
+      case Bulk("sliced-array") => Right(slicedArray)
+      case Bulk(other)          => Read[Bulk, Key].read(Bulk(other)).map(Encoding.other(_))
     }
   }
 

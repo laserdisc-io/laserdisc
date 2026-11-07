@@ -74,6 +74,31 @@ abstract class KeyClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
     assertEquals(local.value -> replicas.value, 0 -> 0)
   }
 
+  test(s"a $dest client reads the encoding of each kind of key") {
+    import laserdisc.redis_6_2.*
+    import keytypes.*
+
+    send(del("k:s", "k:n", "k:l", "k:h", "k:t", "k:z", "k:x"))
+    send(set("k:s", "short"))
+    send(set("k:n", 12))
+    send(rpush("k:l", "a"))
+    send(hset("k:h", "f", "v"))
+    send(sadd("k:t", "a"))
+    send(zadd("k:z", "a", 1.0))
+    send(xadd("k:x", OneOrMore.unsafeFrom(List(Key("f") -> "v"))))
+
+    val compact = Set[KeyEncoding](KeyEncoding.ziplist, KeyEncoding.listpack)
+    assertEquals(send(obj.encoding("k:s")), Some(KeyEncoding.embstr))
+    assertEquals(send(obj.encoding("k:n")), Some(KeyEncoding.int))
+    assert(send(obj.encoding("k:l")).exists(Set[KeyEncoding](KeyEncoding.quicklist, KeyEncoding.listpack)), dest)
+    assert(send(obj.encoding("k:h")).exists(compact), dest)
+    assert(send(obj.encoding("k:t")).exists(Set[KeyEncoding](KeyEncoding.hashtable, KeyEncoding.listpack)), dest)
+    assert(send(obj.encoding("k:z")).exists(compact), dest)
+    assertEquals(send(obj.encoding("k:x")), Some(KeyEncoding.stream))
+    assertEquals(send(obj.encoding("k:none")), None)
+    send(del("k:s", "k:n", "k:l", "k:h", "k:t", "k:z", "k:x"))
+  }
+
   test(s"a $dest client dumps a key and restores it, as a dump isn't text") {
     import laserdisc.redis_6_2.*
     import keytypes.*

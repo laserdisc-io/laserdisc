@@ -39,7 +39,9 @@ trait TransactionBaseP extends Features {
 
   final val unwatch: Single.Aux[OK] = Protocol("UNWATCH", EmptyTuple).as[Str, OK]
 
-  final def watch(keys: OneOrMoreKeys): Single.Aux[OK] = Protocol("WATCH", keys.value).as[Str, OK]
+  final def watch(keys: OneOrMoreKeys): Single.Aux[OK]  = Protocol("WATCH", keys.value).as[Str, OK]
+  final def watch(key: Key, keys: Key*): Single.Aux[OK] =
+    watch(OneOrMoreKeys.unsafeFrom(key :: keys.toList))
 }
 
 trait TransactionP extends TransactionBaseP with TransactionExtP

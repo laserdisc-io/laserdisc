@@ -84,6 +84,8 @@ trait SetBaseP extends Features {
 
   final def smismember[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[Seq[Boolean]] =
     Protocol("SMISMEMBER", key *: members.value *: EmptyTuple).as[Arr.Of[Num], Seq[Boolean]]
+  final def smismember[A: Show](key: Key, member: A, members: A*): Single.Aux[Seq[Boolean]] =
+    smismember(key, OneOrMore.unsafeFrom(member :: members.toList))
 
   final def smove[A: Show](source: Key, destination: Key, member: A): Single.Aux[Boolean] =
     Protocol("SMOVE", source *: destination *: member *: EmptyTuple).as[Num, Boolean]
@@ -128,6 +130,8 @@ trait SetInterCardP extends Features {
 
   final def sintercard(keys: TwoOrMoreKeys): Single.Aux[NonNegInt] =
     Protocol("SINTERCARD", keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
+  final def sintercard(key1: Key, key2: Key, keys: Key*): Single.Aux[NonNegInt] =
+    sintercard(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
   final def sintercard(keys: TwoOrMoreKeys, limit: PosInt): Single.Aux[NonNegInt] =
     Protocol("SINTERCARD", keys.value.length *: keys.value *: "LIMIT" *: limit *: EmptyTuple).as[Num, NonNegInt]
 }
@@ -138,6 +142,8 @@ trait SetDiffCardP extends Features {
 
   final def sdiffcard(keys: TwoOrMoreKeys): Single.Aux[NonNegInt] =
     Protocol("SDIFFCARD", keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
+  final def sdiffcard(key1: Key, key2: Key, keys: Key*): Single.Aux[NonNegInt] =
+    sdiffcard(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
   final def sdiffcard(keys: TwoOrMoreKeys, limit: PosInt): Single.Aux[NonNegInt] =
     Protocol("SDIFFCARD", keys.value.length *: keys.value *: "LIMIT" *: limit *: EmptyTuple).as[Num, NonNegInt]
 }
@@ -150,6 +156,8 @@ trait SetUnionCardP extends Features {
 
   final def sunioncard(keys: TwoOrMoreKeys): Single.Aux[NonNegInt] =
     Protocol("SUNIONCARD", keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
+  final def sunioncard(key1: Key, key2: Key, keys: Key*): Single.Aux[NonNegInt] =
+    sunioncard(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
   final def sunioncard(keys: TwoOrMoreKeys, limit: PosInt): Single.Aux[NonNegInt] =
     Protocol("SUNIONCARD", keys.value.length *: keys.value *: "LIMIT" *: limit *: EmptyTuple).as[Num, NonNegInt]
   final def sunioncard(keys: TwoOrMoreKeys, approx: Approx): Single.Aux[NonNegInt] =

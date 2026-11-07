@@ -598,6 +598,8 @@ trait StreamBaseP extends Features {
   /** Deletes the entries, and replies how many it deleted */
   final def xdel(key: Key, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
     Protocol("XDEL", key *: ids.value *: EmptyTuple).as[Num, NonNegLong]
+  final def xdel(key: Key, id: Id, ids: Id*): Single.Aux[NonNegLong] =
+    xdel(key, OneOrMore.unsafeFrom(id :: ids.toList))
 
   final def xlen(key: Key): Single.Aux[NonNegLong] = Protocol("XLEN", key).as[Num, NonNegLong]
 
@@ -663,6 +665,8 @@ trait StreamGroupBaseP extends Features {
   /** Acknowledges the entries, and replies how many were pending */
   final def xack(key: Key, group: Key, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
     Protocol("XACK", key *: group *: ids.value *: EmptyTuple).as[Num, NonNegLong]
+  final def xack(key: Key, group: Key, id: Id, ids: Id*): Single.Aux[NonNegLong] =
+    xack(key, group, OneOrMore.unsafeFrom(id :: ids.toList))
 
   /** Creates a group that will read the stream after `from` (`StreamFrom.latest` for entries added from now on) */
   final def xgroupcreate(key: Key, group: Key, from: From): Single.Aux[OK] =
@@ -809,6 +813,15 @@ trait StreamClaimAndInfoBaseP extends Features {
       group: Key,
       consumer: Key,
       minIdleMilliseconds: NonNegLong,
+      id: Id,
+      ids: Id*
+  ): Single.Aux[Seq[Entry[A]]] =
+    xclaim[A](key, group, consumer, minIdleMilliseconds, OneOrMore.unsafeFrom(id :: ids.toList))
+  final def xclaim[A: Read[Bulk, _]](
+      key: Key,
+      group: Key,
+      consumer: Key,
+      minIdleMilliseconds: NonNegLong,
       ids: OneOrMore[Id],
       options: ClaimOptions
   ): Single.Aux[Seq[Entry[A]]] =
@@ -817,6 +830,8 @@ trait StreamClaimAndInfoBaseP extends Features {
   /** XCLAIM that replies with the ids only */
   final def xclaimjustid(key: Key, group: Key, consumer: Key, minIdleMilliseconds: NonNegLong, ids: OneOrMore[Id]): Single.Aux[Seq[Id]] =
     Protocol("XCLAIM", claim(key, group, consumer, minIdleMilliseconds, ids) :+ "JUSTID").using(RESPRead.instance(StreamP.ids))
+  final def xclaimjustid(key: Key, group: Key, consumer: Key, minIdleMilliseconds: NonNegLong, id: Id, ids: Id*): Single.Aux[Seq[Id]] =
+    xclaimjustid(key, group, consumer, minIdleMilliseconds, OneOrMore.unsafeFrom(id :: ids.toList))
   final def xclaimjustid(
       key: Key,
       group: Key,
@@ -978,12 +993,16 @@ trait StreamRefPolicyP extends Features {
   /** Acknowledges the entries for the group and deletes them, with what it did to each */
   final def xackdel(key: Key, group: Key, ids: OneOrMore[Id]): Single.Aux[Seq[DeleteResult]] =
     Protocol("XACKDEL", key.value :: group.value :: idsParams(ids)).using(results)
+  final def xackdel(key: Key, group: Key, id: Id, ids: Id*): Single.Aux[Seq[DeleteResult]] =
+    xackdel(key, group, OneOrMore.unsafeFrom(id :: ids.toList))
   final def xackdel(key: Key, group: Key, ids: OneOrMore[Id], policy: RefPolicy): Single.Aux[Seq[DeleteResult]] =
     Protocol("XACKDEL", key.value :: group.value :: Show[RefPolicy].show(policy) :: idsParams(ids)).using(results)
 
   /** Deletes the entries, with what it did to each */
   final def xdelex(key: Key, ids: OneOrMore[Id]): Single.Aux[Seq[DeleteResult]] =
     Protocol("XDELEX", key.value :: idsParams(ids)).using(results)
+  final def xdelex(key: Key, id: Id, ids: Id*): Single.Aux[Seq[DeleteResult]] =
+    xdelex(key, OneOrMore.unsafeFrom(id :: ids.toList))
   final def xdelex(key: Key, ids: OneOrMore[Id], policy: RefPolicy): Single.Aux[Seq[DeleteResult]] =
     Protocol("XDELEX", key.value :: Show[RefPolicy].show(policy) :: idsParams(ids)).using(results)
 
@@ -1039,6 +1058,8 @@ trait StreamNackP extends Features {
   /** Gives the entries back to the group for another consumer to read, with how many it gave back */
   final def xnack(key: Key, group: Key, mode: NackMode, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
     Protocol("XNACK", params(key, group, mode, ids)).as[Num, NonNegLong]
+  final def xnack(key: Key, group: Key, mode: NackMode, id: Id, ids: Id*): Single.Aux[NonNegLong] =
+    xnack(key, group, mode, OneOrMore.unsafeFrom(id :: ids.toList))
   final def xnack(key: Key, group: Key, mode: NackMode, ids: OneOrMore[Id], options: NackOptions): Single.Aux[NonNegLong] =
     Protocol("XNACK", params(key, group, mode, ids) ++ options.params).as[Num, NonNegLong]
 }

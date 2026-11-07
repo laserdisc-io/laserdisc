@@ -507,6 +507,8 @@ trait ClientCoreCommands extends Features {
     Protocol("CLIENT", "LIST" *: "TYPE" *: clientType *: EmptyTuple).as[Bulk, ConnectedClients]
   def list(ids: OneOrMore[NonNegLong]): Single.Aux[ConnectedClients] =
     Protocol("CLIENT", "LIST" *: "ID" *: ids.value *: EmptyTuple).as[Bulk, ConnectedClients]
+  def list(id: NonNegLong, ids: NonNegLong*): Single.Aux[ConnectedClients] =
+    list(OneOrMore.unsafeFrom(id :: ids.toList))
 
   def pause(milliseconds: PosLong): Single.Aux[OK]                  = Protocol("CLIENT", "PAUSE" *: milliseconds *: EmptyTuple).as[Str, OK]
   def pause(milliseconds: PosLong, mode: PauseMode): Single.Aux[OK] =
@@ -612,7 +614,9 @@ trait ClientCapaCommands extends Features {
   val primary: ServerP.ClientType = ServerP.ClientType.primary
 
   /** Tells the server what this connection can handle, like `redirect`. A server takes names it doesn't know, and ignores them */
-  def capa(capabilities: OneOrMore[Key]): Single.Aux[OK] = Protocol("CLIENT", "CAPA" :: capabilities.value.map(_.value)).as[Str, OK]
+  def capa(capabilities: OneOrMore[Key]): Single.Aux[OK]        = Protocol("CLIENT", "CAPA" :: capabilities.value.map(_.value)).as[Str, OK]
+  def capa(capability: Key, capabilities: Key*): Single.Aux[OK] =
+    capa(OneOrMore.unsafeFrom(capability :: capabilities.toList))
 }
 
 /** CLIENT IMPORT-SOURCE: Valkey 8.1 */
@@ -695,6 +699,8 @@ trait ConfigManyCommands extends Features {
 
   def get(parameters: OneOrMore[GlobPattern]): Single.Aux[Configuration] =
     Protocol("CONFIG", "GET" :: parameters.value.map(_.value)).as[Arr.OfPairs[Bulk, Bulk], Configuration]
+  def get(parameter1: GlobPattern, parameter2: GlobPattern, parameters: GlobPattern*): Single.Aux[Configuration] =
+    get(OneOrMore.unsafeFrom(parameter1 :: parameter2 :: parameters.toList))
 
   /** Sets every parameter, or none of them if one can't be set */
   def set[A: Show](parameters: OneOrMore[(Key, A)]): Single.Aux[OK] =
@@ -859,7 +865,9 @@ trait ServerInfoManyP extends Features {
   import ServerP.{Info, InfoSection, LatencyStatsSection}
 
   final def info(sections: OneOrMore[InfoSection]): Single.Aux[Info] = Protocol("INFO", sections.value).as[Bulk, Info]
-  final def info(section: LatencyStatsSection): Single.Aux[Info]     = Protocol("INFO", section).as[Bulk, Info]
+  final def info(section1: InfoSection, section2: InfoSection, sections: InfoSection*): Single.Aux[Info] =
+    info(OneOrMore.unsafeFrom(section1 :: section2 :: sections.toList))
+  final def info(section: LatencyStatsSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
 }
 
 /** SHUTDOWN with NOW, FORCE and ABORT, and INFO with several sections: Redis 7.0 */

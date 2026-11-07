@@ -298,12 +298,18 @@ trait GeoBaseP extends Features {
     Protocol("GEOADD", key *: lonLatMember(positions) *: EmptyTuple).as[Num, NonNegInt]
   final def geoadd(key: Key, flag: GeoFlag, positions: OneOrMore[GeoPosition]): Single.Aux[NonNegInt] =
     Protocol("GEOADD", key *: flag *: lonLatMember(positions) *: EmptyTuple).as[Num, NonNegInt]
+  final def geoadd(key: Key, flag: GeoFlag, position: GeoPosition, positions: GeoPosition*): Single.Aux[NonNegInt] =
+    geoadd(key, flag, OneOrMore.unsafeFrom(position :: positions.toList))
 
   /** GEOADD with CH, which replies with the number of positions added or changed */
   final def geoaddch(key: Key, positions: OneOrMore[GeoPosition]): Single.Aux[NonNegInt] =
     Protocol("GEOADD", key *: "CH" *: lonLatMember(positions) *: EmptyTuple).as[Num, NonNegInt]
+  final def geoaddch(key: Key, position: GeoPosition, positions: GeoPosition*): Single.Aux[NonNegInt] =
+    geoaddch(key, OneOrMore.unsafeFrom(position :: positions.toList))
   final def geoaddch(key: Key, flag: GeoFlag, positions: OneOrMore[GeoPosition]): Single.Aux[NonNegInt] =
     Protocol("GEOADD", key *: flag *: "CH" *: lonLatMember(positions) *: EmptyTuple).as[Num, NonNegInt]
+  final def geoaddch(key: Key, flag: GeoFlag, position: GeoPosition, positions: GeoPosition*): Single.Aux[NonNegInt] =
+    geoaddch(key, flag, OneOrMore.unsafeFrom(position :: positions.toList))
 
   final def geodist(key: Key, member1: Key, member2: Key): Single.Aux[Option[NonNegDouble]] =
     Protocol("GEODIST", key *: member1 *: member2 *: EmptyTuple).as[OrNullBulk[Bulk], Option[NonNegDouble]]

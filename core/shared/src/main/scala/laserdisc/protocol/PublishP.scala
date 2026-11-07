@@ -42,6 +42,8 @@ trait PubSubCommands extends Features {
   /** How many subscribers each channel has, not counting those subscribed by a pattern */
   def numsub(channels: OneOrMoreKeys): Single.Aux[Seq[(Key, NonNegInt)]] =
     Protocol("PUBSUB", "NUMSUB" :: channels.value.map(_.value)).as[Arr.OfPairs[Bulk, Num], Seq[(Key, NonNegInt)]]
+  def numsub(channel: Key, channels: Key*): Single.Aux[Seq[(Key, NonNegInt)]] =
+    numsub(OneOrMoreKeys.unsafeFrom(channel :: channels.toList))
 }
 
 /** PUBSUB for shard channels, under `pubsub`. Redis 7.0 */
@@ -57,6 +59,8 @@ trait PubSubShardCommands extends PubSubCommands {
   /** How many subscribers each shard channel has */
   def shardnumsub(channels: OneOrMoreKeys): Single.Aux[Seq[(Key, NonNegInt)]] =
     Protocol("PUBSUB", "SHARDNUMSUB" :: channels.value.map(_.value)).as[Arr.OfPairs[Bulk, Num], Seq[(Key, NonNegInt)]]
+  def shardnumsub(channel: Key, channels: Key*): Single.Aux[Seq[(Key, NonNegInt)]] =
+    shardnumsub(OneOrMoreKeys.unsafeFrom(channel :: channels.toList))
 }
 
 trait PublishP extends SubscribeP {

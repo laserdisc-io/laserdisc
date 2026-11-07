@@ -167,6 +167,8 @@ trait DragonflyP extends Features {
   /** Sets the expiry of fields of a hash, or members of a set */
   final def fieldexpire(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResult]] =
     Protocol("FIELDEXPIRE", key *: seconds *: fields.value *: EmptyTuple).as[Arr.Of[Num], Seq[FieldExpireResult]]
+  final def fieldexpire(key: Key, seconds: NonNegLong, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireResult]] =
+    fieldexpire(key, seconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   /** The expiry of a field of a hash, or a member of a set */
   final def fieldttl(key: Key, field: Key): Single.Aux[FieldTtl] = Protocol("FIELDTTL", key *: field *: EmptyTuple).as[Num, FieldTtl]
@@ -189,11 +191,17 @@ trait DragonflyP extends Features {
   /** Adds members to a set that each expire after `seconds`, and replies how many were added */
   final def saddex[A: Show](key: Key, seconds: PosLong, members: OneOrMore[A]): Single.Aux[NonNegLong] =
     Protocol("SADDEX", key *: seconds *: members.value *: EmptyTuple).as[Num, NonNegLong]
+  final def saddex[A: Show](key: Key, seconds: PosLong, member: A, members: A*): Single.Aux[NonNegLong] =
+    saddex(key, seconds, OneOrMore.unsafeFrom(member :: members.toList))
   final def saddex[A: Show](key: Key, keepTtl: KeepTtl, seconds: PosLong, members: OneOrMore[A]): Single.Aux[NonNegLong] =
     Protocol("SADDEX", key *: keepTtl *: seconds *: members.value *: EmptyTuple).as[Num, NonNegLong]
+  final def saddex[A: Show](key: Key, keepTtl: KeepTtl, seconds: PosLong, member: A, members: A*): Single.Aux[NonNegLong] =
+    saddex(key, keepTtl, seconds, OneOrMore.unsafeFrom(member :: members.toList))
 
   /** Makes the keys never get evicted when Dragonfly runs as a cache, and replies how many it changed */
-  final def stick(keys: OneOrMoreKeys): Single.Aux[NonNegLong] = Protocol("STICK", keys.value).as[Num, NonNegLong]
+  final def stick(keys: OneOrMoreKeys): Single.Aux[NonNegLong]  = Protocol("STICK", keys.value).as[Num, NonNegLong]
+  final def stick(key: Key, keys: Key*): Single.Aux[NonNegLong] =
+    stick(OneOrMoreKeys.unsafeFrom(key :: keys.toList))
 }
 
 /** CLIENT KILL as Dragonfly has it: one filter, with no others after it */

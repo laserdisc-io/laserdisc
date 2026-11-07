@@ -261,8 +261,12 @@ trait SortedSetBaseP extends Features {
 
   final def zdiff[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] =
     Protocol("ZDIFF", keys.value.length *: keys.value *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
+  final def zdiff[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[A]] =
+    zdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
   final def zdiffwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[(A, Double)]] =
     Protocol("ZDIFF", keys.value.length *: keys.value *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
+  final def zdiffwithscores[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[(A, Double)]] =
+    zdiffwithscores[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
 
   final def zdiffstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
     Protocol("ZDIFFSTORE", destinationKey *: keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
@@ -272,6 +276,8 @@ trait SortedSetBaseP extends Features {
 
   final def zinter[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] =
     Protocol("ZINTER", keys.value.length *: keys.value *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
+  final def zinter[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[A]] =
+    zinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
   final def zinter[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single.Aux[Seq[A]] =
     Protocol("ZINTER", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
@@ -286,6 +292,8 @@ trait SortedSetBaseP extends Features {
 
   final def zinterwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[(A, Double)]] =
     Protocol("ZINTER", keys.value.length *: keys.value *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
+  final def zinterwithscores[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[(A, Double)]] =
+    zinterwithscores[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
   final def zinterwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single.Aux[Seq[(A, Double)]] =
     Protocol("ZINTER", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
@@ -326,6 +334,8 @@ trait SortedSetBaseP extends Features {
 
   final def zmscore[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[Seq[Option[Double]]] =
     Protocol("ZMSCORE", key *: members.value *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[Double]]]
+  final def zmscore[A: Show](key: Key, member: A, members: A*): Single.Aux[Seq[Option[Double]]] =
+    zmscore(key, OneOrMore.unsafeFrom(member :: members.toList))
 
   final def zpopmax[A: Read[Bulk, _]](key: Key): Single.Aux[Option[(A, Double)]] = Protocol("ZPOPMAX", key).using(firstScored[A])
   final def zpopmax[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Seq[(A, Double)]] =
@@ -513,6 +523,8 @@ trait SortedSetBaseP extends Features {
 
   final def zunion[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] =
     Protocol("ZUNION", keys.value.length *: keys.value *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
+  final def zunion[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[A]] =
+    zunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
   final def zunion[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single.Aux[Seq[A]] =
     Protocol("ZUNION", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
@@ -527,6 +539,8 @@ trait SortedSetBaseP extends Features {
 
   final def zunionwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[(A, Double)]] =
     Protocol("ZUNION", keys.value.length *: keys.value *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
+  final def zunionwithscores[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[(A, Double)]] =
+    zunionwithscores[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
   final def zunionwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single.Aux[Seq[(A, Double)]] =
     Protocol("ZUNION", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
@@ -569,6 +583,8 @@ trait SortedSetInterCardP extends Features {
 
   final def zintercard(keys: TwoOrMoreKeys): Single.Aux[NonNegInt] =
     Protocol("ZINTERCARD", keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
+  final def zintercard(key1: Key, key2: Key, keys: Key*): Single.Aux[NonNegInt] =
+    zintercard(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
   final def zintercard(keys: TwoOrMoreKeys, limit: PosInt): Single.Aux[NonNegInt] =
     Protocol("ZINTERCARD", keys.value.length *: keys.value *: "LIMIT" *: limit *: EmptyTuple).as[Num, NonNegInt]
 }

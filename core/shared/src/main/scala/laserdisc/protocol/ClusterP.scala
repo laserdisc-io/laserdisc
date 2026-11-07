@@ -386,7 +386,9 @@ trait ClusterBaseP extends ClusterCoreP {
       "CLUSTER SLAVES"
     )
 
-  final def addslots(slots: OneOrMore[Slot]): Single.Aux[OK] = Protocol("CLUSTER", "ADDSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
+  final def addslots(slots: OneOrMore[Slot]): Single.Aux[OK]   = Protocol("CLUSTER", "ADDSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
+  final def addslots(slot: Slot, slots: Slot*): Single.Aux[OK] =
+    addslots(OneOrMore.unsafeFrom(slot :: slots.toList))
 
   final def countfailurereports(nodeId: NodeId): Single.Aux[NonNegInt] =
     Protocol("CLUSTER", "COUNT-FAILURE-REPORTS" *: nodeId *: EmptyTuple).as[Num, NonNegInt]
@@ -394,7 +396,9 @@ trait ClusterBaseP extends ClusterCoreP {
   final def countkeysinslot(slot: Slot): Single.Aux[NonNegInt] =
     Protocol("CLUSTER", "COUNTKEYSINSLOT" *: slot *: EmptyTuple).as[Num, NonNegInt]
 
-  final def delslots(slots: OneOrMore[Slot]): Single.Aux[OK] = Protocol("CLUSTER", "DELSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
+  final def delslots(slots: OneOrMore[Slot]): Single.Aux[OK]   = Protocol("CLUSTER", "DELSLOTS" *: slots.value *: EmptyTuple).as[Str, OK]
+  final def delslots(slot: Slot, slots: Slot*): Single.Aux[OK] =
+    delslots(OneOrMore.unsafeFrom(slot :: slots.toList))
 
   final val failover: Single.Aux[OK]                            = Protocol("CLUSTER", "FAILOVER").as[Str, OK]
   final def failover(mode: ClusterFailoverMode): Single.Aux[OK] = Protocol("CLUSTER", "FAILOVER" *: mode *: EmptyTuple).as[Str, OK]

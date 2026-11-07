@@ -286,6 +286,8 @@ trait HashFieldExpiryCoreP extends Features {
 
   final def hexpire(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HEXPIRE", key *: seconds *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
+  final def hexpire(key: Key, seconds: NonNegLong, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireResponse]] =
+    hexpire(key, seconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
   final def hexpire(
       key: Key,
       seconds: NonNegLong,
@@ -293,12 +295,24 @@ trait HashFieldExpiryCoreP extends Features {
       fields: OneOrMoreKeys
   ): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HEXPIRE", key *: seconds *: condition *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
+  final def hexpire(
+      key: Key,
+      seconds: NonNegLong,
+      condition: ExpireCondition,
+      field: Key,
+      fields: Key*
+  ): Single.Aux[Seq[FieldExpireResponse]] =
+    hexpire(key, seconds, condition, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   final def hpexpiretime(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireTimeResponse]] =
     Protocol("HPEXPIRETIME", key *: HashP.fields(fields) *: EmptyTuple).using(expireTimeResponses)
+  final def hpexpiretime(key: Key, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireTimeResponse]] =
+    hpexpiretime(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   final def httl(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldTTLResponse]] =
     Protocol("HTTL", key *: HashP.fields(fields) *: EmptyTuple).using(ttlResponses)
+  final def httl(key: Key, field: Key, fields: Key*): Single.Aux[Seq[FieldTTLResponse]] =
+    httl(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 }
 
 trait HashFieldExpiryP extends HashFieldExpiryCoreP {
@@ -321,6 +335,8 @@ trait HashFieldExpiryP extends HashFieldExpiryCoreP {
 
   final def hexpireat(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HEXPIREAT", key *: seconds *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
+  final def hexpireat(key: Key, seconds: NonNegLong, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireResponse]] =
+    hexpireat(key, seconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
   final def hexpireat(
       key: Key,
       seconds: NonNegLong,
@@ -328,9 +344,19 @@ trait HashFieldExpiryP extends HashFieldExpiryCoreP {
       fields: OneOrMoreKeys
   ): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HEXPIREAT", key *: seconds *: condition *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
+  final def hexpireat(
+      key: Key,
+      seconds: NonNegLong,
+      condition: ExpireCondition,
+      field: Key,
+      fields: Key*
+  ): Single.Aux[Seq[FieldExpireResponse]] =
+    hexpireat(key, seconds, condition, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   final def hpexpire(key: Key, milliseconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HPEXPIRE", key *: milliseconds *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
+  final def hpexpire(key: Key, milliseconds: NonNegLong, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireResponse]] =
+    hpexpire(key, milliseconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
   final def hpexpire(
       key: Key,
       milliseconds: NonNegLong,
@@ -338,9 +364,19 @@ trait HashFieldExpiryP extends HashFieldExpiryCoreP {
       fields: OneOrMoreKeys
   ): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HPEXPIRE", key *: milliseconds *: condition *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
+  final def hpexpire(
+      key: Key,
+      milliseconds: NonNegLong,
+      condition: ExpireCondition,
+      field: Key,
+      fields: Key*
+  ): Single.Aux[Seq[FieldExpireResponse]] =
+    hpexpire(key, milliseconds, condition, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   final def hpexpireat(key: Key, milliseconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HPEXPIREAT", key *: milliseconds *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
+  final def hpexpireat(key: Key, milliseconds: NonNegLong, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireResponse]] =
+    hpexpireat(key, milliseconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
   final def hpexpireat(
       key: Key,
       milliseconds: NonNegLong,
@@ -348,15 +384,29 @@ trait HashFieldExpiryP extends HashFieldExpiryCoreP {
       fields: OneOrMoreKeys
   ): Single.Aux[Seq[FieldExpireResponse]] =
     Protocol("HPEXPIREAT", key *: milliseconds *: condition *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
+  final def hpexpireat(
+      key: Key,
+      milliseconds: NonNegLong,
+      condition: ExpireCondition,
+      field: Key,
+      fields: Key*
+  ): Single.Aux[Seq[FieldExpireResponse]] =
+    hpexpireat(key, milliseconds, condition, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   final def hexpiretime(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireTimeResponse]] =
     Protocol("HEXPIRETIME", key *: HashP.fields(fields) *: EmptyTuple).using(expireTimeResponses)
+  final def hexpiretime(key: Key, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireTimeResponse]] =
+    hexpiretime(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   final def hpersist(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldPersistResponse]] =
     Protocol("HPERSIST", key *: HashP.fields(fields) *: EmptyTuple).using(persistResponses)
+  final def hpersist(key: Key, field: Key, fields: Key*): Single.Aux[Seq[FieldPersistResponse]] =
+    hpersist(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   final def hpttl(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldTTLResponse]] =
     Protocol("HPTTL", key *: HashP.fields(fields) *: EmptyTuple).using(ttlResponses)
+  final def hpttl(key: Key, field: Key, fields: Key*): Single.Aux[Seq[FieldTTLResponse]] =
+    hpttl(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
 }
 
@@ -370,8 +420,12 @@ trait HashGetSetExpiryP extends Features {
 
   final def hgetex[A: Read[Bulk, _]](key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[Option[A]]] =
     Protocol("HGETEX", key *: HashP.fields(fields) *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
+  final def hgetex[A: Read[Bulk, _]](key: Key, field: Key, fields: Key*): Single.Aux[Seq[Option[A]]] =
+    hgetex[A](key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
   final def hgetex[A: Read[Bulk, _]](key: Key, expiry: GetExpiry, fields: OneOrMoreKeys): Single.Aux[Seq[Option[A]]] =
     Protocol("HGETEX", key *: expiry.params *: HashP.fields(fields) *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
+  final def hgetex[A: Read[Bulk, _]](key: Key, expiry: GetExpiry, field: Key, fields: Key*): Single.Aux[Seq[Option[A]]] =
+    hgetex[A](key, expiry, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   final def hsetex[A: Show](key: Key, fieldValues: OneOrMore[(Key, A)]): Single.Aux[Boolean] =
     Protocol("HSETEX", key *: HashP.fieldsAndValues(fieldValues) *: EmptyTuple).as[Num, Boolean]
@@ -428,6 +482,8 @@ trait HashGetDelP extends Features {
 
   final def hgetdel[A: Read[Bulk, _]](key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[Option[A]]] =
     Protocol("HGETDEL", key *: HashP.fields(fields) *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
+  final def hgetdel[A: Read[Bulk, _]](key: Key, field: Key, fields: Key*): Single.Aux[Seq[Option[A]]] =
+    hgetdel[A](key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 }
 
 /** HIMPORT: Redis 8.10
@@ -442,10 +498,14 @@ trait HashImportP extends Features {
   /** Remembers the fields under a name for `himportset`, replacing any fieldset of that name */
   final def himportprepare(name: Key, fields: OneOrMoreKeys): Single.Aux[OK] =
     Protocol("HIMPORT", "PREPARE" :: name.value :: fields.value.map(_.value)).as[Str, OK]
+  final def himportprepare(name: Key, field: Key, fields: Key*): Single.Aux[OK] =
+    himportprepare(name, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   /** Sets the hash from one value per field of the fieldset, in the order the fields were given to `himportprepare` */
   final def himportset[A: Show](key: Key, name: Key, values: OneOrMore[A]): Single.Aux[OK] =
     Protocol("HIMPORT", "SET" *: key *: name *: values.value *: EmptyTuple).as[Str, OK]
+  final def himportset[A: Show](key: Key, name: Key, value: A, values: A*): Single.Aux[OK] =
+    himportset(key, name, OneOrMore.unsafeFrom(value :: values.toList))
 
   /** Forgets the fieldset, and replies whether there was one */
   final def himportdiscard(name: Key): Single.Aux[Boolean] = Protocol("HIMPORT", "DISCARD" :: name.value :: Nil).as[Num, Boolean]

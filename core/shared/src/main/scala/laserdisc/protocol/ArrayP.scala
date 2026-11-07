@@ -191,6 +191,8 @@ trait ArrayP extends Features {
   /** Deletes the elements at these indexes, with how many there were */
   final def ardel(key: Key, indexes: OneOrMore[NonNegLong]): Single.Aux[NonNegLong] =
     Protocol("ARDEL", key.value :: indexes.value.map(Show[NonNegLong].show)).as[Num, NonNegLong]
+  final def ardel(key: Key, index: NonNegLong, indexes: NonNegLong*): Single.Aux[NonNegLong] =
+    ardel(key, OneOrMore.unsafeFrom(index :: indexes.toList))
 
   /** Deletes the elements in these ranges, with how many there were */
   final def ardelrange(key: Key, ranges: OneOrMore[(NonNegLong, NonNegLong)]): Single.Aux[NonNegLong] =
@@ -213,6 +215,8 @@ trait ArrayP extends Features {
   /** The indexes of the elements from `start` to `end` that match */
   final def argrep(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): Single.Aux[Seq[NonNegLong]] =
     Protocol("ARGREP", grepParams(key, start, end, predicates)).as[Arr.Of[Num], Seq[NonNegLong]]
+  final def argrep(key: Key, start: Bound, end: Bound, predicate: Predicate, predicates: Predicate*): Single.Aux[Seq[NonNegLong]] =
+    argrep(key, start, end, OneOrMore.unsafeFrom(predicate :: predicates.toList))
   final def argrep(
       key: Key,
       start: Bound,
@@ -235,6 +239,14 @@ trait ArrayP extends Features {
       key: Key,
       start: Bound,
       end: Bound,
+      predicate: Predicate,
+      predicates: Predicate*
+  ): Single.Aux[Seq[(NonNegLong, A)]] =
+    argrepwithvalues[A](key, start, end, OneOrMore.unsafeFrom(predicate :: predicates.toList))
+  final def argrepwithvalues[A: Read[Bulk, _]](
+      key: Key,
+      start: Bound,
+      end: Bound,
       predicates: OneOrMore[Predicate],
       options: GrepOptions
   ): Single.Aux[Seq[(NonNegLong, A)]] =
@@ -249,6 +261,8 @@ trait ArrayP extends Features {
   /** Sets the values one after the other from the insert position of `arseek`, with the index of the last */
   final def arinsert[A: Show](key: Key, values: OneOrMore[A]): Single.Aux[NonNegLong] =
     Protocol("ARINSERT", key *: values.value *: EmptyTuple).as[Num, NonNegLong]
+  final def arinsert[A: Show](key: Key, value: A, values: A*): Single.Aux[NonNegLong] =
+    arinsert(key, OneOrMore.unsafeFrom(value :: values.toList))
 
   /** The latest elements inserted with `arinsert` or `arring`, oldest first */
   final def arlastitems[A: Read[Bulk, _]](key: Key, count: PosLong): Single.Aux[Seq[Option[A]]] =
@@ -262,6 +276,8 @@ trait ArrayP extends Features {
   /** The elements at these indexes, with None for those not set */
   final def armget[A: Read[Bulk, _]](key: Key, indexes: OneOrMore[NonNegLong]): Single.Aux[Seq[Option[A]]] =
     Protocol("ARMGET", key.value :: indexes.value.map(Show[NonNegLong].show)).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
+  final def armget[A: Read[Bulk, _]](key: Key, index: NonNegLong, indexes: NonNegLong*): Single.Aux[Seq[Option[A]]] =
+    armget[A](key, OneOrMore.unsafeFrom(index :: indexes.toList))
 
   /** Sets the values at their indexes, with how many weren't set before */
   final def armset[A: Show](key: Key, values: OneOrMore[(NonNegLong, A)]): Single.Aux[NonNegLong] =
@@ -286,6 +302,8 @@ trait ArrayP extends Features {
   /** Sets the values one after the other in a ring buffer of `size`, overwriting the oldest when full, with the index of the last */
   final def arring[A: Show](key: Key, size: PosLong, values: OneOrMore[A]): Single.Aux[NonNegLong] =
     Protocol("ARRING", key *: size *: values.value *: EmptyTuple).as[Num, NonNegLong]
+  final def arring[A: Show](key: Key, size: PosLong, value: A, values: A*): Single.Aux[NonNegLong] =
+    arring(key, size, OneOrMore.unsafeFrom(value :: values.toList))
 
   /** The elements set from `start` to `end`, backwards if `end` is lower, with their indexes */
   final def arscan[A: Read[Bulk, _]](key: Key, start: NonNegLong, end: NonNegLong): Single.Aux[Seq[(NonNegLong, A)]] =
@@ -300,4 +318,6 @@ trait ArrayP extends Features {
   /** Sets the values one after the other from `index`, with how many weren't set before */
   final def arset[A: Show](key: Key, index: NonNegLong, values: OneOrMore[A]): Single.Aux[NonNegLong] =
     Protocol("ARSET", key *: index *: values.value *: EmptyTuple).as[Num, NonNegLong]
+  final def arset[A: Show](key: Key, index: NonNegLong, value: A, values: A*): Single.Aux[NonNegLong] =
+    arset(key, index, OneOrMore.unsafeFrom(value :: values.toList))
 }

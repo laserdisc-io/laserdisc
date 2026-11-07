@@ -164,6 +164,8 @@ trait ListBaseP extends Features {
     Protocol("LPUSHX", key *: value *: EmptyTuple).using(zeroIsNone)
   final def lpushx[A: Show](key: Key, values: OneOrMore[A]): Single.Aux[Option[PosInt]] =
     Protocol("LPUSHX", key *: values.value *: EmptyTuple).using(zeroIsNone)
+  final def lpushx[A: Show](key: Key, value1: A, value2: A, values: A*): Single.Aux[Option[PosInt]] =
+    lpushx(key, OneOrMore.unsafeFrom(value1 :: value2 :: values.toList))
 
   final def lrange[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single.Aux[Seq[A]] =
     Protocol("LRANGE", key *: start *: end *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
@@ -190,6 +192,8 @@ trait ListBaseP extends Features {
     Protocol("RPUSHX", key *: value *: EmptyTuple).using(zeroIsNone)
   final def rpushx[A: Show](key: Key, values: OneOrMore[A]): Single.Aux[Option[PosInt]] =
     Protocol("RPUSHX", key *: values.value *: EmptyTuple).using(zeroIsNone)
+  final def rpushx[A: Show](key: Key, value1: A, value2: A, values: A*): Single.Aux[Option[PosInt]] =
+    rpushx(key, OneOrMore.unsafeFrom(value1 :: value2 :: values.toList))
 }
 
 /** LMPOP: Redis 7.0 */

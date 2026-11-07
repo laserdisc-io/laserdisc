@@ -129,6 +129,8 @@ trait ScriptCoreCommands extends Features {
   /** Whether each script is in the cache */
   def exists(shas: OneOrMore[Sha1]): Single.Aux[Seq[Boolean]] =
     Protocol("SCRIPT", "EXISTS" :: shas.value.map(_.value)).as[Arr.Of[Num], Seq[Boolean]]
+  def exists(sha: Sha1, shas: Sha1*): Single.Aux[Seq[Boolean]] =
+    exists(OneOrMore.unsafeFrom(sha :: shas.toList))
 
   /** Empties the script cache */
   val flush: Single.Aux[OK]                  = Protocol("SCRIPT", "FLUSH").as[Str, OK]

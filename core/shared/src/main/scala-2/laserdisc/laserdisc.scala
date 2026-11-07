@@ -98,7 +98,7 @@ package object laserdisc {
   final val AllNICsEqWit               = W("0.0.0.0")
   final val BlockingSecondsMinValueWit = W(0.002d)
   final val BlockingSecondsMaxValueWit = W(4294967.0d)
-  final val DbIndexMaxValueWit         = W(15)
+  final val DbIndexMaxValueWit         = W(2147483647)
   final val GeoHashRegexWit            = W("[a-z0-9]{11}")
 
   /** A Redis glob: `*`, `?`, `[abc]`, `[a-z]`, `[^abc]`, `\x` for the character x itself, or any other character but a control character. A

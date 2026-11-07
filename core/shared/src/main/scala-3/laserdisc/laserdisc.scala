@@ -91,7 +91,7 @@ final class Witness[A <: Singleton] private[laserdisc] (val value: A) {
 final val AllNICsEqWit               = new Witness("0.0.0.0")
 final val BlockingSecondsMinValueWit = new Witness(0.002d)
 final val BlockingSecondsMaxValueWit = new Witness(4294967.0d)
-final val DbIndexMaxValueWit         = new Witness(15)
+final val DbIndexMaxValueWit         = new Witness(2147483647)
 final val GeoHashRegexWit            = new Witness("[a-z0-9]{11}")
 
 /** A Redis glob: `*`, `?`, `[abc]`, `[a-z]`, `[^abc]`, `\x` for the character x itself, or any other character but a control character. A

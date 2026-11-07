@@ -99,8 +99,7 @@ object Acl {
     final val none: AclDragonflyRules = new AclDragonflyRules(Nil)
   }
 
-  /** The rules of Valkey 9.0, which add the databases a user, or a selector, may use. The server's own limit on them is not checked beyond
-    * what `DbIndex` takes
+  /** The rules of Valkey 9.0, which add the databases a user, or a selector, may use
     */
   final class AclRulesWithDatabases private (params: List[String]) extends SelectorRules[AclRulesWithDatabases](params) {
     override protected def next(params: List[String]): AclRulesWithDatabases = new AclRulesWithDatabases(params)

@@ -45,6 +45,12 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis"
 
   test("a redis client reads the documentation of every command with the commands of Redis 8.10")(docs(redis_8_10))
 
+  test("a redis client reads the information of every command with the commands of Redis 8.10")(commandInfos(redis_8_10))
+
+  test("a redis client reads how many arguments a slow command had") {
+    assert(slowEntry(redis_8_10).totalArguments.nonEmpty)
+  }
+
   test("a redis client takes its art and imports a hash from a fieldset with the commands of Redis 8.10") {
     val v      = redis_8_10
     val fields = OneOrMoreKeys.unsafeFrom(List(Key("z"), Key("a"), Key("m")))
@@ -86,10 +92,21 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(6379, "redis"
   }
 }
 
-final class KeyDbInspectionClientSpec extends InspectionClientSpec(6380, "keyDb")
+final class KeyDbInspectionClientSpec extends InspectionClientSpec(6380, "keyDb") {
+  test("a keyDb client reads a command with no tips, key specifications or subcommands") {
+    val info = send(redis_6_2.command.info(OneOrMore.unsafeFrom(List(Key("get"))))).flatten
+    assertEquals(info.map(i => (i.name, i.tips, i.keySpecifications, i.subcommands)), Seq(("get", Nil, Nil, Nil)))
+  }
+}
 
 final class ValkeyInspectionClientSpec extends InspectionClientSpec(6381, "valkey") {
   test("a valkey client reads the documentation of every command with the commands of Valkey 9.1")(docs(valkey_9_1))
+
+  test("a valkey client reads the information of every command with the commands of Valkey 9.1")(commandInfos(valkey_9_1))
+
+  test("a valkey client reads a slow command with no total of arguments") {
+    assertEquals(slowEntry(valkey_9_1).totalArguments, None)
+  }
 
   test("a valkey client takes its art, and tells what its connection can do with the commands of Valkey 9.1") {
     val v = valkey_9_1
@@ -117,11 +134,35 @@ final class ValkeyInspectionClientSpec extends InspectionClientSpec(6381, "valke
 }
 
 abstract class InspectionClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
+  import protocol.ServerInspection
+  import protocol.ServerInspection.{BeginSearch, FindKeys}
+
   protected final def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   protected final def failure[A](protocol: Protocol.Aux[A]): String =
     client.send(protocol).unsafeRunSync()(using runtime).fold(_.getMessage, a => fail(s"$dest should have failed but replied $a"))
+
+  protected final def commandInfos(v: Redis7_0): Unit = {
+    val names = send(v.command.docs).map(d => Key.unsafeFrom(d.name)).toList
+    val all   = send(v.command.info(OneOrMore.unsafeFrom(names))).flatten
+    assertEquals(all.size, names.size)
+
+    val get = all.find(_.name == "get").map(_.keySpecifications.map(k => k.beginSearch -> k.findKeys))
+    assertEquals(get, Some(Seq[(BeginSearch, FindKeys)](BeginSearch.Index(1) -> FindKeys.Range(0, 1, 0))))
+    assert(all.flatMap(_.keySpecifications).exists(_.beginSearch.isInstanceOf[BeginSearch.Keyword]))
+    assert(all.flatMap(_.keySpecifications).exists(_.findKeys.isInstanceOf[FindKeys.KeyNum]))
+    assert(all.exists(_.tips.nonEmpty))
+    assert(all.find(_.name == "config").exists(_.subcommands.exists(_.name == "config|help")))
+  }
+
+  // every command is slow for a moment, so that there's an entry to read
+  protected final def slowEntry(v: Redis7_0): ServerInspection.LogEntry = {
+    def slowerThan(micros: String) = send(v.config.set(OneOrMore.unsafeFrom(List(Key("slowlog-log-slower-than") -> micros))))
+    slowerThan("0")
+    try send(v.slowlog.get(1)).head
+    finally slowerThan("10000")
+  }
 
   protected final def docs(v: Redis7_0): Unit = {
     val everyCommand = send(v.command.docs)

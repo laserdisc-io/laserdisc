@@ -27,20 +27,22 @@ import Protocol.Single
 /** The replies and options of the commands that inspect a server: SLOWLOG, LATENCY, MEMORY, COMMAND, MODULE, HOTKEYS and COMMANDLOG */
 object ServerInspection {
 
-  /** An entry of SLOWLOG GET or COMMANDLOG GET. Newer versions send more fields after these, which are left out */
+  /** An entry of SLOWLOG GET or COMMANDLOG GET. A long command's `arguments` are cut short; Redis 8.10 also replies with how many it had
+    */
   final case class LogEntry(
       id: NonNegLong,
       timestamp: NonNegLong,
       microseconds: NonNegLong,
       arguments: Seq[String],
       clientAddress: String,
-      clientName: String
+      clientName: String,
+      totalArguments: Option[NonNegLong]
   )
   private final type LogEntryReply = Arr.AsTupleThen[Num *: Num *: Num *: Arr.Of[Bulk] *: Bulk *: Bulk *: EmptyTuple, RESP]
   private implicit final val logEntry: Read[LogEntryReply, LogEntry] =
-    Read[LogEntryReply, NonNegLong *: NonNegLong *: NonNegLong *: Seq[String] *: String *: String *: EmptyTuple].map {
-      case id *: timestamp *: microseconds *: arguments *: address *: name *: _ =>
-        LogEntry(id, timestamp, microseconds, arguments, address, name)
+    Read[LogEntryReply, (NonNegLong *: NonNegLong *: NonNegLong *: Seq[String] *: String *: String *: EmptyTuple, Seq[RESP])].map {
+      case (id *: timestamp *: microseconds *: arguments *: address *: name *: _, rest) =>
+        LogEntry(id, timestamp, microseconds, arguments, address, name, rest.headOption.collect { case Num(NonNegLong(n)) => n })
     }
   private[protocol] final val logEntries: Read[Arr.Of[LogEntryReply], Seq[LogEntry]] = Read[Arr.Of[LogEntryReply], Seq[LogEntry]]
 
@@ -199,8 +201,76 @@ object ServerInspection {
   private[protocol] final lazy val commandDocs: Read[Arr.OfPairs[Bulk, Record], Seq[CommandDoc]] =
     Read[Arr.OfPairs[Bulk, Record], Seq[(String, String => CommandDoc)]].map(_.map { case (name, doc) => doc(name) })
 
+  /** Where the search for a command's keys starts: at a position, or after a keyword looked for from a position. `Unknown` is for commands
+    * whose keys can't be found this way, and for any other kind a server may add
+    */
+  sealed trait BeginSearch
+  object BeginSearch {
+    final case class Index(position: Int)                     extends BeginSearch
+    final case class Keyword(keyword: String, startFrom: Int) extends BeginSearch
+    case object Unknown                                       extends BeginSearch
+
+    private val index: Read[Record, BeginSearch]   = Read.record("index")(_.num[Int]("index").map(Index(_)))
+    private val keyword: Read[Record, BeginSearch] = Read.record("keyword") { f =>
+      for {
+        keyword   <- f.bulk[String]("keyword")
+        startFrom <- f.num[Int]("startfrom")
+      } yield Keyword(keyword, startFrom)
+    }
+    private[ServerInspection] val read: Read[Record, BeginSearch] = Read.record("begin_search") { f =>
+      f.bulk[String]("type").flatMap {
+        case "index"   => f[Record, BeginSearch]("spec")(implicitly, index)
+        case "keyword" => f[Record, BeginSearch]("spec")(implicitly, keyword)
+        case _         => Right(Unknown)
+      }
+    }
+  }
+
+  /** How to find a command's keys once the search has started: up to a last position (negative when counted from the end), or by a count of
+    * keys at a position. `Unknown` is for commands whose keys can't be found this way, and for any other kind a server may add
+    */
+  sealed trait FindKeys
+  object FindKeys {
+    final case class Range(lastKey: Int, keyStep: Int, limit: Int)           extends FindKeys
+    final case class KeyNum(keyCountIndex: Int, firstKey: Int, keyStep: Int) extends FindKeys
+    case object Unknown                                                      extends FindKeys
+
+    private val range: Read[Record, FindKeys] = Read.record("range") { f =>
+      for {
+        lastKey <- f.num[Int]("lastkey")
+        keyStep <- f.num[Int]("keystep")
+        limit   <- f.num[Int]("limit")
+      } yield Range(lastKey, keyStep, limit)
+    }
+    private val keyNum: Read[Record, FindKeys] = Read.record("keynum") { f =>
+      for {
+        keyCountIndex <- f.num[Int]("keynumidx")
+        firstKey      <- f.num[Int]("firstkey")
+        keyStep       <- f.num[Int]("keystep")
+      } yield KeyNum(keyCountIndex, firstKey, keyStep)
+    }
+    private[ServerInspection] val read: Read[Record, FindKeys] = Read.record("find_keys") { f =>
+      f.bulk[String]("type").flatMap {
+        case "range"  => f[Record, FindKeys]("spec")(implicitly, range)
+        case "keynum" => f[Record, FindKeys]("spec")(implicitly, keyNum)
+        case _        => Right(Unknown)
+      }
+    }
+  }
+
+  /** Where a command's keys are and what it does with them */
+  final case class KeySpecification(notes: Option[String], flags: Seq[String], beginSearch: BeginSearch, findKeys: FindKeys)
+  private implicit final val keySpecification: Read[Record, KeySpecification] = Read.record("key specification") { f =>
+    for {
+      notes       <- f.optionalBulk[String]("notes")
+      flags       <- f[Arr.Of[Str], Seq[String]]("flags")
+      beginSearch <- f[Record, BeginSearch]("begin_search")(implicitly, BeginSearch.read)
+      findKeys    <- f[Record, FindKeys]("find_keys")(implicitly, FindKeys.read)
+    } yield KeySpecification(notes, flags, beginSearch, findKeys)
+  }
+
   /** COMMAND INFO of a command: its arity (negative when it takes at least that many arguments), flags, where its keys are and its ACL
-    * categories. Redis 7.0 also replies with tips, key specifications and subcommands, which are left out here
+    * categories. Redis 7.0 and Valkey also reply with its tips, key specifications and subcommands, empty for servers that don't
     */
   final case class CommandInfo(
       name: String,
@@ -209,15 +279,37 @@ object ServerInspection {
       firstKey: Int,
       lastKey: Int,
       step: Int,
-      aclCategories: Seq[String]
+      aclCategories: Seq[String],
+      tips: Seq[String],
+      keySpecifications: Seq[KeySpecification],
+      subcommands: Seq[CommandInfo]
   )
   private type CommandInfoReply =
     Arr.AsTupleThen[OneOf[Bulk *: Str *: EmptyTuple] *: Num *: Arr.Of[Str] *: Num *: Num *: Num *: Arr.Of[Str] *: EmptyTuple, RESP]
-  private implicit final val commandInfo: Read[CommandInfoReply, CommandInfo] =
-    Read[CommandInfoReply, String *: Int *: Seq[String] *: Int *: Int *: Int *: Seq[String] *: EmptyTuple].map {
-      case name *: arity *: flags *: first *: last *: step *: categories *: _ =>
-        CommandInfo(name, arity, flags, first, last, step, categories)
+  private implicit final val commandInfo: Read[CommandInfoReply, CommandInfo] = {
+    val start = Read[CommandInfoReply, (String *: Int *: Seq[String] *: Int *: Int *: Int *: Seq[String] *: EmptyTuple, Seq[RESP])]
+    Read.instance { reply =>
+      start.read(reply).flatMap { case (name *: arity *: flags *: first *: last *: step *: categories *: _, rest) =>
+        val f = new Fields(List("tips", "key specifications", "subcommands").zip(rest).toMap)
+        for {
+          tips        <- f.optional[Arr.Of[Bulk], Seq[String]]("tips")
+          keySpecs    <- f.optional[Records, Seq[KeySpecification]]("key specifications")
+          subcommands <- f.optional[Arr.Of[CommandInfoReply], Seq[CommandInfo]]("subcommands")
+        } yield CommandInfo(
+          name,
+          arity,
+          flags,
+          first,
+          last,
+          step,
+          categories,
+          tips.getOrElse(Nil),
+          keySpecs.getOrElse(Nil),
+          subcommands.getOrElse(Nil)
+        )
+      }
     }
+  }
   private[protocol] final val commandInfos: Read[Arr.Of[OrNullBulk[CommandInfoReply]], Seq[Option[CommandInfo]]] =
     Read[Arr.Of[OrNullBulk[CommandInfoReply]], Seq[Option[CommandInfo]]]
 

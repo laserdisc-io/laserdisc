@@ -33,8 +33,8 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
       Arr(Num(6L), Num(1793582638L), Num(160L), bulks("CONFIG", "SET", "x", "0"), Bulk("172.17.0.1:56480"), Bulk("me"), Num(4L))
     )
     slowlog.get(PosInt(2)).decode(reply).onRight { entries =>
-      entries.map(e => (e.id.value, e.microseconds.value, e.arguments, e.clientName)) ==
-        Seq((7L, 36L, Seq("SET", "a", "1"), ""), (6L, 160L, Seq("CONFIG", "SET", "x", "0"), "me"))
+      entries.map(e => (e.id.value, e.microseconds.value, e.arguments, e.clientName, e.totalArguments.map(_.value))) ==
+        Seq((7L, 36L, Seq("SET", "a", "1"), "", None), (6L, 160L, Seq("CONFIG", "SET", "x", "0"), "me", Some(4L)))
     }
     assertEquals(slowlog.get(PosInt(2)).encode, bulks("SLOWLOG", "GET", "2"))
     assertEquals(commandlog.get(servertypes.commandLogType.largeReply).encode, bulks("COMMANDLOG", "GET", "-1", "large-reply"))
@@ -76,11 +76,60 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
     val redis70 =
       Arr(Bulk("get"), Num(2L), Arr(Str("readonly")), Num(1L), Num(1L), Num(1L), Arr(Str("@read")), Arr(Nil), Arr(Nil), Arr(Nil))
     command.info(OneOrMore.unsafeFrom(List(Key("get"), Key("nosuch")))).decode(Arr(redis62, NullBulk)).onRight {
-      _ == Seq(Some(CommandInfo("get", 2, Seq("readonly", "fast"), 1, 1, 1, Seq("@read", "@string"))), None)
+      _ == Seq(Some(CommandInfo("get", 2, Seq("readonly", "fast"), 1, 1, 1, Seq("@read", "@string"), Nil, Nil, Nil)), None)
     }
     command.info(OneOrMore.unsafeFrom(List(Key("get")))).decode(Arr(redis70)).onRight {
-      _ == Seq(Some(CommandInfo("get", 2, Seq("readonly"), 1, 1, 1, Seq("@read"))))
+      _ == Seq(Some(CommandInfo("get", 2, Seq("readonly"), 1, 1, 1, Seq("@read"), Nil, Nil, Nil)))
     }
+  }
+
+  test("The Server protocol using command reads tips, key specifications and subcommands") {
+    def spec(search: RESP, find: RESP, more: RESP*): RESP =
+      Arr(more.toList ++ List(Bulk("flags"), Arr(Str("RO")), Bulk("begin_search"), search, Bulk("find_keys"), find))
+    def kind(name: String, spec: RESP*): RESP = Arr(Bulk("type"), Bulk(name), Bulk("spec"), Arr(spec.toList))
+
+    val index   = kind("index", Bulk("index"), Num(1L))
+    val keyword = kind("keyword", Bulk("keyword"), Bulk("STREAMS"), Bulk("startfrom"), Num(4L))
+    val range   = kind("range", Bulk("lastkey"), Num(-1L), Bulk("keystep"), Num(1L), Bulk("limit"), Num(2L))
+    val keyNum  = kind("keynum", Bulk("keynumidx"), Num(0L), Bulk("firstkey"), Num(1L), Bulk("keystep"), Num(1L))
+    val specs   = Arr(
+      spec(index, range),
+      spec(keyword, keyNum, Bulk("notes"), Bulk("a note")),
+      spec(kind("unknown"), kind("unknown")),
+      spec(kind("newer"), kind("newer"))
+    )
+    val help  = Arr(Bulk("x|help"), Num(2L), Arr(Str("stale")), Num(0L), Num(0L), Num(0L), Arr(Str("@slow")), Arr(Nil), Arr(Nil), Arr(Nil))
+    val reply =
+      Arr(
+        Bulk("x"),
+        Num(-2L),
+        Arr(Nil),
+        Num(0L),
+        Num(0L),
+        Num(0L),
+        Arr(Str("@slow")),
+        Arr(Bulk("request_policy:all_nodes")),
+        specs,
+        Arr(help)
+      )
+    val expected = CommandInfo(
+      "x",
+      -2,
+      Nil,
+      0,
+      0,
+      0,
+      Seq("@slow"),
+      Seq("request_policy:all_nodes"),
+      Seq(
+        KeySpecification(None, Seq("RO"), BeginSearch.Index(1), FindKeys.Range(-1, 1, 2)),
+        KeySpecification(Some("a note"), Seq("RO"), BeginSearch.Keyword("STREAMS", 4), FindKeys.KeyNum(0, 1, 1)),
+        KeySpecification(None, Seq("RO"), BeginSearch.Unknown, FindKeys.Unknown),
+        KeySpecification(None, Seq("RO"), BeginSearch.Unknown, FindKeys.Unknown)
+      ),
+      Seq(CommandInfo("x|help", 2, Seq("stale"), 0, 0, 0, Seq("@slow"), Nil, Nil, Nil))
+    )
+    assertEquals(command.info(OneOrMore.unsafeFrom(List(Key("x")))).decode(Arr(reply)), Seq(Some(expected)))
   }
 
   test("The Server protocol using command.getkeys sends the command it is given") {

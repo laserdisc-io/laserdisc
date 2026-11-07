@@ -38,7 +38,7 @@ object ClusterManagement {
   private final val num = Read.num2NonNegLongRead
 
   private final def ranges(slots: OneOrMore[(Slot, Slot)]): List[String] = slots.value.flatMap { case (from, to) =>
-    List(from.value.toString, to.value.toString)
+    List(Show[Slot].show(from), Show[Slot].show(to))
   }
 
   /** A node of CLUSTER SHARDS. A node may have a port, a TLS port or both, and a hostname */
@@ -186,9 +186,9 @@ object ClusterManagement {
     */
   final class ScanOptions private (val params: List[String]) {
     def pattern(pattern: GlobPattern): ScanOptions = new ScanOptions(params ++ List("MATCH", pattern.value))
-    def count(keys: PosInt): ScanOptions           = new ScanOptions(params ++ List("COUNT", keys.value.toString))
+    def count(keys: PosInt): ScanOptions           = new ScanOptions(params ++ List("COUNT", Show[PosInt].show(keys)))
     def ofType(keyType: KeyP.Type): ScanOptions    = new ScanOptions(params ++ List("TYPE", KeyP.Type.typeShow.show(keyType)))
-    def slot(slot: Slot): ScanOptions              = new ScanOptions(params ++ List("SLOT", slot.value.toString))
+    def slot(slot: Slot): ScanOptions              = new ScanOptions(params ++ List("SLOT", Show[Slot].show(slot)))
   }
   object ScanOptions {
     private final val none = new ScanOptions(Nil)
@@ -296,7 +296,7 @@ trait ClusterMigrationP extends Features {
 
   /** Deletes the keys of the slots in each range from this node */
   final def trimslots(ranges: OneOrMore[(Slot, Slot)]): Single.Aux[OK] =
-    Protocol("TRIMSLOTS", "RANGES" :: ranges.value.length.toString :: slotRanges(ranges)).as[Str, OK]
+    Protocol("TRIMSLOTS", "RANGES" :: Show[Int].show(ranges.value.length) :: slotRanges(ranges)).as[Str, OK]
 }
 
 /** CLUSTER SETSLOT with TIMEOUT: Valkey 8.0 */

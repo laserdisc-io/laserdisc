@@ -168,7 +168,7 @@ object GeoP {
     def apply(first: Coordinates, second: Coordinates, third: Coordinates, more: Coordinates*): Polygon = {
       val vertices = first :: second :: third :: more.toList
       new Polygon(
-        "BYPOLYGON" :: vertices.length.toString :: vertices.flatMap(c =>
+        "BYPOLYGON" :: Show[Int].show(vertices.length) :: vertices.flatMap(c =>
           List(Show[Longitude].show(c.longitude), Show[Latitude].show(c.latitude))
         )
       )

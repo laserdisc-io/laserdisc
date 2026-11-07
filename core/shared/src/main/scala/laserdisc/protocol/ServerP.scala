@@ -303,7 +303,7 @@ object ServerP {
   final class ClientFilter private (val params: List[String]) {
     import Show.{hostShow, portShow}
 
-    def id(id: NonNegLong): ClientFilter              = new ClientFilter(params ++ List("ID", id.value.toString))
+    def id(id: NonNegLong): ClientFilter              = new ClientFilter(params ++ List("ID", Show[NonNegLong].show(id)))
     def address(host: Host, port: Port): ClientFilter =
       new ClientFilter(params ++ List("ADDR", s"${hostShow.show(host)}:${portShow.show(port)}"))
     def localAddress(host: Host, port: Port): ClientFilter =
@@ -319,7 +319,7 @@ object ServerP {
     private final val none = new ClientFilter(Nil)
 
     // from Valkey 8.1, where `client.ids` gives it
-    private[protocol] def ids(ids: OneOrMore[NonNegLong]): ClientFilter = new ClientFilter("ID" :: ids.value.map(_.value.toString))
+    private[protocol] def ids(ids: OneOrMore[NonNegLong]): ClientFilter = new ClientFilter("ID" :: ids.value.map(Show[NonNegLong].show))
 
     def id(id: NonNegLong): ClientFilter                   = none.id(id)
     def address(host: Host, port: Port): ClientFilter      = none.address(host, port)
@@ -334,7 +334,7 @@ object ServerP {
     * not about this connection's own changes. A server refuses PREFIX without BCAST, and OPTIN with OPTOUT
     */
   final class TrackingOptions private (val params: List[String]) {
-    def redirect(id: NonNegLong): TrackingOptions = new TrackingOptions(params ++ List("REDIRECT", id.value.toString))
+    def redirect(id: NonNegLong): TrackingOptions = new TrackingOptions(params ++ List("REDIRECT", Show[NonNegLong].show(id)))
     def bcast: TrackingOptions                    = new TrackingOptions(params :+ "BCAST")
     def prefix(prefix: Key): TrackingOptions      = new TrackingOptions(params ++ List("PREFIX", prefix.value))
     def optin: TrackingOptions                    = new TrackingOptions(params :+ "OPTIN")
@@ -342,7 +342,7 @@ object ServerP {
     def noloop: TrackingOptions                   = new TrackingOptions(params :+ "NOLOOP")
   }
   object TrackingOptions {
-    def redirect(id: NonNegLong): TrackingOptions = new TrackingOptions(List("REDIRECT", id.value.toString))
+    def redirect(id: NonNegLong): TrackingOptions = new TrackingOptions(List("REDIRECT", Show[NonNegLong].show(id)))
   }
 
   /** CLIENT TRACKINGINFO: the connection's tracking flags, where its notices go, if anywhere, and its prefixes */
@@ -371,7 +371,7 @@ object ServerP {
     private def add(name: String, value: String): ValkeyClientFilter                 = new ValkeyClientFilter(params ++ List(name, value))
     private def hostAndPort(host: Host, port: Port): String                          = s"${hostShow.show(host)}:${portShow.show(port)}"
     private def idList(name: String, ids: OneOrMore[NonNegLong]): ValkeyClientFilter =
-      new ValkeyClientFilter(params ++ (name :: ids.value.map(_.value.toString)))
+      new ValkeyClientFilter(params ++ (name :: ids.value.map(Show[NonNegLong].show)))
 
     def ids(ids: OneOrMore[NonNegLong]): ValkeyClientFilter      = idList("ID", ids)
     def clientType(clientType: ClientType): ValkeyClientFilter   = add("TYPE", ClientType.clientTypeShow.show(clientType))
@@ -383,14 +383,14 @@ object ServerP {
     def flags(flags: Key): ValkeyClientFilter                    = add("FLAGS", flags.value)
     def libName(name: Key): ValkeyClientFilter                   = add("LIB-NAME", name.value)
     def libVersion(version: Key): ValkeyClientFilter             = add("LIB-VER", version.value)
-    def db(index: DbIndex): ValkeyClientFilter                   = add("DB", index.value.toString)
+    def db(index: DbIndex): ValkeyClientFilter                   = add("DB", Show[DbIndex].show(index))
     def capabilities(capabilities: Key): ValkeyClientFilter      = add("CAPA", capabilities.value)
 
     /** Connected for longer than `seconds` */
-    def maxAge(seconds: PosLong): ValkeyClientFilter = add("MAXAGE", seconds.value.toString)
+    def maxAge(seconds: PosLong): ValkeyClientFilter = add("MAXAGE", Show[PosLong].show(seconds))
 
     /** Idle for at least `seconds` */
-    def idle(seconds: PosLong): ValkeyClientFilter = add("IDLE", seconds.value.toString)
+    def idle(seconds: PosLong): ValkeyClientFilter = add("IDLE", Show[PosLong].show(seconds))
 
     /** Whether to spare the client sending the command */
     def skipMe(skip: Boolean): ValkeyClientFilter = add("SKIPME", if (skip) "yes" else "no")
@@ -405,7 +405,7 @@ object ServerP {
     def notFlags(flags: Key): ValkeyClientFilter                    = add("NOT-FLAGS", flags.value)
     def notLibName(name: Key): ValkeyClientFilter                   = add("NOT-LIB-NAME", name.value)
     def notLibVersion(version: Key): ValkeyClientFilter             = add("NOT-LIB-VER", version.value)
-    def notDb(index: DbIndex): ValkeyClientFilter                   = add("NOT-DB", index.value.toString)
+    def notDb(index: DbIndex): ValkeyClientFilter                   = add("NOT-DB", Show[DbIndex].show(index))
     def notCapabilities(capabilities: Key): ValkeyClientFilter      = add("NOT-CAPA", capabilities.value)
   }
   object ValkeyClientFilter {

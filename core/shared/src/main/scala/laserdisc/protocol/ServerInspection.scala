@@ -319,11 +319,11 @@ object ServerInspection {
     * at, and which slots to track
     */
   final class HotKeysOptions private (val params: List[String]) {
-    def count(keys: PosInt): HotKeysOptions           = new HotKeysOptions(params ++ List("COUNT", keys.value.toString))
-    def duration(seconds: PosInt): HotKeysOptions     = new HotKeysOptions(params ++ List("DURATION", seconds.value.toString))
-    def sample(ratio: PosInt): HotKeysOptions         = new HotKeysOptions(params ++ List("SAMPLE", ratio.value.toString))
+    def count(keys: PosInt): HotKeysOptions           = new HotKeysOptions(params ++ List("COUNT", Show[PosInt].show(keys)))
+    def duration(seconds: PosInt): HotKeysOptions     = new HotKeysOptions(params ++ List("DURATION", Show[PosInt].show(seconds)))
+    def sample(ratio: PosInt): HotKeysOptions         = new HotKeysOptions(params ++ List("SAMPLE", Show[PosInt].show(ratio)))
     def slots(slots: OneOrMore[Slot]): HotKeysOptions =
-      new HotKeysOptions(params ++ ("SLOTS" :: slots.value.length.toString :: slots.value.map(_.value.toString)))
+      new HotKeysOptions(params ++ ("SLOTS" :: Show[Int].show(slots.value.length) :: slots.value.map(Show[Slot].show)))
   }
   object HotKeysOptions {
     private final val none = new HotKeysOptions(Nil)

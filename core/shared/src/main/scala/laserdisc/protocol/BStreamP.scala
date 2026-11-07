@@ -43,13 +43,16 @@ trait BStreamBaseP extends Features {
       streams: OneOrMore[(Key, From)],
       blockMilliseconds: NonNegLong
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    Protocol("XREAD", "BLOCK" :: blockMilliseconds.value.toString :: streamsParams(streams)(_.param)).using(entries[A])
+    Protocol("XREAD", "BLOCK" :: Show[NonNegLong].show(blockMilliseconds) :: streamsParams(streams)(_.param)).using(entries[A])
   final def xread[A: Read[Bulk, _]](
       streams: OneOrMore[(Key, From)],
       blockMilliseconds: NonNegLong,
       count: PosLong
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    Protocol("XREAD", "COUNT" :: count.value.toString :: "BLOCK" :: blockMilliseconds.value.toString :: streamsParams(streams)(_.param))
+    Protocol(
+      "XREAD",
+      "COUNT" :: Show[PosLong].show(count) :: "BLOCK" :: Show[NonNegLong].show(blockMilliseconds) :: streamsParams(streams)(_.param)
+    )
       .using(entries[A])
 
   private final def group(group: Key, consumer: Key): List[String] = List("GROUP", group.value, consumer.value)
@@ -61,7 +64,10 @@ trait BStreamBaseP extends Features {
       streams: OneOrMore[(Key, GroupFrom)],
       blockMilliseconds: NonNegLong
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    Protocol("XREADGROUP", this.group(group, consumer) ++ ("BLOCK" :: blockMilliseconds.value.toString :: streamsParams(streams)(_.param)))
+    Protocol(
+      "XREADGROUP",
+      this.group(group, consumer) ++ ("BLOCK" :: Show[NonNegLong].show(blockMilliseconds) :: streamsParams(streams)(_.param))
+    )
       .using(entries[A])
   final def xreadgroup[A: Read[Bulk, _]](
       group: Key,
@@ -72,7 +78,8 @@ trait BStreamBaseP extends Features {
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      this.group(group, consumer) ++ ("COUNT" :: count.value.toString :: "BLOCK" :: blockMilliseconds.value.toString :: streamsParams(
+      this.group(group, consumer) ++ ("COUNT" :: Show[PosLong]
+        .show(count) :: "BLOCK" :: Show[NonNegLong].show(blockMilliseconds) :: streamsParams(
         streams
       )(_.param))
     ).using(entries[A])
@@ -85,7 +92,9 @@ trait BStreamBaseP extends Features {
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      this.group(group, consumer) ++ ("BLOCK" :: blockMilliseconds.value.toString :: Show[NoAck].show(noAck) :: streamsParams(streams)(
+      this.group(group, consumer) ++ ("BLOCK" :: Show[NonNegLong].show(blockMilliseconds) :: Show[NoAck].show(noAck) :: streamsParams(
+        streams
+      )(
         _.param
       ))
     ).using(entries[A])
@@ -99,7 +108,8 @@ trait BStreamBaseP extends Features {
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      this.group(group, consumer) ++ ("COUNT" :: count.value.toString :: "BLOCK" :: blockMilliseconds.value.toString :: Show[NoAck].show(
+      this.group(group, consumer) ++ ("COUNT" :: Show[PosLong]
+        .show(count) :: "BLOCK" :: Show[NonNegLong].show(blockMilliseconds) :: Show[NoAck].show(
         noAck
       ) ::
         streamsParams(streams)(_.param))
@@ -175,8 +185,8 @@ trait BStreamReadGroupClaimP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("XREADGROUP: CLAIM")
 
-  private final def countParams(count: PosLong): List[String]                = List("COUNT", count.value.toString)
-  private final def blockParams(blockMilliseconds: NonNegLong): List[String] = List("BLOCK", blockMilliseconds.value.toString)
+  private final def countParams(count: PosLong): List[String]                = List("COUNT", Show[PosLong].show(count))
+  private final def blockParams(blockMilliseconds: NonNegLong): List[String] = List("BLOCK", Show[NonNegLong].show(blockMilliseconds))
 
   /** Reads new entries for a consumer of the group, by stream, or `None` when none came within the wait, first taking over other consumers'
     * entries that have been pending for at least `minIdleMilliseconds`
@@ -243,8 +253,8 @@ trait BStreamReadLimitsP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("XREAD: MAXCOUNT MAXSIZE", "XREADGROUP: MAXCOUNT MAXSIZE")
 
-  private final def countParams(count: PosLong): List[String]                = List("COUNT", count.value.toString)
-  private final def blockParams(blockMilliseconds: NonNegLong): List[String] = List("BLOCK", blockMilliseconds.value.toString)
+  private final def countParams(count: PosLong): List[String]                = List("COUNT", Show[PosLong].show(count))
+  private final def blockParams(blockMilliseconds: NonNegLong): List[String] = List("BLOCK", Show[NonNegLong].show(blockMilliseconds))
 
   /** The streams' entries after the given ids, by stream, up to the limits for the whole read, or `None` when none came within the wait */
   final def xread[A: Read[Bulk, _]](

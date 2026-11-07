@@ -121,7 +121,7 @@ object DragonflyP {
   final class RmOptions private (val params: List[String]) {
     def pattern(pattern: GlobPattern): RmOptions = new RmOptions(params ++ List("MATCH", pattern.value))
     def keyType(keyType: KeyP.Type): RmOptions   = new RmOptions(params ++ List("TYPE", Show[KeyP.Type].show(keyType)))
-    def count(count: PosInt): RmOptions          = new RmOptions(params ++ List("COUNT", count.value.toString))
+    def count(count: PosInt): RmOptions          = new RmOptions(params ++ List("COUNT", Show[PosInt].show(count)))
   }
   object RmOptions {
     private final val none = new RmOptions(Nil)

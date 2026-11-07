@@ -198,7 +198,10 @@ object ClusterP {
     case object connected    extends LinkState
     case object disconnected extends LinkState
 
-    implicit final val linkStateShow: Show[LinkState] = Show.unsafeFromToString
+    implicit final val linkStateShow: Show[LinkState] = Show.instance {
+      case `connected`    => "connected"
+      case `disconnected` => "disconnected"
+    }
   }
 
   /** Where a node listens. `host` is `None` until the node knows its own address, as on a fresh node. `hostname` is what the node announces

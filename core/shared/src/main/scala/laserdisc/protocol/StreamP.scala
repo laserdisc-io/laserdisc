@@ -27,13 +27,11 @@ import Protocol.Single
 object StreamP {
 
   /** The id of a stream entry: the time it was added, in milliseconds, and a sequence number for entries added in the same millisecond */
-  final case class Id(milliseconds: NonNegLong, sequence: NonNegLong) {
-    override final def toString: String = s"${milliseconds.value}-${sequence.value}"
-  }
+  final case class Id(milliseconds: NonNegLong, sequence: NonNegLong)
   object Id {
     private final val IdRegex = raw"(\d+)-(\d+)".r
 
-    implicit final val idShow: Show[Id]            = Show.instance(_.toString)
+    implicit final val idShow: Show[Id]            = Show.instance(id => s"${id.milliseconds.value}-${id.sequence.value}")
     implicit final val bulk2IdRead: Read[Bulk, Id] = Read.instancePF("Bulk(stream id)") {
       case Bulk(IdRegex(ToLong(NonNegLong(ms)), ToLong(NonNegLong(seq)))) => Id(ms, seq)
     }
@@ -57,8 +55,8 @@ object StreamP {
 
     final val min: Bound         = new Of("-")
     final val max: Bound         = new Of("+")
-    def inclusive(id: Id): Bound = new Of(id.toString)
-    def exclusive(id: Id): Bound = new Of(s"(${id.toString}")
+    def inclusive(id: Id): Bound = new Of(Show[Id].show(id))
+    def exclusive(id: Id): Bound = new Of(s"(${Show[Id].show(id)}")
   }
 
   /** Where XREAD reads a stream from: after an id, or only entries added after the read (`$`) */
@@ -66,7 +64,7 @@ object StreamP {
   object From       {
     private final class Of(override final val param: String) extends From
 
-    def after(id: Id): From = new Of(id.toString)
+    def after(id: Id): From = new Of(Show[Id].show(id))
     final val latest: From  = new Of("$")
   }
 
@@ -78,15 +76,15 @@ object StreamP {
   object Trim       {
     private final class Of(override final val params: List[String]) extends Trim
 
-    def maxLen(count: NonNegLong): Trim                       = new Of(List("MAXLEN", count.value.toString))
-    def maxLenExact(count: NonNegLong): Trim                  = new Of(List("MAXLEN", "=", count.value.toString))
-    def maxLenApprox(count: NonNegLong): Trim                 = new Of(List("MAXLEN", "~", count.value.toString))
+    def maxLen(count: NonNegLong): Trim                       = new Of(List("MAXLEN", Show[NonNegLong].show(count)))
+    def maxLenExact(count: NonNegLong): Trim                  = new Of(List("MAXLEN", "=", Show[NonNegLong].show(count)))
+    def maxLenApprox(count: NonNegLong): Trim                 = new Of(List("MAXLEN", "~", Show[NonNegLong].show(count)))
     def maxLenApprox(count: NonNegLong, limit: PosLong): Trim =
-      new Of(List("MAXLEN", "~", count.value.toString, "LIMIT", limit.value.toString))
-    def minId(id: Id): Trim                       = new Of(List("MINID", id.toString))
-    def minIdExact(id: Id): Trim                  = new Of(List("MINID", "=", id.toString))
-    def minIdApprox(id: Id): Trim                 = new Of(List("MINID", "~", id.toString))
-    def minIdApprox(id: Id, limit: PosLong): Trim = new Of(List("MINID", "~", id.toString, "LIMIT", limit.value.toString))
+      new Of(List("MAXLEN", "~", Show[NonNegLong].show(count), "LIMIT", Show[PosLong].show(limit)))
+    def minId(id: Id): Trim                       = new Of(List("MINID", Show[Id].show(id)))
+    def minIdExact(id: Id): Trim                  = new Of(List("MINID", "=", Show[Id].show(id)))
+    def minIdApprox(id: Id): Trim                 = new Of(List("MINID", "~", Show[Id].show(id)))
+    def minIdApprox(id: Id, limit: PosLong): Trim = new Of(List("MINID", "~", Show[Id].show(id), "LIMIT", Show[PosLong].show(limit)))
   }
 
   /** Where XREADGROUP reads a stream from: entries never delivered to the group yet (`>`), or the consumer's pending entries after an id */
@@ -95,7 +93,7 @@ object StreamP {
     private final class Of(override final val param: String) extends GroupFrom
 
     final val newEntries: GroupFrom     = new Of(">")
-    def pendingAfter(id: Id): GroupFrom = new Of(id.toString)
+    def pendingAfter(id: Id): GroupFrom = new Of(Show[Id].show(id))
   }
 
   /** MKSTREAM, for XGROUP CREATE: create the stream when it doesn't exist */
@@ -154,12 +152,12 @@ object StreamP {
     * were delivered, claim them even if they weren't pending, and move the group's last delivered id on
     */
   final class ClaimOptions private (val params: List[String]) {
-    def idle(milliseconds: NonNegLong): ClaimOptions          = new ClaimOptions(params ++ List("IDLE", milliseconds.value.toString))
+    def idle(milliseconds: NonNegLong): ClaimOptions = new ClaimOptions(params ++ List("IDLE", Show[NonNegLong].show(milliseconds)))
     def time(millisecondsTimestamp: NonNegLong): ClaimOptions =
-      new ClaimOptions(params ++ List("TIME", millisecondsTimestamp.value.toString))
-    def retryCount(count: NonNegLong): ClaimOptions = new ClaimOptions(params ++ List("RETRYCOUNT", count.value.toString))
+      new ClaimOptions(params ++ List("TIME", Show[NonNegLong].show(millisecondsTimestamp)))
+    def retryCount(count: NonNegLong): ClaimOptions = new ClaimOptions(params ++ List("RETRYCOUNT", Show[NonNegLong].show(count)))
     def force: ClaimOptions                         = new ClaimOptions(params :+ "FORCE")
-    def lastId(id: Id): ClaimOptions                = new ClaimOptions(params ++ List("LASTID", id.toString))
+    def lastId(id: Id): ClaimOptions                = new ClaimOptions(params ++ List("LASTID", Show[Id].show(id)))
   }
   object ClaimOptions {
     final val none: ClaimOptions = new ClaimOptions(Nil)
@@ -289,12 +287,12 @@ object StreamP {
 
   /** IDMP-DURATION and IDMP-MAXSIZE, for XCFGSET: how long, in seconds, and how many idempotency ids a stream remembers per producer */
   final class IdmpConfig private (val params: List[String]) {
-    def duration(seconds: PosLong): IdmpConfig = new IdmpConfig(params ++ List("IDMP-DURATION", seconds.value.toString))
-    def maxSize(ids: PosLong): IdmpConfig      = new IdmpConfig(params ++ List("IDMP-MAXSIZE", ids.value.toString))
+    def duration(seconds: PosLong): IdmpConfig = new IdmpConfig(params ++ List("IDMP-DURATION", Show[PosLong].show(seconds)))
+    def maxSize(ids: PosLong): IdmpConfig      = new IdmpConfig(params ++ List("IDMP-MAXSIZE", Show[PosLong].show(ids)))
   }
   object IdmpConfig {
-    def duration(seconds: PosLong): IdmpConfig = new IdmpConfig(List("IDMP-DURATION", seconds.value.toString))
-    def maxSize(ids: PosLong): IdmpConfig      = new IdmpConfig(List("IDMP-MAXSIZE", ids.value.toString))
+    def duration(seconds: PosLong): IdmpConfig = new IdmpConfig(List("IDMP-DURATION", Show[PosLong].show(seconds)))
+    def maxSize(ids: PosLong): IdmpConfig      = new IdmpConfig(List("IDMP-MAXSIZE", Show[PosLong].show(ids)))
   }
 
   /** SILENT, FAIL and FATAL, for XNACK: the consumer gave the entries back without processing them, failed to process them, or found they
@@ -317,11 +315,11 @@ object StreamP {
     * pending, such as acknowledged ones. Redis 8.8
     */
   final class NackOptions private (val params: List[String]) {
-    def retryCount(count: NonNegLong): NackOptions = new NackOptions(params ++ List("RETRYCOUNT", count.value.toString))
+    def retryCount(count: NonNegLong): NackOptions = new NackOptions(params ++ List("RETRYCOUNT", Show[NonNegLong].show(count)))
     def force: NackOptions                         = new NackOptions(params :+ "FORCE")
   }
   object NackOptions {
-    def retryCount(count: NonNegLong): NackOptions = new NackOptions(List("RETRYCOUNT", count.value.toString))
+    def retryCount(count: NonNegLong): NackOptions = new NackOptions(List("RETRYCOUNT", Show[NonNegLong].show(count)))
     def force: NackOptions                         = new NackOptions(List("FORCE"))
   }
 
@@ -334,12 +332,12 @@ object StreamP {
     * reached about so many bytes, which always lets at least one entry through. COUNT, instead, applies to each stream. Redis 8.10
     */
   final class ReadLimits private (val params: List[String]) {
-    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(params ++ List("MAXCOUNT", entries.value.toString))
-    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(params ++ List("MAXSIZE", bytes.value.toString))
+    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(params ++ List("MAXCOUNT", Show[PosLong].show(entries)))
+    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(params ++ List("MAXSIZE", Show[PosLong].show(bytes)))
   }
   object ReadLimits {
-    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(List("MAXCOUNT", entries.value.toString))
-    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(List("MAXSIZE", bytes.value.toString))
+    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(List("MAXCOUNT", Show[PosLong].show(entries)))
+    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(List("MAXSIZE", Show[PosLong].show(bytes)))
   }
 
   /** NOMKSTREAM, for XADD: don't create the stream when it doesn't exist */
@@ -392,7 +390,7 @@ object StreamP {
       before: List[String],
       after: List[String]
   ): List[String] =
-    "GROUP" :: group.value :: consumer.value :: before ++ ("CLAIM" :: minIdleMilliseconds.value.toString :: after) ++
+    "GROUP" :: group.value :: consumer.value :: before ++ ("CLAIM" :: Show[NonNegLong].show(minIdleMilliseconds) :: after) ++
       ("STREAMS" :: keys.value.map(_.value) ++ keys.value.map(_ => ">"))
 
   // Redis 7.0 adds the ids of the entries it found deleted
@@ -581,32 +579,32 @@ trait StreamBaseP extends Features {
   final def xadd[A: Show](key: Key, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
     Protocol("XADD", key.value :: "*" :: fieldsParams(fields)).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
-    Protocol("XADD", key.value :: id.toString :: fieldsParams(fields)).as[Bulk, Id]
+    Protocol("XADD", key *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, trim: Trim, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
     Protocol("XADD", key.value :: trim.params ++ ("*" :: fieldsParams(fields))).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, trim: Trim, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
-    Protocol("XADD", key.value :: trim.params ++ (id.toString :: fieldsParams(fields))).as[Bulk, Id]
+    Protocol("XADD", key *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
 
   /** XADD only to an existing stream: `None` when it doesn't exist */
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
     Protocol("XADD", key *: noMkStream *: "*" *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: Id, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: id *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, trim: Trim, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
     Protocol("XADD", key *: noMkStream *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: Id, trim: Trim, fields: OneOrMore[(Key, A)]): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
 
   /** Deletes the entries, and replies how many it deleted */
   final def xdel(key: Key, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
-    Protocol("XDEL", key.value :: ids.value.map(_.toString)).as[Num, NonNegLong]
+    Protocol("XDEL", key *: ids.value *: EmptyTuple).as[Num, NonNegLong]
 
   final def xlen(key: Key): Single.Aux[NonNegLong] = Protocol("XLEN", key).as[Num, NonNegLong]
 
   final def xrange[A: Read[Bulk, _]](key: Key, start: Bound, end: Bound): Single.Aux[Seq[Entry[A]]] =
     Protocol("XRANGE", key.value :: start.param :: end.param :: Nil).using(entries[A])
   final def xrange[A: Read[Bulk, _]](key: Key, start: Bound, end: Bound, count: PosLong): Single.Aux[Seq[Entry[A]]] =
-    Protocol("XRANGE", key.value :: start.param :: end.param :: "COUNT" :: count.value.toString :: Nil).using(entries[A])
+    Protocol("XRANGE", key.value :: start.param :: end.param :: "COUNT" :: Show[PosLong].show(count) :: Nil).using(entries[A])
 
   /** XRANGE in pages of `count` entries, as a [[Loop]]: each page starts after the last entry of the one before, until a page comes short
     */
@@ -621,14 +619,14 @@ trait StreamBaseP extends Features {
     Protocol("XREAD", "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(_._2.param))
       .using(StreamP.maybeStreams[A])
   final def xread[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)], count: PosLong): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    Protocol("XREAD", "COUNT" :: count.value.toString :: "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(_._2.param))
+    Protocol("XREAD", "COUNT" :: Show[PosLong].show(count) :: "STREAMS" :: streams.value.map(_._1.value) ++ streams.value.map(_._2.param))
       .using(StreamP.maybeStreams[A])
 
   /** XRANGE from the end: `end` is the larger bound */
   final def xrevrange[A: Read[Bulk, _]](key: Key, end: Bound, start: Bound): Single.Aux[Seq[Entry[A]]] =
     Protocol("XREVRANGE", key.value :: end.param :: start.param :: Nil).using(entries[A])
   final def xrevrange[A: Read[Bulk, _]](key: Key, end: Bound, start: Bound, count: PosLong): Single.Aux[Seq[Entry[A]]] =
-    Protocol("XREVRANGE", key.value :: end.param :: start.param :: "COUNT" :: count.value.toString :: Nil).using(entries[A])
+    Protocol("XREVRANGE", key.value :: end.param :: start.param :: "COUNT" :: Show[PosLong].show(count) :: Nil).using(entries[A])
 
   /** XREVRANGE in pages of `count` entries, as a [[Loop]]: each page starts before the last entry of the one before, until a page comes
     * short
@@ -664,7 +662,7 @@ trait StreamGroupBaseP extends Features {
 
   /** Acknowledges the entries, and replies how many were pending */
   final def xack(key: Key, group: Key, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
-    Protocol("XACK", key.value :: group.value :: ids.value.map(_.toString)).as[Num, NonNegLong]
+    Protocol("XACK", key *: group *: ids.value *: EmptyTuple).as[Num, NonNegLong]
 
   /** Creates a group that will read the stream after `from` (`StreamFrom.latest` for entries added from now on) */
   final def xgroupcreate(key: Key, group: Key, from: From): Single.Aux[OK] =
@@ -696,10 +694,10 @@ trait StreamGroupBaseP extends Features {
     * `idleMilliseconds`
     */
   final def xpending(key: Key, group: Key, start: Bound, end: Bound, count: PosLong): Single.Aux[Seq[PendingEntry]] =
-    Protocol("XPENDING", key.value :: group.value :: start.param :: end.param :: count.value.toString :: Nil)
+    Protocol("XPENDING", key.value :: group.value :: start.param :: end.param :: Show[PosLong].show(count) :: Nil)
       .using(RESPRead.instance(StreamP.pendingEntries))
   final def xpending(key: Key, group: Key, start: Bound, end: Bound, count: PosLong, consumer: Key): Single.Aux[Seq[PendingEntry]] =
-    Protocol("XPENDING", key.value :: group.value :: start.param :: end.param :: count.value.toString :: consumer.value :: Nil)
+    Protocol("XPENDING", key.value :: group.value :: start.param :: end.param :: Show[PosLong].show(count) :: consumer.value :: Nil)
       .using(RESPRead.instance(StreamP.pendingEntries))
   final def xpending(
       key: Key,
@@ -711,7 +709,8 @@ trait StreamGroupBaseP extends Features {
   ): Single.Aux[Seq[PendingEntry]] =
     Protocol(
       "XPENDING",
-      key.value :: group.value :: "IDLE" :: idleMilliseconds.value.toString :: start.param :: end.param :: count.value.toString :: Nil
+      key.value :: group.value :: "IDLE" :: Show[NonNegLong]
+        .show(idleMilliseconds) :: start.param :: end.param :: Show[PosLong].show(count) :: Nil
     )
       .using(RESPRead.instance(StreamP.pendingEntries))
   final def xpending(
@@ -725,7 +724,8 @@ trait StreamGroupBaseP extends Features {
   ): Single.Aux[Seq[PendingEntry]] =
     Protocol(
       "XPENDING",
-      key.value :: group.value :: "IDLE" :: idleMilliseconds.value.toString :: start.param :: end.param :: count.value.toString :: consumer.value :: Nil
+      key.value :: group.value :: "IDLE" :: Show[NonNegLong]
+        .show(idleMilliseconds) :: start.param :: end.param :: Show[PosLong].show(count) :: consumer.value :: Nil
     ).using(RESPRead.instance(StreamP.pendingEntries))
 
   private final def groupStreams(streams: OneOrMore[(Key, GroupFrom)]): List[String] =
@@ -745,7 +745,7 @@ trait StreamGroupBaseP extends Features {
       streams: OneOrMore[(Key, GroupFrom)],
       count: PosLong
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: "COUNT" :: count.value.toString :: groupStreams(streams))
+    Protocol("XREADGROUP", "GROUP" :: group.value :: consumer.value :: "COUNT" :: Show[PosLong].show(count) :: groupStreams(streams))
       .using(StreamP.maybeStreams[A])
   final def xreadgroup[A: Read[Bulk, _]](
       group: Key,
@@ -764,7 +764,7 @@ trait StreamGroupBaseP extends Features {
   ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      "GROUP" :: group.value :: consumer.value :: "COUNT" :: count.value.toString :: Show[NoAck].show(noAck) :: groupStreams(streams)
+      "GROUP" :: group.value :: consumer.value :: "COUNT" :: Show[PosLong].show(count) :: Show[NoAck].show(noAck) :: groupStreams(streams)
     ).using(StreamP.maybeStreams[A])
 }
 
@@ -793,7 +793,7 @@ trait StreamClaimAndInfoBaseP extends Features {
   final val xinfohelp: Single.Aux[Seq[String]] = Protocol.help("XINFO")
 
   private final def claim(key: Key, group: Key, consumer: Key, minIdleMilliseconds: NonNegLong, ids: OneOrMore[Id]): List[String] =
-    key.value :: group.value :: consumer.value :: minIdleMilliseconds.value.toString :: ids.value.map(_.toString)
+    key.value :: group.value :: consumer.value :: Show[NonNegLong].show(minIdleMilliseconds) :: ids.value.map(Show[Id].show)
 
   /** Gives the consumer the pending entries that have been idle for at least `minIdleMilliseconds`, and replies with them */
   final def xclaim[A: Read[Bulk, _]](
@@ -829,7 +829,7 @@ trait StreamClaimAndInfoBaseP extends Features {
       .using(RESPRead.instance(StreamP.ids))
 
   private final def autoclaim(key: Key, group: Key, consumer: Key, minIdleMilliseconds: NonNegLong, start: Id): List[String] =
-    List(key.value, group.value, consumer.value, minIdleMilliseconds.value.toString, start.toString)
+    List(key.value, group.value, consumer.value, Show[NonNegLong].show(minIdleMilliseconds), Show[Id].show(start))
 
   /** Like XCLAIM for the pending entries from `start` on, 100 at a time or `count`, and replies where to start the next call */
   final def xautoclaim[A: Read[Bulk, _]](
@@ -849,7 +849,7 @@ trait StreamClaimAndInfoBaseP extends Features {
       start: Id,
       count: PosLong
   ): Single.Aux[AutoClaimed[Entry[A]]] =
-    Protocol("XAUTOCLAIM", autoclaim(key, group, consumer, minIdleMilliseconds, start) ++ List("COUNT", count.value.toString))
+    Protocol("XAUTOCLAIM", autoclaim(key, group, consumer, minIdleMilliseconds, start) ++ List("COUNT", Show[PosLong].show(count)))
       .using(autoClaimedEntries[A])
 
   /** XAUTOCLAIM that replies with the ids only */
@@ -864,7 +864,10 @@ trait StreamClaimAndInfoBaseP extends Features {
       start: Id,
       count: PosLong
   ): Single.Aux[AutoClaimed[Id]] =
-    Protocol("XAUTOCLAIM", autoclaim(key, group, consumer, minIdleMilliseconds, start) ++ List("COUNT", count.value.toString, "JUSTID"))
+    Protocol(
+      "XAUTOCLAIM",
+      autoclaim(key, group, consumer, minIdleMilliseconds, start) ++ List("COUNT", Show[PosLong].show(count), "JUSTID")
+    )
       .using(autoClaimedIds)
 
   final def xinfoconsumers(key: Key, group: Key): Single.Aux[Seq[ConsumerInfo]] =
@@ -882,11 +885,11 @@ trait StreamClaimAndInfoBaseP extends Features {
   final def xinfostreamfull[A: Read[Bulk, _]](key: Key): Single.Aux[StreamInfoFull[A]] =
     Protocol("XINFO", "STREAM" :: key.value :: "FULL" :: Nil).using(RESPRead.instance(StreamP.streamInfoFull[A]))
   final def xinfostreamfull[A: Read[Bulk, _]](key: Key, count: NonNegLong): Single.Aux[StreamInfoFull[A]] =
-    Protocol("XINFO", "STREAM" :: key.value :: "FULL" :: "COUNT" :: count.value.toString :: Nil)
+    Protocol("XINFO", "STREAM" :: key.value :: "FULL" :: "COUNT" :: Show[NonNegLong].show(count) :: Nil)
       .using(RESPRead.instance(StreamP.streamInfoFull[A]))
 
   /** Sets the stream's last id, which new entries' ids must be after */
-  final def xsetid(key: Key, lastId: Id): Single.Aux[OK] = Protocol("XSETID", key.value :: lastId.toString :: Nil).as[Str, OK]
+  final def xsetid(key: Key, lastId: Id): Single.Aux[OK] = Protocol("XSETID", key *: lastId *: EmptyTuple).as[Str, OK]
 }
 
 /** XSETID with ENTRIESADDED and MAXDELETEDID: Redis 7.0 */
@@ -899,7 +902,8 @@ trait StreamSetIdEntriesP extends Features {
   final def xsetid(key: Key, lastId: Id, entriesAdded: NonNegLong, maxDeletedId: Id): Single.Aux[OK] =
     Protocol(
       "XSETID",
-      key.value :: lastId.toString :: "ENTRIESADDED" :: entriesAdded.value.toString :: "MAXDELETEDID" :: maxDeletedId.toString :: Nil
+      key.value :: Show[Id]
+        .show(lastId) :: "ENTRIESADDED" :: Show[NonNegLong].show(entriesAdded) :: "MAXDELETEDID" :: Show[Id].show(maxDeletedId) :: Nil
     )
       .as[Str, OK]
 }
@@ -932,13 +936,13 @@ trait StreamRefPolicyP extends Features {
 
   private final val results = RESPRead[Arr.Of[Num], Seq[DeleteResult]]
 
-  private final def idsParams(ids: OneOrMore[Id]): List[String] = "IDS" :: ids.value.length.toString :: ids.value.map(_.toString)
+  private final def idsParams(ids: OneOrMore[Id]): List[String] = "IDS" :: Show[Int].show(ids.value.length) :: ids.value.map(Show[Id].show)
 
   /** XADD trimming with a policy for the groups' references */
   final def xadd[A: Show](key: Key, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
     Protocol("XADD", key *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
-    Protocol("XADD", key *: policy *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](
       key: Key,
       noMkStream: NoMkStream,
@@ -956,7 +960,7 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single.Aux[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id.toString *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, id: StreamP.IdAt, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single.Aux[Id] =
     Protocol("XADD", key *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
@@ -1030,7 +1034,7 @@ trait StreamNackP extends Features {
     super.supported ++ List("XNACK: FAIL FATAL FORCE IDS RETRYCOUNT SILENT")
 
   private final def params(key: Key, group: Key, mode: NackMode, ids: OneOrMore[Id]): List[String] =
-    key.value :: group.value :: Show[NackMode].show(mode) :: "IDS" :: ids.value.length.toString :: ids.value.map(_.toString)
+    key.value :: group.value :: Show[NackMode].show(mode) :: "IDS" :: Show[Int].show(ids.value.length) :: ids.value.map(Show[Id].show)
 
   /** Gives the entries back to the group for another consumer to read, with how many it gave back */
   final def xnack(key: Key, group: Key, mode: NackMode, ids: OneOrMore[Id]): Single.Aux[NonNegLong] =
@@ -1045,7 +1049,7 @@ trait StreamReadGroupClaimP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("XREADGROUP: CLAIM")
 
-  private final def countParams(count: PosLong): List[String] = List("COUNT", count.value.toString)
+  private final def countParams(count: PosLong): List[String] = List("COUNT", Show[PosLong].show(count))
 
   /** Reads new entries for a consumer of the group, by stream, or `None` when there are none, first taking over other consumers' entries
     * that have been pending for at least `minIdleMilliseconds`
@@ -1093,7 +1097,7 @@ trait StreamReadLimitsP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("XREAD: MAXCOUNT MAXSIZE", "XREADGROUP: MAXCOUNT MAXSIZE")
 
-  private final def countParams(count: PosLong): List[String] = List("COUNT", count.value.toString)
+  private final def countParams(count: PosLong): List[String] = List("COUNT", Show[PosLong].show(count))
 
   /** The streams' entries after the given ids, by stream, up to the limits for the whole read, or `None` when none of them has any */
   final def xread[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)], limits: ReadLimits): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
@@ -1201,12 +1205,14 @@ trait StreamGroupEntriesReadP extends Features {
 
   /** Like `xgroupcreate`, telling the group how many entries it has already read, so that it can report its lag */
   final def xgroupcreate(key: Key, group: Key, from: From, entriesRead: NonNegLong): Single.Aux[OK] =
-    Protocol("XGROUP", "CREATE" :: key.value :: group.value :: from.param :: "ENTRIESREAD" :: entriesRead.value.toString :: Nil).as[Str, OK]
+    Protocol("XGROUP", "CREATE" :: key.value :: group.value :: from.param :: "ENTRIESREAD" :: Show[NonNegLong].show(entriesRead) :: Nil)
+      .as[Str, OK]
   final def xgroupcreate(key: Key, group: Key, from: From, mkStream: MkStream, entriesRead: NonNegLong): Single.Aux[OK] =
     Protocol("XGROUP", "CREATE" *: key *: group *: from.param *: mkStream *: "ENTRIESREAD" *: entriesRead *: EmptyTuple).as[Str, OK]
 
   final def xgroupsetid(key: Key, group: Key, from: From, entriesRead: NonNegLong): Single.Aux[OK] =
-    Protocol("XGROUP", "SETID" :: key.value :: group.value :: from.param :: "ENTRIESREAD" :: entriesRead.value.toString :: Nil).as[Str, OK]
+    Protocol("XGROUP", "SETID" :: key.value :: group.value :: from.param :: "ENTRIESREAD" :: Show[NonNegLong].show(entriesRead) :: Nil)
+      .as[Str, OK]
 }
 
 /** XCLAIM and XAUTOCLAIM as they reply from Redis 7.0: deleted entries are left out, and XAUTOCLAIM also lists their ids */

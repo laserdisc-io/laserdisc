@@ -133,10 +133,10 @@ object HashP {
   }
 
   private[protocol] final def fields(fields: OneOrMoreKeys): List[String] =
-    "FIELDS" :: fields.value.length.toString :: fields.value.map(_.value)
+    "FIELDS" :: Show[Int].show(fields.value.length) :: fields.value.map(_.value)
 
   private[protocol] final def fieldsAndValues[A: Show](fieldValues: OneOrMore[(Key, A)]): List[String] =
-    "FIELDS" :: fieldValues.value.length.toString :: fieldValues.value.flatMap { case (f, v) => List(f.value, Show[A].show(v)) }
+    "FIELDS" :: Show[Int].show(fieldValues.value.length) :: fieldValues.value.flatMap { case (f, v) => List(f.value, Show[A].show(v)) }
 }
 
 trait HashBaseP extends Features {

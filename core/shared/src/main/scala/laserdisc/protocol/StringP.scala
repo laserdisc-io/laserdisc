@@ -81,9 +81,9 @@ object StringP {
 
     def get(encoding: Encoding, offset: Offset): BitField              = new BitField(params ++ List("GET", encoding.param, offset.param))
     def set(encoding: Encoding, offset: Offset, value: Long): BitField =
-      new BitField(params ++ List("SET", encoding.param, offset.param, value.toString))
+      new BitField(params ++ List("SET", encoding.param, offset.param, Show[Long].show(value)))
     def incrBy(encoding: Encoding, offset: Offset, increment: Long): BitField =
-      new BitField(params ++ List("INCRBY", encoding.param, offset.param, increment.toString))
+      new BitField(params ++ List("INCRBY", encoding.param, offset.param, Show[Long].show(increment)))
     def overflow(overflow: Overflow): BitField = new BitField(params ++ List("OVERFLOW", overflow.param))
   }
   object BitField {
@@ -100,7 +100,7 @@ object StringP {
     def i(bits: SignedBitWidth): Encoding   = new Encoding(s"i${bits.value}")
     def u(bits: UnsignedBitWidth): Encoding = new Encoding(s"u${bits.value}")
 
-    def bit(offset: NonNegLong): Offset  = new Offset(offset.value.toString)
+    def bit(offset: NonNegLong): Offset  = new Offset(Show[NonNegLong].show(offset))
     def field(index: NonNegLong): Offset = new Offset(s"#${index.value}")
 
     final val wrap: Overflow = new Overflow("WRAP")
@@ -453,7 +453,7 @@ trait StringAlgoP extends Features {
   final def stralgolcsidx(input: StrAlgoInput): Single.Aux[LcsMatches] =
     Protocol("STRALGO", "LCS" :: input.params ++ List("IDX", "WITHMATCHLEN")).using(RESPRead.instance(StringP.lcsMatches))
   final def stralgolcsidx(input: StrAlgoInput, minMatchLength: PosInt): Single.Aux[LcsMatches] =
-    Protocol("STRALGO", "LCS" :: input.params ++ List("IDX", "MINMATCHLEN", minMatchLength.value.toString, "WITHMATCHLEN"))
+    Protocol("STRALGO", "LCS" :: input.params ++ List("IDX", "MINMATCHLEN", Show[PosInt].show(minMatchLength), "WITHMATCHLEN"))
       .using(RESPRead.instance(StringP.lcsMatches))
 }
 

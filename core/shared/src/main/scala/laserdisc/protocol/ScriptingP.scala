@@ -114,7 +114,7 @@ object ScriptingP {
 
   // the number of keys, the keys, then the arguments
   private[protocol] final def keysAndArgs(keys: List[Key], args: List[Value]): List[String] =
-    keys.size.toString :: keys.map(_.value) ++ args.map(_.shown)
+    Show[Int].show(keys.size) :: keys.map(_.value) ++ args.map(_.shown)
 }
 
 /** SCRIPT, under `script`. Redis 6.2 */

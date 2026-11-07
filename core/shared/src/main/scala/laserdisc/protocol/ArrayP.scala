@@ -33,7 +33,7 @@ object ArrayP {
 
     final val min: Bound             = new Of("-")
     final val max: Bound             = new Of("+")
-    def at(index: NonNegLong): Bound = new Of(index.value.toString)
+    def at(index: NonNegLong): Bound = new Of(Show[NonNegLong].show(index))
   }
 
   /** REV, for ARLASTITEMS: the most recent first */
@@ -63,7 +63,7 @@ object ArrayP {
   final class GrepOptions private (combine: List[String], limit: List[String], noCase: List[String]) {
     def and: GrepOptions                     = new GrepOptions(List("AND"), limit, noCase)
     def or: GrepOptions                      = new GrepOptions(List("OR"), limit, noCase)
-    def limit(matches: PosLong): GrepOptions = new GrepOptions(combine, List("LIMIT", matches.value.toString), noCase)
+    def limit(matches: PosLong): GrepOptions = new GrepOptions(combine, List("LIMIT", Show[PosLong].show(matches)), noCase)
     def nocase: GrepOptions                  = new GrepOptions(combine, limit, List("NOCASE"))
 
     private[protocol] def params: List[String] = combine ++ limit ++ noCase
@@ -190,11 +190,14 @@ trait ArrayP extends Features {
 
   /** Deletes the elements at these indexes, with how many there were */
   final def ardel(key: Key, indexes: OneOrMore[NonNegLong]): Single.Aux[NonNegLong] =
-    Protocol("ARDEL", key.value :: indexes.value.map(_.value.toString)).as[Num, NonNegLong]
+    Protocol("ARDEL", key.value :: indexes.value.map(Show[NonNegLong].show)).as[Num, NonNegLong]
 
   /** Deletes the elements in these ranges, with how many there were */
   final def ardelrange(key: Key, ranges: OneOrMore[(NonNegLong, NonNegLong)]): Single.Aux[NonNegLong] =
-    Protocol("ARDELRANGE", key.value :: ranges.value.flatMap { case (start, end) => List(start.value.toString, end.value.toString) })
+    Protocol(
+      "ARDELRANGE",
+      key.value :: ranges.value.flatMap { case (start, end) => List(Show[NonNegLong].show(start), Show[NonNegLong].show(end)) }
+    )
       .as[Num, NonNegLong]
 
   final def arget[A: Read[Bulk, _]](key: Key, index: NonNegLong): Single.Aux[Option[A]] =
@@ -258,11 +261,11 @@ trait ArrayP extends Features {
 
   /** The elements at these indexes, with None for those not set */
   final def armget[A: Read[Bulk, _]](key: Key, indexes: OneOrMore[NonNegLong]): Single.Aux[Seq[Option[A]]] =
-    Protocol("ARMGET", key.value :: indexes.value.map(_.value.toString)).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
+    Protocol("ARMGET", key.value :: indexes.value.map(Show[NonNegLong].show)).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
 
   /** Sets the values at their indexes, with how many weren't set before */
   final def armset[A: Show](key: Key, values: OneOrMore[(NonNegLong, A)]): Single.Aux[NonNegLong] =
-    Protocol("ARMSET", key.value :: values.value.flatMap { case (index, value) => List(index.value.toString, Show[A].show(value)) })
+    Protocol("ARMSET", key.value :: values.value.flatMap { case (index, value) => List(Show[NonNegLong].show(index), Show[A].show(value)) })
       .as[Num, NonNegLong]
 
   /** The index the next `arinsert` will use */

@@ -249,13 +249,14 @@ lazy val integration = laserdiscCrossModule("integration", CrossType.Full)
   )
 
 lazy val cli = laserdiscCrossModule("cli")
-  .dependsOn(fs2)
+  .dependsOn(fs2 % "compile->compile;test->test")
   .settings(
     libraryDependencies ++= Seq(
-      "co.fs2"        %%% "fs2-io"      % V.fs2,
-      "org.typelevel" %%% "cats-core"   % V.cats,
-      "org.typelevel" %%% "cats-effect" % V.`cats-effect`,
-      "org.scalameta" %%% "munit"       % V.munit % Test
+      "co.fs2"        %%% "fs2-io"            % V.fs2,
+      "org.typelevel" %%% "cats-core"         % V.cats,
+      "org.typelevel" %%% "cats-effect"       % V.`cats-effect`,
+      "org.scalameta" %%% "munit"             % V.munit               % Test,
+      "org.typelevel" %%% "munit-cats-effect" % V.`munit-cats-effect` % Test
     )
   )
   .jsSettings(

@@ -50,4 +50,16 @@ final class CommandLineSpec extends FunSuite {
     assertEquals(CommandLine.parse("""SET "k v"""), Left("Invalid argument(s)"))
     assertEquals(CommandLine.parse("""SET "k"v"""), Left("Invalid argument(s)"))
   }
+
+  test("double quotes support every escape, and take any other escaped character as it is") {
+    assertEquals(CommandLine.parse("""GET "\r\t\b\a\q""""), Right(List("GET", "\r\t\b\u0007q")))
+  }
+
+  test("an \\x not followed by two hex digits is an x") {
+    assertEquals(CommandLine.parse("""GET "\xZZ" "\x4""""), Right(List("GET", "xZZ", "x4")))
+  }
+
+  test("a quote inside an unquoted argument is part of it") {
+    assertEquals(CommandLine.parse("""GET a"b'c"""), Right(List("GET", "a\"b'c")))
+  }
 }

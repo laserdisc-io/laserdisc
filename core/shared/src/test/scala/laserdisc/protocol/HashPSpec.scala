@@ -27,6 +27,7 @@ import org.scalacheck.Prop.forAll
 final case class HashPSpecUser(name: String, age: Int, email: Option[String])
 
 abstract class HashPSpec extends BaseSpec with HashP {
+  private def bulks(ss: String*): Arr          = Arr(ss.map(Bulk(_)).toList)
   private final val scanKVToArr: ScanKV => Arr = scanKV =>
     Arr(
       Bulk(scanKV.cursor.value),
@@ -384,5 +385,17 @@ abstract class HashPSpec extends BaseSpec with HashP {
       )
       assertEquals(hpexpire(k, t, HashExpireCondition.xx, fs).decode(reply), expected)
     }
+  }
+
+  test("The Hash protocol using hscannovalues sends each of its options") {
+    val (k, c, g, n) = (Key("k"), NonNegLong(5L), GlobPattern("a*"), PosInt(2))
+    val reply        = Arr(Bulk("0"), Arr(Bulk("a")))
+    val scan         = Scan(NonNegLong(0L), Some(Seq(Key("a"))))
+
+    assertEquals(hscannovalues(k, c, g).encode, bulks("HSCAN", "k", "5", "MATCH", "a*", "NOVALUES"))
+    assertEquals(hscannovalues(k, c, n).encode, bulks("HSCAN", "k", "5", "COUNT", "2", "NOVALUES"))
+    assertEquals(hscannovalues(k, c, g, n).encode, bulks("HSCAN", "k", "5", "MATCH", "a*", "COUNT", "2", "NOVALUES"))
+    assertEquals(hscannovalues(k, c, g).decode(reply), scan)
+    assertEquals(hscannovalues(k, c, g, n).decode(reply), scan)
   }
 }

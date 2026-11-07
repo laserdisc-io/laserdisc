@@ -450,6 +450,14 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
     }
   }
 
+  property("The Key protocol using scan roundtrips successfully given cursor, glob pattern and type") {
+    forAll { (nnl: NonNegLong, g: GlobPattern, t: KeyType, sk: Scan[Key]) =>
+      val protocol = scan(nnl, g, t)
+      assertEquals(protocol.encode, Arr(Bulk("SCAN"), Bulk(nnl), Bulk("MATCH"), Bulk(g), Bulk("TYPE"), Bulk(t)))
+      assertEquals(protocol.decode(scanKeyToArr(sk)), sk)
+    }
+  }
+
   property("The Key protocol using scan roundtrips successfully given cursor, glob pattern, count and type") {
     forAll { (nnl: NonNegLong, g: GlobPattern, pi: PosInt, t: KeyType, sk: Scan[Key]) =>
       val protocol = scan(nnl, g, pi, t)

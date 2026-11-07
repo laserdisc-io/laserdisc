@@ -246,4 +246,56 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
       case other                                  => fail(s"expected OK and a failed incr, got $other")
     }
   }
+
+  test("a client sends from 2 to 22 commands together, with or without a timeout, and gets each reply") {
+    def replies(count: Int, sent: IO[Product]): Unit = {
+      val all = sent.unsafeRunSync()(using runtime).productIterator.toList
+      assertEquals(all, List.fill[Any](count)(Right(PONG)))
+    }
+    val p       = ping
+    val timeout = 10.seconds
+
+    replies(2, client.send(p, p))
+    replies(2, client.send(p, p, timeout))
+    replies(3, client.send(p, p, p))
+    replies(3, client.send(p, p, p, timeout))
+    replies(4, client.send(p, p, p, p))
+    replies(4, client.send(p, p, p, p, timeout))
+    replies(5, client.send(p, p, p, p, p))
+    replies(5, client.send(p, p, p, p, p, timeout))
+    replies(6, client.send(p, p, p, p, p, p))
+    replies(6, client.send(p, p, p, p, p, p, timeout))
+    replies(7, client.send(p, p, p, p, p, p, p))
+    replies(7, client.send(p, p, p, p, p, p, p, timeout))
+    replies(8, client.send(p, p, p, p, p, p, p, p))
+    replies(8, client.send(p, p, p, p, p, p, p, p, timeout))
+    replies(9, client.send(p, p, p, p, p, p, p, p, p))
+    replies(9, client.send(p, p, p, p, p, p, p, p, p, timeout))
+    replies(10, client.send(p, p, p, p, p, p, p, p, p, p))
+    replies(10, client.send(p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(11, client.send(p, p, p, p, p, p, p, p, p, p, p))
+    replies(11, client.send(p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(12, client.send(p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(12, client.send(p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(13, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(13, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(14, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(14, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(15, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(15, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(16, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(16, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(17, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(17, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(18, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(18, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(19, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(19, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(20, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(20, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(21, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(21, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+    replies(22, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p))
+    replies(22, client.send(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, timeout))
+  }
 }

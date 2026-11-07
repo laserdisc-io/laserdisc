@@ -59,7 +59,7 @@ ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("17"), JavaSpec.t
 
 ThisBuild / coverageFailOnMinimum      := true
 ThisBuild / coverageHighlighting       := true
-ThisBuild / coverageMinimumStmtTotal   := 85
+ThisBuild / coverageMinimumStmtTotal   := 90
 ThisBuild / coverageMinimumBranchTotal := 80
 
 // four nodes for ClusterClientSpec to make a cluster of: they're in one container so that they can reach each other on 127.0.0.1.

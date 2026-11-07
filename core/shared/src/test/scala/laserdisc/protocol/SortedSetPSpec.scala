@@ -25,6 +25,7 @@ package protocol
 import org.scalacheck.Prop.forAll
 
 final class SortedSetPSpec extends BaseSpec with SortedSetP with BSortedSetP {
+  private def bulks(ss: String*): Arr                                          = Arr(ss.map(Bulk(_)).toList)
   private def scored(ps: List[(String, ValidDouble)]): List[GenBulk]           = ps.flatMap { case (m, s) => List(Bulk(m), Bulk(s)) }
   private def doubles(ps: List[(String, ValidDouble)]): List[(String, Double)] = ps.map { case (m, s) => m -> s.value }
 
@@ -382,5 +383,33 @@ final class SortedSetPSpec extends BaseSpec with SortedSetP with BSortedSetP {
       frame("ZUNIONSTORE", "d", "2", "a", "b", "WEIGHTS", "1.5", "2.5", "AGGREGATE", "SUM")
     )
     assertEquals(zunionstore(ks, d).decode(reply), NonNegInt(3))
+  }
+
+  test("The SortedSet protocol using zscan sends each of its options, and reads members with their scores") {
+    val (k, c, g, n) = (Key("k"), NonNegLong(5L), GlobPattern("a*"), PosInt(2))
+    val reply        = Arr(Bulk("0"), Arr(Bulk("a"), Bulk("1.5")))
+    val scan         = Scan(NonNegLong(0L), Some(Seq("a" -> 1.5d)))
+
+    assertEquals(zscan[String](k, c).encode, bulks("ZSCAN", "k", "5"))
+    assertEquals(zscan[String](k, c, g).encode, bulks("ZSCAN", "k", "5", "MATCH", "a*"))
+    assertEquals(zscan[String](k, c, n).encode, bulks("ZSCAN", "k", "5", "COUNT", "2"))
+    assertEquals(zscan[String](k, c, g, n).encode, bulks("ZSCAN", "k", "5", "MATCH", "a*", "COUNT", "2"))
+    assertEquals(zscan[String](k, c, n).decode(reply), scan)
+    assertEquals(zscan[String](k, c, g, n).decode(reply), scan)
+  }
+
+  test("The SortedSet protocol using zscannoscores sends each of its options, and reads only members") {
+    val (k, c, g, n) = (Key("k"), NonNegLong(5L), GlobPattern("a*"), PosInt(2))
+    val reply        = Arr(Bulk("0"), Arr(Bulk("a")))
+    val scan         = Scan(NonNegLong(0L), Some(Seq("a")))
+
+    assertEquals(zscannoscores[String](k, c).encode, bulks("ZSCAN", "k", "5", "NOSCORES"))
+    assertEquals(zscannoscores[String](k, c, g).encode, bulks("ZSCAN", "k", "5", "MATCH", "a*", "NOSCORES"))
+    assertEquals(zscannoscores[String](k, c, n).encode, bulks("ZSCAN", "k", "5", "COUNT", "2", "NOSCORES"))
+    assertEquals(zscannoscores[String](k, c, g, n).encode, bulks("ZSCAN", "k", "5", "MATCH", "a*", "COUNT", "2", "NOSCORES"))
+    assertEquals(zscannoscores[String](k, c).decode(reply), scan)
+    assertEquals(zscannoscores[String](k, c, g).decode(reply), scan)
+    assertEquals(zscannoscores[String](k, c, n).decode(reply), scan)
+    assertEquals(zscannoscores[String](k, c, g, n).decode(reply), scan)
   }
 }

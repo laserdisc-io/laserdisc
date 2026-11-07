@@ -25,6 +25,7 @@ package protocol
 import org.scalacheck.Prop.forAll
 
 final class SetPSpec extends BaseSpec with SetP {
+  private def bulks(ss: String*): Arr = Arr(ss.map(Bulk(_)).toList)
 
   property("The Set protocol using smismember reads whether each member is in the set") {
     forAll { (k: Key, ms: OneOrMore[String], bs: List[Boolean]) =>
@@ -131,5 +132,18 @@ final class SetPSpec extends BaseSpec with SetP {
       assertEquals(sunionstore(ks, d).encode, Arr(Bulk("SUNIONSTORE") :: Bulk(d) :: ks.value.map(Bulk(_))))
       assertEquals(sunionstore(ks, d).decode(reply), n)
     }
+  }
+
+  test("The Set protocol using sscan sends each of its options, and reads members") {
+    val (k, c, g, n) = (Key("k"), NonNegLong(5L), GlobPattern("a*"), PosInt(2))
+    val reply        = Arr(Bulk("0"), Arr(Bulk("a")))
+    val scan         = Scan(NonNegLong(0L), Some(Seq("a")))
+
+    assertEquals(sscan[String](k, c).encode, bulks("SSCAN", "k", "5"))
+    assertEquals(sscan[String](k, c, g).encode, bulks("SSCAN", "k", "5", "MATCH", "a*"))
+    assertEquals(sscan[String](k, c, n).encode, bulks("SSCAN", "k", "5", "COUNT", "2"))
+    assertEquals(sscan[String](k, c, g, n).encode, bulks("SSCAN", "k", "5", "MATCH", "a*", "COUNT", "2"))
+    assertEquals(sscan[String](k, c, g).decode(reply), scan)
+    assertEquals(sscan[String](k, c, g, n).decode(reply), scan)
   }
 }

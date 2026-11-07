@@ -284,6 +284,58 @@ object ClusterP {
       slotsRead[OneOf[Node6_2 *: Node7_0 *: EmptyTuple]]
     private[protocol] final val nodesWithMetadata: Read[Arr.Of[Assigned[Node7_0]], Slots] = slotsRead[Node7_0]
   }
+
+  /** The types of the replies every cluster sends */
+  trait ClusterTypes {
+    final type ClusterAddress           = ClusterP.Address
+    final type ClusterFlag              = ClusterP.Flag
+    final type ClusterImportingSlotType = ClusterP.SlotType.ImportingSlot
+    final type ClusterInfo              = ClusterP.Info
+    final type ClusterLinkState         = ClusterP.LinkState
+    final type ClusterMigratingSlotType = ClusterP.SlotType.MigratingSlot
+    final type ClusterNode              = ClusterP.Node
+    final type ClusterNodes             = ClusterP.Nodes
+    final type ClusterRangeSlotType     = ClusterP.SlotType.Range
+    final type ClusterSingleSlotType    = ClusterP.SlotType.Single
+    final type ClusterSlotInfo          = ClusterP.SlotInfo
+    final type ClusterSlotNode          = ClusterP.SlotNode
+    final type ClusterSlots             = ClusterP.Slots
+    final val ClusterAddress           = ClusterP.Address
+    final val ClusterFlag              = ClusterP.Flag
+    final val ClusterImportingSlotType = ClusterP.SlotType.ImportingSlot
+    final val ClusterInfo              = ClusterP.Info
+    final val ClusterLinkState         = ClusterP.LinkState
+    final val ClusterMigratingSlotType = ClusterP.SlotType.MigratingSlot
+    final val ClusterNode              = ClusterP.Node
+    final val ClusterNodes             = ClusterP.Nodes
+    final val ClusterRangeSlotType     = ClusterP.SlotType.Range
+    final val ClusterSingleSlotType    = ClusterP.SlotType.Single
+    final val ClusterSlotInfo          = ClusterP.SlotInfo
+    final val ClusterSlotNode          = ClusterP.SlotNode
+    final val ClusterSlots             = ClusterP.Slots
+  }
+
+  /** The builders of Redis 6.2's cluster commands */
+  trait ClusterBaseTypes extends ClusterTypes {
+    final type ClusterFailoverMode = ClusterP.FailoverMode
+    final type ClusterResetMode    = ClusterP.ResetMode
+    final type ClusterSetSlotMode  = ClusterP.SetSlotMode
+    final val ClusterFailoverMode = ClusterP.FailoverMode
+    final val ClusterResetMode    = ClusterP.ResetMode
+    final val ClusterSetSlotMode  = ClusterP.SetSlotMode
+  }
+  trait ClusterSlotStatsTypes { final val slotStatsMetric = ClusterManagement.SlotStatsMetric }
+  trait ClusterScanTypes      {
+    final type ClusterScan        = ClusterManagement.Scan
+    final type ClusterScanCursor  = ClusterManagement.ScanCursor
+    final type ClusterScanOptions = ClusterManagement.ScanOptions
+
+    final val ClusterScanCursor  = ClusterManagement.ScanCursor
+    final val ClusterScanOptions = ClusterManagement.ScanOptions
+  }
+
+  // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
+  private[protocol] object internal extends ClusterBaseTypes with ClusterSlotStatsTypes with ClusterScanTypes
 }
 
 trait ClusterCoreP extends Features {
@@ -302,48 +354,10 @@ trait ClusterCoreP extends Features {
       "READWRITE"
     )
 
-  object clustertypes {
-    final type ClusterAddress           = ClusterP.Address
-    final type ClusterFailoverMode      = ClusterP.FailoverMode
-    final type ClusterFlag              = ClusterP.Flag
-    final type ClusterImportingSlotType = ClusterP.SlotType.ImportingSlot
-    final type ClusterInfo              = ClusterP.Info
-    final type ClusterLinkState         = ClusterP.LinkState
-    final type ClusterMigratingSlotType = ClusterP.SlotType.MigratingSlot
-    final type ClusterNode              = ClusterP.Node
-    final type ClusterScan              = ClusterManagement.Scan
-    final type ClusterScanCursor        = ClusterManagement.ScanCursor
-    final type ClusterScanOptions       = ClusterManagement.ScanOptions
-    final type ClusterNodes             = ClusterP.Nodes
-    final type ClusterRangeSlotType     = ClusterP.SlotType.Range
-    final type ClusterResetMode         = ClusterP.ResetMode
-    final type ClusterSetSlotMode       = ClusterP.SetSlotMode
-    final type ClusterSingleSlotType    = ClusterP.SlotType.Single
-    final type ClusterSlotInfo          = ClusterP.SlotInfo
-    final type ClusterSlotNode          = ClusterP.SlotNode
-    final type ClusterSlots             = ClusterP.Slots
+  /** The types of this cluster's replies, and the builders of its commands */
+  val clustertypes: ClusterP.ClusterTypes = new ClusterP.ClusterTypes {}
 
-    final val ClusterAddress           = ClusterP.Address
-    final val ClusterFailoverMode      = ClusterP.FailoverMode
-    final val ClusterFlag              = ClusterP.Flag
-    final val ClusterImportingSlotType = ClusterP.SlotType.ImportingSlot
-    final val ClusterInfo              = ClusterP.Info
-    final val ClusterLinkState         = ClusterP.LinkState
-    final val ClusterMigratingSlotType = ClusterP.SlotType.MigratingSlot
-    final val ClusterNode              = ClusterP.Node
-    final val ClusterNodes             = ClusterP.Nodes
-    final val ClusterRangeSlotType     = ClusterP.SlotType.Range
-    final val ClusterResetMode         = ClusterP.ResetMode
-    final val ClusterSetSlotMode       = ClusterP.SetSlotMode
-    final val ClusterSlotInfo          = ClusterP.SlotInfo
-    final val ClusterSlotNode          = ClusterP.SlotNode
-    final val ClusterScanCursor        = ClusterManagement.ScanCursor
-    final val ClusterScanOptions       = ClusterManagement.ScanOptions
-    final val ClusterSingleSlotType    = ClusterP.SlotType.Single
-    final val ClusterSlots             = ClusterP.Slots
-  }
-
-  import clustertypes.*
+  import ClusterP.internal.*
 
   final val clusterhelp: Single.Aux[Seq[String]] = Protocol.help("CLUSTER")
 
@@ -363,7 +377,9 @@ trait ClusterCoreP extends Features {
 }
 
 trait ClusterBaseP extends ClusterCoreP {
-  import clustertypes.*
+  override val clustertypes: ClusterP.ClusterBaseTypes = new ClusterP.ClusterBaseTypes {}
+
+  import ClusterP.internal.*
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -453,4 +469,7 @@ trait ClusterP
     with ClusterSetSlotTimeoutP
     with ClusterReplicateNoOneP
     with ClusterSlotMigrationsP
-    with ClusterScanP
+    with ClusterScanP {
+  override val clustertypes: ClusterP.ClusterBaseTypes with ClusterP.ClusterSlotStatsTypes with ClusterP.ClusterScanTypes =
+    new ClusterP.ClusterBaseTypes with ClusterP.ClusterSlotStatsTypes with ClusterP.ClusterScanTypes {}
+}

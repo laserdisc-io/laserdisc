@@ -471,6 +471,47 @@ object ServerP {
     }
   }
 
+  /** The builders every server takes */
+  trait ServerTypes {
+    final val clientType = ClientType
+    final val flag       = ShutdownFlag
+    final val flushMode  = ClusterManagement.FlushMode
+    final val info       = InfoSection
+    final val pauseMode  = PauseMode
+  }
+
+  /** The builders of Redis 6.2's CLIENT and ACL */
+  trait ServerBaseTypes extends ServerTypes {
+    final val aclRules        = Acl.AclRules.none
+    final val clientFilter    = ClientFilter
+    final val trackingOptions = TrackingOptions
+    final val unblockMode     = UnblockMode
+  }
+  trait AclSelectorTypes  { final val aclSelectorRules = Acl.AclRulesWithSelectors.none }
+  trait AclDatabaseTypes  { final val aclDatabaseRules = Acl.AclRulesWithDatabases.none }
+  trait AclDragonflyTypes { final val aclDragonflyRules = Acl.AclDragonflyRules.none    }
+  trait CommandListTypes  { final val commandFilter = ServerInspection.CommandFilter    }
+  trait CommandLogTypes   { final val commandLogType = ServerInspection.CommandLogType  }
+  trait HotKeysTypes      {
+    final val hotKeysMetrics = ServerInspection.HotKeysMetrics
+    final val hotKeysOptions = ServerInspection.HotKeysOptions
+  }
+  trait ShutdownTypes       { final val shutdownOptions = ShutdownOptions             }
+  trait ValkeyShutdownTypes { final val valkeyShutdownOptions = ValkeyShutdownOptions }
+  trait ValkeyFilterTypes   { final val valkeyClientFilter = ValkeyClientFilter       }
+
+  /** Every builder, for every server */
+  trait AllTypes
+      extends ServerBaseTypes
+      with AclSelectorTypes
+      with AclDatabaseTypes
+      with AclDragonflyTypes
+      with CommandListTypes
+      with CommandLogTypes
+      with HotKeysTypes
+      with ShutdownTypes
+      with ValkeyShutdownTypes
+      with ValkeyFilterTypes
 }
 
 /** CLIENT without UNBLOCK and CLIENT KILL's filters: Redis 6.2 */
@@ -725,28 +766,8 @@ trait ServerCoreP extends ServerInspectionCoreP with MonitorP {
 
   import ServerP.{Info, InfoSection, ShutdownFlag}
 
-  object servertypes {
-    final val aclRules              = Acl.AclRules.none
-    final val aclDatabaseRules      = Acl.AclRulesWithDatabases.none
-    final val aclDragonflyRules     = Acl.AclDragonflyRules.none
-    final val aclSelectorRules      = Acl.AclRulesWithSelectors.none
-    final val clientFilter          = ServerP.ClientFilter
-    final val clientType            = ServerP.ClientType
-    final val trackingOptions       = ServerP.TrackingOptions
-    final val valkeyClientFilter    = ServerP.ValkeyClientFilter
-    final val valkeyShutdownOptions = ServerP.ValkeyShutdownOptions
-    final val commandFilter         = ServerInspection.CommandFilter
-    final val flushMode             = ClusterManagement.FlushMode
-    final val slotStatsMetric       = ClusterManagement.SlotStatsMetric
-    final val commandLogType        = ServerInspection.CommandLogType
-    final val hotKeysMetrics        = ServerInspection.HotKeysMetrics
-    final val hotKeysOptions        = ServerInspection.HotKeysOptions
-    final val flag                  = ShutdownFlag
-    final val info                  = InfoSection
-    final val pauseMode             = ServerP.PauseMode
-    final val shutdownOptions       = ServerP.ShutdownOptions
-    final val unblockMode           = ServerP.UnblockMode
-  }
+  /** The builders of this server's commands */
+  val servertypes: ServerP.ServerTypes = new ServerP.ServerTypes {}
 
   /** Replies with the server's message, like "Background saving started" */
   final val bgsave: Single.Aux[String] = Protocol("BGSAVE", EmptyTuple).as[Str, String]
@@ -801,6 +822,8 @@ trait ServerCoreP extends ServerInspectionCoreP with MonitorP {
 /** LOLWUT, BGREWRITEAOF, FAILOVER and ROLE, and CLIENT, CONFIG, LATENCY, COMMAND and ACL under their names. Redis 6.2 */
 trait ServerBaseP extends ServerCoreP with ServerInspectionBaseP {
   import ServerP.Role
+
+  override val servertypes: ServerP.ServerBaseTypes = new ServerP.ServerBaseTypes {}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -949,4 +972,6 @@ trait ServerP
   override lazy val command: CommandAllCommands = new CommandAllCommands {}
   override lazy val module: ModuleAllCommands   = new ModuleAllCommands {}
   override lazy val acl: AclAllCommands         = new AclAllCommands {}
+
+  override val servertypes: ServerP.AllTypes = new ServerP.AllTypes {}
 }

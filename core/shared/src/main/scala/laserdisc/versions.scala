@@ -73,14 +73,30 @@ trait Streams8_6  extends Streams8_4 with StreamIdmpP
 trait Streams8_8  extends Streams8_6 with StreamNackP
 trait Streams8_10 extends Streams8_8 with StreamReadLimitsP
 
-trait Cluster6_2       extends ClusterBaseP
-trait Cluster7_0       extends Cluster6_2 with ClusterSlotsMetadataP with ClusterShardsP
-trait Cluster7_2       extends Cluster7_0 with ClusterMyShardIdP
-trait Cluster8_2       extends Cluster7_2 with ClusterSlotStatsP
+// the builders each version's commands take, grouped like the commands
+trait ClusterTypes8_2       extends ClusterP.ClusterBaseTypes with ClusterP.ClusterSlotStatsTypes
+trait ClusterTypesValkey9_1 extends ClusterTypes8_2 with ClusterP.ClusterScanTypes
+trait ServerTypes7_0 extends ServerP.ServerBaseTypes with ServerP.CommandListTypes with ServerP.AclSelectorTypes with ServerP.ShutdownTypes
+trait ServerTypes8_6 extends ServerTypes7_0 with ServerP.HotKeysTypes
+trait ServerTypesValkey8_1    extends ServerTypes7_0 with ServerP.CommandLogTypes
+trait ServerTypesValkey9_0    extends ServerTypesValkey8_1 with ServerP.ValkeyFilterTypes with ServerP.ValkeyShutdownTypes
+trait ServerTypesValkey9_1    extends ServerTypesValkey9_0 with ServerP.AclDatabaseTypes
+trait ServerTypesDragonfly2_0 extends ServerP.ServerTypes with ServerP.AclDragonflyTypes with ServerP.ShutdownTypes
+
+trait Cluster6_2 extends ClusterBaseP
+trait Cluster7_0 extends Cluster6_2 with ClusterSlotsMetadataP with ClusterShardsP
+trait Cluster7_2 extends Cluster7_0 with ClusterMyShardIdP
+trait Cluster8_2 extends Cluster7_2 with ClusterSlotStatsP {
+  override val clustertypes: ClusterTypes8_2 = new ClusterTypes8_2 {}
+}
 trait Cluster8_4       extends Cluster8_2 with ClusterSlotStatsMemoryP with ClusterMigrationP
-trait ClusterValkey8_0 extends Cluster7_2 with ClusterSlotStatsP with ClusterSetSlotTimeoutP
+trait ClusterValkey8_0 extends Cluster7_2 with ClusterSlotStatsP with ClusterSetSlotTimeoutP {
+  override val clustertypes: ClusterTypes8_2 = new ClusterTypes8_2 {}
+}
 trait ClusterValkey9_0 extends ClusterValkey8_0 with ClusterReplicateNoOneP with ClusterSlotMigrationsP
-trait ClusterValkey9_1 extends ClusterValkey9_0 with ClusterScanP
+trait ClusterValkey9_1 extends ClusterValkey9_0 with ClusterScanP {
+  override val clustertypes: ClusterTypesValkey9_1 = new ClusterTypesValkey9_1 {}
+}
 
 /** The CLIENT and CONFIG commands, under `client` and `config` */
 trait Client7_0       extends ClientCommands with ClientNoEvictCommands
@@ -119,6 +135,8 @@ trait Server7_0 extends Server6_2 with ServerShutdownAndInfoP {
   override lazy val command: Command7_0 = new Command7_0 {}
   override lazy val module: Module7_0   = new Module7_0 {}
   override lazy val acl: Acl7_0         = new Acl7_0 {}
+
+  override val servertypes: ServerTypes7_0 = new ServerTypes7_0 {}
 }
 trait Server7_2 extends Server7_0 {
   override lazy val client: Client7_2 = new Client7_2 {}
@@ -126,20 +144,28 @@ trait Server7_2 extends Server7_0 {
 trait Server7_4 extends Server7_2 {
   override lazy val client: Client7_4 = new Client7_4 {}
 }
-trait Server8_0       extends Server7_4 with ServerInfoRedis8P
-trait Server8_6       extends Server8_0 with ServerHotKeysP
+trait Server8_0 extends Server7_4 with ServerInfoRedis8P
+trait Server8_6 extends Server8_0 with ServerHotKeysP {
+  override val servertypes: ServerTypes8_6 = new ServerTypes8_6 {}
+}
 trait Server8_10      extends Server8_6 with ServerBackupP
 trait ServerValkey8_0 extends Server7_2 {
   override lazy val client: ClientValkey8_0 = new ClientValkey8_0 {}
 }
 trait ServerValkey8_1 extends ServerValkey8_0 with ServerBgSaveCancelP with ServerCommandLogP {
   override lazy val client: ClientValkey8_1 = new ClientValkey8_1 {}
+
+  override val servertypes: ServerTypesValkey8_1 = new ServerTypesValkey8_1 {}
 }
 trait ServerValkey9_0 extends ServerValkey8_1 with ServerShutdownSafeP {
   override lazy val client: ClientValkey9_0 = new ClientValkey9_0 {}
+
+  override val servertypes: ServerTypesValkey9_0 = new ServerTypesValkey9_0 {}
 }
 trait ServerValkey9_1 extends ServerValkey9_0 with ServerInfoTlsP {
   override lazy val acl: AclValkey9_1 = new AclValkey9_1 {}
+
+  override val servertypes: ServerTypesValkey9_1 = new ServerTypesValkey9_1 {}
 }
 
 trait Scripting6_2       extends ScriptingBaseP
@@ -314,6 +340,8 @@ trait ClientDragonfly2_0  extends ClientCoreCommands with ClientSetInfoCommands 
 trait LatencyDragonfly2_0 extends LatencyLatestCommands with LatencyHistogramCommands
 
 trait ServerDragonfly2_0 extends ServerCoreP with ServerShutdownOptionsP with ServerInfoManyP {
+  override val servertypes: ServerTypesDragonfly2_0 = new ServerTypesDragonfly2_0 {}
+
   override private[laserdisc] def supported: List[String] =
     super.supported ++ client.supported ++ config.supported ++ latency.supported ++ command.supported ++ acl.supported ++
       memory.supported ++ module.supported

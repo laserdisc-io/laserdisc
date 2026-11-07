@@ -143,7 +143,7 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)
   }
 
   test("a dragonfly client manages users with the rules it accepts") {
-    val rules = servertypes.aclRules.on.password("secret").keys("app:*").allow("get").allow("set")
+    val rules = servertypes.aclDragonflyRules.on.password("secret").keys("app:*").allow("get").allow("set")
     assertEquals(send(acl.setuser("ld-df", rules)), OK)
     val user = send(acl.getuser("ld-df")).getOrElse(fail("expected the user"))
     assert(user.flags.contains("on"))

@@ -1363,4 +1363,65 @@ final class VersionImportsSpec extends BaseSpec {
       assertEquals(families.flatMap(_.supported).toSet, v.supported.toSet)
     }
   }
+
+  test("ACL selector rules, COMMAND LIST filters and SHUTDOWN options come with the version that takes them") {
+    assert(compileErrors("""laserdisc.redis_6_2.servertypes.aclSelectorRules""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.servertypes.aclSelectorRules""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.servertypes.commandFilter""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.servertypes.commandFilter""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.servertypes.shutdownOptions""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.servertypes.shutdownOptions""").isEmpty)
+  }
+
+  test("HOTKEYS' metrics and options come with the version that takes them") {
+    assert(compileErrors("""laserdisc.redis_8_4.servertypes.hotKeysMetrics""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_6.servertypes.hotKeysMetrics""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.servertypes.hotKeysOptions""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_6.servertypes.hotKeysOptions""").isEmpty)
+  }
+
+  test("COMMANDLOG's types come with the version that takes them") {
+    assert(compileErrors("""laserdisc.valkey_8_0.servertypes.commandLogType""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_1.servertypes.commandLogType""").isEmpty)
+  }
+
+  test("Valkey's client filters and SHUTDOWN options come with the version that takes them") {
+    assert(compileErrors("""laserdisc.valkey_8_1.servertypes.valkeyClientFilter""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.servertypes.valkeyClientFilter""").isEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_1.servertypes.valkeyShutdownOptions""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.servertypes.valkeyShutdownOptions""").isEmpty)
+  }
+
+  test("ACL rules for databases come with the version that takes them") {
+    assert(compileErrors("""laserdisc.valkey_9_0.servertypes.aclDatabaseRules""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_1.servertypes.aclDatabaseRules""").isEmpty)
+  }
+
+  test("CLUSTER SLOT-STATS' metrics on Redis come with the version that takes them") {
+    assert(compileErrors("""laserdisc.redis_8_0.clustertypes.slotStatsMetric""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_2.clustertypes.slotStatsMetric""").isEmpty)
+  }
+
+  test("CLUSTER SLOT-STATS' metrics on Valkey come with the version that takes them") {
+    assert(compileErrors("""laserdisc.valkey_7_2.clustertypes.slotStatsMetric""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_0.clustertypes.slotStatsMetric""").isEmpty)
+  }
+
+  test("CLUSTER SCAN's cursor and options come with the version that takes them") {
+    assert(compileErrors("""laserdisc.valkey_9_0.clustertypes.ClusterScanCursor""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_1.clustertypes.ClusterScanCursor""").isEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.clustertypes.ClusterScanOptions""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_1.clustertypes.ClusterScanOptions""").isEmpty)
+  }
+
+  test("Dragonfly has its own ACL rules, and not the builders of the commands it lacks") {
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.aclDragonflyRules""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.servertypes.aclDragonflyRules""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.aclRules""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.clientFilter""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.trackingOptions""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.unblockMode""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.commandFilter""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.clustertypes.ClusterFailoverMode""").nonEmpty)
+  }
 }

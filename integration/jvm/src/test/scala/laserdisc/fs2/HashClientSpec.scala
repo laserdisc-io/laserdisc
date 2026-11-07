@@ -27,13 +27,15 @@ import laserdisc.auto.*
 final case class HashUser(name: String, age: Int, email: Option[String])
 
 final class RedisHashClientSpec extends HashClientSpec(LiveServers.port(6379), "redis") {
-  since[Redis8_0]("a redis client expires fields, reads them with an expiry and deletes them")(v => fieldExpiry(v, v, v, v, v))
+  since[Redis8_0]("a redis client expires fields, reads them with an expiry and deletes them")(v => fieldExpiry(v, v, v, v, v, v.hashtypes))
 }
 
 final class KeyDbHashClientSpec extends HashClientSpec(LiveServers.port(6380), "keyDb")
 
 final class ValkeyHashClientSpec extends HashClientSpec(LiveServers.port(6381), "valkey") {
-  since[Valkey9_1]("a valkey client expires fields, reads them with an expiry and deletes them")(v => fieldExpiry(v, v, v, v, v))
+  since[Valkey9_1]("a valkey client expires fields, reads them with an expiry and deletes them")(v =>
+    fieldExpiry(v, v, v, v, v, v.hashtypes)
+  )
 
   since[Valkey9_1]("a valkey client sets fields only if the hash exists") { v =>
     import v.*
@@ -53,16 +55,17 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
   protected final def send[A](protocol: Protocol.Aux[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
-  // the version, and the same version again as each of the hash features it has
+  // the version, the same version again as each of the hash features it has, and the builders they take
   protected final def fieldExpiry(
       version: Redis7_2,
       noValues: protocol.HashScanNoValuesP,
       expiry: protocol.HashFieldExpiryP,
       getSet: protocol.HashGetSetExpiryP,
-      getDel: protocol.HashGetDelP
+      getDel: protocol.HashGetDelP,
+      types: protocol.HashP.HashExpiryTypes with protocol.HashP.HashPersistTypes with protocol.HashP.HashFieldsConditionTypes
   ): Unit = {
     import version.*
-    import hashtypes.*
+    import types.*
     import noValues.hscannovalues
     import expiry.{hexpire, hexpireat, hexpiretime, hpersist, hpexpire, hpexpireat, hpttl, httl}
     import getSet.{hgetex, hsetex}

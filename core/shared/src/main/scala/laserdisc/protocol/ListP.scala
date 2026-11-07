@@ -86,6 +86,25 @@ object ListP {
       A: Read[Bulk, _]
   ]: RESPRead.Aux[OrNilArr[Arr.AsTuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]], Option[KV[Seq[A]]]] =
     RESPRead[OrNilArr[Arr.AsTuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]], Option[KV[Seq[A]]]]
+
+  // the builders each feature's commands take, and the types of their replies
+  trait ListTypes {
+    final type ListPosition = ListP.Position
+    final type ListSearch   = ListP.Search
+    final type ListSide     = ListP.Side
+    final val ListPosition = ListP.Position
+    final val ListSearch   = ListP.Search
+    final val ListSide     = ListP.Side
+  }
+  trait ListMoveManyTypes {
+    final type ListAmount = ListP.Amount
+    final type ListOrder  = ListP.Order
+    final val ListAmount = ListP.Amount
+    final val ListOrder  = ListP.Order
+  }
+
+  // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
+  private[protocol] object internal extends ListTypes with ListMoveManyTypes
 }
 
 trait ListBaseP extends Features {
@@ -113,21 +132,10 @@ trait ListBaseP extends Features {
       "RPUSHX"
     )
 
-  object listtypes {
-    final type ListAmount   = ListP.Amount
-    final type ListOrder    = ListP.Order
-    final type ListPosition = ListP.Position
-    final type ListSearch   = ListP.Search
-    final type ListSide     = ListP.Side
+  /** The builders of this family's commands, and the types of their replies */
+  val listtypes: ListP.ListTypes = new ListP.ListTypes {}
 
-    final val ListAmount   = ListP.Amount
-    final val ListOrder    = ListP.Order
-    final val ListPosition = ListP.Position
-    final val ListSearch   = ListP.Search
-    final val ListSide     = ListP.Side
-  }
-
-  import listtypes.*
+  import ListP.internal.*
 
   private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[PosInt])
   private final val zeroIsNone     = RESPRead.instance(Read.numZeroIsNone[PosInt])
@@ -234,4 +242,6 @@ trait ListPopNilArrP extends ListBaseP {
   override protected def popped[A: Read[Bulk, _]]: RESPRead[Option[Seq[A]]] = RESPRead[OrNilArr[Arr.Of[Bulk]], Option[Seq[A]]]
 }
 
-trait ListP extends ListBaseP with ListExtP with ListPopNilArrP with ListMPopP with ListMoveManyP
+trait ListP extends ListBaseP with ListExtP with ListPopNilArrP with ListMPopP with ListMoveManyP {
+  override val listtypes: ListP.ListTypes with ListP.ListMoveManyTypes = new ListP.ListTypes with ListP.ListMoveManyTypes {}
+}

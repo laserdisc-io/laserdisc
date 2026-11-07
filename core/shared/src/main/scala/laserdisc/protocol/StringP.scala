@@ -224,6 +224,39 @@ object StringP {
     def ifDeq(digest: String): Compare = new Of(List("IFDEQ", digest))
     def ifDne(digest: String): Compare = new Of(List("IFDNE", digest))
   }
+
+  // the builders each feature's commands take, and the types of their replies
+  trait StringTypes {
+    final val bit      = Bit
+    final val bitfield = BitField
+    final val bitwise  = Bitwise
+    final val expiry   = Expiry
+    final val flag     = Flag
+  }
+  trait StringBitUnitTypes {
+    final val bitUnit = BitUnit
+  }
+  trait StringAlgoTypes {
+    final val strAlgoInput = StringP.StrAlgoInput
+  }
+  trait StringCompareTypes {
+    final val compare = Compare
+  }
+  trait StringIfEqTypes {
+    final def ifEq[A: Show](a: A): IfEq = IfEq(a)
+  }
+  trait StringIncrExTypes {
+    final val increx = IncrExOptions
+  }
+
+  // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
+  private[protocol] object internal
+      extends StringTypes
+      with StringBitUnitTypes
+      with StringAlgoTypes
+      with StringCompareTypes
+      with StringIfEqTypes
+      with StringIncrExTypes
 }
 
 trait StringBaseP extends Features {
@@ -263,19 +296,8 @@ trait StringBaseP extends Features {
 
   private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
 
-  object stringtypes {
-    final val bit          = Bit
-    final val bitfield     = BitField
-    final val bitUnit      = BitUnit
-    final val bitwise      = Bitwise
-    final val strAlgoInput = StringP.StrAlgoInput
-    final val expiry       = Expiry
-    final val flag         = Flag
-    final val increx       = IncrExOptions
-    final val compare      = Compare
-
-    final def ifEq[A: Show](a: A): IfEq = IfEq(a)
-  }
+  /** The builders of this family's commands, and the types of their replies */
+  val stringtypes: StringP.StringTypes = new StringP.StringTypes {}
 
   final def append[A: Show](key: Key, value: A): Single.Aux[NonNegInt] = Protocol("APPEND", key *: value *: EmptyTuple).as[Num, NonNegInt]
 
@@ -567,4 +589,16 @@ trait StringP
     with StringDigestAndDelExP
     with StringDelIfEqP
     with StringMSetExP
-    with StringIncrExP
+    with StringIncrExP {
+  override val stringtypes: StringP.StringTypes
+    with StringP.StringBitUnitTypes
+    with StringP.StringAlgoTypes
+    with StringP.StringCompareTypes
+    with StringP.StringIfEqTypes
+    with StringP.StringIncrExTypes = new StringP.StringTypes
+    with StringP.StringBitUnitTypes
+    with StringP.StringAlgoTypes
+    with StringP.StringCompareTypes
+    with StringP.StringIfEqTypes
+    with StringP.StringIncrExTypes {}
+}

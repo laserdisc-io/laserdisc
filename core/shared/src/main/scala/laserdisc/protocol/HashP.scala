@@ -137,6 +137,43 @@ object HashP {
 
   private[protocol] final def fieldsAndValues[A: Show](fieldValues: OneOrMore[(Key, A)]): List[String] =
     "FIELDS" :: Show[Int].show(fieldValues.value.length) :: fieldValues.value.flatMap { case (f, v) => List(f.value, Show[A].show(v)) }
+
+  // the builders each feature's commands take, and the types of their replies
+  trait HashTypes       {}
+  trait HashExpiryTypes {
+    final type HashExpireCondition         = HashP.ExpireCondition
+    final type HashFieldExpireResponse     = HashP.FieldExpireResponse
+    final type HashFieldTTLResponse        = HashP.FieldTTLResponse
+    final type HashFieldExpireTimeResponse = HashP.FieldExpireTimeResponse
+    final val HashExpireCondition  = HashP.ExpireCondition
+    final val HashNoField          = HashP.NoField
+    final val HashNoExpire         = HashP.NoExpire
+    final val HashFieldNotSet      = HashP.FieldExpireResponse.NotSet
+    final val HashFieldSet         = HashP.FieldExpireResponse.Set
+    final val HashFieldDeleted     = HashP.FieldExpireResponse.Deleted
+    final val HashFieldExpireAfter = HashP.FieldTTLResponse.ExpireAfter
+    final val HashFieldExpireAt    = HashP.FieldExpireTimeResponse.ExpireAt
+  }
+  trait HashPersistTypes {
+    final type HashFieldPersistResponse = HashP.FieldPersistResponse
+    final val HashFieldPersisted = HashP.FieldPersistResponse.Persisted
+  }
+  trait HashFieldsConditionTypes {
+    final type HashFieldsCondition = HashP.FieldsCondition
+    final val HashFieldsCondition = HashP.FieldsCondition
+  }
+  trait HashKeyConditionTypes {
+    final type HashKeyCondition = HashP.KeyCondition
+    final val HashKeyCondition = HashP.KeyCondition
+  }
+
+  // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
+  private[protocol] object internal
+      extends HashTypes
+      with HashExpiryTypes
+      with HashPersistTypes
+      with HashFieldsConditionTypes
+      with HashKeyConditionTypes
 }
 
 trait HashBaseP extends Features {
@@ -160,27 +197,8 @@ trait HashBaseP extends Features {
       "HVALS"
     )
 
-  object hashtypes {
-    final type HashExpireCondition         = HashP.ExpireCondition
-    final type HashFieldsCondition         = HashP.FieldsCondition
-    final type HashKeyCondition            = HashP.KeyCondition
-    final type HashFieldExpireResponse     = HashP.FieldExpireResponse
-    final type HashFieldTTLResponse        = HashP.FieldTTLResponse
-    final type HashFieldExpireTimeResponse = HashP.FieldExpireTimeResponse
-    final type HashFieldPersistResponse    = HashP.FieldPersistResponse
-
-    final val HashExpireCondition  = HashP.ExpireCondition
-    final val HashFieldsCondition  = HashP.FieldsCondition
-    final val HashKeyCondition     = HashP.KeyCondition
-    final val HashNoField          = HashP.NoField
-    final val HashNoExpire         = HashP.NoExpire
-    final val HashFieldNotSet      = HashP.FieldExpireResponse.NotSet
-    final val HashFieldSet         = HashP.FieldExpireResponse.Set
-    final val HashFieldDeleted     = HashP.FieldExpireResponse.Deleted
-    final val HashFieldExpireAfter = HashP.FieldTTLResponse.ExpireAfter
-    final val HashFieldExpireAt    = HashP.FieldExpireTimeResponse.ExpireAt
-    final val HashFieldPersisted   = HashP.FieldPersistResponse.Persisted
-  }
+  /** The builders of this family's commands, and the types of their replies */
+  val hashtypes: HashP.HashTypes = new HashP.HashTypes {}
 
   final def hdel(key: Key, fields: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("HDEL", key :: fields.value).as[Num, NonNegInt]
 
@@ -522,4 +540,14 @@ trait HashP
     with HashFieldExpiryP
     with HashGetSetExpiryP
     with HashSetExKeyConditionP
-    with HashGetDelP
+    with HashGetDelP {
+  override val hashtypes: HashP.HashTypes
+    with HashP.HashExpiryTypes
+    with HashP.HashPersistTypes
+    with HashP.HashFieldsConditionTypes
+    with HashP.HashKeyConditionTypes = new HashP.HashTypes
+    with HashP.HashExpiryTypes
+    with HashP.HashPersistTypes
+    with HashP.HashFieldsConditionTypes
+    with HashP.HashKeyConditionTypes {}
+}

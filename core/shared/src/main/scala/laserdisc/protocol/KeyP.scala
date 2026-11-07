@@ -196,6 +196,46 @@ object KeyP {
       case Num(other)       => Left(RESPDecErr(s"Unexpected key expire time. Was $other"))
     }
   }
+
+  // the builders each feature's commands take, and the types of their replies
+  trait KeyTypes {
+    final type KeyReplace         = KeyP.Replace
+    final type KeySort            = KeyP.Sort
+    final type KeySortGet         = KeyP.SortGet
+    final type KeyRestoreEviction = KeyP.RestoreEviction
+    final type KeyRestoreMode     = KeyP.RestoreMode
+    final type KeyType            = KeyP.Type
+    final type KeyTTLResponse     = KeyP.TTLResponse
+    final val KeyReplace                = KeyP.Replace
+    final val KeySort                   = KeyP.Sort
+    final val KeySortGet                = KeyP.SortGet
+    final val KeyIdleTimeEviction       = KeyP.RestoreEviction.IdleTime
+    final val KeyFrequencyEviction      = KeyP.RestoreEviction.Frequency
+    final val KeyRestoreMode            = KeyP.RestoreMode
+    final val KeyType                   = KeyP.Type
+    final val KeyNoKeyTTLResponse       = KeyP.TTLResponse.NoKey
+    final val KeyNoExpireTTLResponse    = KeyP.TTLResponse.NoExpire
+    final val KeyExpireAfterTTLResponse = KeyP.TTLResponse.ExpireAfter
+  }
+  trait KeyObjectTypes {
+    final type KeyEncoding = KeyP.Encoding
+    final val KeyEncoding = KeyP.Encoding
+  }
+  trait KeyExpireTypes {
+    final type KeyExpireCondition = KeyP.ExpireCondition
+    final type KeyExpireTime      = KeyP.ExpireTimeResponse
+    final val KeyExpireCondition = KeyP.ExpireCondition
+    final val KeyExpireAt        = KeyP.ExpireTimeResponse.ExpireAt
+  }
+  trait KeyMigrateTypes {
+    final type KeyMigrateAuth = KeyP.MigrateAuth
+    final type KeyMigrateMode = KeyP.MigrateMode
+    final val KeyMigrateAuth = KeyP.MigrateAuth
+    final val KeyMigrateMode = KeyP.MigrateMode
+  }
+
+  // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
+  private[protocol] object internal extends KeyTypes with KeyObjectTypes with KeyExpireTypes with KeyMigrateTypes
 }
 
 trait KeyBaseP extends Features {
@@ -226,38 +266,10 @@ trait KeyBaseP extends Features {
       "WAIT"
     )
 
-  object keytypes {
-    final type KeyEncoding        = KeyP.Encoding
-    final type KeyExpireCondition = KeyP.ExpireCondition
-    final type KeyExpireTime      = KeyP.ExpireTimeResponse
-    final type KeyMigrateAuth     = KeyP.MigrateAuth
-    final type KeyReplace         = KeyP.Replace
-    final type KeySort            = KeyP.Sort
-    final type KeySortGet         = KeyP.SortGet
-    final type KeyMigrateMode     = KeyP.MigrateMode
-    final type KeyRestoreEviction = KeyP.RestoreEviction
-    final type KeyRestoreMode     = KeyP.RestoreMode
-    final type KeyType            = KeyP.Type
-    final type KeyTTLResponse     = KeyP.TTLResponse
+  /** The builders of this family's commands, and the types of their replies */
+  val keytypes: KeyP.KeyTypes = new KeyP.KeyTypes {}
 
-    final val KeyEncoding               = KeyP.Encoding
-    final val KeyExpireCondition        = KeyP.ExpireCondition
-    final val KeyExpireAt               = KeyP.ExpireTimeResponse.ExpireAt
-    final val KeyMigrateAuth            = KeyP.MigrateAuth
-    final val KeyReplace                = KeyP.Replace
-    final val KeySort                   = KeyP.Sort
-    final val KeySortGet                = KeyP.SortGet
-    final val KeyMigrateMode            = KeyP.MigrateMode
-    final val KeyIdleTimeEviction       = KeyP.RestoreEviction.IdleTime
-    final val KeyFrequencyEviction      = KeyP.RestoreEviction.Frequency
-    final val KeyRestoreMode            = KeyP.RestoreMode
-    final val KeyType                   = KeyP.Type
-    final val KeyNoKeyTTLResponse       = KeyP.TTLResponse.NoKey
-    final val KeyNoExpireTTLResponse    = KeyP.TTLResponse.NoExpire
-    final val KeyExpireAfterTTLResponse = KeyP.TTLResponse.ExpireAfter
-  }
-
-  import keytypes.*
+  import KeyP.internal.*
 
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
@@ -552,4 +564,9 @@ trait KeyP
     with KeyObjectP
     with KeyExpireConditionP
     with KeySortReadOnlyP
-    with KeyWaitAofP
+    with KeyWaitAofP {
+  override val keytypes: KeyP.KeyTypes with KeyP.KeyObjectTypes with KeyP.KeyExpireTypes with KeyP.KeyMigrateTypes = new KeyP.KeyTypes
+    with KeyP.KeyObjectTypes
+    with KeyP.KeyExpireTypes
+    with KeyP.KeyMigrateTypes {}
+}

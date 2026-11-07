@@ -511,6 +511,74 @@ object StreamP {
 
   private[protocol] final def fieldsParams[A: Show](fields: OneOrMore[(Key, A)]): List[String] =
     fields.value.flatMap { case (k, v) => List(k.value, Show[A].show(v)) }
+
+  // the builders each feature's commands take, and the types of their replies
+  trait StreamTypes {
+    final type StreamBound          = StreamP.Bound
+    final type StreamEntry[A]       = StreamP.Entry[A]
+    final type StreamFrom           = StreamP.From
+    final type StreamGroupFrom      = StreamP.GroupFrom
+    final type StreamMkStream       = StreamP.MkStream
+    final type StreamNoAck          = StreamP.NoAck
+    final type StreamClaimOptions   = StreamP.ClaimOptions
+    final type StreamPending        = StreamP.PendingEntry
+    final type StreamPendingSummary = StreamP.PendingSummary
+    final type StreamId             = StreamP.Id
+    final type StreamNoMkStream     = StreamP.NoMkStream
+    final type StreamTrim           = StreamP.Trim
+    final val StreamBound          = StreamP.Bound
+    final val StreamEntry          = StreamP.Entry
+    final val StreamFrom           = StreamP.From
+    final val StreamGroupFrom      = StreamP.GroupFrom
+    final val StreamMkStream       = StreamP.MkStream
+    final val StreamNoAck          = StreamP.NoAck
+    final val StreamClaimOptions   = StreamP.ClaimOptions
+    final val StreamPending        = StreamP.PendingEntry
+    final val StreamPendingSummary = StreamP.PendingSummary
+    final val StreamId             = StreamP.Id
+    final val StreamNoMkStream     = StreamP.NoMkStream
+    final val StreamTrim           = StreamP.Trim
+  }
+  trait StreamIdAtTypes {
+    final type StreamIdAt = StreamP.IdAt
+    final val StreamIdAt = StreamP.IdAt
+  }
+  trait StreamRefPolicyTypes {
+    final type StreamRefPolicy    = StreamP.RefPolicy
+    final type StreamDeleteResult = StreamP.DeleteResult
+    final val StreamRefPolicy    = StreamP.RefPolicy
+    final val StreamDeleteResult = StreamP.DeleteResult
+  }
+  trait StreamClaimTypes {
+    final type StreamClaimedEntry[A] = StreamP.ClaimedEntry[A]
+    final val StreamClaimedEntry = StreamP.ClaimedEntry
+  }
+  trait StreamIdmpTypes {
+    final type StreamIdmp       = StreamP.Idmp
+    final type StreamIdmpConfig = StreamP.IdmpConfig
+    final val StreamIdmp       = StreamP.Idmp
+    final val StreamIdmpConfig = StreamP.IdmpConfig
+  }
+  trait StreamNackTypes {
+    final type StreamNackMode    = StreamP.NackMode
+    final type StreamNackOptions = StreamP.NackOptions
+    final val StreamNackMode    = StreamP.NackMode
+    final val StreamNackOptions = StreamP.NackOptions
+  }
+  trait StreamReadLimitsTypes {
+    final type StreamReadLimits = StreamP.ReadLimits
+    final val StreamReadLimits = StreamP.ReadLimits
+  }
+
+  // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
+  private[protocol] object internal
+      extends StreamTypes
+      with StreamIdAtTypes
+      with StreamRefPolicyTypes
+      with StreamClaimTypes
+      with StreamIdmpTypes
+      with StreamNackTypes
+      with StreamReadLimitsTypes
 }
 
 trait StreamBaseP extends Features {
@@ -527,51 +595,8 @@ trait StreamBaseP extends Features {
 
   import StreamP.{Bound, Entry, From, Id, NoMkStream, Trim, fieldsParams}
 
-  object streamtypes {
-    final type StreamBound           = StreamP.Bound
-    final type StreamEntry[A]        = StreamP.Entry[A]
-    final type StreamFrom            = StreamP.From
-    final type StreamGroupFrom       = StreamP.GroupFrom
-    final type StreamMkStream        = StreamP.MkStream
-    final type StreamNoAck           = StreamP.NoAck
-    final type StreamClaimOptions    = StreamP.ClaimOptions
-    final type StreamClaimedEntry[A] = StreamP.ClaimedEntry[A]
-    final type StreamReadLimits      = StreamP.ReadLimits
-    final type StreamDeleteResult    = StreamP.DeleteResult
-    final type StreamIdAt            = StreamP.IdAt
-    final type StreamIdmp            = StreamP.Idmp
-    final type StreamIdmpConfig      = StreamP.IdmpConfig
-    final type StreamRefPolicy       = StreamP.RefPolicy
-    final type StreamNackMode        = StreamP.NackMode
-    final type StreamNackOptions     = StreamP.NackOptions
-    final type StreamPending         = StreamP.PendingEntry
-    final type StreamPendingSummary  = StreamP.PendingSummary
-    final type StreamId              = StreamP.Id
-    final type StreamNoMkStream      = StreamP.NoMkStream
-    final type StreamTrim            = StreamP.Trim
-
-    final val StreamBound          = StreamP.Bound
-    final val StreamEntry          = StreamP.Entry
-    final val StreamFrom           = StreamP.From
-    final val StreamGroupFrom      = StreamP.GroupFrom
-    final val StreamMkStream       = StreamP.MkStream
-    final val StreamNoAck          = StreamP.NoAck
-    final val StreamClaimOptions   = StreamP.ClaimOptions
-    final val StreamClaimedEntry   = StreamP.ClaimedEntry
-    final val StreamReadLimits     = StreamP.ReadLimits
-    final val StreamDeleteResult   = StreamP.DeleteResult
-    final val StreamIdAt           = StreamP.IdAt
-    final val StreamIdmp           = StreamP.Idmp
-    final val StreamIdmpConfig     = StreamP.IdmpConfig
-    final val StreamRefPolicy      = StreamP.RefPolicy
-    final val StreamNackMode       = StreamP.NackMode
-    final val StreamNackOptions    = StreamP.NackOptions
-    final val StreamPending        = StreamP.PendingEntry
-    final val StreamPendingSummary = StreamP.PendingSummary
-    final val StreamId             = StreamP.Id
-    final val StreamNoMkStream     = StreamP.NoMkStream
-    final val StreamTrim           = StreamP.Trim
-  }
+  /** The builders of this family's commands, and the types of their replies */
+  val streamtypes: StreamP.StreamTypes = new StreamP.StreamTypes {}
 
   private final def entries[A: Read[Bulk, _]] = RESPRead.instance(StreamP.entries[A])
 
@@ -1257,4 +1282,18 @@ trait StreamP
     with StreamReadGroupClaimP
     with StreamIdmpP
     with StreamNackP
-    with StreamReadLimitsP
+    with StreamReadLimitsP {
+  override val streamtypes: StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes
+    with StreamP.StreamClaimTypes
+    with StreamP.StreamIdmpTypes
+    with StreamP.StreamNackTypes
+    with StreamP.StreamReadLimitsTypes = new StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes
+    with StreamP.StreamClaimTypes
+    with StreamP.StreamIdmpTypes
+    with StreamP.StreamNackTypes
+    with StreamP.StreamReadLimitsTypes {}
+}

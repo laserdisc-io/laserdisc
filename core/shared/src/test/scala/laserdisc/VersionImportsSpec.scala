@@ -1424,4 +1424,93 @@ final class VersionImportsSpec extends BaseSpec {
     assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.commandFilter""").nonEmpty)
     assert(compileErrors("""laserdisc.dragonfly_2_0.clustertypes.ClusterFailoverMode""").nonEmpty)
   }
+
+  test("strings' builders are on the imports whose servers take them") {
+    import laserdisc.auto.*
+
+    assert(compileErrors("""laserdisc.redis_6_2.stringtypes.bitUnit""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.stringtypes.bitUnit""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_2.stringtypes.compare""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.stringtypes.compare""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_2.stringtypes.ifEq(1)""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.stringtypes.ifEq(1)""").isEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_0.stringtypes.ifEq(1)""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_1.stringtypes.ifEq(1)""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.stringtypes.increx""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_8.stringtypes.increx""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.stringtypes.strAlgoInput""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.stringtypes.strAlgoInput""").isEmpty)
+  }
+
+  test("keys' builders are on the imports whose servers take them") {
+    import laserdisc.auto.*
+
+    assert(compileErrors("""laserdisc.dragonfly_2_0.keytypes.KeyMigrateMode""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.keytypes.KeyMigrateMode""").isEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.keytypes.KeyEncoding""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.keytypes.KeyEncoding""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.keytypes.KeyExpireCondition""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.keytypes.KeyExpireCondition""").isEmpty)
+  }
+
+  test("hashes' builders are on the imports whose servers take them") {
+    import laserdisc.auto.*
+
+    assert(compileErrors("""laserdisc.redis_7_2.hashtypes.HashExpireCondition""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_4.hashtypes.HashExpireCondition""").isEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_1.hashtypes.HashExpireCondition""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.hashtypes.HashExpireCondition""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_7_4.hashtypes.HashFieldsCondition""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_0.hashtypes.HashFieldsCondition""").isEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.hashtypes.HashKeyCondition""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_1.hashtypes.HashKeyCondition""").isEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.hashtypes.HashFieldPersisted""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_4.hashtypes.HashFieldPersisted""").isEmpty)
+  }
+
+  test("lists', sets' and sorted sets' builders are on the imports whose servers take them") {
+    import laserdisc.auto.*
+
+    assert(compileErrors("""laserdisc.redis_8_8.listtypes.ListAmount""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.listtypes.ListAmount""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_8.settypes.approx""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.settypes.approx""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.sortedsettypes.pop""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.sortedsettypes.pop""").isEmpty)
+  }
+
+  test("geo's builders are on the imports whose servers take them") {
+    import laserdisc.auto.*
+
+    assert(compileErrors("""laserdisc.valkey_8_1.geotypes.GeoPolygon""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.geotypes.GeoPolygon""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.geotypes.GeoPolygon""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.geotypes.GeoPolygon""").isEmpty)
+  }
+
+  test("streams' builders are on the imports whose servers take them") {
+    import laserdisc.auto.*
+
+    assert(compileErrors("""laserdisc.redis_6_2.streamtypes.StreamIdAt""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.streamtypes.StreamIdAt""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_0.streamtypes.StreamRefPolicy""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_2.streamtypes.StreamRefPolicy""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_2.streamtypes.StreamClaimedEntry""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.streamtypes.StreamClaimedEntry""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.streamtypes.StreamIdmp""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_6.streamtypes.StreamIdmp""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_6.streamtypes.StreamNackMode""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_8.streamtypes.StreamNackMode""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_8.streamtypes.StreamReadLimits""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.streamtypes.StreamReadLimits""").isEmpty)
+  }
+
+  test("scripting's builders are on the imports whose servers take them") {
+    import laserdisc.auto.*
+
+    assert(compileErrors("""laserdisc.redis_6_2.scriptingtypes.ScriptingRestorePolicy""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.scriptingtypes.ScriptingRestorePolicy""").isEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.scriptingtypes.ScriptingLibrary""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.scriptingtypes.ScriptingLibrary""").isEmpty)
+  }
 }

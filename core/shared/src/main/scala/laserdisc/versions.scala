@@ -26,52 +26,166 @@ import protocol.*
 /** Each family's commands by version, for an import of one family only, like `laserdisc.redis_7_0.streams.*`. A new trait only where the
   * family changed. The versions below are made of these, so a version and its families can't disagree
   */
-trait Strings6_2       extends StringBaseP with StringExtP
-trait StringsAlgo6_2   extends Strings6_2 with StringAlgoP
-trait Strings7_0       extends Strings6_2 with StringSetGetFlagP with StringBitUnitP with StringLcsP
-trait Strings8_2       extends Strings7_0 with StringBitopExtendedP
-trait Strings8_4       extends Strings8_2 with StringSetIfEqP with StringSetCompareP with StringDigestAndDelExP with StringMSetExP
-trait Strings8_8       extends Strings8_4 with StringIncrExP
-trait StringsValkey8_1 extends Strings7_0 with StringSetIfEqP
+trait Strings6_2     extends StringBaseP with StringExtP
+trait StringsAlgo6_2 extends Strings6_2 with StringAlgoP {
+  override val stringtypes: StringP.StringTypes with StringP.StringAlgoTypes = new StringP.StringTypes with StringP.StringAlgoTypes {}
+}
+trait Strings7_0 extends Strings6_2 with StringSetGetFlagP with StringBitUnitP with StringLcsP {
+  override val stringtypes: StringP.StringTypes with StringP.StringBitUnitTypes = new StringP.StringTypes with StringP.StringBitUnitTypes {}
+}
+trait Strings8_2 extends Strings7_0 with StringBitopExtendedP
+trait Strings8_4 extends Strings8_2 with StringSetIfEqP with StringSetCompareP with StringDigestAndDelExP with StringMSetExP {
+  override val stringtypes: StringP.StringTypes
+    with StringP.StringBitUnitTypes
+    with StringP.StringCompareTypes
+    with StringP.StringIfEqTypes = new StringP.StringTypes
+    with StringP.StringBitUnitTypes
+    with StringP.StringCompareTypes
+    with StringP.StringIfEqTypes {}
+}
+trait Strings8_8 extends Strings8_4 with StringIncrExP {
+  override val stringtypes: StringP.StringTypes
+    with StringP.StringBitUnitTypes
+    with StringP.StringCompareTypes
+    with StringP.StringIfEqTypes
+    with StringP.StringIncrExTypes = new StringP.StringTypes
+    with StringP.StringBitUnitTypes
+    with StringP.StringCompareTypes
+    with StringP.StringIfEqTypes
+    with StringP.StringIncrExTypes {}
+}
+trait StringsValkey8_1 extends Strings7_0 with StringSetIfEqP {
+  override val stringtypes: StringP.StringTypes with StringP.StringBitUnitTypes with StringP.StringIfEqTypes = new StringP.StringTypes
+    with StringP.StringBitUnitTypes
+    with StringP.StringIfEqTypes {}
+}
 trait StringsValkey9_0 extends StringsValkey8_1 with StringDelIfEqP
 trait StringsValkey9_1 extends StringsValkey9_0 with StringMSetExP
 
-trait Keys6_2 extends KeyBaseP with KeyExtP with KeyCopyDbP with KeyMigrateP with KeyMigrateExtP with KeyObjectP
-trait Keys7_0 extends Keys6_2 with KeyExpireConditionP with KeySortReadOnlyP
+trait Keys6_2 extends KeyBaseP with KeyExtP with KeyCopyDbP with KeyMigrateP with KeyMigrateExtP with KeyObjectP {
+  override val keytypes: KeyP.KeyTypes with KeyP.KeyObjectTypes with KeyP.KeyMigrateTypes = new KeyP.KeyTypes
+    with KeyP.KeyObjectTypes
+    with KeyP.KeyMigrateTypes {}
+}
+trait Keys7_0 extends Keys6_2 with KeyExpireConditionP with KeySortReadOnlyP {
+  override val keytypes: KeyP.KeyTypes with KeyP.KeyObjectTypes with KeyP.KeyMigrateTypes with KeyP.KeyExpireTypes = new KeyP.KeyTypes
+    with KeyP.KeyObjectTypes
+    with KeyP.KeyMigrateTypes
+    with KeyP.KeyExpireTypes {}
+}
 trait Keys7_2 extends Keys7_0 with KeyWaitAofP
 
-trait Hashes6_2       extends HashBaseP with HashExtP
-trait Hashes7_4       extends Hashes6_2 with HashScanNoValuesP with HashFieldExpiryP
-trait Hashes8_0       extends Hashes7_4 with HashGetSetExpiryP with HashGetDelP
+trait Hashes6_2 extends HashBaseP with HashExtP
+trait Hashes7_4 extends Hashes6_2 with HashScanNoValuesP with HashFieldExpiryP {
+  override val hashtypes: HashP.HashTypes with HashP.HashExpiryTypes with HashP.HashPersistTypes = new HashP.HashTypes
+    with HashP.HashExpiryTypes
+    with HashP.HashPersistTypes {}
+}
+trait Hashes8_0 extends Hashes7_4 with HashGetSetExpiryP with HashGetDelP {
+  override val hashtypes: HashP.HashTypes with HashP.HashExpiryTypes with HashP.HashPersistTypes with HashP.HashFieldsConditionTypes =
+    new HashP.HashTypes with HashP.HashExpiryTypes with HashP.HashPersistTypes with HashP.HashFieldsConditionTypes {}
+}
 trait Hashes8_10      extends Hashes8_0 with HashImportP
 trait HashesValkey8_0 extends Hashes6_2 with HashScanNoValuesP
-trait HashesValkey9_0 extends HashesValkey8_0 with HashFieldExpiryP with HashGetSetExpiryP
-trait HashesValkey9_1 extends HashesValkey9_0 with HashGetDelP with HashSetExKeyConditionP
+trait HashesValkey9_0 extends HashesValkey8_0 with HashFieldExpiryP with HashGetSetExpiryP {
+  override val hashtypes: HashP.HashTypes with HashP.HashExpiryTypes with HashP.HashPersistTypes with HashP.HashFieldsConditionTypes =
+    new HashP.HashTypes with HashP.HashExpiryTypes with HashP.HashPersistTypes with HashP.HashFieldsConditionTypes {}
+}
+trait HashesValkey9_1 extends HashesValkey9_0 with HashGetDelP with HashSetExKeyConditionP {
+  override val hashtypes: HashP.HashTypes
+    with HashP.HashExpiryTypes
+    with HashP.HashPersistTypes
+    with HashP.HashFieldsConditionTypes
+    with HashP.HashKeyConditionTypes = new HashP.HashTypes
+    with HashP.HashExpiryTypes
+    with HashP.HashPersistTypes
+    with HashP.HashFieldsConditionTypes
+    with HashP.HashKeyConditionTypes {}
+}
 
 trait Lists6_2  extends ListBaseP with ListExtP
 trait Lists7_0  extends Lists6_2 with ListMPopP with ListPopNilArrP
-trait Lists8_10 extends Lists7_0 with ListMoveManyP
+trait Lists8_10 extends Lists7_0 with ListMoveManyP {
+  override val listtypes: ListP.ListTypes with ListP.ListMoveManyTypes = new ListP.ListTypes with ListP.ListMoveManyTypes {}
+}
 
 trait Sets6_2  extends SetBaseP with SetExtP
 trait Sets7_0  extends Sets6_2 with SetInterCardP
-trait Sets8_10 extends Sets7_0 with SetDiffCardP with SetUnionCardP
+trait Sets8_10 extends Sets7_0 with SetDiffCardP with SetUnionCardP {
+  override val settypes: SetP.SetTypes with SetP.SetUnionCardTypes = new SetP.SetTypes with SetP.SetUnionCardTypes {}
+}
 
-trait SortedSets6_2       extends SortedSetBaseP with SortedSetExtP
-trait SortedSets7_0       extends SortedSets6_2 with SortedSetInterCardP with SortedSetMPopP
+trait SortedSets6_2 extends SortedSetBaseP with SortedSetExtP
+trait SortedSets7_0 extends SortedSets6_2 with SortedSetInterCardP with SortedSetMPopP {
+  override val sortedsettypes: SortedSetP.SortedSetTypes with SortedSetP.SortedSetMPopTypes = new SortedSetP.SortedSetTypes
+    with SortedSetP.SortedSetMPopTypes {}
+}
 trait SortedSets7_2       extends SortedSets7_0 with SortedSetRankWithScoreP
 trait SortedSets8_8       extends SortedSets7_2 with SortedSetAggregateCountP
 trait SortedSetsValkey8_0 extends SortedSets7_2 with SortedSetScanNoScoresP
 
 trait Geo6_2       extends GeoBaseP with GeoExtP
-trait GeoValkey9_0 extends Geo6_2 with GeoSearchPolygonP
+trait GeoValkey9_0 extends Geo6_2 with GeoSearchPolygonP {
+  override val geotypes: GeoP.GeoTypes with GeoP.GeoPolygonTypes = new GeoP.GeoTypes with GeoP.GeoPolygonTypes {}
+}
 
-trait Streams6_2  extends StreamBaseP with StreamGroupBaseP with StreamClaimAndInfoBaseP
-trait Streams7_0  extends Streams6_2 with StreamClaimDeletedP with StreamGroupEntriesReadP with StreamSetIdEntriesP with StreamIdAtP
-trait Streams8_2  extends Streams7_0 with StreamRefPolicyP
-trait Streams8_4  extends Streams8_2 with StreamReadGroupClaimP
-trait Streams8_6  extends Streams8_4 with StreamIdmpP
-trait Streams8_8  extends Streams8_6 with StreamNackP
-trait Streams8_10 extends Streams8_8 with StreamReadLimitsP
+trait Streams6_2 extends StreamBaseP with StreamGroupBaseP with StreamClaimAndInfoBaseP
+trait Streams7_0 extends Streams6_2 with StreamClaimDeletedP with StreamGroupEntriesReadP with StreamSetIdEntriesP with StreamIdAtP {
+  override val streamtypes: StreamP.StreamTypes with StreamP.StreamIdAtTypes = new StreamP.StreamTypes with StreamP.StreamIdAtTypes {}
+}
+trait Streams8_2 extends Streams7_0 with StreamRefPolicyP {
+  override val streamtypes: StreamP.StreamTypes with StreamP.StreamIdAtTypes with StreamP.StreamRefPolicyTypes = new StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes {}
+}
+trait Streams8_4 extends Streams8_2 with StreamReadGroupClaimP {
+  override val streamtypes: StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes
+    with StreamP.StreamClaimTypes = new StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes
+    with StreamP.StreamClaimTypes {}
+}
+trait Streams8_6 extends Streams8_4 with StreamIdmpP {
+  override val streamtypes: StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes
+    with StreamP.StreamClaimTypes
+    with StreamP.StreamIdmpTypes = new StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes
+    with StreamP.StreamClaimTypes
+    with StreamP.StreamIdmpTypes {}
+}
+trait Streams8_8 extends Streams8_6 with StreamNackP {
+  override val streamtypes: StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes
+    with StreamP.StreamClaimTypes
+    with StreamP.StreamIdmpTypes
+    with StreamP.StreamNackTypes = new StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes
+    with StreamP.StreamClaimTypes
+    with StreamP.StreamIdmpTypes
+    with StreamP.StreamNackTypes {}
+}
+trait Streams8_10 extends Streams8_8 with StreamReadLimitsP {
+  override val streamtypes: StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes
+    with StreamP.StreamClaimTypes
+    with StreamP.StreamIdmpTypes
+    with StreamP.StreamNackTypes
+    with StreamP.StreamReadLimitsTypes = new StreamP.StreamTypes
+    with StreamP.StreamIdAtTypes
+    with StreamP.StreamRefPolicyTypes
+    with StreamP.StreamClaimTypes
+    with StreamP.StreamIdmpTypes
+    with StreamP.StreamNackTypes
+    with StreamP.StreamReadLimitsTypes {}
+}
 
 // the builders each version's commands take, grouped like the commands
 trait ClusterTypes8_2       extends ClusterP.ClusterBaseTypes with ClusterP.ClusterSlotStatsTypes
@@ -168,8 +282,11 @@ trait ServerValkey9_1 extends ServerValkey9_0 with ServerInfoTlsP {
   override val servertypes: ServerTypesValkey9_1 = new ServerTypesValkey9_1 {}
 }
 
-trait Scripting6_2       extends ScriptingBaseP
-trait Scripting7_0       extends Scripting6_2 with ScriptingFunctionsP
+trait Scripting6_2 extends ScriptingBaseP
+trait Scripting7_0 extends Scripting6_2 with ScriptingFunctionsP {
+  override val scriptingtypes: ScriptingP.ScriptingTypes with ScriptingP.ScriptingFunctionTypes = new ScriptingP.ScriptingTypes
+    with ScriptingP.ScriptingFunctionTypes {}
+}
 trait ScriptingValkey8_0 extends Scripting7_0 {
   override lazy val script: ScriptValkey8_0 = new ScriptValkey8_0 {}
 }
@@ -214,6 +331,8 @@ trait Base6_2
 
 /** Redis 7.0 removed STRALGO, so the later versions go on from the base and not from this */
 trait Redis6_2 extends Base6_2 with StringAlgoP {
+  override val stringtypes: StringP.StringTypes with StringP.StringAlgoTypes = new StringP.StringTypes with StringP.StringAlgoTypes {}
+
   override val strings: StringsAlgo6_2 = new StringsAlgo6_2 {}
 }
 trait Redis7_0
@@ -324,16 +443,32 @@ trait Valkey9_1 extends Valkey9_0 with ClusterValkey9_1 with HashesValkey9_1 wit
 /** Dragonfly, made of the features it accepts, as `COMMAND DOCS` doesn't say */
 trait ClusterDragonfly2_0 extends ClusterCoreP with ClusterShardsCoreP
 trait GeoDragonfly2_0     extends Geo6_2
-trait HashesDragonfly2_0  extends HashBaseP with HashExtP with HashScanNoValuesP with HashFieldExpiryCoreP with HashGetSetExpiryP
-trait KeysDragonfly2_0    extends KeyBaseP with KeyExtP with KeyExpireConditionP with KeySortReadOnlyP
+trait HashesDragonfly2_0  extends HashBaseP with HashExtP with HashScanNoValuesP with HashFieldExpiryCoreP with HashGetSetExpiryP {
+  override val hashtypes: HashP.HashTypes with HashP.HashExpiryTypes with HashP.HashFieldsConditionTypes = new HashP.HashTypes
+    with HashP.HashExpiryTypes
+    with HashP.HashFieldsConditionTypes {}
+}
+trait KeysDragonfly2_0 extends KeyBaseP with KeyExtP with KeyExpireConditionP with KeySortReadOnlyP {
+  override val keytypes: KeyP.KeyTypes with KeyP.KeyExpireTypes = new KeyP.KeyTypes with KeyP.KeyExpireTypes {}
+}
 trait StreamsDragonfly2_0
     extends StreamBaseP
     with StreamGroupBaseP
     with StreamClaimAndInfoBaseP
     with StreamClaimDeletedP
     with StreamGroupEntriesReadP
-    with StreamIdAtP
-trait StringsDragonfly2_0     extends Strings6_2 with StringSetGetFlagP with StringBitUnitP with StringDigestAndDelExP
+    with StreamIdAtP {
+  override val streamtypes: StreamP.StreamTypes with StreamP.StreamIdAtTypes = new StreamP.StreamTypes with StreamP.StreamIdAtTypes {}
+}
+trait StringsDragonfly2_0 extends Strings6_2 with StringSetGetFlagP with StringBitUnitP with StringDigestAndDelExP {
+  override val stringtypes: StringP.StringTypes
+    with StringP.StringBitUnitTypes
+    with StringP.StringCompareTypes
+    with StringP.StringIfEqTypes = new StringP.StringTypes
+    with StringP.StringBitUnitTypes
+    with StringP.StringCompareTypes
+    with StringP.StringIfEqTypes {}
+}
 trait HyperLogLogDragonfly2_0 extends HyperLogLogBaseP with HyperLogLogExtP
 
 trait ClientDragonfly2_0  extends ClientCoreCommands with ClientSetInfoCommands with ClientDragonflyKillCommands

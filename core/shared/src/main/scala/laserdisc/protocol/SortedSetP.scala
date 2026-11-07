@@ -185,6 +185,20 @@ object SortedSetP {
 
   private[protocol] final val rankWithScore: RESPRead.Aux[OrNilArr[Arr.AsTuple[Num *: Bulk *: EmptyTuple]], Option[(NonNegInt, Double)]] =
     RESPRead[OrNilArr[Arr.AsTuple[Num *: Bulk *: EmptyTuple]], Option[(NonNegInt, Double)]]
+
+  // the builders each feature's commands take, and the types of their replies
+  trait SortedSetTypes {
+    final val aggregate  = Aggregate
+    final val flag       = Flag
+    final val lexrange   = LexRange
+    final val scorerange = ScoreRange
+  }
+  trait SortedSetMPopTypes {
+    final val pop = Pop
+  }
+
+  // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
+  private[protocol] object internal extends SortedSetTypes with SortedSetMPopTypes
 }
 
 trait SortedSetBaseP extends Features {
@@ -226,13 +240,8 @@ trait SortedSetBaseP extends Features {
 
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  object sortedsettypes {
-    final val aggregate  = Aggregate
-    final val flag       = Flag
-    final val lexrange   = LexRange
-    final val pop        = Pop
-    final val scorerange = ScoreRange
-  }
+  /** The builders of this family's commands, and the types of their replies */
+  val sortedsettypes: SortedSetP.SortedSetTypes = new SortedSetP.SortedSetTypes {}
 
   final def zadd[A: Show](key: Key, scoredMembers: OneOrMore[(A, ValidDouble)]): Single.Aux[NonNegInt] =
     Protocol("ZADD", key *: scoredMembers.value.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
@@ -716,4 +725,7 @@ trait SortedSetP
     with SortedSetMPopP
     with SortedSetRankWithScoreP
     with SortedSetScanNoScoresP
-    with SortedSetAggregateCountP
+    with SortedSetAggregateCountP {
+  override val sortedsettypes: SortedSetP.SortedSetTypes with SortedSetP.SortedSetMPopTypes = new SortedSetP.SortedSetTypes
+    with SortedSetP.SortedSetMPopTypes {}
+}

@@ -115,6 +115,33 @@ object ScriptingP {
   // the number of keys, the keys, then the arguments
   private[protocol] final def keysAndArgs(keys: List[Key], args: List[Value]): List[String] =
     Show[Int].show(keys.size) :: keys.map(_.value) ++ args.map(_.shown)
+
+  // the builders each feature's commands take, and the types of their replies
+  trait ScriptingTypes {
+    final type ScriptingFlushMode = ClusterManagement.FlushMode
+    final val ScriptingFlushMode = ClusterManagement.FlushMode
+  }
+  trait ScriptingFunctionTypes {
+    final type ScriptingEngine        = ScriptingP.Engine
+    final type ScriptingFunction      = ScriptingP.Function
+    final type ScriptingLibrary       = ScriptingP.Library
+    final type ScriptingReplace       = ScriptingP.Replace
+    final type ScriptingRestorePolicy = ScriptingP.RestorePolicy
+    final type ScriptingRunning       = ScriptingP.Running
+    final type ScriptingStats         = ScriptingP.Stats
+    final type ScriptingWithCode      = ScriptingP.WithCode
+    final val ScriptingEngine        = ScriptingP.Engine
+    final val ScriptingFunction      = ScriptingP.Function
+    final val ScriptingLibrary       = ScriptingP.Library
+    final val ScriptingReplace       = ScriptingP.Replace
+    final val ScriptingRestorePolicy = ScriptingP.RestorePolicy
+    final val ScriptingRunning       = ScriptingP.Running
+    final val ScriptingStats         = ScriptingP.Stats
+    final val ScriptingWithCode      = ScriptingP.WithCode
+  }
+
+  // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
+  private[protocol] object internal extends ScriptingTypes with ScriptingFunctionTypes
 }
 
 /** SCRIPT, under `script`. Redis 6.2 */
@@ -166,27 +193,8 @@ trait ScriptingCoreP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("EVAL", "EVALSHA")
 
-  object scriptingtypes {
-    final type ScriptingEngine        = ScriptingP.Engine
-    final type ScriptingFlushMode     = ClusterManagement.FlushMode
-    final type ScriptingFunction      = ScriptingP.Function
-    final type ScriptingLibrary       = ScriptingP.Library
-    final type ScriptingReplace       = ScriptingP.Replace
-    final type ScriptingRestorePolicy = ScriptingP.RestorePolicy
-    final type ScriptingRunning       = ScriptingP.Running
-    final type ScriptingStats         = ScriptingP.Stats
-    final type ScriptingWithCode      = ScriptingP.WithCode
-
-    final val ScriptingEngine        = ScriptingP.Engine
-    final val ScriptingFlushMode     = ClusterManagement.FlushMode
-    final val ScriptingFunction      = ScriptingP.Function
-    final val ScriptingLibrary       = ScriptingP.Library
-    final val ScriptingReplace       = ScriptingP.Replace
-    final val ScriptingRestorePolicy = ScriptingP.RestorePolicy
-    final val ScriptingRunning       = ScriptingP.Running
-    final val ScriptingStats         = ScriptingP.Stats
-    final val ScriptingWithCode      = ScriptingP.WithCode
-  }
+  /** The builders of this family's commands, and the types of their replies */
+  val scriptingtypes: ScriptingP.ScriptingTypes = new ScriptingP.ScriptingTypes {}
 
   private[protocol] final def run[R, A](command: String, first: String, keys: List[Key], args: List[Value])(
       R: RESPRead.Aux[R, A]
@@ -322,5 +330,8 @@ trait ScriptingFunctionsP extends ScriptingBaseP with ScriptingReadOnlyP {
 trait ScriptAllCommands extends ScriptCommands with ScriptShowCommands
 
 trait ScriptingP extends ScriptingFunctionsP {
+  override val scriptingtypes: ScriptingP.ScriptingTypes with ScriptingP.ScriptingFunctionTypes = new ScriptingP.ScriptingTypes
+    with ScriptingP.ScriptingFunctionTypes {}
+
   override lazy val script: ScriptAllCommands = new ScriptAllCommands {}
 }

@@ -33,6 +33,15 @@ object SetP {
 
     implicit val approxShow: Show[Approx] = Show.const("APPROX")
   }
+
+  // the builders each feature's commands take, and the types of their replies
+  trait SetTypes          {}
+  trait SetUnionCardTypes {
+    final val approx: SetP.Approx = SetP.Approx.approx
+  }
+
+  // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
+  private[protocol] object internal extends SetTypes with SetUnionCardTypes
 }
 
 trait SetBaseP extends Features {
@@ -58,9 +67,8 @@ trait SetBaseP extends Features {
 
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
-  object settypes {
-    final val approx: SetP.Approx = SetP.Approx.approx
-  }
+  /** The builders of this family's commands, and the types of their replies */
+  val settypes: SetP.SetTypes = new SetP.SetTypes {}
 
   final def sadd[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[NonNegInt] =
     Protocol("SADD", key *: members.value *: EmptyTuple).as[Num, NonNegInt]
@@ -166,4 +174,6 @@ trait SetUnionCardP extends Features {
     Protocol("SUNIONCARD", keys.value.length *: keys.value *: approx *: "LIMIT" *: limit *: EmptyTuple).as[Num, NonNegInt]
 }
 
-trait SetP extends SetBaseP with SetExtP with SetInterCardP with SetDiffCardP with SetUnionCardP
+trait SetP extends SetBaseP with SetExtP with SetInterCardP with SetDiffCardP with SetUnionCardP {
+  override val settypes: SetP.SetTypes with SetP.SetUnionCardTypes = new SetP.SetTypes with SetP.SetUnionCardTypes {}
+}

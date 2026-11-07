@@ -25,7 +25,7 @@ package protocol
 import Protocol.Single
 
 trait GeoExtP { this: GeoBaseP =>
-  import geotypes.*
+  import GeoP.internal.*
 
   //format: off
   //GEOADD

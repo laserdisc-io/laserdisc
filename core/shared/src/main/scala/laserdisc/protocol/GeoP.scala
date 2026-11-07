@@ -230,6 +230,53 @@ object GeoP {
     Read[RadiusMode.all.Reply, Key *: NonNegDouble *: NonNegLong *: Coordinates *: EmptyTuple].map { case k *: d *: h *: c *: _ =>
       KeyCoordinatesDistanceAndHash(k, c, d, h)
     }
+
+  // the builders each feature's commands take, and the types of their replies
+  trait GeoTypes {
+    final type GeoArea                = GeoP.Area
+    final type GeoCenter              = GeoP.Center
+    final type GeoCount               = GeoP.Count
+    final type GeoFlag                = GeoP.Flag
+    final type GeoStoreDistances      = GeoP.StoreDistances
+    final type GeoCoordinates         = GeoP.Coordinates
+    final type GeoKeyAndCoord         = GeoP.KeyAndCoordinates
+    final type GeoKeyAndDist          = GeoP.KeyAndDistance
+    final type GeoKeyAndHash          = GeoP.KeyAndHash
+    final type GeoKeyCoordAndDist     = GeoP.KeyCoordinatesAndDistance
+    final type GeoKeyCoordAndHash     = GeoP.KeyCoordinatesAndHash
+    final type GeoKeyDistAndHash      = GeoP.KeyDistanceAndHash
+    final type GeoKeyCoordDistAndHash = GeoP.KeyCoordinatesDistanceAndHash
+    final type GeoPosition            = GeoP.Position
+    final type GeoRadiusMode          = GeoP.RadiusMode
+    final type GeoStoreMode           = GeoP.StoreMode
+    final type GeoUnit                = GeoP.Unit
+    final val GeoArea                = GeoP.Area
+    final val GeoCenter              = GeoP.Center
+    final val GeoCount               = GeoP.Count
+    final val GeoFlag                = GeoP.Flag
+    final val GeoStoreDistances      = GeoP.StoreDistances
+    final val GeoCoordinates         = GeoP.Coordinates
+    final val GeoKeyAndCoord         = GeoP.KeyAndCoordinates
+    final val GeoKeyAndDist          = GeoP.KeyAndDistance
+    final val GeoKeyAndHash          = GeoP.KeyAndHash
+    final val GeoKeyCoordAndDist     = GeoP.KeyCoordinatesAndDistance
+    final val GeoKeyCoordAndHash     = GeoP.KeyCoordinatesAndHash
+    final val GeoKeyDistAndHash      = GeoP.KeyDistanceAndHash
+    final val GeoKeyCoordDistAndHash = GeoP.KeyCoordinatesDistanceAndHash
+    final val GeoPosition            = GeoP.Position
+    final val GeoRadiusMode          = GeoP.RadiusMode
+    final val GeoStoreBoth           = GeoP.StoreMode.Both
+    final val GeoStoreDistance       = GeoP.StoreMode.Distance
+    final val GeoStoreHash           = GeoP.StoreMode.Hash
+    final val GeoUnit                = GeoP.Unit
+  }
+  trait GeoPolygonTypes {
+    final type GeoPolygon = GeoP.Polygon
+    final val GeoPolygon = GeoP.Polygon
+  }
+
+  // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
+  private[protocol] object internal extends GeoTypes with GeoPolygonTypes
 }
 
 trait GeoBaseP extends Features {
@@ -247,49 +294,10 @@ trait GeoBaseP extends Features {
       "GEOSEARCHSTORE: ANY ASC BYBOX BYRADIUS COUNT DESC FROMLONLAT FROMMEMBER FT KM M MI STOREDIST"
     )
 
-  object geotypes {
-    final type GeoArea                = GeoP.Area
-    final type GeoCenter              = GeoP.Center
-    final type GeoCount               = GeoP.Count
-    final type GeoFlag                = GeoP.Flag
-    final type GeoPolygon             = GeoP.Polygon
-    final type GeoStoreDistances      = GeoP.StoreDistances
-    final type GeoCoordinates         = GeoP.Coordinates
-    final type GeoKeyAndCoord         = GeoP.KeyAndCoordinates
-    final type GeoKeyAndDist          = GeoP.KeyAndDistance
-    final type GeoKeyAndHash          = GeoP.KeyAndHash
-    final type GeoKeyCoordAndDist     = GeoP.KeyCoordinatesAndDistance
-    final type GeoKeyCoordAndHash     = GeoP.KeyCoordinatesAndHash
-    final type GeoKeyDistAndHash      = GeoP.KeyDistanceAndHash
-    final type GeoKeyCoordDistAndHash = GeoP.KeyCoordinatesDistanceAndHash
-    final type GeoPosition            = GeoP.Position
-    final type GeoRadiusMode          = GeoP.RadiusMode
-    final type GeoStoreMode           = GeoP.StoreMode
-    final type GeoUnit                = GeoP.Unit
+  /** The builders of this family's commands, and the types of their replies */
+  val geotypes: GeoP.GeoTypes = new GeoP.GeoTypes {}
 
-    final val GeoArea                = GeoP.Area
-    final val GeoCenter              = GeoP.Center
-    final val GeoCount               = GeoP.Count
-    final val GeoFlag                = GeoP.Flag
-    final val GeoPolygon             = GeoP.Polygon
-    final val GeoStoreDistances      = GeoP.StoreDistances
-    final val GeoCoordinates         = GeoP.Coordinates
-    final val GeoKeyAndCoord         = GeoP.KeyAndCoordinates
-    final val GeoKeyAndDist          = GeoP.KeyAndDistance
-    final val GeoKeyAndHash          = GeoP.KeyAndHash
-    final val GeoKeyCoordAndDist     = GeoP.KeyCoordinatesAndDistance
-    final val GeoKeyCoordAndHash     = GeoP.KeyCoordinatesAndHash
-    final val GeoKeyDistAndHash      = GeoP.KeyDistanceAndHash
-    final val GeoKeyCoordDistAndHash = GeoP.KeyCoordinatesDistanceAndHash
-    final val GeoPosition            = GeoP.Position
-    final val GeoRadiusMode          = GeoP.RadiusMode
-    final val GeoStoreBoth           = GeoP.StoreMode.Both
-    final val GeoStoreDistance       = GeoP.StoreMode.Distance
-    final val GeoStoreHash           = GeoP.StoreMode.Hash
-    final val GeoUnit                = GeoP.Unit
-  }
-
-  import geotypes.*
+  import GeoP.internal.*
 
   private final def lonLatMember(positions: OneOrMore[GeoPosition]) =
     positions.value.map { case GeoPosition(m, lat, long) => (long -> lat) -> m }
@@ -786,7 +794,7 @@ trait GeoBaseP extends Features {
 trait GeoSearchPolygonP extends Features { this: GeoBaseP =>
   override private[laserdisc] def supported: List[String] = super.supported ++ List("GEOSEARCH: BYPOLYGON", "GEOSEARCHSTORE: BYPOLYGON")
 
-  import geotypes.*
+  import GeoP.internal.*
 
   final def geosearch(key: Key, polygon: GeoPolygon): Single.Aux[Seq[Key]] =
     Protocol("GEOSEARCH", key *: polygon.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
@@ -851,4 +859,6 @@ trait GeoSearchPolygonP extends Features { this: GeoBaseP =>
       .as[Num, NonNegInt]
 }
 
-trait GeoP extends GeoBaseP with GeoExtP with GeoSearchPolygonP
+trait GeoP extends GeoBaseP with GeoExtP with GeoSearchPolygonP {
+  override val geotypes: GeoP.GeoTypes with GeoP.GeoPolygonTypes = new GeoP.GeoTypes with GeoP.GeoPolygonTypes {}
+}

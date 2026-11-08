@@ -27,6 +27,7 @@ import cats.effect.kernel.{Deferred, Ref, Temporal}
 import cats.effect.syntax.all.*
 import cats.effect.{Async, Concurrent, Fiber, Resource}
 import cats.syntax.all.*
+import laserdisc.protocol.RESPRead
 import log.effect.fs2.LogSelector
 import log.effect.fs2.syntax.*
 
@@ -89,123 +90,166 @@ object RedisClient {
     )(implicit logSelector: LogSelector[F]): Resource[F, Connection[F]] =
       Resource.eval(Deferred[F, Either[Throwable, Unit]]).flatMap { termSignal =>
         Resource.eval(Queue.bounded[F, Batch[F]](1024)).flatMap { queue =>
-          // the requests sent and waiting for their replies
-          Resource.eval((Ref.of[F, Vector[InFlight[F]]](Vector.empty), Ref.of[F, Int](0)).tupled).flatMap { case (inFlight, nextIndex) =>
-            val log = logSelector.log
-            // a batch the caller gave up on while it was queued isn't sent
-            def push(batch: Batch[F]): F[Chunk[RESP]] =
-              batch.claim.complete(()).flatMap {
-                case true =>
-                  Temporal[F].monotonic.flatMap { now =>
-                    val due    = now + batch.timeout
-                    val frames = batch.requests.map(_.protocol.frames)
-                    val sent   = batch.requests.zip(frames).map { case (request, fs) => InFlight(request, due, fs.size, Vector.empty) }
-                    inFlight.modify(in => (in ++ sent) -> Chunk.from(frames.flatten))
-                  }
-                case false => Chunk.empty[RESP].pure[F]
-              }
+          // the requests sent and waiting for their replies, and the address to try next
+          Resource
+            .eval((Ref.of[F, Vector[InFlight[F]]](Vector.empty), Ref.of[F, Int](0)).tupled)
+            .flatMap { case (inFlight, nextIndex) =>
+              val log = logSelector.log
 
-            // a request is answered once it has a reply for each frame it sent
-            def receive(resp: RESP): F[Unit] =
-              inFlight
-                .modify {
-                  case head +: rest =>
-                    val received = head.replies :+ resp
-                    if (received.size < head.expected) (head.copy(replies = received) +: rest) -> Right(None)
-                    else rest                                                                  -> Right(Some(head.request -> received))
-                  case empty => empty -> Left(NoInFlightRequest(resp))
-                }
-                .flatMap {
-                  case Right(Some((request, replies))) => request.callback(request.protocol.decodeReplies(replies))
-                  case Right(None)                     => Concurrent[F].unit
-                  case Left(error)                     => Concurrent[F].raiseError[Unit](error)
+              def isTransaction(request: Request[F]): Boolean = request.protocol.isInstanceOf[Protocol.Multi[?]]
+
+              def sending(due: FiniteDuration, requests: List[Request[F]]): F[Chunk[RESP]] =
+                if (requests.isEmpty) Chunk.empty[RESP].pure[F]
+                else {
+                  val frames = requests.map(_.protocol.frames)
+                  val sent   = requests.zip(frames).map { case (request, fs) => InFlight(request, due, fs.size, Vector.empty) }
+                  inFlight.modify(in => (in ++ sent) -> Chunk.from(frames.flatten))
                 }
 
-            // the requests sent on a connection that's gone will never get a reply
-            def failInFlight(error: Throwable): F[Unit] =
-              inFlight.getAndSet(Vector.empty).flatMap(_.traverse_(_.request.callback(Left(error))))
-
-            def failQueued(error: Throwable): F[Unit] =
-              queue.tryTakeN(None).flatMap(_.traverse_(_.requests.traverse_(_.callback(Left(error)))))
-
-            // replies come in order, so when the oldest one is overdue the server has stopped answering
-            def watchdog(address: RedisAddress): Stream[F, Unit] =
-              Stream.awakeEvery[F](1.second).evalMap { _ =>
-                (inFlight.get, Temporal[F].monotonic).flatMapN {
-                  case (oldest +: _, now) if now > oldest.due => Temporal[F].raiseError[Unit](ServerNotResponding(address))
-                  case _                                      => Temporal[F].unit
-                }
-              }
-
-            // the addresses are tried in turn, starting from the first
-            val nextAddress: F[RedisAddress] =
-              nextIndex.getAndUpdate(i => (i + 1) % addresses.size).map(addresses(_))
-
-            def serverAvailable(address: RedisAddress, onConnected: F[Unit]): Stream[F, Unit] =
-              Stream
-                .fromQueueUnterminated(queue, limit = 8 * 1024)
-                .evalMap(push)
-                .unchunks
-                .through(redisNetChannel(address, onConnected))
-                .evalMap(receive)
-                .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
-
-            val serverUnavailable: Stream[F, Unit] =
-              log.errorS("Server unavailable for publishing") >>
-                Stream
-                  .fromQueueUnterminated(queue)
-                  .evalMap(_.requests.traverse_(_.callback(Left(ServerUnavailable))))
-                  .drain
-                  .interruptAfter(3.seconds) // FIXME magic number
-
-            // failures counts the addresses that couldn't be reached since the last connection
-            def runner(failures: Int): Stream[F, Unit] =
-              if (failures >= addresses.size) serverUnavailable ++ runner(0)
-              else
-                Stream.eval((nextAddress, Ref.of[F, Boolean](false)).tupled).flatMap { case (address, connected) =>
-                  val onConnected = connected.set(true) >> log.info(s"Connected to server $address")
-
-                  serverAvailable(address, onConnected).handleErrorWith { failure =>
-                    log.errorS(s"Failure of publishing connection to $address", failure) >>
-                      Stream.eval(failInFlight(failure) >> connected.get).flatMap { wasConnected =>
-                        runner(if (wasConnected) 1 else failures + 1)
-                      }
-                  }
-                }
-
-            val newConnection: Connection[F] = new Connection[F] {
-              override final def run: F[Fiber[F, Throwable, Unit]] =
-                log.debug("Starting connection") >>
-                  runner(0)
-                    .interruptWhen(termSignal)
-                    .compile
-                    .drain
-                    .attempt
-                    .flatMap { r =>
-                      log.info(
-                        s"Connection terminated: ${r.fold(err => err.getMessage, _ => "No issues")}"
-                      ) >> failInFlight(ClientTerminated) >> failQueued(ClientTerminated)
+              // a transaction's MULTI goes alone, and the rest only once the server has said OK to it, so that nothing runs when it refuses
+              // MULTI: until then nothing else is sent, so nothing else gets into the transaction
+              def transaction(due: FiniteDuration, request: Request[F]): Stream[F, RESP] =
+                Stream.eval(Deferred[F, Boolean]).flatMap { accepted =>
+                  val frames = request.protocol.frames
+                  val multi  = Request[F, RESP](
+                    Protocol("MULTI", EmptyTuple).using(RESPRead.raw),
+                    {
+                      case Right(Str("OK")) => accepted.complete(true).void
+                      case Right(other)     =>
+                        accepted.complete(false) >> request.callback(Left(RESPDecErr(s"Expected OK to MULTI but got: $other")))
+                      case Left(error) => accepted.complete(false) >> request.callback(Left(error))
                     }
-                    .start
+                  )
+                  Stream.evalUnChunk(inFlight.modify(in => (in :+ InFlight(multi, due, 1, Vector.empty)) -> Chunk(frames.head))) ++
+                    Stream.eval(accepted.get).flatMap {
+                      case true =>
+                        Stream.evalUnChunk(
+                          inFlight
+                            .modify(in => (in :+ InFlight(request, due, frames.size, Vector(Str("OK")))) -> Chunk.from(frames.tail))
+                        )
+                      case false => Stream.empty
+                    }
+                }
 
-              override final def shutdown: F[Unit] =
-                log.debug("Shutting down connection") >>
-                  termSignal.complete(().asRight) >>
-                  log.debug("Shutdown complete")
-
-              override final def send[In <: Tuple, Out <: Tuple](
-                  in: In,
-                  timeout: FiniteDuration
-              )(implicit handler: Handler.Aux[F, Env[F], In, Out]): F[Out] =
-                handler(queue -> timeout, in)
-            }
-
-            Resource
-              .make(newConnection.run.map(newConnection -> _)) { case (conn, fib) =>
-                conn.shutdown >> fib.joinWith(Temporal[F].unit)
+              def sendAll(due: FiniteDuration, requests: List[Request[F]]): Stream[F, RESP] = {
+                val (before, rest) = requests.span(request => !isTransaction(request))
+                Stream.evalUnChunk(sending(due, before)) ++ (rest match {
+                  case request :: after => transaction(due, request) ++ sendAll(due, after)
+                  case Nil              => Stream.empty
+                })
               }
-              .map { case (conn, _) => conn }
-          }
+
+              // a batch the caller gave up on while it was queued isn't sent
+              def push(batch: Batch[F]): Stream[F, RESP] =
+                Stream.eval(batch.claim.complete(())).flatMap {
+                  case true =>
+                    Stream
+                      .eval(Temporal[F].monotonic)
+                      .flatMap(now => sendAll(now + batch.timeout, batch.requests.toList))
+                  case false => Stream.empty
+                }
+
+              // a request is answered once it has a reply for each frame it sent
+              def receive(resp: RESP): F[Unit] =
+                inFlight
+                  .modify {
+                    case head +: rest =>
+                      val received = head.replies :+ resp
+                      if (received.size < head.expected) (head.copy(replies = received) +: rest) -> Right(None)
+                      else rest                                                                  -> Right(Some(head.request -> received))
+                    case empty => empty -> Left(NoInFlightRequest(resp))
+                  }
+                  .flatMap {
+                    case Right(Some((request, replies))) =>
+                      request.callback(request.protocol.decodeReplies(replies))
+                    case Right(None) => Concurrent[F].unit
+                    case Left(error) => Concurrent[F].raiseError[Unit](error)
+                  }
+
+              // the requests sent on a connection that's gone will never get a reply
+              def failInFlight(error: Throwable): F[Unit] =
+                inFlight.getAndSet(Vector.empty).flatMap(_.traverse_(_.request.callback(Left(error))))
+
+              def failQueued(error: Throwable): F[Unit] =
+                queue.tryTakeN(None).flatMap(_.traverse_(_.requests.traverse_(_.callback(Left(error)))))
+
+              // replies come in order, so when the oldest one is overdue the server has stopped answering
+              def watchdog(address: RedisAddress): Stream[F, Unit] =
+                Stream.awakeEvery[F](1.second).evalMap { _ =>
+                  (inFlight.get, Temporal[F].monotonic).flatMapN {
+                    case (oldest +: _, now) if now > oldest.due => Temporal[F].raiseError[Unit](ServerNotResponding(address))
+                    case _                                      => Temporal[F].unit
+                  }
+                }
+
+              // the addresses are tried in turn, starting from the first
+              val nextAddress: F[RedisAddress] =
+                nextIndex.getAndUpdate(i => (i + 1) % addresses.size).map(addresses(_))
+
+              def serverAvailable(address: RedisAddress, onConnected: F[Unit]): Stream[F, Unit] =
+                Stream
+                  .fromQueueUnterminated(queue, limit = 8 * 1024)
+                  .flatMap(push)
+                  .through(redisNetChannel(address, onConnected))
+                  .evalMap(receive)
+                  .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
+
+              val serverUnavailable: Stream[F, Unit] =
+                log.errorS("Server unavailable for publishing") >>
+                  Stream
+                    .fromQueueUnterminated(queue)
+                    .evalMap(_.requests.traverse_(_.callback(Left(ServerUnavailable))))
+                    .drain
+                    .interruptAfter(3.seconds) // FIXME magic number
+
+              // failures counts the addresses that couldn't be reached since the last connection
+              def runner(failures: Int): Stream[F, Unit] =
+                if (failures >= addresses.size) serverUnavailable ++ runner(0)
+                else
+                  Stream.eval((nextAddress, Ref.of[F, Boolean](false)).tupled).flatMap { case (address, connected) =>
+                    val onConnected = connected.set(true) >> log.info(s"Connected to server $address")
+
+                    serverAvailable(address, onConnected).handleErrorWith { failure =>
+                      log.errorS(s"Failure of publishing connection to $address", failure) >>
+                        Stream.eval(failInFlight(failure) >> connected.get).flatMap { wasConnected =>
+                          runner(if (wasConnected) 1 else failures + 1)
+                        }
+                    }
+                  }
+
+              val newConnection: Connection[F] = new Connection[F] {
+                override final def run: F[Fiber[F, Throwable, Unit]] =
+                  log.debug("Starting connection") >>
+                    runner(0)
+                      .interruptWhen(termSignal)
+                      .compile
+                      .drain
+                      .attempt
+                      .flatMap { r =>
+                        log.info(
+                          s"Connection terminated: ${r.fold(err => err.getMessage, _ => "No issues")}"
+                        ) >> failInFlight(ClientTerminated) >> failQueued(ClientTerminated)
+                      }
+                      .start
+
+                override final def shutdown: F[Unit] =
+                  log.debug("Shutting down connection") >>
+                    termSignal.complete(().asRight) >>
+                    log.debug("Shutdown complete")
+
+                override final def send[In <: Tuple, Out <: Tuple](
+                    in: In,
+                    timeout: FiniteDuration
+                )(implicit handler: Handler.Aux[F, Env[F], In, Out]): F[Out] =
+                  handler(queue -> timeout, in)
+              }
+
+              Resource
+                .make(newConnection.run.map(newConnection -> _)) { case (conn, fib) =>
+                  conn.shutdown >> fib.joinWith(Temporal[F].unit)
+                }
+                .map { case (conn, _) => conn }
+            }
         }
       }
   }

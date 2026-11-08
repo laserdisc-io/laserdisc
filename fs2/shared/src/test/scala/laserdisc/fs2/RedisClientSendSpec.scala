@@ -72,6 +72,37 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  private def name(command: RESP): String = command match {
+    case Arr(Bulk(name) :: _) => name
+    case other                => fail(s"not a command: $other")
+  }
+
+  test("a multi whose MULTI the server refuses sends nothing else, so none of its commands run") {
+    // refuses MULTI, as for a user an ACL rule doesn't let run it, and keeps the names of the commands it gets
+    def refusingMulti(seen: cats.effect.Ref[IO, List[String]]) =
+      FakeRedisServer { (_, commands) =>
+        commands.evalTap(c => seen.update(_ :+ name(c))).map { c =>
+          if (name(c) == "MULTI") "-NOPERM User has no permissions to run the 'multi' command\r\n" else bulk(keyOf(c))
+        }
+      }
+
+    IO.ref(List.empty[String]).flatMap { seen =>
+      refusingMulti(seen).use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use { client =>
+          for {
+            refused <- client.send(multi(set("a", 1), set("b", 2)), 2.seconds)
+            after   <- client.send(get[String]("c"), 2.seconds)
+            names   <- seen.get
+          } yield {
+            assert(refused.isLeft, s"expected the refusal, got $refused")
+            assertEquals(after, Right(Some("c")))
+            assertEquals(names, List("MULTI", "GET"))
+          }
+        }
+      }
+    }
+  }
+
   test("commands still waiting to be sent fail when the client is closed") {
     // a connection that never takes commands off the queue
     val neverSends = RedisClient.impl.connection[IO]((_, _) => _ => Stream.never[IO], Seq(address(Port.unsafeFrom(6379))))

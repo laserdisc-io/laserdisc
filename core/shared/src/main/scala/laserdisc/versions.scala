@@ -202,7 +202,7 @@ trait ServerTypes8_6 extends ServerTypes7_0 with ServerP.HotKeysTypes
 trait ServerTypesValkey8_1    extends ServerTypes7_0 with ServerP.CommandLogTypes
 trait ServerTypesValkey9_0    extends ServerTypesValkey8_1 with ServerP.ValkeyFilterTypes with ServerP.ValkeyShutdownTypes
 trait ServerTypesValkey9_1    extends ServerTypesValkey9_0 with ServerP.AclDatabaseTypes
-trait ServerTypesDragonfly2_0 extends ServerP.ServerTypes with ServerP.AclDragonflyTypes with ServerP.ShutdownTypes
+trait ServerTypesDragonfly2_0 extends ServerP.ServerTypes with ServerP.AclDragonflyTypes with ServerP.DragonflyShutdownTypes
 
 trait Cluster6_2 extends ClusterBaseP
 trait Cluster7_0 extends Cluster6_2 with ClusterSlotsMetadataP with ClusterShardsP
@@ -486,7 +486,7 @@ trait HyperLogLogDragonfly2_0 extends HyperLogLogBaseP with HyperLogLogExtP
 trait ClientDragonfly2_0  extends ClientCoreCommands with ClientSetInfoCommands with ClientDragonflyKillCommands
 trait LatencyDragonfly2_0 extends LatencyLatestCommands with LatencyHistogramCommands
 
-trait ServerDragonfly2_0 extends ServerCoreP with ServerShutdownOptionsP with ServerInfoManyP {
+trait ServerDragonfly2_0 extends ServerCoreP with ServerShutdownDragonflyP with ServerInfoManyP {
   override val servertypes: ServerTypesDragonfly2_0 = new ServerTypesDragonfly2_0 {}
 
   override private[laserdisc] def supported: List[String] =

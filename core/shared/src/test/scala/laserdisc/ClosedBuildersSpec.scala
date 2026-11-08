@@ -51,5 +51,7 @@ final class ClosedBuildersSpec extends munit.FunSuite {
     assert(compileErrors("""laserdisc.redis_7_0.scriptingtypes.ScriptingReplace""").isEmpty)
     assert(compileErrors("""laserdisc.protocol.SetP.Approx.approx""").nonEmpty)
     assert(compileErrors("""laserdisc.redis_8_10.settypes.approx""").isEmpty)
+    assert(compileErrors("""laserdisc.protocol.ServerP.DragonflyShutdownOption.now""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.dragonflyShutdownOption.now""").isEmpty)
   }
 }

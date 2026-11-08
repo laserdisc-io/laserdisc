@@ -462,6 +462,17 @@ object ServerP {
     final val force: ShutdownOptions = new ShutdownOptions(List("FORCE"))
   }
 
+  /** NOW or FORCE, for Dragonfly's SHUTDOWN, which takes one of them and nothing else */
+  final class DragonflyShutdownOption private (val params: List[String])
+  trait DragonflyShutdownOptionBuilders {
+    def now: DragonflyShutdownOption
+    def force: DragonflyShutdownOption
+  }
+  private[laserdisc] object DragonflyShutdownOption extends DragonflyShutdownOptionBuilders {
+    final val now: DragonflyShutdownOption   = new DragonflyShutdownOption(List("NOW"))
+    final val force: DragonflyShutdownOption = new DragonflyShutdownOption(List("FORCE"))
+  }
+
   /** What CLIENT INFO replies: the same fields as a line of CLIENT LIST, for the client sending it */
   final case class ClientInfo(parameters: Parameters)
   object ClientInfo {
@@ -496,9 +507,12 @@ object ServerP {
     final val hotKeysMetrics: ServerInspection.HotKeysMetricsBuilders = ServerInspection.HotKeysMetrics
     final val hotKeysOptions: ServerInspection.HotKeysOptionsBuilders = ServerInspection.HotKeysOptions
   }
-  trait ShutdownTypes       { final val shutdownOptions = ShutdownOptions             }
-  trait ValkeyShutdownTypes { final val valkeyShutdownOptions = ValkeyShutdownOptions }
-  trait ValkeyFilterTypes   { final val valkeyClientFilter = ValkeyClientFilter       }
+  trait ShutdownTypes          { final val shutdownOptions = ShutdownOptions             }
+  trait ValkeyShutdownTypes    { final val valkeyShutdownOptions = ValkeyShutdownOptions }
+  trait DragonflyShutdownTypes {
+    final val dragonflyShutdownOption: DragonflyShutdownOptionBuilders = DragonflyShutdownOption
+  }
+  trait ValkeyFilterTypes { final val valkeyClientFilter = ValkeyClientFilter }
 
   /** Every builder, for every server */
   trait AllTypes
@@ -511,6 +525,7 @@ object ServerP {
       with HotKeysTypes
       with ShutdownTypes
       with ValkeyShutdownTypes
+      with DragonflyShutdownTypes
       with ValkeyFilterTypes
 }
 
@@ -881,6 +896,13 @@ trait ServerShutdownOptionsP extends Features {
   final def shutdown(options: ShutdownOptions): Single[OK]                     = Protocol("SHUTDOWN", options.params).as[Str, OK]
   final def shutdown(flag: ShutdownFlag, options: ShutdownOptions): Single[OK] =
     Protocol("SHUTDOWN", flag *: options.params *: EmptyTuple).as[Str, OK]
+}
+
+/** SHUTDOWN with NOW or FORCE, one of them only: Dragonfly */
+trait ServerShutdownDragonflyP extends Features {
+  override private[laserdisc] def supported: List[String] = super.supported ++ List("SHUTDOWN: FORCE NOW")
+
+  final def shutdown(option: ServerP.DragonflyShutdownOption): Single[OK] = Protocol("SHUTDOWN", option.params).as[Str, OK]
 }
 
 /** INFO with several sections, and INFO LATENCYSTATS: Redis 7.0 */

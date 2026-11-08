@@ -623,6 +623,12 @@ final class VersionImportsSpec extends BaseSpec {
     assert(compileErrors("""countkeysinslot(1)""").nonEmpty)
     assert(compileErrors("""hpersist("a", OneOrMoreKeys.unsafeFrom(List(Key("b"))))""").nonEmpty)
     assert(compileErrors("""shutdownabort""").nonEmpty)
+    // Dragonfly takes NOW or FORCE alone, and neither with SAVE or NOSAVE
+    assertEquals(shutdown(servertypes.dragonflyShutdownOption.now).frames, frame("SHUTDOWN", "NOW"))
+    assertEquals(shutdown(servertypes.dragonflyShutdownOption.force).frames, frame("SHUTDOWN", "FORCE"))
+    assert(compileErrors("""servertypes.dragonflyShutdownOption.now.force""").nonEmpty)
+    assert(compileErrors("""shutdown(servertypes.flag.save, servertypes.dragonflyShutdownOption.now)""").nonEmpty)
+    assert(compileErrors("""servertypes.shutdownOptions""").nonEmpty)
     assert(compileErrors("""xsetid("a", streamtypes.StreamId(1L, 1L), 1L, streamtypes.StreamId(1L, 1L))""").nonEmpty)
   }
 
@@ -844,6 +850,17 @@ final class VersionImportsSpec extends BaseSpec {
       assertEquals(acl.dryrun("u", ping).frames, frame("ACL", "DRYRUN", "u", "PING"))
       assertEquals(acl.setuser("u", servertypes.aclSelectorRules.writeKeys("w:*")).frames, frame("ACL", "SETUSER", "u", "%W~w:*"))
     }
+  }
+
+  test("dragonfly_2_0 has ACL SETUSER with Dragonfly's rules only, without reset or passwords given by their SHA-256") {
+    import laserdisc.auto.*
+    import laserdisc.dragonfly_2_0.*
+
+    assertEquals(acl.setuser("u", servertypes.aclDragonflyRules.on.readKeys("r:*")).frames, frame("ACL", "SETUSER", "u", "on", "%R~r:*"))
+    assert(compileErrors("""servertypes.aclDragonflyRules.reset""").nonEmpty)
+    assert(compileErrors("""servertypes.aclDragonflyRules.hashedPassword("a")""").nonEmpty)
+    assert(compileErrors("""servertypes.aclDragonflyRules.removeHashedPassword("a")""").nonEmpty)
+    assert(compileErrors("""acl.setuser("u", laserdisc.redis_6_2.servertypes.aclRules.on)""").nonEmpty)
   }
 
   test("redis_6_2 and redis_8_10.streams have the stream commands") {

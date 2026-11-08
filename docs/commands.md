@@ -88,6 +88,10 @@ example, `MIGRATE`, `OBJECT`, `SWAPDB`, `FUNCTION` and most of `CLUSTER`. It als
 adds Dragonfly's own commands: `prepend`, `saddex`, `fieldexpire`, `fieldttl`,
 `stick`, `clthrottle`, `rm` and `repltakeover`.
 
+Its rules for `ACL SETUSER` leave out `reset`, `hashedPassword` and
+`removeHashedPassword`, which Dragonfly refuses. `shutdown` takes `now` or
+`force` alone, as Dragonfly refuses them together or with `save` or `nosave`.
+
 Some things still behave differently from Redis:
 
 - `CLUSTER` only works when Dragonfly runs in cluster mode, with
@@ -97,8 +101,6 @@ Some things still behave differently from Redis:
 - `SORT` ignores `BY`, and `GET` gives an empty value for a missing key.
 - `INFO` with the `default` or `everything` section replies with nothing. Use
   `info` with no section, or the `all` section.
-- `ACL SETUSER` refuses the rules `reset`, `hashedPassword` and
-  `removeHashedPassword`, which you can still write because other servers have them.
 - `ACL LOAD`, `ACL SAVE` and `CONFIG REWRITE` need Dragonfly to have been started
   with those files.
 - `PUBSUB SHARDCHANNELS` and `PUBSUB SHARDNUMSUB` need cluster mode.

@@ -108,8 +108,9 @@ object DragonflyP {
     }
     private implicit final val followerRead: Read[FollowerReply, Role] = Read.instance { reply =>
       Read[FollowerReply, String *: Host *: Port *: String *: EmptyTuple].read(reply).flatMap {
-        case "slave" *: host *: port *: state *: _ => Right(Follower(host, port, state))
-        case name *: _                             => Left(RESPDecErr(s"Expected the role slave but was $name"))
+        // "replica" when Dragonfly runs with --info_replication_valkey_compatible=false
+        case ("slave" | "replica") *: host *: port *: state *: _ => Right(Follower(host, port, state))
+        case name *: _                                           => Left(RESPDecErr(s"Expected the role slave but was $name"))
       }
     }
 

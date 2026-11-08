@@ -89,6 +89,10 @@ final class DragonflyPSpec extends BaseSpec with DragonflyP {
       role.decode(bulks("slave", "df-primary", "6379", "online")),
       Follower(Host("df-primary"), Port(6379), "online"): DragonflyP.Role
     )
+    assertEquals(
+      role.decode(bulks("replica", "df-primary", "6379", "online")),
+      Follower(Host("df-primary"), Port(6379), "online"): DragonflyP.Role
+    )
     assert(role.decode(Arr(Bulk("sentinel"), Arr(Nil))).isLeft)
   }
 

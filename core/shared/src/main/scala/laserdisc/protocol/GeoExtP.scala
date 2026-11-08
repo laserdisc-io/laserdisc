@@ -29,15 +29,15 @@ trait GeoExtP { this: GeoBaseP =>
 
   //format: off
   //GEOADD
-  final def geoadd(key: Key, position: GeoPosition, positions: GeoPosition*): Single.Aux[NonNegInt] =
+  final def geoadd(key: Key, position: GeoPosition, positions: GeoPosition*): Single[NonNegInt] =
     geoadd(key, OneOrMore.unsafeFrom(position :: positions.toList))
 
   //GEOHASH
-  final def geohash(key: Key, member: Key, members: Key*): Single.Aux[Seq[Option[GeoHash]]] =
+  final def geohash(key: Key, member: Key, members: Key*): Single[Seq[Option[GeoHash]]] =
     geohash(key, OneOrMoreKeys.unsafeFrom(member :: members.toList))
 
   //GEOPOS
-  final def geopos(key: Key, member: Key, members: Key*): Single.Aux[Seq[Option[GeoCoordinates]]] =
+  final def geopos(key: Key, member: Key, members: Key*): Single[Seq[Option[GeoCoordinates]]] =
     geopos(key, OneOrMoreKeys.unsafeFrom(member :: members.toList))
   //format: on
 }

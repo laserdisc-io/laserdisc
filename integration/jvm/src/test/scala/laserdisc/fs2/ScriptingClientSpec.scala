@@ -40,10 +40,10 @@ final class ValkeyScriptingClientSpec extends ScriptingClientSpec(LiveServers.po
 }
 
 abstract class ScriptingClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
-  protected final def send[A](protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
-  private def failure[A](protocol: Protocol.Aux[A]): String =
+  private def failure[A](protocol: Protocol[A]): String =
     client.send(protocol).unsafeRunSync()(using runtime).fold(_.getMessage, a => fail(s"$dest should have failed but replied $a"))
 
   private val scriptKeys = OneOrMoreKeys.unsafeFrom(List(Key("s:a"), Key("s:b")))

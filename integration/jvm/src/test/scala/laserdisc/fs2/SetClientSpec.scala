@@ -73,7 +73,7 @@ final class ValkeySetClientSpec extends SetClientSpec(LiveServers.port(6381), "v
 final class DragonflySetClientSpec extends SetClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class SetClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
-  protected final def send[A](protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   test(s"a $dest client checks several members at once and pops from a missing set") {

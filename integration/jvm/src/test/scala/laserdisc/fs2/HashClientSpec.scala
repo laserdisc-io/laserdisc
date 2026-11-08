@@ -52,7 +52,7 @@ final class ValkeyHashClientSpec extends HashClientSpec(LiveServers.port(6381), 
 final class DragonflyHashClientSpec extends HashClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
-  protected final def send[A](protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   // the version, the same version again as each of the hash features it has, and the builders they take

@@ -25,10 +25,10 @@ package fs2
 import laserdisc.auto.*
 
 final class RedisArrayClientSpec extends LaserdiscFs2Suite(LiveServers.port(6379)) {
-  private def send[A](protocol: Protocol.Aux[A]): A =
+  private def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"redis replied with an error: ${e.getMessage}", e), identity)
 
-  private def failure[A](protocol: Protocol.Aux[A]): String =
+  private def failure[A](protocol: Protocol[A]): String =
     client.send(protocol).unsafeRunSync()(using runtime).fold(_.getMessage, r => fail(s"expected an error, got $r"))
 
   private def indexes(ns: NonNegLong*): OneOrMore[NonNegLong] = OneOrMore.unsafeFrom(ns.toList)

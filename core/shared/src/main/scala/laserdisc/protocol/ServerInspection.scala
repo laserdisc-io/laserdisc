@@ -480,14 +480,14 @@ trait ServerInspectionCoreP extends Features {
     super.supported ++ List("SLOWLOG GET", "SLOWLOG HELP", "SLOWLOG LEN", "SLOWLOG RESET")
 
   object slowlog {
-    val help: Single.Aux[Seq[String]] = Protocol.help("SLOWLOG")
+    val help: Single[Seq[String]] = Protocol.help("SLOWLOG")
 
     /** The 10 most recent entries */
-    val get: Single.Aux[Seq[LogEntry]]                = Protocol("SLOWLOG", "GET").using(RESPRead.instance(ServerInspection.logEntries))
-    def get(count: PosInt): Single.Aux[Seq[LogEntry]] =
+    val get: Single[Seq[LogEntry]]                = Protocol("SLOWLOG", "GET").using(RESPRead.instance(ServerInspection.logEntries))
+    def get(count: PosInt): Single[Seq[LogEntry]] =
       Protocol("SLOWLOG", "GET" *: count *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries))
-    val len: Single.Aux[NonNegLong] = Protocol("SLOWLOG", "LEN").as[Num, NonNegLong]
-    val reset: Single.Aux[OK]       = Protocol("SLOWLOG", "RESET").as[Str, OK]
+    val len: Single[NonNegLong] = Protocol("SLOWLOG", "LEN").as[Num, NonNegLong]
+    val reset: Single[OK]       = Protocol("SLOWLOG", "RESET").as[Str, OK]
   }
 
 }
@@ -499,19 +499,19 @@ trait MemoryCoreCommands extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("MEMORY HELP", "MEMORY MALLOC-STATS", "MEMORY STATS", "MEMORY USAGE: SAMPLES")
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("MEMORY")
+  val help: Single[Seq[String]] = Protocol.help("MEMORY")
 
   /** The memory allocator's own statistics, as text */
-  val mallocstats: Single.Aux[String] = Protocol("MEMORY", "MALLOC-STATS").as[Bulk, String]
+  val mallocstats: Single[String] = Protocol("MEMORY", "MALLOC-STATS").as[Bulk, String]
 
-  val stats: Single.Aux[MemoryStats] = Protocol("MEMORY", "STATS").using(RESPRead.instance(ServerInspection.memoryStats))
+  val stats: Single[MemoryStats] = Protocol("MEMORY", "STATS").using(RESPRead.instance(ServerInspection.memoryStats))
 
   /** How many bytes the key and its value use, or `None` when it doesn't exist */
-  def usage(key: Key): Single.Aux[Option[NonNegLong]] =
+  def usage(key: Key): Single[Option[NonNegLong]] =
     Protocol("MEMORY", "USAGE" :: key.value :: Nil).as[OrNullBulk[Num], Option[NonNegLong]]
 
   /** Like `usage`, estimating a collection from `samples` of its elements, or from all of them when 0 */
-  def usage(key: Key, samples: NonNegInt): Single.Aux[Option[NonNegLong]] =
+  def usage(key: Key, samples: NonNegInt): Single[Option[NonNegLong]] =
     Protocol("MEMORY", "USAGE" *: key *: "SAMPLES" *: samples *: EmptyTuple).as[OrNullBulk[Num], Option[NonNegLong]]
 }
 
@@ -520,9 +520,9 @@ trait MemoryCommands extends MemoryCoreCommands {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("MEMORY DOCTOR", "MEMORY PURGE")
 
   /** The server's advice about its memory use, as text */
-  val doctor: Single.Aux[String] = Protocol("MEMORY", "DOCTOR").as[Bulk, String]
+  val doctor: Single[String] = Protocol("MEMORY", "DOCTOR").as[Bulk, String]
 
-  val purge: Single.Aux[OK] = Protocol("MEMORY", "PURGE").as[Str, OK]
+  val purge: Single[OK] = Protocol("MEMORY", "PURGE").as[Str, OK]
 }
 
 /** MEMORY under `memory`, and MODULE under `module`. Redis 6.2 */
@@ -540,7 +540,7 @@ trait ModuleListCommands extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("MODULE LIST")
 
-  val list: Single.Aux[Seq[ModuleInfo]] = Protocol("MODULE", "LIST").using(RESPRead.instance(ServerInspection.moduleInfos))
+  val list: Single[Seq[ModuleInfo]] = Protocol("MODULE", "LIST").using(RESPRead.instance(ServerInspection.moduleInfos))
 }
 
 /** MODULE: Redis 6.2. Servers refuse LOAD and UNLOAD unless they were started with `enable-module-command` */
@@ -548,15 +548,15 @@ trait ModuleCommands extends ModuleListCommands {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("MODULE HELP", "MODULE LOAD", "MODULE UNLOAD")
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("MODULE")
+  val help: Single[Seq[String]] = Protocol.help("MODULE")
 
   /** Loads the module at that path on the server */
-  def load(path: Key): Single.Aux[OK]                         = Protocol("MODULE", "LOAD" :: path.value :: Nil).as[Str, OK]
-  def load(path: Key, args: OneOrMore[Value]): Single.Aux[OK] =
+  def load(path: Key): Single[OK]                         = Protocol("MODULE", "LOAD" :: path.value :: Nil).as[Str, OK]
+  def load(path: Key, args: OneOrMore[Value]): Single[OK] =
     Protocol("MODULE", "LOAD" :: path.value :: args.value.map(_.shown)).as[Str, OK]
 
   /** Unloads the module of that name */
-  def unload(name: Key): Single.Aux[OK] = Protocol("MODULE", "UNLOAD" :: name.value :: Nil).as[Str, OK]
+  def unload(name: Key): Single[OK] = Protocol("MODULE", "UNLOAD" :: name.value :: Nil).as[Str, OK]
 }
 
 /** MODULE LOADEX: Redis 7.0 */
@@ -568,12 +568,12 @@ trait ModuleLoadExCommands extends Features {
   private def arguments(values: OneOrMore[Value]): List[String] = "ARGS" :: values.value.map(_.shown)
 
   /** Loads the module at that path on the server, setting its configuration */
-  def loadex(path: Key): Single.Aux[OK]                                  = Protocol("MODULE", "LOADEX" :: path.value :: Nil).as[Str, OK]
-  def loadex(path: Key, config: OneOrMore[(Key, Value)]): Single.Aux[OK] =
+  def loadex(path: Key): Single[OK]                                  = Protocol("MODULE", "LOADEX" :: path.value :: Nil).as[Str, OK]
+  def loadex(path: Key, config: OneOrMore[(Key, Value)]): Single[OK] =
     Protocol("MODULE", "LOADEX" :: path.value :: configs(config)).as[Str, OK]
-  def loadexargs(path: Key, args: OneOrMore[Value]): Single.Aux[OK] =
+  def loadexargs(path: Key, args: OneOrMore[Value]): Single[OK] =
     Protocol("MODULE", "LOADEX" :: path.value :: arguments(args)).as[Str, OK]
-  def loadex(path: Key, config: OneOrMore[(Key, Value)], args: OneOrMore[Value]): Single.Aux[OK] =
+  def loadex(path: Key, config: OneOrMore[(Key, Value)], args: OneOrMore[Value]): Single[OK] =
     Protocol("MODULE", "LOADEX" :: path.value :: (configs(config) ++ arguments(args))).as[Str, OK]
 }
 
@@ -583,7 +583,7 @@ trait LatencyLatestCommands extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("LATENCY LATEST")
 
-  val latest: Single.Aux[Seq[LatencyEvent]] = Protocol("LATENCY", "LATEST").using(RESPRead.instance(ServerInspection.latencyEvents))
+  val latest: Single[Seq[LatencyEvent]] = Protocol("LATENCY", "LATEST").using(RESPRead.instance(ServerInspection.latencyEvents))
 }
 
 /** LATENCY: Redis 6.2 */
@@ -593,20 +593,20 @@ trait LatencyCommands extends LatencyLatestCommands {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("LATENCY DOCTOR", "LATENCY GRAPH", "LATENCY HELP", "LATENCY HISTORY", "LATENCY RESET")
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("LATENCY")
+  val help: Single[Seq[String]] = Protocol.help("LATENCY")
 
   /** The server's advice about its latency, as text */
-  val doctor: Single.Aux[String] = Protocol("LATENCY", "DOCTOR").as[Bulk, String]
+  val doctor: Single[String] = Protocol("LATENCY", "DOCTOR").as[Bulk, String]
 
   /** A graph of an event's latency, as text */
-  def graph(event: Key): Single.Aux[String] = Protocol("LATENCY", "GRAPH" :: event.value :: Nil).as[Bulk, String]
+  def graph(event: Key): Single[String] = Protocol("LATENCY", "GRAPH" :: event.value :: Nil).as[Bulk, String]
 
-  def history(event: Key): Single.Aux[Seq[LatencySample]] =
+  def history(event: Key): Single[Seq[LatencySample]] =
     Protocol("LATENCY", "HISTORY" :: event.value :: Nil).using(RESPRead.instance(ServerInspection.latencySamples))
 
   /** Forgets every event, or the given ones, and replies how many it forgot */
-  val reset: Single.Aux[NonNegInt]                         = Protocol("LATENCY", "RESET").as[Num, NonNegInt]
-  def reset(events: OneOrMore[Key]): Single.Aux[NonNegInt] = Protocol("LATENCY", "RESET" :: events.value.map(_.value)).as[Num, NonNegInt]
+  val reset: Single[NonNegInt]                         = Protocol("LATENCY", "RESET").as[Num, NonNegInt]
+  def reset(events: OneOrMore[Key]): Single[NonNegInt] = Protocol("LATENCY", "RESET" :: events.value.map(_.value)).as[Num, NonNegInt]
 }
 
 /** LATENCY HISTOGRAM: Redis 7.0 */
@@ -616,9 +616,9 @@ trait LatencyHistogramCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("LATENCY HISTOGRAM")
 
   /** The histogram of every command that ran, or of the given ones, by command name */
-  val histogram: Single.Aux[Map[String, LatencyHistogram]] =
+  val histogram: Single[Map[String, LatencyHistogram]] =
     Protocol("LATENCY", "HISTOGRAM").using(RESPRead.instance(ServerInspection.latencyHistograms))
-  def histogram(commands: OneOrMore[Key]): Single.Aux[Map[String, LatencyHistogram]] =
+  def histogram(commands: OneOrMore[Key]): Single[Map[String, LatencyHistogram]] =
     Protocol("LATENCY", "HISTOGRAM" :: commands.value.map(_.value)).using(RESPRead.instance(ServerInspection.latencyHistograms))
 }
 
@@ -629,12 +629,12 @@ trait CommandCoreCommands extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("COMMAND COUNT", "COMMAND HELP", "COMMAND INFO")
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("COMMAND")
+  val help: Single[Seq[String]] = Protocol.help("COMMAND")
 
-  val count: Single.Aux[NonNegInt] = Protocol("COMMAND", "COUNT").as[Num, NonNegInt]
+  val count: Single[NonNegInt] = Protocol("COMMAND", "COUNT").as[Num, NonNegInt]
 
   /** The information of each command, or `None` for a name the server doesn't know */
-  def info(names: OneOrMore[Key]): Single.Aux[Seq[Option[CommandInfo]]] =
+  def info(names: OneOrMore[Key]): Single[Seq[Option[CommandInfo]]] =
     Protocol("COMMAND", "INFO" :: names.value.map(_.value)).using(RESPRead.instance(ServerInspection.commandInfos))
 }
 
@@ -643,7 +643,7 @@ trait CommandCommands extends CommandCoreCommands {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("COMMAND GETKEYS")
 
   /** The keys a command would use, without running it */
-  def getkeys(command: Single[Any]): Single.Aux[Seq[Key]] =
+  def getkeys(command: Single[Any]): Single[Seq[Key]] =
     Protocol("COMMAND", "GETKEYS" :: ServerInspection.argumentsOf(command)).as[Arr.Of[Bulk], Seq[Key]]
 }
 
@@ -655,17 +655,17 @@ trait CommandListCommands extends Features {
     super.supported ++ List("COMMAND DOCS", "COMMAND GETKEYSANDFLAGS", "COMMAND LIST: ACLCAT FILTERBY MODULE PATTERN")
 
   /** The documentation of every command, or of the given ones, leaving out names the server doesn't know */
-  lazy val docs: Single.Aux[Seq[CommandDoc]] = Protocol("COMMAND", "DOCS").using(RESPRead.instance(ServerInspection.commandDocs))
-  def docs(names: OneOrMore[Key]): Single.Aux[Seq[CommandDoc]] =
+  lazy val docs: Single[Seq[CommandDoc]] = Protocol("COMMAND", "DOCS").using(RESPRead.instance(ServerInspection.commandDocs))
+  def docs(names: OneOrMore[Key]): Single[Seq[CommandDoc]] =
     Protocol("COMMAND", "DOCS" :: names.value.map(_.value)).using(RESPRead.instance(ServerInspection.commandDocs))
 
   /** The keys a command would use, with what it would do to each, without running it */
-  def getkeysandflags(command: Single[Any]): Single.Aux[Seq[KeyAndFlags]] =
+  def getkeysandflags(command: Single[Any]): Single[Seq[KeyAndFlags]] =
     Protocol("COMMAND", "GETKEYSANDFLAGS" :: ServerInspection.argumentsOf(command)).using(RESPRead.instance(ServerInspection.keysAndFlags))
 
   /** The names of every command, or of those the filter keeps */
-  val list: Single.Aux[Seq[String]]                        = Protocol("COMMAND", "LIST").as[Arr.Of[Bulk], Seq[String]]
-  def list(filter: CommandFilter): Single.Aux[Seq[String]] = Protocol("COMMAND", "LIST" :: filter.params).as[Arr.Of[Bulk], Seq[String]]
+  val list: Single[Seq[String]]                        = Protocol("COMMAND", "LIST").as[Arr.Of[Bulk], Seq[String]]
+  def list(filter: CommandFilter): Single[Seq[String]] = Protocol("COMMAND", "LIST" :: filter.params).as[Arr.Of[Bulk], Seq[String]]
 }
 
 /** HOTKEYS: Redis 8.6 */
@@ -682,19 +682,19 @@ trait HotKeysCommands extends Features {
     )
 
   /** Redis 8.6.1 */
-  val help: Single.Aux[Seq[String]] = Protocol.help("HOTKEYS")
+  val help: Single[Seq[String]] = Protocol.help("HOTKEYS")
 
-  def start(metrics: HotKeysMetrics): Single.Aux[OK]                          = Protocol("HOTKEYS", "START" :: metrics.params).as[Str, OK]
-  def start(metrics: HotKeysMetrics, options: HotKeysOptions): Single.Aux[OK] =
+  def start(metrics: HotKeysMetrics): Single[OK]                          = Protocol("HOTKEYS", "START" :: metrics.params).as[Str, OK]
+  def start(metrics: HotKeysMetrics, options: HotKeysOptions): Single[OK] =
     Protocol("HOTKEYS", "START" :: metrics.params ++ options.params).as[Str, OK]
 
-  val stop: Single.Aux[OK] = Protocol("HOTKEYS", "STOP").as[Str, OK]
+  val stop: Single[OK] = Protocol("HOTKEYS", "STOP").as[Str, OK]
 
   /** The reports of the tracking, or `None` when there's none to report */
-  val get: Single.Aux[Option[Seq[HotKeys]]] = Protocol("HOTKEYS", "GET").using(ServerInspection.maybeHotKeys)
+  val get: Single[Option[Seq[HotKeys]]] = Protocol("HOTKEYS", "GET").using(ServerInspection.maybeHotKeys)
 
   /** Frees what the tracking used */
-  val reset: Single.Aux[OK] = Protocol("HOTKEYS", "RESET").as[Str, OK]
+  val reset: Single[OK] = Protocol("HOTKEYS", "RESET").as[Str, OK]
 }
 
 /** COMMANDLOG: Valkey 8.1 */
@@ -709,15 +709,15 @@ trait CommandLogCommands extends Features {
       "COMMANDLOG RESET: LARGE-REPLY LARGE-REQUEST SLOW"
     )
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("COMMANDLOG")
+  val help: Single[Seq[String]] = Protocol.help("COMMANDLOG")
 
   /** Every entry of the log */
-  def get(log: CommandLogType): Single.Aux[Seq[LogEntry]] =
+  def get(log: CommandLogType): Single[Seq[LogEntry]] =
     Protocol("COMMANDLOG", "GET" *: -1 *: log *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries))
-  def get(log: CommandLogType, count: PosInt): Single.Aux[Seq[LogEntry]] =
+  def get(log: CommandLogType, count: PosInt): Single[Seq[LogEntry]] =
     Protocol("COMMANDLOG", "GET" *: count *: log *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries))
 
-  def len(log: CommandLogType): Single.Aux[NonNegLong] = Protocol("COMMANDLOG", "LEN" *: log *: EmptyTuple).as[Num, NonNegLong]
+  def len(log: CommandLogType): Single[NonNegLong] = Protocol("COMMANDLOG", "LEN" *: log *: EmptyTuple).as[Num, NonNegLong]
 
-  def reset(log: CommandLogType): Single.Aux[OK] = Protocol("COMMANDLOG", "RESET" *: log *: EmptyTuple).as[Str, OK]
+  def reset(log: CommandLogType): Single[OK] = Protocol("COMMANDLOG", "RESET" *: log *: EmptyTuple).as[Str, OK]
 }

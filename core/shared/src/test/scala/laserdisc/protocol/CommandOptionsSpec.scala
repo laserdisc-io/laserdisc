@@ -169,8 +169,8 @@ final class CommandOptionsSpec extends BaseSpec {
   test("the hash field expiry commands fail on a number their server doesn't reply with") {
     import laserdisc.redis_8_10.*
 
-    val fields                                                  = OneOrMoreKeys.unsafeFrom(List(Key("f")))
-    def fails[A](protocol: Protocol.Aux[A], number: Long): Unit = {
+    val fields                                              = OneOrMoreKeys.unsafeFrom(List(Key("f")))
+    def fails[A](protocol: Protocol[A], number: Long): Unit = {
       val reply = protocol.decodeReplies(Seq(Arr(Num(number))))
       assert(reply.isLeft, reply.toString)
     }

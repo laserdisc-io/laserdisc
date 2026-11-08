@@ -32,11 +32,11 @@ trait HyperLogLogBaseP extends Features {
       "PFMERGE"
     )
 
-  final def pfadd(key: Key, elements: OneOrMoreKeys): Single.Aux[Boolean] = Protocol("PFADD", key :: elements.value).as[Num, Boolean]
+  final def pfadd(key: Key, elements: OneOrMoreKeys): Single[Boolean] = Protocol("PFADD", key :: elements.value).as[Num, Boolean]
 
-  final def pfcount(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("PFCOUNT", keys.value).as[Num, NonNegInt]
+  final def pfcount(keys: OneOrMoreKeys): Single[NonNegInt] = Protocol("PFCOUNT", keys.value).as[Num, NonNegInt]
 
-  final def pfmerge(sourceKeys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[OK] =
+  final def pfmerge(sourceKeys: TwoOrMoreKeys, destinationKey: Key): Single[OK] =
     Protocol("PFMERGE", destinationKey :: sourceKeys.value).as[Str, OK]
 }
 
@@ -44,7 +44,7 @@ trait HyperLogLogSelfTestP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("PFSELFTEST")
 
   /** Checks the server's own HyperLogLog code, and replies OK or with what's wrong */
-  final val pfselftest: Single.Aux[OK] = Protocol("PFSELFTEST", EmptyTuple).as[Str, OK]
+  final val pfselftest: Single[OK] = Protocol("PFSELFTEST", EmptyTuple).as[Str, OK]
 }
 
 trait HyperLogLogP extends HyperLogLogBaseP with HyperLogLogExtP with HyperLogLogSelfTestP

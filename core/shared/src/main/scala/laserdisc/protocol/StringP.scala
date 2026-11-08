@@ -316,112 +316,112 @@ trait StringBaseP extends Features {
   /** The builders of this family's commands, and the types of their replies */
   val stringtypes: StringP.StringTypes = new StringP.StringTypes {}
 
-  final def append[A: Show](key: Key, value: A): Single.Aux[NonNegInt] = Protocol("APPEND", key *: value *: EmptyTuple).as[Num, NonNegInt]
+  final def append[A: Show](key: Key, value: A): Single[NonNegInt] = Protocol("APPEND", key *: value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def bitcount(key: Key): Single.Aux[NonNegInt]                           = Protocol("BITCOUNT", key).as[Num, NonNegInt]
-  final def bitcount(key: Key, start: Index, end: Index): Single.Aux[NonNegInt] =
+  final def bitcount(key: Key): Single[NonNegInt]                           = Protocol("BITCOUNT", key).as[Num, NonNegInt]
+  final def bitcount(key: Key, start: Index, end: Index): Single[NonNegInt] =
     Protocol("BITCOUNT", key *: start *: end *: EmptyTuple).as[Num, NonNegInt]
 
-  final def bitfield(key: Key, steps: BitField): Single.Aux[Seq[Option[Long]]] =
+  final def bitfield(key: Key, steps: BitField): Single[Seq[Option[Long]]] =
     Protocol("BITFIELD", key *: steps.params *: EmptyTuple).using(RESPRead.instance(StringP.bitFieldResults))
 
-  final def bitfieldro(key: Key, gets: OneOrMore[(BitField.Encoding, BitField.Offset)]): Single.Aux[Seq[Long]] =
+  final def bitfieldro(key: Key, gets: OneOrMore[(BitField.Encoding, BitField.Offset)]): Single[Seq[Long]] =
     Protocol("BITFIELD_RO", key *: gets.value.flatMap { case (e, o) => List("GET", e.param, o.param) } *: EmptyTuple)
       .as[Arr.Of[Num], Seq[Long]]
 
-  final def bitop(bitwise: Bitwise, keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
+  final def bitop(bitwise: Bitwise, keys: TwoOrMoreKeys, destinationKey: Key): Single[NonNegInt] =
     Protocol("BITOP", bitwise *: destinationKey *: keys.value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def bitopnot(key: Key, destinationKey: Key): Single.Aux[NonNegInt] =
+  final def bitopnot(key: Key, destinationKey: Key): Single[NonNegInt] =
     Protocol("BITOP", "NOT" :: destinationKey.value :: key.value :: Nil).as[Num, NonNegInt]
 
-  final def bitpos(key: Key, bit: Bit): Single.Aux[Option[NonNegInt]] = Protocol("BITPOS", key *: bit *: EmptyTuple).using(minusOneIsNone)
-  final def bitpos(key: Key, bit: Bit, start: Index): Single.Aux[Option[NonNegInt]] =
+  final def bitpos(key: Key, bit: Bit): Single[Option[NonNegInt]] = Protocol("BITPOS", key *: bit *: EmptyTuple).using(minusOneIsNone)
+  final def bitpos(key: Key, bit: Bit, start: Index): Single[Option[NonNegInt]] =
     Protocol("BITPOS", key *: bit *: start *: EmptyTuple).using(minusOneIsNone)
-  final def bitpos(key: Key, bit: Bit, start: Index, end: Index): Single.Aux[Option[NonNegInt]] =
+  final def bitpos(key: Key, bit: Bit, start: Index, end: Index): Single[Option[NonNegInt]] =
     Protocol("BITPOS", key *: bit *: start *: end *: EmptyTuple).using(minusOneIsNone)
 
-  final def decr[A: Read[Num, _]](key: Key): Single.Aux[A] = Protocol("DECR", key).as[Num, A]
+  final def decr[A: Read[Num, _]](key: Key): Single[A] = Protocol("DECR", key).as[Num, A]
 
   // TODO verify ok to limit DECRBY to only positive values, REDIS happily accepts 0 and negatives and x + (-decrement)
-  final def decrby[A: Read[Num, _]](key: Key, decrement: PosLong): Single.Aux[A] =
+  final def decrby[A: Read[Num, _]](key: Key, decrement: PosLong): Single[A] =
     Protocol("DECRBY", key *: decrement *: EmptyTuple).as[Num, A]
 
-  final def get[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("GET", key).as[OrNullBulk[Bulk], Option[A]]
+  final def get[A: Read[Bulk, _]](key: Key): Single[Option[A]] = Protocol("GET", key).as[OrNullBulk[Bulk], Option[A]]
 
-  final def getbit(key: Key, offset: StringLength): Single.Aux[Bit] = Protocol("GETBIT", key *: offset *: EmptyTuple).as[Num, Bit]
+  final def getbit(key: Key, offset: StringLength): Single[Bit] = Protocol("GETBIT", key *: offset *: EmptyTuple).as[Num, Bit]
 
-  final def getrange[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single.Aux[A] =
+  final def getrange[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single[A] =
     Protocol("GETRANGE", key *: start *: end *: EmptyTuple).as[Bulk, A]
 
-  final def getdel[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("GETDEL", key).as[OrNullBulk[Bulk], Option[A]]
+  final def getdel[A: Read[Bulk, _]](key: Key): Single[Option[A]] = Protocol("GETDEL", key).as[OrNullBulk[Bulk], Option[A]]
 
-  final def getex[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] = Protocol("GETEX", key).as[OrNullBulk[Bulk], Option[A]]
-  final def getex[A: Read[Bulk, _]](key: Key, expiry: GetExpiry): Single.Aux[Option[A]] =
+  final def getex[A: Read[Bulk, _]](key: Key): Single[Option[A]]                    = Protocol("GETEX", key).as[OrNullBulk[Bulk], Option[A]]
+  final def getex[A: Read[Bulk, _]](key: Key, expiry: GetExpiry): Single[Option[A]] =
     Protocol("GETEX", key *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
-  final def getset[A: Read[Bulk, _]](key: Key, value: Value): Single.Aux[Option[A]] =
+  final def getset[A: Read[Bulk, _]](key: Key, value: Value): Single[Option[A]] =
     Protocol("GETSET", key *: value.shown *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
-  final def incr[A: Read[Num, _]](key: Key): Single.Aux[A] = Protocol("INCR", key).as[Num, A]
+  final def incr[A: Read[Num, _]](key: Key): Single[A] = Protocol("INCR", key).as[Num, A]
 
   // TODO verify ok to limit INCRBY to only positive values, REDIS happily accepts 0 and negatives
-  final def incrby[A: Read[Num, _]](key: Key, increment: PosLong): Single.Aux[A] =
+  final def incrby[A: Read[Num, _]](key: Key, increment: PosLong): Single[A] =
     Protocol("INCRBY", key *: increment *: EmptyTuple).as[Num, A]
 
-  final def incrbyfloat(key: Key, increment: NonZeroDouble): Single.Aux[Double] =
+  final def incrbyfloat(key: Key, increment: NonZeroDouble): Single[Double] =
     Protocol("INCRBYFLOAT", key *: increment *: EmptyTuple).as[Bulk, Double]
 
   /** The values of the keys, as a tuple of as many (a missing key is `None` where the tuple has an `Option`, and an error anywhere else),
     * or as a `Seq` of `Option`s
     */
-  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](keys: OneOrMoreKeys): Single.Aux[A] =
+  final def mget[A: Read[Arr.Of[OrNullBulk[Bulk]], _]](keys: OneOrMoreKeys): Single[A] =
     Protocol("MGET", keys.value).as[Arr.Of[OrNullBulk[Bulk]], A]
 
-  final def mset[L <: NonEmptyTuple: RESPParamWrite: LUBConstraint[_, (Key, ?)]](l: L): Single.Aux[OK] =
+  final def mset[L <: NonEmptyTuple: RESPParamWrite: LUBConstraint[_, (Key, ?)]](l: L): Single[OK] =
     Protocol("MSET", l).as[Str, OK]
-  final def mset[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](product: P): Single.Aux[OK] = Protocol("MSET", product).as[Str, OK]
-  final def mset[A: Show](values: OneOrMore[(Key, A)]): Single.Aux[OK]                          = Protocol("MSET", values.value).as[Str, OK]
+  final def mset[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](product: P): Single[OK] = Protocol("MSET", product).as[Str, OK]
+  final def mset[A: Show](values: OneOrMore[(Key, A)]): Single[OK]                          = Protocol("MSET", values.value).as[Str, OK]
 
-  final def msetnx[L <: NonEmptyTuple: RESPParamWrite: LUBConstraint[_, (Key, ?)]](l: L): Single.Aux[Boolean] =
+  final def msetnx[L <: NonEmptyTuple: RESPParamWrite: LUBConstraint[_, (Key, ?)]](l: L): Single[Boolean] =
     Protocol("MSETNX", l).as[Num, Boolean]
-  final def msetnx[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](product: P): Single.Aux[Boolean] =
+  final def msetnx[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](product: P): Single[Boolean] =
     Protocol("MSETNX", product).as[Num, Boolean]
-  final def msetnx[A: Show](values: OneOrMore[(Key, A)]): Single.Aux[Boolean] =
+  final def msetnx[A: Show](values: OneOrMore[(Key, A)]): Single[Boolean] =
     Protocol("MSETNX", values.value).as[Num, Boolean]
 
-  final def psetex[A: Show](key: Key, milliseconds: PosLong, value: A): Single.Aux[OK] =
+  final def psetex[A: Show](key: Key, milliseconds: PosLong, value: A): Single[OK] =
     Protocol("PSETEX", key *: milliseconds *: value *: EmptyTuple).as[Str, OK]
 
-  final def set[A: Show](key: Key, value: A): Single.Aux[OK]                    = Protocol("SET", key *: value *: EmptyTuple).as[Str, OK]
-  final def set[A: Show](key: Key, value: A, expiry: SetExpiry): Single.Aux[OK] =
+  final def set[A: Show](key: Key, value: A): Single[OK]                    = Protocol("SET", key *: value *: EmptyTuple).as[Str, OK]
+  final def set[A: Show](key: Key, value: A, expiry: SetExpiry): Single[OK] =
     Protocol("SET", key *: value *: expiry.params *: EmptyTuple).as[Str, OK]
-  final def set[A: Show](key: Key, value: A, flag: Flag): Single.Aux[Option[OK]] =
+  final def set[A: Show](key: Key, value: A, flag: Flag): Single[Option[OK]] =
     Protocol("SET", key *: value *: flag *: EmptyTuple).as[OrNullBulk[Str], Option[OK]]
-  final def set[A: Show](key: Key, value: A, expiry: SetExpiry, flag: Flag): Single.Aux[Option[OK]] =
+  final def set[A: Show](key: Key, value: A, expiry: SetExpiry, flag: Flag): Single[Option[OK]] =
     Protocol("SET", key *: value *: flag *: expiry.params *: EmptyTuple).as[OrNullBulk[Str], Option[OK]]
 
   /** SET with GET, which replies with the previous value */
-  final def setget[A: Read[Bulk, _]](key: Key, value: Value): Single.Aux[Option[A]] =
+  final def setget[A: Read[Bulk, _]](key: Key, value: Value): Single[Option[A]] =
     Protocol("SET", key *: value.shown *: "GET" *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
-  final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry): Single.Aux[Option[A]] =
+  final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry): Single[Option[A]] =
     Protocol("SET", key *: value.shown *: "GET" *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
-  final def setbit(key: Key, offset: StringLength, bit: Bit): Single.Aux[Bit] =
+  final def setbit(key: Key, offset: StringLength, bit: Bit): Single[Bit] =
     Protocol("SETBIT", key *: offset *: bit *: EmptyTuple).as[Num, Bit]
 
-  final def setex[A: Show](key: Key, value: A, seconds: PosLong): Single.Aux[OK] =
+  final def setex[A: Show](key: Key, value: A, seconds: PosLong): Single[OK] =
     Protocol("SETEX", key *: seconds *: value *: EmptyTuple).as[Str, OK]
 
-  final def setnx[A: Show](key: Key, value: A): Single.Aux[Boolean] = Protocol("SETNX", key *: value *: EmptyTuple).as[Num, Boolean]
+  final def setnx[A: Show](key: Key, value: A): Single[Boolean] = Protocol("SETNX", key *: value *: EmptyTuple).as[Num, Boolean]
 
-  final def setrange[A: Show](key: Key, offset: RangeOffset, value: A): Single.Aux[NonNegInt] =
+  final def setrange[A: Show](key: Key, offset: RangeOffset, value: A): Single[NonNegInt] =
     Protocol("SETRANGE", key *: offset *: value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def strlen(key: Key): Single.Aux[NonNegInt] = Protocol("STRLEN", key *: EmptyTuple).as[Num, NonNegInt]
+  final def strlen(key: Key): Single[NonNegInt] = Protocol("STRLEN", key *: EmptyTuple).as[Num, NonNegInt]
 
   /** The older name of GETRANGE, which servers still have */
-  final def substr[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single.Aux[A] =
+  final def substr[A: Read[Bulk, _]](key: Key, start: Index, end: Index): Single[A] =
     Protocol("SUBSTR", key *: start *: end *: EmptyTuple).as[Bulk, A]
 }
 
@@ -431,9 +431,9 @@ trait StringSetGetFlagP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SET: GET NX XX")
 
-  final def setget[A: Read[Bulk, _]](key: Key, value: Value, flag: Flag): Single.Aux[Option[A]] =
+  final def setget[A: Read[Bulk, _]](key: Key, value: Value, flag: Flag): Single[Option[A]] =
     Protocol("SET", key *: value.shown *: flag *: "GET" *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
-  final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry, flag: Flag): Single.Aux[Option[A]] =
+  final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry, flag: Flag): Single[Option[A]] =
     Protocol("SET", key *: value.shown *: flag *: "GET" *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 }
 
@@ -443,9 +443,9 @@ trait StringSetIfEqP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SET: IFEQ")
 
-  final def set[A: Show](key: Key, value: A, ifEq: IfEq): Single.Aux[Option[OK]] =
+  final def set[A: Show](key: Key, value: A, ifEq: IfEq): Single[Option[OK]] =
     Protocol("SET", key *: value *: ifEq.params *: EmptyTuple).as[OrNullBulk[Str], Option[OK]]
-  final def set[A: Show](key: Key, value: A, expiry: SetExpiry, ifEq: IfEq): Single.Aux[Option[OK]] =
+  final def set[A: Show](key: Key, value: A, expiry: SetExpiry, ifEq: IfEq): Single[Option[OK]] =
     Protocol("SET", key *: value *: ifEq.params *: expiry.params *: EmptyTuple).as[OrNullBulk[Str], Option[OK]]
 }
 
@@ -455,9 +455,9 @@ trait StringSetCompareP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SET: IFDEQ IFDNE IFNE")
 
-  final def set[A: Show](key: Key, value: A, compare: Compare): Single.Aux[Option[OK]] =
+  final def set[A: Show](key: Key, value: A, compare: Compare): Single[Option[OK]] =
     Protocol("SET", key *: value *: compare.params *: EmptyTuple).as[OrNullBulk[Str], Option[OK]]
-  final def set[A: Show](key: Key, value: A, expiry: SetExpiry, compare: Compare): Single.Aux[Option[OK]] =
+  final def set[A: Show](key: Key, value: A, expiry: SetExpiry, compare: Compare): Single[Option[OK]] =
     Protocol("SET", key *: value *: compare.params *: expiry.params *: EmptyTuple).as[OrNullBulk[Str], Option[OK]]
 }
 
@@ -467,10 +467,10 @@ trait StringBitUnitP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("BITCOUNT: BIT BYTE", "BITPOS: BIT BYTE")
 
-  final def bitcount(key: Key, start: Index, end: Index, unit: BitUnit): Single.Aux[NonNegInt] =
+  final def bitcount(key: Key, start: Index, end: Index, unit: BitUnit): Single[NonNegInt] =
     Protocol("BITCOUNT", key *: start *: end *: unit *: EmptyTuple).as[Num, NonNegInt]
 
-  final def bitpos(key: Key, bit: Bit, start: Index, end: Index, unit: BitUnit): Single.Aux[Option[NonNegInt]] =
+  final def bitpos(key: Key, bit: Bit, start: Index, end: Index, unit: BitUnit): Single[Option[NonNegInt]] =
     Protocol("BITPOS", key *: bit *: start *: end *: unit *: EmptyTuple).using(RESPRead.instance(Read.numMinusOneIsNone[NonNegInt]))
 }
 
@@ -482,16 +482,16 @@ trait StringAlgoP extends Features {
     super.supported ++ List("STRALGO: IDX KEYS LCS LEN MINMATCHLEN STRINGS WITHMATCHLEN")
 
   /** The longest common substring of the two values */
-  final def stralgolcs[A: Read[Bulk, _]](input: StrAlgoInput): Single.Aux[A] = Protocol("STRALGO", "LCS" :: input.params).as[Bulk, A]
+  final def stralgolcs[A: Read[Bulk, _]](input: StrAlgoInput): Single[A] = Protocol("STRALGO", "LCS" :: input.params).as[Bulk, A]
 
   /** The length of the longest common substring of the two values */
-  final def stralgolcslen(input: StrAlgoInput): Single.Aux[NonNegInt] =
+  final def stralgolcslen(input: StrAlgoInput): Single[NonNegInt] =
     Protocol("STRALGO", "LCS" :: input.params ++ List("LEN")).as[Num, NonNegInt]
 
   /** Where the matches are in each value, with their lengths */
-  final def stralgolcsidx(input: StrAlgoInput): Single.Aux[LcsMatches] =
+  final def stralgolcsidx(input: StrAlgoInput): Single[LcsMatches] =
     Protocol("STRALGO", "LCS" :: input.params ++ List("IDX", "WITHMATCHLEN")).using(RESPRead.instance(StringP.lcsMatches))
-  final def stralgolcsidx(input: StrAlgoInput, minMatchLength: PosInt): Single.Aux[LcsMatches] =
+  final def stralgolcsidx(input: StrAlgoInput, minMatchLength: PosInt): Single[LcsMatches] =
     Protocol("STRALGO", "LCS" :: input.params ++ List("IDX", "MINMATCHLEN", Show[PosInt].show(minMatchLength), "WITHMATCHLEN"))
       .using(RESPRead.instance(StringP.lcsMatches))
 }
@@ -503,16 +503,16 @@ trait StringLcsP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("LCS: IDX LEN MINMATCHLEN WITHMATCHLEN")
 
   /** The longest common substring of the values at the two keys */
-  final def lcs[A: Read[Bulk, _]](key1: Key, key2: Key): Single.Aux[A] = Protocol("LCS", key1 :: key2 :: Nil).as[Bulk, A]
+  final def lcs[A: Read[Bulk, _]](key1: Key, key2: Key): Single[A] = Protocol("LCS", key1 :: key2 :: Nil).as[Bulk, A]
 
   /** The length of the longest common substring of the values at the two keys */
-  final def lcslen(key1: Key, key2: Key): Single.Aux[NonNegInt] =
+  final def lcslen(key1: Key, key2: Key): Single[NonNegInt] =
     Protocol("LCS", key1.value :: key2.value :: "LEN" :: Nil).as[Num, NonNegInt]
 
   /** Where the matches are in each value, with their lengths */
-  final def lcsidx(key1: Key, key2: Key): Single.Aux[LcsMatches] =
+  final def lcsidx(key1: Key, key2: Key): Single[LcsMatches] =
     Protocol("LCS", key1.value :: key2.value :: "IDX" :: "WITHMATCHLEN" :: Nil).using(RESPRead.instance(StringP.lcsMatches))
-  final def lcsidx(key1: Key, key2: Key, minMatchLength: PosInt): Single.Aux[LcsMatches] =
+  final def lcsidx(key1: Key, key2: Key, minMatchLength: PosInt): Single[LcsMatches] =
     Protocol("LCS", key1 *: key2 *: "IDX" *: "MINMATCHLEN" *: minMatchLength *: "WITHMATCHLEN" *: EmptyTuple)
       .using(RESPRead.instance(StringP.lcsMatches))
 }
@@ -523,11 +523,11 @@ trait StringBitopExtendedP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("BITOP: ANDOR DIFF DIFF1 ONE")
 
-  final def bitop(bitwise: ExtendedBitwise, keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
+  final def bitop(bitwise: ExtendedBitwise, keys: TwoOrMoreKeys, destinationKey: Key): Single[NonNegInt] =
     Protocol("BITOP", bitwise *: destinationKey *: keys.value *: EmptyTuple).as[Num, NonNegInt]
 
   /** ONE with a single key, which only copies it. DIFF, DIFF1 and ANDOR need at least two */
-  final def bitopone(key: Key, destinationKey: Key): Single.Aux[NonNegInt] =
+  final def bitopone(key: Key, destinationKey: Key): Single[NonNegInt] =
     Protocol("BITOP", "ONE" :: destinationKey.value :: key.value :: Nil).as[Num, NonNegInt]
 }
 
@@ -538,12 +538,12 @@ trait StringDigestAndDelExP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("DELEX: IFDEQ IFDNE IFEQ IFNE", "DIGEST")
 
   /** A hash of the value at the key, which IFDEQ and IFDNE compare against */
-  final def digest(key: Key): Single.Aux[Option[String]] = Protocol("DIGEST", key).as[OrNullBulk[Bulk], Option[String]]
+  final def digest(key: Key): Single[Option[String]] = Protocol("DIGEST", key).as[OrNullBulk[Bulk], Option[String]]
 
   /** Deletes the key, like DEL with one key, and replies whether it did */
-  final def delex(key: Key): Single.Aux[Boolean]                   = Protocol("DELEX", key).as[Num, Boolean]
-  final def delex(key: Key, ifEq: IfEq): Single.Aux[Boolean]       = Protocol("DELEX", key *: ifEq.params *: EmptyTuple).as[Num, Boolean]
-  final def delex(key: Key, compare: Compare): Single.Aux[Boolean] = Protocol("DELEX", key *: compare.params *: EmptyTuple).as[Num, Boolean]
+  final def delex(key: Key): Single[Boolean]                   = Protocol("DELEX", key).as[Num, Boolean]
+  final def delex(key: Key, ifEq: IfEq): Single[Boolean]       = Protocol("DELEX", key *: ifEq.params *: EmptyTuple).as[Num, Boolean]
+  final def delex(key: Key, compare: Compare): Single[Boolean] = Protocol("DELEX", key *: compare.params *: EmptyTuple).as[Num, Boolean]
 }
 
 /** DELIFEQ: Valkey 9.0 */
@@ -551,7 +551,7 @@ trait StringDelIfEqP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("DELIFEQ")
 
   /** Deletes the key only if its value is `value`, and replies whether it did */
-  final def delifeq[A: Show](key: Key, value: A): Single.Aux[Boolean] = Protocol("DELIFEQ", key *: value *: EmptyTuple).as[Num, Boolean]
+  final def delifeq[A: Show](key: Key, value: A): Single[Boolean] = Protocol("DELIFEQ", key *: value *: EmptyTuple).as[Num, Boolean]
 }
 
 /** MSETEX: Redis 8.4, Valkey 9.1 */
@@ -561,13 +561,13 @@ trait StringMSetExP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("MSETEX: EX EXAT KEEPTTL NX PX PXAT XX")
 
   /** Sets every key, or none of them when NX or XX doesn't hold for all of them, and replies whether it did */
-  final def msetex[A: Show](values: OneOrMore[(Key, A)]): Single.Aux[Boolean] =
+  final def msetex[A: Show](values: OneOrMore[(Key, A)]): Single[Boolean] =
     Protocol("MSETEX", values.value.length *: values.value *: EmptyTuple).as[Num, Boolean]
-  final def msetex[A: Show](values: OneOrMore[(Key, A)], flag: Flag): Single.Aux[Boolean] =
+  final def msetex[A: Show](values: OneOrMore[(Key, A)], flag: Flag): Single[Boolean] =
     Protocol("MSETEX", values.value.length *: values.value *: flag *: EmptyTuple).as[Num, Boolean]
-  final def msetex[A: Show](values: OneOrMore[(Key, A)], expiry: SetExpiry): Single.Aux[Boolean] =
+  final def msetex[A: Show](values: OneOrMore[(Key, A)], expiry: SetExpiry): Single[Boolean] =
     Protocol("MSETEX", values.value.length *: values.value *: expiry.params *: EmptyTuple).as[Num, Boolean]
-  final def msetex[A: Show](values: OneOrMore[(Key, A)], flag: Flag, expiry: SetExpiry): Single.Aux[Boolean] =
+  final def msetex[A: Show](values: OneOrMore[(Key, A)], flag: Flag, expiry: SetExpiry): Single[Boolean] =
     Protocol("MSETEX", values.value.length *: values.value *: flag *: expiry.params *: EmptyTuple).as[Num, Boolean]
 }
 
@@ -582,14 +582,14 @@ trait StringIncrExP extends Features {
   private final val doubles = RESPRead.instance(StringP.incrementedDouble)
 
   /** Adds 1, starting from 0 when the key doesn't exist */
-  final def increx(key: Key): Single.Aux[Incremented[Long]]                  = Protocol("INCREX", key).using(longs)
-  final def increx(key: Key, increment: Long): Single.Aux[Incremented[Long]] =
+  final def increx(key: Key): Single[Incremented[Long]]                  = Protocol("INCREX", key).using(longs)
+  final def increx(key: Key, increment: Long): Single[Incremented[Long]] =
     Protocol("INCREX", key *: "BYINT" *: increment *: EmptyTuple).using(longs)
-  final def increx(key: Key, increment: Long, options: IncrExOptions[Long]): Single.Aux[Incremented[Long]] =
+  final def increx(key: Key, increment: Long, options: IncrExOptions[Long]): Single[Incremented[Long]] =
     Protocol("INCREX", key *: "BYINT" *: increment *: options.params *: EmptyTuple).using(longs)
-  final def increx(key: Key, increment: ValidDouble): Single.Aux[Incremented[Double]] =
+  final def increx(key: Key, increment: ValidDouble): Single[Incremented[Double]] =
     Protocol("INCREX", key *: "BYFLOAT" *: increment *: EmptyTuple).using(doubles)
-  final def increx(key: Key, increment: ValidDouble, options: IncrExOptions[ValidDouble]): Single.Aux[Incremented[Double]] =
+  final def increx(key: Key, increment: ValidDouble, options: IncrExOptions[ValidDouble]): Single[Incremented[Double]] =
     Protocol("INCREX", key *: "BYFLOAT" *: increment *: options.params *: EmptyTuple).using(doubles)
 }
 

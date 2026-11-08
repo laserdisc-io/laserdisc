@@ -36,7 +36,7 @@ final class ValkeyPublishClientSpec extends PublishClientSpec(LiveServers.port(6
 final class DragonflyPublishClientSpec extends PublishClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class PublishClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
-  private def send[A](protocol: Protocol.Aux[A]): A =
+  private def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   // a subscriber that stays quiet, for the others to see

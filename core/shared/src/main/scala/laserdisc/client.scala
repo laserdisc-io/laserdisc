@@ -30,13 +30,13 @@ trait ClientBase[F[_], Env] {
   def send[In <: Tuple, Out <: Tuple](in: In, timeout: FiniteDuration)(implicit handler: Handler.Aux[F, Env, In, Out]): F[Out]
   final def send[In <: Tuple, Out <: Tuple](in: In)(implicit ev: Handler.Aux[F, Env, In, Out]): F[Out] = send(in, defaultTimeout)
 
-  final def send[A1](protocolA1: Protocol.Aux[A1], timeout: FiniteDuration)(
+  final def send[A1](protocolA1: Protocol[A1], timeout: FiniteDuration)(
       implicit F: Functor[F],
-      ev: Handler.Aux[F, Env, Protocol.Aux[A1] *: EmptyTuple, Maybe[A1] *: EmptyTuple]
+      ev: Handler.Aux[F, Env, Protocol[A1] *: EmptyTuple, Maybe[A1] *: EmptyTuple]
   ): F[Maybe[A1]] = F.map(send(protocolA1 *: EmptyTuple, timeout))(_.head)
-  final def send[A1](protocolA1: Protocol.Aux[A1])(
+  final def send[A1](protocolA1: Protocol[A1])(
       implicit F: Functor[F],
-      ev: Handler.Aux[F, Env, Protocol.Aux[A1] *: EmptyTuple, Maybe[A1] *: EmptyTuple]
+      ev: Handler.Aux[F, Env, Protocol[A1] *: EmptyTuple, Maybe[A1] *: EmptyTuple]
   ): F[Maybe[A1]] = send(protocolA1, defaultTimeout)
 
   /** Runs the loop, sending each of its commands once the previous reply is in, as a stream of the values they give. Each command has
@@ -45,13 +45,13 @@ trait ClientBase[F[_], Env] {
   final def stream[S[_], A](loop: Loop[A], timeout: FiniteDuration)(
       implicit F: Functor[F],
       U: Unfold[F, S],
-      ev: Handler.Aux[F, Env, Protocol.Aux[Loop.Step[A]] *: EmptyTuple, Maybe[Loop.Step[A]] *: EmptyTuple]
+      ev: Handler.Aux[F, Env, Protocol[Loop.Step[A]] *: EmptyTuple, Maybe[Loop.Step[A]] *: EmptyTuple]
   ): S[A] =
     U.unfold(loop.first)(command => F.map(send(command, timeout + loop.waits))(_.map(step => step.values -> step.next)))
   final def stream[S[_], A](loop: Loop[A])(
       implicit F: Functor[F],
       U: Unfold[F, S],
-      ev: Handler.Aux[F, Env, Protocol.Aux[Loop.Step[A]] *: EmptyTuple, Maybe[Loop.Step[A]] *: EmptyTuple]
+      ev: Handler.Aux[F, Env, Protocol[Loop.Step[A]] *: EmptyTuple, Maybe[Loop.Step[A]] *: EmptyTuple]
   ): S[A] = stream(loop, defaultTimeout)
 }
 

@@ -247,71 +247,71 @@ trait SortedSetBaseP extends Features {
   /** The builders of this family's commands, and the types of their replies */
   val sortedsettypes: SortedSetP.SortedSetTypes = new SortedSetP.SortedSetTypes {}
 
-  final def zadd[A: Show](key: Key, scoredMembers: OneOrMore[(A, ValidDouble)]): Single.Aux[NonNegInt] =
+  final def zadd[A: Show](key: Key, scoredMembers: OneOrMore[(A, ValidDouble)]): Single[NonNegInt] =
     Protocol("ZADD", key *: scoredMembers.value.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
-  final def zadd[A: Show](key: Key, flag: Flag, scoredMembers: OneOrMore[(A, ValidDouble)]): Single.Aux[NonNegInt] =
+  final def zadd[A: Show](key: Key, flag: Flag, scoredMembers: OneOrMore[(A, ValidDouble)]): Single[NonNegInt] =
     Protocol("ZADD", key *: flag.params *: scoredMembers.value.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zaddch[A: Show](key: Key, scoredMembers: OneOrMore[(A, ValidDouble)]): Single.Aux[NonNegInt] =
+  final def zaddch[A: Show](key: Key, scoredMembers: OneOrMore[(A, ValidDouble)]): Single[NonNegInt] =
     Protocol("ZADD", key *: "CH" *: scoredMembers.value.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
-  final def zaddch[A: Show](key: Key, flag: Flag, scoredMembers: OneOrMore[(A, ValidDouble)]): Single.Aux[NonNegInt] =
+  final def zaddch[A: Show](key: Key, flag: Flag, scoredMembers: OneOrMore[(A, ValidDouble)]): Single[NonNegInt] =
     Protocol("ZADD", key *: flag.params *: "CH" *: scoredMembers.value.map(_.swap) *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zaddincr[A: Show](key: Key, member: A, increment: NonZeroDouble): Single.Aux[Double] =
+  final def zaddincr[A: Show](key: Key, member: A, increment: NonZeroDouble): Single[Double] =
     Protocol("ZADD", key *: "INCR" *: increment *: member *: EmptyTuple).as[Bulk, Double]
-  final def zaddincr[A: Show](key: Key, flag: Flag, member: A, increment: NonZeroDouble): Single.Aux[Option[Double]] =
+  final def zaddincr[A: Show](key: Key, flag: Flag, member: A, increment: NonZeroDouble): Single[Option[Double]] =
     Protocol("ZADD", key *: flag.params *: "INCR" *: increment *: member *: EmptyTuple).as[OrNullBulk[Bulk], Option[Double]]
 
-  final def zaddchincr[A: Show](key: Key, member: A, increment: NonZeroDouble): Single.Aux[Double] =
+  final def zaddchincr[A: Show](key: Key, member: A, increment: NonZeroDouble): Single[Double] =
     Protocol("ZADD", key *: "CH" *: "INCR" *: increment *: member *: EmptyTuple).as[Bulk, Double]
-  final def zaddchincr[A: Show](key: Key, flag: Flag, member: A, increment: NonZeroDouble): Single.Aux[Option[Double]] =
+  final def zaddchincr[A: Show](key: Key, flag: Flag, member: A, increment: NonZeroDouble): Single[Option[Double]] =
     Protocol("ZADD", key *: flag.params *: "CH" *: "INCR" *: increment *: member *: EmptyTuple).as[OrNullBulk[Bulk], Option[Double]]
 
-  final def zcard(key: Key): Single.Aux[Option[PosInt]] = Protocol("ZCARD", key *: EmptyTuple).using(zeroIsNone)
+  final def zcard(key: Key): Single[Option[PosInt]] = Protocol("ZCARD", key *: EmptyTuple).using(zeroIsNone)
 
-  final def zcount(key: Key, range: ScoreRange): Single.Aux[NonNegInt] =
+  final def zcount(key: Key, range: ScoreRange): Single[NonNegInt] =
     Protocol("ZCOUNT", key *: range.min *: range.max *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zdiff[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] =
+  final def zdiff[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single[Seq[A]] =
     Protocol("ZDIFF", keys.value.length *: keys.value *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zdiff[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[A]] =
+  final def zdiff[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single[Seq[A]] =
     zdiff[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
-  final def zdiffwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[(A, Double)]] =
+  final def zdiffwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single[Seq[(A, Double)]] =
     Protocol("ZDIFF", keys.value.length *: keys.value *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
-  final def zdiffwithscores[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[(A, Double)]] =
+  final def zdiffwithscores[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single[Seq[(A, Double)]] =
     zdiffwithscores[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
 
-  final def zdiffstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
+  final def zdiffstore(keys: TwoOrMoreKeys, destinationKey: Key): Single[NonNegInt] =
     Protocol("ZDIFFSTORE", destinationKey *: keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zincrby[A: Show](key: Key, member: A, increment: ValidDouble): Single.Aux[Double] =
+  final def zincrby[A: Show](key: Key, member: A, increment: ValidDouble): Single[Double] =
     Protocol("ZINCRBY", key *: increment *: member *: EmptyTuple).as[Bulk, Double]
 
-  final def zinter[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] =
+  final def zinter[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single[Seq[A]] =
     Protocol("ZINTER", keys.value.length *: keys.value *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zinter[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[A]] =
+  final def zinter[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single[Seq[A]] =
     zinter[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
-  final def zinter[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single.Aux[Seq[A]] =
+  final def zinter[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single[Seq[A]] =
     Protocol("ZINTER", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
-  final def zinterweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys): Single.Aux[Seq[A]] = {
+  final def zinterweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys): Single[Seq[A]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTER", keys.length *: keys *: "WEIGHTS" *: weights *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
   }
-  final def zinterweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys, aggregate: Aggregate): Single.Aux[Seq[A]] = {
+  final def zinterweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys, aggregate: Aggregate): Single[Seq[A]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTER", keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
   }
 
-  final def zinterwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[(A, Double)]] =
+  final def zinterwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single[Seq[(A, Double)]] =
     Protocol("ZINTER", keys.value.length *: keys.value *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
-  final def zinterwithscores[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[(A, Double)]] =
+  final def zinterwithscores[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single[Seq[(A, Double)]] =
     zinterwithscores[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
-  final def zinterwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single.Aux[Seq[(A, Double)]] =
+  final def zinterwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single[Seq[(A, Double)]] =
     Protocol("ZINTER", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
-  final def zinterweightedwithscores[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys): Single.Aux[Seq[(A, Double)]] = {
+  final def zinterweightedwithscores[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys): Single[Seq[(A, Double)]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTER", keys.length *: keys *: "WEIGHTS" *: weights *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
@@ -319,69 +319,69 @@ trait SortedSetBaseP extends Features {
   final def zinterweightedwithscores[A: Read[Bulk, _]](
       weightedKeys: TwoOrMoreWeightedKeys,
       aggregate: Aggregate
-  ): Single.Aux[Seq[(A, Double)]] = {
+  ): Single[Seq[(A, Double)]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTER", keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
   }
 
-  final def zinterstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
+  final def zinterstore(keys: TwoOrMoreKeys, destinationKey: Key): Single[NonNegInt] =
     Protocol("ZINTERSTORE", destinationKey *: keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zinterstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key): Single.Aux[NonNegInt] = {
+  final def zinterstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key): Single[NonNegInt] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTERSTORE", destinationKey *: keys.length *: keys *: "WEIGHTS" *: weights *: EmptyTuple).as[Num, NonNegInt]
   }
 
-  final def zinterstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: Aggregate): Single.Aux[NonNegInt] =
+  final def zinterstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: Aggregate): Single[NonNegInt] =
     Protocol("ZINTERSTORE", destinationKey *: keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zinterstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key, aggregate: Aggregate): Single.Aux[NonNegInt] = {
+  final def zinterstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key, aggregate: Aggregate): Single[NonNegInt] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTERSTORE", destinationKey *: keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: EmptyTuple)
       .as[Num, NonNegInt]
   }
 
-  final def zlexcount(key: Key, range: LexRange): Single.Aux[NonNegInt] =
+  final def zlexcount(key: Key, range: LexRange): Single[NonNegInt] =
     Protocol("ZLEXCOUNT", key *: range.min *: range.max *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zmscore[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[Seq[Option[Double]]] =
+  final def zmscore[A: Show](key: Key, members: OneOrMore[A]): Single[Seq[Option[Double]]] =
     Protocol("ZMSCORE", key *: members.value *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[Double]]]
-  final def zmscore[A: Show](key: Key, member: A, members: A*): Single.Aux[Seq[Option[Double]]] =
+  final def zmscore[A: Show](key: Key, member: A, members: A*): Single[Seq[Option[Double]]] =
     zmscore(key, OneOrMore.unsafeFrom(member :: members.toList))
 
-  final def zpopmax[A: Read[Bulk, _]](key: Key): Single.Aux[Option[(A, Double)]] = Protocol("ZPOPMAX", key).using(firstScored[A])
-  final def zpopmax[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Seq[(A, Double)]] =
+  final def zpopmax[A: Read[Bulk, _]](key: Key): Single[Option[(A, Double)]]             = Protocol("ZPOPMAX", key).using(firstScored[A])
+  final def zpopmax[A: Read[Bulk, _]](key: Key, count: PosInt): Single[Seq[(A, Double)]] =
     Protocol("ZPOPMAX", key *: count *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
-  final def zpopmin[A: Read[Bulk, _]](key: Key): Single.Aux[Option[(A, Double)]] = Protocol("ZPOPMIN", key).using(firstScored[A])
-  final def zpopmin[A: Read[Bulk, _]](key: Key, count: PosInt): Single.Aux[Seq[(A, Double)]] =
+  final def zpopmin[A: Read[Bulk, _]](key: Key): Single[Option[(A, Double)]]             = Protocol("ZPOPMIN", key).using(firstScored[A])
+  final def zpopmin[A: Read[Bulk, _]](key: Key, count: PosInt): Single[Seq[(A, Double)]] =
     Protocol("ZPOPMIN", key *: count *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
-  final def zrandmember[A: Read[Bulk, _]](key: Key): Single.Aux[Option[A]] =
+  final def zrandmember[A: Read[Bulk, _]](key: Key): Single[Option[A]] =
     Protocol("ZRANDMEMBER", key).using(RESPRead.instance(SortedSetP.oneMember[A]))
-  final def zrandmembers[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[A]] =
+  final def zrandmembers[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single[Seq[A]] =
     Protocol("ZRANDMEMBER", key *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrandmemberswithscores[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[(A, Double)]] =
+  final def zrandmemberswithscores[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single[Seq[(A, Double)]] =
     Protocol("ZRANDMEMBER", key *: count *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
-  final def zrange[A: Read[Bulk, _]](key: Key, start: Index, stop: Index): Single.Aux[Seq[A]] =
+  final def zrange[A: Read[Bulk, _]](key: Key, start: Index, stop: Index): Single[Seq[A]] =
     Protocol("ZRANGE", key *: start *: stop *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrangewithscores[A: Read[Bulk, _]](key: Key, start: Index, stop: Index): Single.Aux[Seq[(A, Double)]] =
+  final def zrangewithscores[A: Read[Bulk, _]](key: Key, start: Index, stop: Index): Single[Seq[(A, Double)]] =
     Protocol("ZRANGE", key *: start *: stop *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
   /** The members in a range of scores or of names, in the one command that does what ZRANGEBYSCORE and ZRANGEBYLEX do. Scores of a range of
     * names aren't something a server can reply with
     */
-  final def zrange[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[A]] =
+  final def zrange[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single[Seq[A]] =
     Protocol("ZRANGE", key *: range.min *: range.max *: "BYSCORE" *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrange[A: Read[Bulk, _]](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+  final def zrange[A: Read[Bulk, _]](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single[Seq[A]] =
     Protocol("ZRANGE", key *: range.min *: range.max *: "BYSCORE" *: "LIMIT" *: offset *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrange[A: Read[Bulk, _]](key: Key, range: LexRange): Single.Aux[Seq[A]] =
+  final def zrange[A: Read[Bulk, _]](key: Key, range: LexRange): Single[Seq[A]] =
     Protocol("ZRANGE", key *: range.min *: range.max *: "BYLEX" *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrange[A: Read[Bulk, _]](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+  final def zrange[A: Read[Bulk, _]](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single[Seq[A]] =
     Protocol("ZRANGE", key *: range.min *: range.max *: "BYLEX" *: "LIMIT" *: offset *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrangewithscores[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[(A, Double)]] =
+  final def zrangewithscores[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single[Seq[(A, Double)]] =
     Protocol("ZRANGE", key *: range.min *: range.max *: "BYSCORE" *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
   final def zrangewithscores[A: Read[Bulk, _]](
@@ -389,22 +389,22 @@ trait SortedSetBaseP extends Features {
       range: ScoreRange,
       offset: NonNegLong,
       count: PosLong
-  ): Single.Aux[Seq[(A, Double)]] =
+  ): Single[Seq[(A, Double)]] =
     Protocol("ZRANGE", key *: range.min *: range.max *: "BYSCORE" *: "LIMIT" *: offset *: count *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
   /** ZRANGE in reverse order, in the one command that does what ZREVRANGEBYSCORE and ZREVRANGEBYLEX do */
-  final def zrevrange[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[A]] =
+  final def zrevrange[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single[Seq[A]] =
     Protocol("ZRANGE", key *: range.max *: range.min *: "BYSCORE" *: "REV" *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrevrange[A: Read[Bulk, _]](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+  final def zrevrange[A: Read[Bulk, _]](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single[Seq[A]] =
     Protocol("ZRANGE", key *: range.max *: range.min *: "BYSCORE" *: "REV" *: "LIMIT" *: offset *: count *: EmptyTuple)
       .as[Arr.Of[Bulk], Seq[A]]
-  final def zrevrange[A: Read[Bulk, _]](key: Key, range: LexRange): Single.Aux[Seq[A]] =
+  final def zrevrange[A: Read[Bulk, _]](key: Key, range: LexRange): Single[Seq[A]] =
     Protocol("ZRANGE", key *: range.max *: range.min *: "BYLEX" *: "REV" *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrevrange[A: Read[Bulk, _]](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+  final def zrevrange[A: Read[Bulk, _]](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single[Seq[A]] =
     Protocol("ZRANGE", key *: range.max *: range.min *: "BYLEX" *: "REV" *: "LIMIT" *: offset *: count *: EmptyTuple)
       .as[Arr.Of[Bulk], Seq[A]]
-  final def zrevrangewithscores[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[(A, Double)]] =
+  final def zrevrangewithscores[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single[Seq[(A, Double)]] =
     Protocol("ZRANGE", key *: range.max *: range.min *: "BYSCORE" *: "REV" *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
   final def zrevrangewithscores[A: Read[Bulk, _]](
@@ -412,113 +412,113 @@ trait SortedSetBaseP extends Features {
       range: ScoreRange,
       offset: NonNegLong,
       count: PosLong
-  ): Single.Aux[Seq[(A, Double)]] =
+  ): Single[Seq[(A, Double)]] =
     Protocol("ZRANGE", key *: range.max *: range.min *: "BYSCORE" *: "REV" *: "LIMIT" *: offset *: count *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
-  final def zrangebylex[A: Read[Bulk, _]](key: Key, range: LexRange): Single.Aux[Seq[A]] =
+  final def zrangebylex[A: Read[Bulk, _]](key: Key, range: LexRange): Single[Seq[A]] =
     Protocol("ZRANGEBYLEX", key *: range.min *: range.max *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
-  final def zrangebylex[A: Read[Bulk, _]](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+  final def zrangebylex[A: Read[Bulk, _]](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single[Seq[A]] =
     Protocol("ZRANGEBYLEX", key *: range.min *: range.max *: "LIMIT" *: offset *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
-  final def zrangebyscore[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[A]] =
+  final def zrangebyscore[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single[Seq[A]] =
     Protocol("ZRANGEBYSCORE", key *: range.min *: range.max *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrangebyscore[A: Read[Bulk, _]](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+  final def zrangebyscore[A: Read[Bulk, _]](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single[Seq[A]] =
     Protocol("ZRANGEBYSCORE", key *: range.min *: range.max *: "LIMIT" *: offset *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
-  final def zrangebyscorewithscores[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[(A, Double)]] =
+  final def zrangebyscorewithscores[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single[Seq[(A, Double)]] =
     Protocol("ZRANGEBYSCORE", key *: range.min *: range.max *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
   final def zrangebyscorewithscores[A: Read[Bulk, _]](
       key: Key,
       range: ScoreRange,
       offset: NonNegLong,
       count: PosLong
-  ): Single.Aux[Seq[(A, Double)]] =
+  ): Single[Seq[(A, Double)]] =
     Protocol("ZRANGEBYSCORE", key *: range.min *: range.max *: "WITHSCORES" *: "LIMIT" *: offset *: count *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
-  final def zrangestore(source: Key, destination: Key, start: Index, stop: Index): Single.Aux[NonNegInt] =
+  final def zrangestore(source: Key, destination: Key, start: Index, stop: Index): Single[NonNegInt] =
     Protocol("ZRANGESTORE", destination *: source *: start *: stop *: EmptyTuple).as[Num, NonNegInt]
-  final def zrangestore(source: Key, destination: Key, range: ScoreRange): Single.Aux[NonNegInt] =
+  final def zrangestore(source: Key, destination: Key, range: ScoreRange): Single[NonNegInt] =
     Protocol("ZRANGESTORE", destination *: source *: range.min *: range.max *: "BYSCORE" *: EmptyTuple).as[Num, NonNegInt]
-  final def zrangestore(source: Key, destination: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single.Aux[NonNegInt] =
+  final def zrangestore(source: Key, destination: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single[NonNegInt] =
     Protocol("ZRANGESTORE", destination *: source *: range.min *: range.max *: "BYSCORE" *: "LIMIT" *: offset *: count *: EmptyTuple)
       .as[Num, NonNegInt]
-  final def zrangestore(source: Key, destination: Key, range: LexRange): Single.Aux[NonNegInt] =
+  final def zrangestore(source: Key, destination: Key, range: LexRange): Single[NonNegInt] =
     Protocol("ZRANGESTORE", destination *: source *: range.min *: range.max *: "BYLEX" *: EmptyTuple).as[Num, NonNegInt]
-  final def zrangestore(source: Key, destination: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single.Aux[NonNegInt] =
+  final def zrangestore(source: Key, destination: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single[NonNegInt] =
     Protocol("ZRANGESTORE", destination *: source *: range.min *: range.max *: "BYLEX" *: "LIMIT" *: offset *: count *: EmptyTuple)
       .as[Num, NonNegInt]
 
-  final def zrank(key: Key, member: Key): Single.Aux[Option[NonNegInt]] =
+  final def zrank(key: Key, member: Key): Single[Option[NonNegInt]] =
     Protocol("ZRANK", key :: member :: Nil).as[OrNullBulk[Num], Option[NonNegInt]]
 
-  final def zrem[A: Show](key: Key, members: OneOrMore[A]): Single.Aux[NonNegInt] =
+  final def zrem[A: Show](key: Key, members: OneOrMore[A]): Single[NonNegInt] =
     Protocol("ZREM", key *: members.value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zremrangebylex(key: Key, range: LexRange): Single.Aux[NonNegInt] =
+  final def zremrangebylex(key: Key, range: LexRange): Single[NonNegInt] =
     Protocol("ZREMRANGEBYLEX", key *: range.min *: range.max *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zremrangebyrank(key: Key, start: Index, stop: Index): Single.Aux[NonNegInt] =
+  final def zremrangebyrank(key: Key, start: Index, stop: Index): Single[NonNegInt] =
     Protocol("ZREMRANGEBYRANK", key *: start *: stop *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zremrangebyscore(key: Key, range: ScoreRange): Single.Aux[NonNegInt] =
+  final def zremrangebyscore(key: Key, range: ScoreRange): Single[NonNegInt] =
     Protocol("ZREMRANGEBYSCORE", key *: range.min *: range.max *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zrevrange[A: Read[Bulk, _]](key: Key, start: Index, stop: Index): Single.Aux[Seq[A]] =
+  final def zrevrange[A: Read[Bulk, _]](key: Key, start: Index, stop: Index): Single[Seq[A]] =
     Protocol("ZREVRANGE", key *: start *: stop *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrevrangewithscores[A: Read[Bulk, _]](key: Key, start: Index, stop: Index): Single.Aux[Seq[(A, Double)]] =
+  final def zrevrangewithscores[A: Read[Bulk, _]](key: Key, start: Index, stop: Index): Single[Seq[(A, Double)]] =
     Protocol("ZREVRANGE", key *: start *: stop *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
-  final def zrevrangebylex[A: Read[Bulk, _]](key: Key, range: LexRange): Single.Aux[Seq[A]] =
+  final def zrevrangebylex[A: Read[Bulk, _]](key: Key, range: LexRange): Single[Seq[A]] =
     Protocol("ZREVRANGEBYLEX", key *: range.max *: range.min *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
-  final def zrevrangebylex[A: Read[Bulk, _]](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+  final def zrevrangebylex[A: Read[Bulk, _]](key: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single[Seq[A]] =
     Protocol("ZREVRANGEBYLEX", key *: range.max *: range.min *: "LIMIT" *: offset *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
-  final def zrevrangebyscore[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[A]] =
+  final def zrevrangebyscore[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single[Seq[A]] =
     Protocol("ZREVRANGEBYSCORE", key *: range.max *: range.min *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zrevrangebyscore[A: Read[Bulk, _]](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+  final def zrevrangebyscore[A: Read[Bulk, _]](key: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single[Seq[A]] =
     Protocol("ZREVRANGEBYSCORE", key *: range.max *: range.min *: "LIMIT" *: offset *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
-  final def zrevrangebyscorewithscores[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single.Aux[Seq[(A, Double)]] =
+  final def zrevrangebyscorewithscores[A: Read[Bulk, _]](key: Key, range: ScoreRange): Single[Seq[(A, Double)]] =
     Protocol("ZREVRANGEBYSCORE", key *: range.max *: range.min *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
   final def zrevrangebyscorewithscores[A: Read[Bulk, _]](
       key: Key,
       range: ScoreRange,
       offset: NonNegLong,
       count: PosLong
-  ): Single.Aux[Seq[(A, Double)]] =
+  ): Single[Seq[(A, Double)]] =
     Protocol("ZREVRANGEBYSCORE", key *: range.max *: range.min *: "WITHSCORES" *: "LIMIT" *: offset *: count *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
-  final def zrevrangestore(source: Key, destination: Key, start: Index, stop: Index): Single.Aux[NonNegInt] =
+  final def zrevrangestore(source: Key, destination: Key, start: Index, stop: Index): Single[NonNegInt] =
     Protocol("ZRANGESTORE", destination *: source *: start *: stop *: "REV" *: EmptyTuple).as[Num, NonNegInt]
-  final def zrevrangestore(source: Key, destination: Key, range: ScoreRange): Single.Aux[NonNegInt] =
+  final def zrevrangestore(source: Key, destination: Key, range: ScoreRange): Single[NonNegInt] =
     Protocol("ZRANGESTORE", destination *: source *: range.max *: range.min *: "BYSCORE" *: "REV" *: EmptyTuple).as[Num, NonNegInt]
-  final def zrevrangestore(source: Key, destination: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single.Aux[NonNegInt] =
+  final def zrevrangestore(source: Key, destination: Key, range: ScoreRange, offset: NonNegLong, count: PosLong): Single[NonNegInt] =
     Protocol(
       "ZRANGESTORE",
       destination *: source *: range.max *: range.min *: "BYSCORE" *: "REV" *: "LIMIT" *: offset *: count *: EmptyTuple
     )
       .as[Num, NonNegInt]
-  final def zrevrangestore(source: Key, destination: Key, range: LexRange): Single.Aux[NonNegInt] =
+  final def zrevrangestore(source: Key, destination: Key, range: LexRange): Single[NonNegInt] =
     Protocol("ZRANGESTORE", destination *: source *: range.max *: range.min *: "BYLEX" *: "REV" *: EmptyTuple).as[Num, NonNegInt]
-  final def zrevrangestore(source: Key, destination: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single.Aux[NonNegInt] =
+  final def zrevrangestore(source: Key, destination: Key, range: LexRange, offset: NonNegLong, count: PosLong): Single[NonNegInt] =
     Protocol("ZRANGESTORE", destination *: source *: range.max *: range.min *: "BYLEX" *: "REV" *: "LIMIT" *: offset *: count *: EmptyTuple)
       .as[Num, NonNegInt]
 
-  final def zrevrank(key: Key, member: Key): Single.Aux[Option[NonNegInt]] =
+  final def zrevrank(key: Key, member: Key): Single[Option[NonNegInt]] =
     Protocol("ZREVRANK", key *: member *: EmptyTuple).as[OrNullBulk[Num], Option[NonNegInt]]
 
-  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong): Single.Aux[Scan[(A, Double)]] =
+  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong): Single[Scan[(A, Double)]] =
     Protocol("ZSCAN", key *: cursor *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], Scan[(A, Double)]]
-  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[(A, Double)]] =
+  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single[Scan[(A, Double)]] =
     Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], Scan[(A, Double)]]
-  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[(A, Double)]] =
+  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, count: PosInt): Single[Scan[(A, Double)]] =
     Protocol("ZSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], Scan[(A, Double)]]
-  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[(A, Double)]] =
+  final def zscan[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single[Scan[(A, Double)]] =
     Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple)
       .as[ScanOf[Arr.OfPairs[Bulk, Bulk]], Scan[(A, Double)]]
 
@@ -531,34 +531,34 @@ trait SortedSetBaseP extends Features {
   final def zscanAll[A: Read[Bulk, _]](key: Key, pattern: GlobPattern, count: PosInt): Loop[(A, Double)] =
     Loop.cursor(zscan[A](key, _, pattern, count))(scanned[(A, Double)])
 
-  final def zscore[A: Show](key: Key, member: A): Single.Aux[Option[Double]] =
+  final def zscore[A: Show](key: Key, member: A): Single[Option[Double]] =
     Protocol("ZSCORE", key *: member *: EmptyTuple).as[OrNullBulk[Bulk], Option[Double]]
 
-  final def zunion[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[A]] =
+  final def zunion[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single[Seq[A]] =
     Protocol("ZUNION", keys.value.length *: keys.value *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zunion[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[A]] =
+  final def zunion[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single[Seq[A]] =
     zunion[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
-  final def zunion[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single.Aux[Seq[A]] =
+  final def zunion[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single[Seq[A]] =
     Protocol("ZUNION", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
 
-  final def zunionweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys): Single.Aux[Seq[A]] = {
+  final def zunionweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys): Single[Seq[A]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNION", keys.length *: keys *: "WEIGHTS" *: weights *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
   }
-  final def zunionweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys, aggregate: Aggregate): Single.Aux[Seq[A]] = {
+  final def zunionweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys, aggregate: Aggregate): Single[Seq[A]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNION", keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
   }
 
-  final def zunionwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single.Aux[Seq[(A, Double)]] =
+  final def zunionwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys): Single[Seq[(A, Double)]] =
     Protocol("ZUNION", keys.value.length *: keys.value *: "WITHSCORES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
-  final def zunionwithscores[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single.Aux[Seq[(A, Double)]] =
+  final def zunionwithscores[A: Read[Bulk, _]](key1: Key, key2: Key, keys: Key*): Single[Seq[(A, Double)]] =
     zunionwithscores[A](TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
-  final def zunionwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single.Aux[Seq[(A, Double)]] =
+  final def zunionwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: Aggregate): Single[Seq[(A, Double)]] =
     Protocol("ZUNION", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
 
-  final def zunionweightedwithscores[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys): Single.Aux[Seq[(A, Double)]] = {
+  final def zunionweightedwithscores[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys): Single[Seq[(A, Double)]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNION", keys.length *: keys *: "WEIGHTS" *: weights *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
@@ -566,24 +566,24 @@ trait SortedSetBaseP extends Features {
   final def zunionweightedwithscores[A: Read[Bulk, _]](
       weightedKeys: TwoOrMoreWeightedKeys,
       aggregate: Aggregate
-  ): Single.Aux[Seq[(A, Double)]] = {
+  ): Single[Seq[(A, Double)]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNION", keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
   }
 
-  final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key): Single.Aux[NonNegInt] =
+  final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key): Single[NonNegInt] =
     Protocol("ZUNIONSTORE", destinationKey *: keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zunionstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key): Single.Aux[NonNegInt] = {
+  final def zunionstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key): Single[NonNegInt] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNIONSTORE", destinationKey *: keys.length *: keys *: "WEIGHTS" *: weights *: EmptyTuple).as[Num, NonNegInt]
   }
 
-  final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: Aggregate): Single.Aux[NonNegInt] =
+  final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: Aggregate): Single[NonNegInt] =
     Protocol("ZUNIONSTORE", destinationKey *: keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Num, NonNegInt]
 
-  final def zunionstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key, aggregate: Aggregate): Single.Aux[NonNegInt] = {
+  final def zunionstoreweighted(weightedKeys: TwoOrMoreWeightedKeys, destinationKey: Key, aggregate: Aggregate): Single[NonNegInt] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNIONSTORE", destinationKey *: keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: EmptyTuple)
       .as[Num, NonNegInt]
@@ -594,11 +594,11 @@ trait SortedSetBaseP extends Features {
 trait SortedSetInterCardP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("ZINTERCARD: LIMIT")
 
-  final def zintercard(keys: TwoOrMoreKeys): Single.Aux[NonNegInt] =
+  final def zintercard(keys: TwoOrMoreKeys): Single[NonNegInt] =
     Protocol("ZINTERCARD", keys.value.length *: keys.value *: EmptyTuple).as[Num, NonNegInt]
-  final def zintercard(key1: Key, key2: Key, keys: Key*): Single.Aux[NonNegInt] =
+  final def zintercard(key1: Key, key2: Key, keys: Key*): Single[NonNegInt] =
     zintercard(TwoOrMoreKeys.unsafeFrom(key1 :: key2 :: keys.toList))
-  final def zintercard(keys: TwoOrMoreKeys, limit: PosInt): Single.Aux[NonNegInt] =
+  final def zintercard(keys: TwoOrMoreKeys, limit: PosInt): Single[NonNegInt] =
     Protocol("ZINTERCARD", keys.value.length *: keys.value *: "LIMIT" *: limit *: EmptyTuple).as[Num, NonNegInt]
 }
 
@@ -608,9 +608,9 @@ trait SortedSetMPopP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("ZMPOP: COUNT MAX MIN")
 
-  final def zmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, pop: Pop): Single.Aux[Option[KV[Seq[(A, Double)]]]] =
+  final def zmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, pop: Pop): Single[Option[KV[Seq[(A, Double)]]]] =
     Protocol("ZMPOP", keys.value.length *: keys.value *: pop *: EmptyTuple).using(keyedScoredSeq[A])
-  final def zmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, pop: Pop, count: PosInt): Single.Aux[Option[KV[Seq[(A, Double)]]]] =
+  final def zmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, pop: Pop, count: PosInt): Single[Option[KV[Seq[(A, Double)]]]] =
     Protocol("ZMPOP", keys.value.length *: keys.value *: pop *: "COUNT" *: count *: EmptyTuple).using(keyedScoredSeq[A])
 }
 
@@ -620,10 +620,10 @@ trait SortedSetRankWithScoreP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("ZRANK: WITHSCORE", "ZREVRANK: WITHSCORE")
 
-  final def zrankwithscore[A: Show](key: Key, member: A): Single.Aux[Option[(NonNegInt, Double)]] =
+  final def zrankwithscore[A: Show](key: Key, member: A): Single[Option[(NonNegInt, Double)]] =
     Protocol("ZRANK", key *: member *: "WITHSCORE" *: EmptyTuple).using(rankWithScore)
 
-  final def zrevrankwithscore[A: Show](key: Key, member: A): Single.Aux[Option[(NonNegInt, Double)]] =
+  final def zrevrankwithscore[A: Show](key: Key, member: A): Single[Option[(NonNegInt, Double)]] =
     Protocol("ZREVRANK", key *: member *: "WITHSCORE" *: EmptyTuple).using(rankWithScore)
 }
 
@@ -631,13 +631,13 @@ trait SortedSetRankWithScoreP extends Features {
 trait SortedSetScanNoScoresP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("ZSCAN: NOSCORES")
 
-  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong): Single.Aux[Scan[A]] =
+  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong): Single[Scan[A]] =
     Protocol("ZSCAN", key *: cursor *: "NOSCORES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
-  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[A]] =
+  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern): Single[Scan[A]] =
     Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "NOSCORES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
-  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[A]] =
+  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, count: PosInt): Single[Scan[A]] =
     Protocol("ZSCAN", key *: cursor *: "COUNT" *: count *: "NOSCORES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
-  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[A]] =
+  final def zscannoscores[A: Read[Bulk, _]](key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single[Scan[A]] =
     Protocol("ZSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "NOSCORES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[A]]
 
   /** ZSCAN with NOSCORES from cursor 0 until the server is done, as a [[Loop]]. A member may come more than once */
@@ -661,61 +661,61 @@ trait SortedSetAggregateCountP extends Features {
       "ZUNIONSTORE: AGGREGATE COUNT"
     )
 
-  final def zinter[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: AggregateCount): Single.Aux[Seq[A]] =
+  final def zinter[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: AggregateCount): Single[Seq[A]] =
     Protocol("ZINTER", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zinterweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys, aggregate: AggregateCount): Single.Aux[Seq[A]] = {
+  final def zinterweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys, aggregate: AggregateCount): Single[Seq[A]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTER", keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
   }
-  final def zinterwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: AggregateCount): Single.Aux[Seq[(A, Double)]] =
+  final def zinterwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: AggregateCount): Single[Seq[(A, Double)]] =
     Protocol("ZINTER", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
   final def zinterweightedwithscores[A: Read[Bulk, _]](
       weightedKeys: TwoOrMoreWeightedKeys,
       aggregate: AggregateCount
-  ): Single.Aux[Seq[(A, Double)]] = {
+  ): Single[Seq[(A, Double)]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTER", keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
   }
 
-  final def zinterstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: AggregateCount): Single.Aux[NonNegInt] =
+  final def zinterstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: AggregateCount): Single[NonNegInt] =
     Protocol("ZINTERSTORE", destinationKey *: keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Num, NonNegInt]
   final def zinterstoreweighted(
       weightedKeys: TwoOrMoreWeightedKeys,
       destinationKey: Key,
       aggregate: AggregateCount
-  ): Single.Aux[NonNegInt] = {
+  ): Single[NonNegInt] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZINTERSTORE", destinationKey *: keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: EmptyTuple)
       .as[Num, NonNegInt]
   }
 
-  final def zunion[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: AggregateCount): Single.Aux[Seq[A]] =
+  final def zunion[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: AggregateCount): Single[Seq[A]] =
     Protocol("ZUNION", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def zunionweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys, aggregate: AggregateCount): Single.Aux[Seq[A]] = {
+  final def zunionweighted[A: Read[Bulk, _]](weightedKeys: TwoOrMoreWeightedKeys, aggregate: AggregateCount): Single[Seq[A]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNION", keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
   }
-  final def zunionwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: AggregateCount): Single.Aux[Seq[(A, Double)]] =
+  final def zunionwithscores[A: Read[Bulk, _]](keys: TwoOrMoreKeys, aggregate: AggregateCount): Single[Seq[(A, Double)]] =
     Protocol("ZUNION", keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
   final def zunionweightedwithscores[A: Read[Bulk, _]](
       weightedKeys: TwoOrMoreWeightedKeys,
       aggregate: AggregateCount
-  ): Single.Aux[Seq[(A, Double)]] = {
+  ): Single[Seq[(A, Double)]] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNION", keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: "WITHSCORES" *: EmptyTuple)
       .as[Arr.OfPairs[Bulk, Bulk], Seq[(A, Double)]]
   }
 
-  final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: AggregateCount): Single.Aux[NonNegInt] =
+  final def zunionstore(keys: TwoOrMoreKeys, destinationKey: Key, aggregate: AggregateCount): Single[NonNegInt] =
     Protocol("ZUNIONSTORE", destinationKey *: keys.value.length *: keys.value *: "AGGREGATE" *: aggregate *: EmptyTuple).as[Num, NonNegInt]
   final def zunionstoreweighted(
       weightedKeys: TwoOrMoreWeightedKeys,
       destinationKey: Key,
       aggregate: AggregateCount
-  ): Single.Aux[NonNegInt] = {
+  ): Single[NonNegInt] = {
     val (keys, weights) = weightedKeys.value.unzip
     Protocol("ZUNIONSTORE", destinationKey *: keys.length *: keys *: "WEIGHTS" *: weights *: "AGGREGATE" *: aggregate *: EmptyTuple)
       .as[Num, NonNegInt]

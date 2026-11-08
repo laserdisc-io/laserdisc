@@ -40,34 +40,34 @@ trait ConnectionBaseP extends Features {
     case Str(other)                      => Left(RESPDecErr(s"Wrong PONG encoding: was $other"))
   }
 
-  final def auth(password: Key): Single.Aux[OK] = Protocol("AUTH", password).as[Str, OK]
+  final def auth(password: Key): Single[OK] = Protocol("AUTH", password).as[Str, OK]
 
-  final def echo[A: Show: Read[Bulk, _]](message: A): Single.Aux[A] = Protocol("ECHO", message).as[Bulk, A]
+  final def echo[A: Show: Read[Bulk, _]](message: A): Single[A] = Protocol("ECHO", message).as[Bulk, A]
 
   /** What the server says about itself and this connection, optionally logging in and naming the connection first. It always asks for
     * protocol 2, the one laserdisc reads
     */
-  final val hello: Single.Aux[ServerInspection.Hello] = Protocol("HELLO", "2").using(RESPRead.instance(ServerInspection.hello))
-  final def hello(username: Key, password: Key): Single.Aux[ServerInspection.Hello] =
+  final val hello: Single[ServerInspection.Hello] = Protocol("HELLO", "2").using(RESPRead.instance(ServerInspection.hello))
+  final def hello(username: Key, password: Key): Single[ServerInspection.Hello] =
     Protocol("HELLO", "2" :: "AUTH" :: username.value :: password.value :: Nil).using(RESPRead.instance(ServerInspection.hello))
-  final def hello(name: ConnectionName): Single.Aux[ServerInspection.Hello] =
+  final def hello(name: ConnectionName): Single[ServerInspection.Hello] =
     Protocol("HELLO", "2" :: "SETNAME" :: name.value :: Nil).using(RESPRead.instance(ServerInspection.hello))
-  final def hello(username: Key, password: Key, name: ConnectionName): Single.Aux[ServerInspection.Hello] =
+  final def hello(username: Key, password: Key, name: ConnectionName): Single[ServerInspection.Hello] =
     Protocol("HELLO", "2" :: "AUTH" :: username.value :: password.value :: "SETNAME" :: name.value :: Nil)
       .using(RESPRead.instance(ServerInspection.hello))
 
-  final val ping: Single.Aux[PONG]                                  = Protocol("PING", EmptyTuple).as[Str, PONG]
-  final def ping[A: Show: Read[Bulk, _]](message: A): Single.Aux[A] = Protocol("PING", message).as[Bulk, A]
+  final val ping: Single[PONG]                                  = Protocol("PING", EmptyTuple).as[Str, PONG]
+  final def ping[A: Show: Read[Bulk, _]](message: A): Single[A] = Protocol("PING", message).as[Bulk, A]
 
-  final val quit: Single.Aux[OK] = Protocol("QUIT", EmptyTuple).as[Str, OK]
+  final val quit: Single[OK] = Protocol("QUIT", EmptyTuple).as[Str, OK]
 
-  final def select(index: DbIndex): Single.Aux[OK] = Protocol("SELECT", index).as[Str, OK]
+  final def select(index: DbIndex): Single[OK] = Protocol("SELECT", index).as[Str, OK]
 }
 
 trait ConnectionSwapDbP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SWAPDB")
 
-  final def swapdb(index1: DbIndex, index2: DbIndex): Single.Aux[OK] = Protocol("SWAPDB", index1 :: index2 :: Nil).as[Str, OK]
+  final def swapdb(index1: DbIndex, index2: DbIndex): Single[OK] = Protocol("SWAPDB", index1 :: index2 :: Nil).as[Str, OK]
 }
 
 trait ConnectionP extends ConnectionBaseP with ConnectionSwapDbP

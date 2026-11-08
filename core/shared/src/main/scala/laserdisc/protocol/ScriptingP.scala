@@ -156,20 +156,20 @@ trait ScriptCoreCommands extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("SCRIPT EXISTS", "SCRIPT FLUSH: ASYNC SYNC", "SCRIPT HELP", "SCRIPT LOAD")
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("SCRIPT")
+  val help: Single[Seq[String]] = Protocol.help("SCRIPT")
 
   /** Whether each script is in the cache */
-  def exists(shas: OneOrMore[Sha1]): Single.Aux[Seq[Boolean]] =
+  def exists(shas: OneOrMore[Sha1]): Single[Seq[Boolean]] =
     Protocol("SCRIPT", "EXISTS" :: shas.value.map(_.value)).as[Arr.Of[Num], Seq[Boolean]]
-  def exists(sha: Sha1, shas: Sha1*): Single.Aux[Seq[Boolean]] =
+  def exists(sha: Sha1, shas: Sha1*): Single[Seq[Boolean]] =
     exists(OneOrMore.unsafeFrom(sha :: shas.toList))
 
   /** Empties the script cache */
-  val flush: Single.Aux[OK]                  = Protocol("SCRIPT", "FLUSH").as[Str, OK]
-  def flush(mode: FlushMode): Single.Aux[OK] = Protocol("SCRIPT", "FLUSH" *: mode *: EmptyTuple).as[Str, OK]
+  val flush: Single[OK]                  = Protocol("SCRIPT", "FLUSH").as[Str, OK]
+  def flush(mode: FlushMode): Single[OK] = Protocol("SCRIPT", "FLUSH" *: mode *: EmptyTuple).as[Str, OK]
 
   /** Puts the script in the cache, without running it, and replies with its SHA1 digest, for EVALSHA */
-  def load(script: String): Single.Aux[Sha1] = Protocol("SCRIPT", "LOAD" :: script :: Nil).using(RESPRead.instance(ScriptingP.sha1))
+  def load(script: String): Single[Sha1] = Protocol("SCRIPT", "LOAD" :: script :: Nil).using(RESPRead.instance(ScriptingP.sha1))
 }
 
 /** SCRIPT with KILL, under `script`. Redis 6.2 */
@@ -177,7 +177,7 @@ trait ScriptCommands extends ScriptCoreCommands {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SCRIPT KILL")
 
   /** Stops the script running, if it hasn't written anything */
-  val kill: Single.Aux[OK] = Protocol("SCRIPT", "KILL").as[Str, OK]
+  val kill: Single[OK] = Protocol("SCRIPT", "KILL").as[Str, OK]
 }
 
 /** SCRIPT SHOW, under `script`: Valkey 8.0 */
@@ -185,7 +185,7 @@ trait ScriptShowCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SCRIPT SHOW")
 
   /** The source of a script in the cache */
-  def show(sha: Sha1): Single.Aux[String] = Protocol("SCRIPT", "SHOW" :: sha.value :: Nil).as[Bulk, String]
+  def show(sha: Sha1): Single[String] = Protocol("SCRIPT", "SHOW" :: sha.value :: Nil).as[Bulk, String]
 }
 
 /** EVAL and EVALSHA, and SCRIPT under `script`. Redis 6.2
@@ -203,23 +203,23 @@ trait ScriptingCoreP extends Features {
 
   private[protocol] final def run[R, A](command: String, first: String, keys: List[Key], args: List[Value])(
       R: RESPRead.Aux[R, A]
-  ): Single.Aux[A] = Protocol(command, first :: keysAndArgs(keys, args)).using(R)
+  ): Single[A] = Protocol(command, first :: keysAndArgs(keys, args)).using(R)
 
-  final def eval[R, A](script: String)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] = run("EVAL", script, Nil, Nil)(R)
-  final def eval[R, A](script: String, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def eval[R, A](script: String)(implicit R: RESPRead.Aux[R, A]): Single[A]                      = run("EVAL", script, Nil, Nil)(R)
+  final def eval[R, A](script: String, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVAL", script, keys.value, Nil)(R)
-  final def evalargs[R, A](script: String, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def evalargs[R, A](script: String, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVAL", script, Nil, args.value)(R)
-  final def eval[R, A](script: String, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def eval[R, A](script: String, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVAL", script, keys.value, args.value)(R)
 
   /** EVAL of a script in the cache, by its SHA1 digest */
-  final def evalsha[R, A](sha: Sha1)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] = run("EVALSHA", sha.value, Nil, Nil)(R)
-  final def evalsha[R, A](sha: Sha1, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def evalsha[R, A](sha: Sha1)(implicit R: RESPRead.Aux[R, A]): Single[A] = run("EVALSHA", sha.value, Nil, Nil)(R)
+  final def evalsha[R, A](sha: Sha1, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVALSHA", sha.value, keys.value, Nil)(R)
-  final def evalshaargs[R, A](sha: Sha1, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def evalshaargs[R, A](sha: Sha1, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVALSHA", sha.value, Nil, args.value)(R)
-  final def evalsha[R, A](sha: Sha1, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def evalsha[R, A](sha: Sha1, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVALSHA", sha.value, keys.value, args.value)(R)
 }
 
@@ -247,41 +247,41 @@ trait FunctionCommands extends Features {
       "FUNCTION STATS"
     )
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("FUNCTION")
+  val help: Single[Seq[String]] = Protocol.help("FUNCTION")
 
   /** Deletes the library and its functions */
-  def delete(library: Key): Single.Aux[OK] = Protocol("FUNCTION", "DELETE" :: library.value :: Nil).as[Str, OK]
+  def delete(library: Key): Single[OK] = Protocol("FUNCTION", "DELETE" :: library.value :: Nil).as[Str, OK]
 
   /** Every library, in a binary form for `restore` */
-  val dump: Single.Aux[Bulk] = Protocol("FUNCTION", "DUMP").as[Bulk, Bulk]
+  val dump: Single[Bulk] = Protocol("FUNCTION", "DUMP").as[Bulk, Bulk]
 
   /** Deletes every library */
-  val flush: Single.Aux[OK]                  = Protocol("FUNCTION", "FLUSH").as[Str, OK]
-  def flush(mode: FlushMode): Single.Aux[OK] = Protocol("FUNCTION", "FLUSH" *: mode *: EmptyTuple).as[Str, OK]
+  val flush: Single[OK]                  = Protocol("FUNCTION", "FLUSH").as[Str, OK]
+  def flush(mode: FlushMode): Single[OK] = Protocol("FUNCTION", "FLUSH" *: mode *: EmptyTuple).as[Str, OK]
 
   /** Stops the function running, if it hasn't written anything */
-  val kill: Single.Aux[OK] = Protocol("FUNCTION", "KILL").as[Str, OK]
+  val kill: Single[OK] = Protocol("FUNCTION", "KILL").as[Str, OK]
 
   private final val libraries = RESPRead.instance(ScriptingP.libraries)
 
   /** The libraries, or those whose name matches the pattern */
-  val list: Single.Aux[Seq[Library]]                       = Protocol("FUNCTION", "LIST").using(libraries)
-  def list(pattern: GlobPattern): Single.Aux[Seq[Library]] =
+  val list: Single[Seq[Library]]                       = Protocol("FUNCTION", "LIST").using(libraries)
+  def list(pattern: GlobPattern): Single[Seq[Library]] =
     Protocol("FUNCTION", "LIST" *: "LIBRARYNAME" *: pattern *: EmptyTuple).using(libraries)
-  def list(withCode: WithCode): Single.Aux[Seq[Library]] = Protocol("FUNCTION", "LIST" *: withCode *: EmptyTuple).using(libraries)
-  def list(pattern: GlobPattern, withCode: WithCode): Single.Aux[Seq[Library]] =
+  def list(withCode: WithCode): Single[Seq[Library]] = Protocol("FUNCTION", "LIST" *: withCode *: EmptyTuple).using(libraries)
+  def list(pattern: GlobPattern, withCode: WithCode): Single[Seq[Library]] =
     Protocol("FUNCTION", "LIST" *: "LIBRARYNAME" *: pattern *: withCode *: EmptyTuple).using(libraries)
 
   /** Loads a library from its code, which starts with `#!lua name=<library>`, and replies with the library's name */
-  def load(code: String): Single.Aux[Key]                   = Protocol("FUNCTION", "LOAD" :: code :: Nil).as[Bulk, Key]
-  def load(code: String, replace: Replace): Single.Aux[Key] = Protocol("FUNCTION", "LOAD" *: replace *: code *: EmptyTuple).as[Bulk, Key]
+  def load(code: String): Single[Key]                   = Protocol("FUNCTION", "LOAD" :: code :: Nil).as[Bulk, Key]
+  def load(code: String, replace: Replace): Single[Key] = Protocol("FUNCTION", "LOAD" *: replace *: code *: EmptyTuple).as[Bulk, Key]
 
   /** Loads the libraries of a `dump` */
-  def restore(payload: Bulk): Single.Aux[OK]                        = Protocol("FUNCTION", "RESTORE" *: payload *: EmptyTuple).as[Str, OK]
-  def restore(payload: Bulk, policy: RestorePolicy): Single.Aux[OK] =
+  def restore(payload: Bulk): Single[OK]                        = Protocol("FUNCTION", "RESTORE" *: payload *: EmptyTuple).as[Str, OK]
+  def restore(payload: Bulk, policy: RestorePolicy): Single[OK] =
     Protocol("FUNCTION", "RESTORE" *: payload *: policy *: EmptyTuple).as[Str, OK]
 
-  val stats: Single.Aux[Stats] = Protocol("FUNCTION", "STATS").using(RESPRead.instance(ScriptingP.stats))
+  val stats: Single[Stats] = Protocol("FUNCTION", "STATS").using(RESPRead.instance(ScriptingP.stats))
 }
 
 /** EVAL_RO and EVALSHA_RO: Redis 7.0 */
@@ -289,21 +289,21 @@ trait ScriptingReadOnlyP extends ScriptingCoreP {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("EVAL_RO", "EVALSHA_RO")
 
   /** EVAL of a script that only reads, which may run on a replica */
-  final def evalro[R, A](script: String)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] = run("EVAL_RO", script, Nil, Nil)(R)
-  final def evalro[R, A](script: String, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def evalro[R, A](script: String)(implicit R: RESPRead.Aux[R, A]): Single[A] = run("EVAL_RO", script, Nil, Nil)(R)
+  final def evalro[R, A](script: String, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVAL_RO", script, keys.value, Nil)(R)
-  final def evalroargs[R, A](script: String, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def evalroargs[R, A](script: String, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVAL_RO", script, Nil, args.value)(R)
-  final def evalro[R, A](script: String, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def evalro[R, A](script: String, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVAL_RO", script, keys.value, args.value)(R)
 
   /** EVALSHA of a script that only reads, which may run on a replica */
-  final def evalsharo[R, A](sha: Sha1)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] = run("EVALSHA_RO", sha.value, Nil, Nil)(R)
-  final def evalsharo[R, A](sha: Sha1, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def evalsharo[R, A](sha: Sha1)(implicit R: RESPRead.Aux[R, A]): Single[A] = run("EVALSHA_RO", sha.value, Nil, Nil)(R)
+  final def evalsharo[R, A](sha: Sha1, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVALSHA_RO", sha.value, keys.value, Nil)(R)
-  final def evalsharoargs[R, A](sha: Sha1, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def evalsharoargs[R, A](sha: Sha1, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVALSHA_RO", sha.value, Nil, args.value)(R)
-  final def evalsharo[R, A](sha: Sha1, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def evalsharo[R, A](sha: Sha1, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("EVALSHA_RO", sha.value, keys.value, args.value)(R)
 }
 
@@ -314,21 +314,21 @@ trait ScriptingFunctionsP extends ScriptingBaseP with ScriptingReadOnlyP {
   lazy val function: FunctionCommands = new FunctionCommands {}
 
   /** Calls a function of a loaded library */
-  final def fcall[R, A](function: Key)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] = run("FCALL", function.value, Nil, Nil)(R)
-  final def fcall[R, A](function: Key, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def fcall[R, A](function: Key)(implicit R: RESPRead.Aux[R, A]): Single[A] = run("FCALL", function.value, Nil, Nil)(R)
+  final def fcall[R, A](function: Key, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("FCALL", function.value, keys.value, Nil)(R)
-  final def fcallargs[R, A](function: Key, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def fcallargs[R, A](function: Key, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("FCALL", function.value, Nil, args.value)(R)
-  final def fcall[R, A](function: Key, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def fcall[R, A](function: Key, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("FCALL", function.value, keys.value, args.value)(R)
 
   /** FCALL of a function flagged `no-writes`, which may run on a replica */
-  final def fcallro[R, A](function: Key)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] = run("FCALL_RO", function.value, Nil, Nil)(R)
-  final def fcallro[R, A](function: Key, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def fcallro[R, A](function: Key)(implicit R: RESPRead.Aux[R, A]): Single[A] = run("FCALL_RO", function.value, Nil, Nil)(R)
+  final def fcallro[R, A](function: Key, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("FCALL_RO", function.value, keys.value, Nil)(R)
-  final def fcallroargs[R, A](function: Key, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def fcallroargs[R, A](function: Key, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("FCALL_RO", function.value, Nil, args.value)(R)
-  final def fcallro[R, A](function: Key, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single.Aux[A] =
+  final def fcallro[R, A](function: Key, keys: OneOrMoreKeys, args: OneOrMore[Value])(implicit R: RESPRead.Aux[R, A]): Single[A] =
     run("FCALL_RO", function.value, keys.value, args.value)(R)
 }
 

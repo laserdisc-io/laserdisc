@@ -75,8 +75,8 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
   private def result[A](on: String, sent: IO[Maybe[A]]): A =
     sent.unsafeRunSync()(using runtime).fold(e => fail(s"$dest $on replied with an error: ${e.getMessage}"), identity)
 
-  protected final def send[A](protocol: Protocol.Aux[A]): A       = result("master", client.send(protocol))
-  private def sendTo[A](port: Port)(protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A       = result("master", client.send(protocol))
+  private def sendTo[A](port: Port)(protocol: Protocol[A]): A =
     result(s"on $port", RedisClient[IO].to("127.0.0.1", port).use(_.send(protocol)))
 
   private def waitUntil(what: String)(done: =>Boolean): Unit = {
@@ -187,7 +187,7 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
   }
 
   // sets the hostname on the master with the command given, then reads it back
-  protected final def hostname(set: Protocol.Aux[OK]): Unit = {
+  protected final def hostname(set: Protocol[OK]): Unit = {
     val (master, _, _) = ids
     val name           = "my.host.example"
 

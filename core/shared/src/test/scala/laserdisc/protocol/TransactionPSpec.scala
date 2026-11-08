@@ -46,7 +46,7 @@ final class TransactionPSpec extends BaseSpec with TransactionP with StringP {
   }
 
   test("Protocol.multi reads a tuple of commands into a tuple of results") {
-    val protocol: Protocol.Aux[Option[Maybe[OK] *: Maybe[Option[Int]] *: EmptyTuple]] =
+    val protocol: Protocol[Option[Maybe[OK] *: Maybe[Option[Int]] *: EmptyTuple]] =
       Protocol.multi(set(k, 1) *: get[Int](k) *: EmptyTuple)
 
     assertEquals(

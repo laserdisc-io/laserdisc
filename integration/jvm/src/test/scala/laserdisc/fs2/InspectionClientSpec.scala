@@ -144,10 +144,10 @@ abstract class InspectionClientSpec(p: Port, dest: String) extends LaserdiscFs2S
   import protocol.ServerInspection
   import protocol.ServerInspection.{BeginSearch, FindKeys}
 
-  protected final def send[A](protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
-  protected final def failure[A](protocol: Protocol.Aux[A]): String =
+  protected final def failure[A](protocol: Protocol[A]): String =
     client.send(protocol).unsafeRunSync()(using runtime).fold(_.getMessage, a => fail(s"$dest should have failed but replied $a"))
 
   protected final def commandInfos(v: Redis7_0): Unit = {

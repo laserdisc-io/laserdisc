@@ -118,7 +118,7 @@ object CLI extends IOApp { self =>
             .compile
             .drain
 
-        val protocol: Pipe[IO, String, Protocol.Aux[RESP]] =
+        val protocol: Pipe[IO, String, Protocol[RESP]] =
           _.map(CommandLine.parse).flatMap {
             case Left(error)            => Stream.exec(prompt(s"(error) $error$LF"))
             case Right(Nil)             => Stream.exec(emptyPrompt)

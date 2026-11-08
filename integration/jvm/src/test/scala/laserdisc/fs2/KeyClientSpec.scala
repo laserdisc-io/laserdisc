@@ -51,7 +51,7 @@ final class ValkeyKeyClientSpec extends KeyClientSpec(LiveServers.port(6381), "v
 }
 
 abstract class KeyClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
-  protected final def send[A](protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   protected final def expiries(version: Redis7_2): Unit = {

@@ -29,12 +29,12 @@ import munit.CatsEffectSuite
 import scala.concurrent.duration.*
 
 final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
-  private val num: Protocol.Aux[Long]   = Protocol("NUM", EmptyTuple).as[Num, Long]
-  private val str: Protocol.Aux[String] = Protocol("STR", EmptyTuple).as[Str, String]
+  private val num: Protocol[Long]   = Protocol("NUM", EmptyTuple).as[Num, Long]
+  private val str: Protocol[String] = Protocol("STR", EmptyTuple).as[Str, String]
 
   test("The fs2 protocol handler queues the requests of a send together, in order, and collects their responses") {
     val handler =
-      implicitly[RedisHandler.Aux[IO, Protocol.Aux[Long] *: Protocol.Aux[String] *: EmptyTuple, Maybe[Long] *: Maybe[String] *: EmptyTuple]]
+      implicitly[RedisHandler.Aux[IO, Protocol[Long] *: Protocol[String] *: EmptyTuple, Maybe[Long] *: Maybe[String] *: EmptyTuple]]
 
     for {
       queue <- Queue.unbounded[IO, Batch[IO]]
@@ -49,7 +49,7 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
   }
 
   test("The fs2 protocol handler fails with RequestTimedOut and withdraws the requests when no response arrives in time") {
-    val handler = implicitly[RedisHandler.Aux[IO, Protocol.Aux[Long] *: EmptyTuple, Maybe[Long] *: EmptyTuple]]
+    val handler = implicitly[RedisHandler.Aux[IO, Protocol[Long] *: EmptyTuple, Maybe[Long] *: EmptyTuple]]
 
     for {
       queue     <- Queue.unbounded[IO, Batch[IO]]
@@ -64,7 +64,7 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
 
   test("The fs2 protocol handler names the first request without a response when it times out") {
     val handler =
-      implicitly[RedisHandler.Aux[IO, Protocol.Aux[Long] *: Protocol.Aux[String] *: EmptyTuple, Maybe[Long] *: Maybe[String] *: EmptyTuple]]
+      implicitly[RedisHandler.Aux[IO, Protocol[Long] *: Protocol[String] *: EmptyTuple, Maybe[Long] *: Maybe[String] *: EmptyTuple]]
 
     for {
       queue <- Queue.unbounded[IO, Batch[IO]]
@@ -81,7 +81,7 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
     implicitly[
       RedisHandler.Aux[
         IO,
-        Protocol.Aux[OK] *: EmptyTuple,
+        Protocol[OK] *: EmptyTuple,
         Maybe[OK] *: EmptyTuple
       ]
     ]
@@ -90,7 +90,7 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
       Handler.Aux[
         IO,
         Env[IO],
-        Protocol.Aux[OK] *: EmptyTuple,
+        Protocol[OK] *: EmptyTuple,
         Maybe[OK] *: EmptyTuple
       ]
     ]
@@ -100,10 +100,10 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
         IO,
         Env[IO],
         // format: off
-        Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
+        Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[Option[PosInt]] *:
+          Protocol[Option[PosInt]] *:
           EmptyTuple,
         Maybe[OK] *:
           Maybe[OK] *:
@@ -119,28 +119,28 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
         IO,
         Env[IO],
         // format: off
-        Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[OK] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
-          Protocol.Aux[Option[PosInt]] *:
+        Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[OK] *:
+          Protocol[Option[PosInt]] *:
+          Protocol[Option[PosInt]] *:
+          Protocol[Option[PosInt]] *:
+          Protocol[Option[PosInt]] *:
+          Protocol[Option[PosInt]] *:
+          Protocol[Option[PosInt]] *:
+          Protocol[Option[PosInt]] *:
+          Protocol[Option[PosInt]] *:
+          Protocol[Option[PosInt]] *:
+          Protocol[Option[PosInt]] *:
           EmptyTuple,
         Maybe[OK] *:
           Maybe[OK] *:

@@ -29,20 +29,20 @@ trait PubSubCommands extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("PUBSUB CHANNELS", "PUBSUB HELP", "PUBSUB NUMPAT", "PUBSUB NUMSUB")
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("PUBSUB")
+  val help: Single[Seq[String]] = Protocol.help("PUBSUB")
 
   /** The channels with a subscriber, or those whose name matches the pattern */
-  val channels: Single.Aux[Seq[Key]]                       = Protocol("PUBSUB", "CHANNELS").as[Arr.Of[Bulk], Seq[Key]]
-  def channels(pattern: GlobPattern): Single.Aux[Seq[Key]] =
+  val channels: Single[Seq[Key]]                       = Protocol("PUBSUB", "CHANNELS").as[Arr.Of[Bulk], Seq[Key]]
+  def channels(pattern: GlobPattern): Single[Seq[Key]] =
     Protocol("PUBSUB", "CHANNELS" *: pattern *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
 
   /** How many patterns clients are subscribed to */
-  val numpat: Single.Aux[NonNegInt] = Protocol("PUBSUB", "NUMPAT").as[Num, NonNegInt]
+  val numpat: Single[NonNegInt] = Protocol("PUBSUB", "NUMPAT").as[Num, NonNegInt]
 
   /** How many subscribers each channel has, not counting those subscribed by a pattern */
-  def numsub(channels: OneOrMoreKeys): Single.Aux[Seq[(Key, NonNegInt)]] =
+  def numsub(channels: OneOrMoreKeys): Single[Seq[(Key, NonNegInt)]] =
     Protocol("PUBSUB", "NUMSUB" :: channels.value.map(_.value)).as[Arr.OfPairs[Bulk, Num], Seq[(Key, NonNegInt)]]
-  def numsub(channel: Key, channels: Key*): Single.Aux[Seq[(Key, NonNegInt)]] =
+  def numsub(channel: Key, channels: Key*): Single[Seq[(Key, NonNegInt)]] =
     numsub(OneOrMoreKeys.unsafeFrom(channel :: channels.toList))
 }
 
@@ -52,14 +52,14 @@ trait PubSubShardCommands extends PubSubCommands {
     super.supported ++ List("PUBSUB SHARDCHANNELS", "PUBSUB SHARDNUMSUB")
 
   /** The shard channels with a subscriber, or those whose name matches the pattern */
-  val shardchannels: Single.Aux[Seq[Key]]                       = Protocol("PUBSUB", "SHARDCHANNELS").as[Arr.Of[Bulk], Seq[Key]]
-  def shardchannels(pattern: GlobPattern): Single.Aux[Seq[Key]] =
+  val shardchannels: Single[Seq[Key]]                       = Protocol("PUBSUB", "SHARDCHANNELS").as[Arr.Of[Bulk], Seq[Key]]
+  def shardchannels(pattern: GlobPattern): Single[Seq[Key]] =
     Protocol("PUBSUB", "SHARDCHANNELS" *: pattern *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
 
   /** How many subscribers each shard channel has */
-  def shardnumsub(channels: OneOrMoreKeys): Single.Aux[Seq[(Key, NonNegInt)]] =
+  def shardnumsub(channels: OneOrMoreKeys): Single[Seq[(Key, NonNegInt)]] =
     Protocol("PUBSUB", "SHARDNUMSUB" :: channels.value.map(_.value)).as[Arr.OfPairs[Bulk, Num], Seq[(Key, NonNegInt)]]
-  def shardnumsub(channel: Key, channels: Key*): Single.Aux[Seq[(Key, NonNegInt)]] =
+  def shardnumsub(channel: Key, channels: Key*): Single[Seq[(Key, NonNegInt)]] =
     shardnumsub(OneOrMoreKeys.unsafeFrom(channel :: channels.toList))
 }
 
@@ -71,7 +71,7 @@ trait PublishP extends SubscribeP {
 
   lazy val pubsub: PubSubCommands = new PubSubCommands {}
 
-  final def publish[A: Show](channel: Key, value: A): Single.Aux[NonNegInt] =
+  final def publish[A: Show](channel: Key, value: A): Single[NonNegInt] =
     Protocol("PUBLISH", channel *: value *: EmptyTuple).as[Num, NonNegInt]
 }
 
@@ -84,6 +84,6 @@ trait PublishShardP extends PublishP with SubscribeShardP {
   /** Publishes to a shard channel, and replies with how many subscribers received it. In a cluster, send it to the node holding the
     * channel's slot
     */
-  final def spublish[A: Show](channel: Key, value: A): Single.Aux[NonNegInt] =
+  final def spublish[A: Show](channel: Key, value: A): Single[NonNegInt] =
     Protocol("SPUBLISH", channel *: value *: EmptyTuple).as[Num, NonNegInt]
 }

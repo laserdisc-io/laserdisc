@@ -214,48 +214,48 @@ trait HashBaseP extends Features {
   /** The builders of this family's commands, and the types of their replies */
   val hashtypes: HashP.HashTypes = new HashP.HashTypes {}
 
-  final def hdel(key: Key, fields: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("HDEL", key :: fields.value).as[Num, NonNegInt]
+  final def hdel(key: Key, fields: OneOrMoreKeys): Single[NonNegInt] = Protocol("HDEL", key :: fields.value).as[Num, NonNegInt]
 
-  final def hexists(key: Key, field: Key): Single.Aux[Boolean] = Protocol("HEXISTS", key :: field :: Nil).as[Num, Boolean]
+  final def hexists(key: Key, field: Key): Single[Boolean] = Protocol("HEXISTS", key :: field :: Nil).as[Num, Boolean]
 
-  final def hget[A: Read[Bulk, _]](key: Key, field: Key): Single.Aux[Option[A]] =
+  final def hget[A: Read[Bulk, _]](key: Key, field: Key): Single[Option[A]] =
     Protocol("HGET", key :: field :: Nil).as[OrNullBulk[Bulk], Option[A]]
 
   /** All the fields of a hash, as a `Map`, a `Seq` of pairs, or a case class, whose fields are read by name */
-  final def hgetall[A: Read[Arr.OfPairs[Bulk, Bulk], _]](key: Key): Single.Aux[A] = Protocol("HGETALL", key).as[Arr.OfPairs[Bulk, Bulk], A]
+  final def hgetall[A: Read[Arr.OfPairs[Bulk, Bulk], _]](key: Key): Single[A] = Protocol("HGETALL", key).as[Arr.OfPairs[Bulk, Bulk], A]
 
-  final def hincrby(key: Key, field: Key, increment: NonZeroLong): Single.Aux[Long] =
+  final def hincrby(key: Key, field: Key, increment: NonZeroLong): Single[Long] =
     Protocol("HINCRBY", key *: field *: increment *: EmptyTuple).as[Num, Long]
-  final def hincrby(key: Key, field: Key, increment: NonZeroDouble): Single.Aux[Double] =
+  final def hincrby(key: Key, field: Key, increment: NonZeroDouble): Single[Double] =
     Protocol("HINCRBYFLOAT", key *: field *: increment *: EmptyTuple).as[Bulk, Double]
 
-  final def hkeys(key: Key): Single.Aux[Seq[Key]] = Protocol("HKEYS", key).as[Arr.Of[Bulk], Seq[Key]]
+  final def hkeys(key: Key): Single[Seq[Key]] = Protocol("HKEYS", key).as[Arr.Of[Bulk], Seq[Key]]
 
-  final def hlen(key: Key): Single.Aux[NonNegInt] = Protocol("HLEN", key).as[Num, NonNegInt]
+  final def hlen(key: Key): Single[NonNegInt] = Protocol("HLEN", key).as[Num, NonNegInt]
 
   /** The values of the fields, as a tuple of as many: a missing field is `None` where the tuple has an `Option`, and an error anywhere else
     */
-  final def hmget[L <: Tuple: Read[Arr.Of[OrNullBulk[Bulk]], _]](key: Key, fields: OneOrMoreKeys): Single.Aux[L] =
+  final def hmget[L <: Tuple: Read[Arr.Of[OrNullBulk[Bulk]], _]](key: Key, fields: OneOrMoreKeys): Single[L] =
     Protocol("HMGET", key :: fields.value).as[Arr.Of[OrNullBulk[Bulk]], L]
 
-  final def hmset[L <: NonEmptyTuple: RESPParamWrite: LUBConstraint[_, (Key, ?)]](key: Key, l: L): Single.Aux[OK] =
+  final def hmset[L <: NonEmptyTuple: RESPParamWrite: LUBConstraint[_, (Key, ?)]](key: Key, l: L): Single[OK] =
     Protocol("HMSET", key *: l).as[Str, OK]
-  final def hmset[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](key: Key, product: P): Single.Aux[OK] =
+  final def hmset[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](key: Key, product: P): Single[OK] =
     Protocol("HMSET", key *: product *: EmptyTuple).as[Str, OK]
 
-  final def hrandfield(key: Key): Single.Aux[Option[Key]]                  = Protocol("HRANDFIELD", key).as[OrNullBulk[Bulk], Option[Key]]
-  final def hrandfields(key: Key, count: NonZeroInt): Single.Aux[Seq[Key]] =
+  final def hrandfield(key: Key): Single[Option[Key]]                  = Protocol("HRANDFIELD", key).as[OrNullBulk[Bulk], Option[Key]]
+  final def hrandfields(key: Key, count: NonZeroInt): Single[Seq[Key]] =
     Protocol("HRANDFIELD", key *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
-  final def hrandfieldswithvalues[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single.Aux[Seq[(Key, A)]] =
+  final def hrandfieldswithvalues[A: Read[Bulk, _]](key: Key, count: NonZeroInt): Single[Seq[(Key, A)]] =
     Protocol("HRANDFIELD", key *: count *: "WITHVALUES" *: EmptyTuple).as[Arr.OfPairs[Bulk, Bulk], Seq[(Key, A)]]
 
-  final def hscan(key: Key, cursor: NonNegLong): Single.Aux[ScanKV] =
+  final def hscan(key: Key, cursor: NonNegLong): Single[ScanKV] =
     Protocol("HSCAN", key *: cursor *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], ScanKV]
-  final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[ScanKV] =
+  final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern): Single[ScanKV] =
     Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], ScanKV]
-  final def hscan(key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[ScanKV] =
+  final def hscan(key: Key, cursor: NonNegLong, count: PosInt): Single[ScanKV] =
     Protocol("HSCAN", key *: cursor *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], ScanKV]
-  final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[ScanKV] =
+  final def hscan(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single[ScanKV] =
     Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.OfPairs[Bulk, Bulk]], ScanKV]
 
   /** HSCAN from cursor 0 until the server is done, as a [[Loop]]. A field may come more than once */
@@ -265,21 +265,21 @@ trait HashBaseP extends Features {
   final def hscanAll(key: Key, pattern: GlobPattern, count: PosInt): Loop[KV[String]] =
     Loop.cursor(hscan(key, _, pattern, count))(scannedKV)
 
-  final def hset[A: Show](key: Key, field: Key, value: A): Single.Aux[Boolean] =
+  final def hset[A: Show](key: Key, field: Key, value: A): Single[Boolean] =
     Protocol("HSET", key *: field *: value *: EmptyTuple).as[Num, Boolean]
-  final def hset[A: Show](key: Key, fieldValues: OneOrMore[(Key, A)]): Single.Aux[NonNegInt] =
+  final def hset[A: Show](key: Key, fieldValues: OneOrMore[(Key, A)]): Single[NonNegInt] =
     Protocol("HSET", key *: fieldValues.value *: EmptyTuple).as[Num, NonNegInt]
 
   /** Sets the fields of a case class, each under its name, leaving out the `Option` fields that are `None` */
-  final def hset[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](key: Key, product: P): Single.Aux[NonNegInt] =
+  final def hset[P <: Product: RESPParamWrite: <:!<[EmptyTuple, _]](key: Key, product: P): Single[NonNegInt] =
     Protocol("HSET", key *: product *: EmptyTuple).as[Num, NonNegInt]
 
-  final def hsetnx[A: Show](key: Key, field: Key, value: A): Single.Aux[Boolean] =
+  final def hsetnx[A: Show](key: Key, field: Key, value: A): Single[Boolean] =
     Protocol("HSETNX", key *: field *: value *: EmptyTuple).as[Num, Boolean]
 
-  final def hstrlen(key: Key, field: Key): Single.Aux[NonNegInt] = Protocol("HSTRLEN", key :: field :: Nil).as[Num, NonNegInt]
+  final def hstrlen(key: Key, field: Key): Single[NonNegInt] = Protocol("HSTRLEN", key :: field :: Nil).as[Num, NonNegInt]
 
-  final def hvals[L <: Tuple: Read[Arr.Of[OrNullBulk[Bulk]], _]](key: Key): Single.Aux[L] =
+  final def hvals[L <: Tuple: Read[Arr.Of[OrNullBulk[Bulk]], _]](key: Key): Single[L] =
     Protocol("HVALS", key).as[Arr.Of[OrNullBulk[Bulk]], L]
 }
 
@@ -287,13 +287,13 @@ trait HashBaseP extends Features {
 trait HashScanNoValuesP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("HSCAN: NOVALUES")
 
-  final def hscannovalues(key: Key, cursor: NonNegLong): Single.Aux[Scan[Key]] =
+  final def hscannovalues(key: Key, cursor: NonNegLong): Single[Scan[Key]] =
     Protocol("HSCAN", key *: cursor *: "NOVALUES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
-  final def hscannovalues(key: Key, cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[Key]] =
+  final def hscannovalues(key: Key, cursor: NonNegLong, pattern: GlobPattern): Single[Scan[Key]] =
     Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "NOVALUES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
-  final def hscannovalues(key: Key, cursor: NonNegLong, count: PosInt): Single.Aux[Scan[Key]] =
+  final def hscannovalues(key: Key, cursor: NonNegLong, count: PosInt): Single[Scan[Key]] =
     Protocol("HSCAN", key *: cursor *: "COUNT" *: count *: "NOVALUES" *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
-  final def hscannovalues(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[Key]] =
+  final def hscannovalues(key: Key, cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single[Scan[Key]] =
     Protocol("HSCAN", key *: cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "NOVALUES" *: EmptyTuple)
       .as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
 
@@ -316,16 +316,16 @@ trait HashFieldExpiryCoreP extends Features {
   private final val ttlResponses        = RESPRead[Arr.Of[Num], Seq[FieldTTLResponse]]
   private final val expireTimeResponses = RESPRead[Arr.Of[Num], Seq[FieldExpireTimeResponse]]
 
-  final def hexpire(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResponse]] =
+  final def hexpire(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single[Seq[FieldExpireResponse]] =
     Protocol("HEXPIRE", key *: seconds *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
-  final def hexpire(key: Key, seconds: NonNegLong, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireResponse]] =
+  final def hexpire(key: Key, seconds: NonNegLong, field: Key, fields: Key*): Single[Seq[FieldExpireResponse]] =
     hexpire(key, seconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
   final def hexpire(
       key: Key,
       seconds: NonNegLong,
       condition: ExpireCondition,
       fields: OneOrMoreKeys
-  ): Single.Aux[Seq[FieldExpireResponse]] =
+  ): Single[Seq[FieldExpireResponse]] =
     Protocol("HEXPIRE", key *: seconds *: condition *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
   final def hexpire(
       key: Key,
@@ -333,17 +333,17 @@ trait HashFieldExpiryCoreP extends Features {
       condition: ExpireCondition,
       field: Key,
       fields: Key*
-  ): Single.Aux[Seq[FieldExpireResponse]] =
+  ): Single[Seq[FieldExpireResponse]] =
     hexpire(key, seconds, condition, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
-  final def hpexpiretime(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireTimeResponse]] =
+  final def hpexpiretime(key: Key, fields: OneOrMoreKeys): Single[Seq[FieldExpireTimeResponse]] =
     Protocol("HPEXPIRETIME", key *: HashP.fields(fields) *: EmptyTuple).using(expireTimeResponses)
-  final def hpexpiretime(key: Key, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireTimeResponse]] =
+  final def hpexpiretime(key: Key, field: Key, fields: Key*): Single[Seq[FieldExpireTimeResponse]] =
     hpexpiretime(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
-  final def httl(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldTTLResponse]] =
+  final def httl(key: Key, fields: OneOrMoreKeys): Single[Seq[FieldTTLResponse]] =
     Protocol("HTTL", key *: HashP.fields(fields) *: EmptyTuple).using(ttlResponses)
-  final def httl(key: Key, field: Key, fields: Key*): Single.Aux[Seq[FieldTTLResponse]] =
+  final def httl(key: Key, field: Key, fields: Key*): Single[Seq[FieldTTLResponse]] =
     httl(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 }
 
@@ -365,16 +365,16 @@ trait HashFieldExpiryP extends HashFieldExpiryCoreP {
   private final val expireTimeResponses = RESPRead[Arr.Of[Num], Seq[FieldExpireTimeResponse]]
   private final val persistResponses    = RESPRead[Arr.Of[Num], Seq[FieldPersistResponse]]
 
-  final def hexpireat(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResponse]] =
+  final def hexpireat(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single[Seq[FieldExpireResponse]] =
     Protocol("HEXPIREAT", key *: seconds *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
-  final def hexpireat(key: Key, seconds: NonNegLong, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireResponse]] =
+  final def hexpireat(key: Key, seconds: NonNegLong, field: Key, fields: Key*): Single[Seq[FieldExpireResponse]] =
     hexpireat(key, seconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
   final def hexpireat(
       key: Key,
       seconds: NonNegLong,
       condition: ExpireCondition,
       fields: OneOrMoreKeys
-  ): Single.Aux[Seq[FieldExpireResponse]] =
+  ): Single[Seq[FieldExpireResponse]] =
     Protocol("HEXPIREAT", key *: seconds *: condition *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
   final def hexpireat(
       key: Key,
@@ -382,19 +382,19 @@ trait HashFieldExpiryP extends HashFieldExpiryCoreP {
       condition: ExpireCondition,
       field: Key,
       fields: Key*
-  ): Single.Aux[Seq[FieldExpireResponse]] =
+  ): Single[Seq[FieldExpireResponse]] =
     hexpireat(key, seconds, condition, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
-  final def hpexpire(key: Key, milliseconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResponse]] =
+  final def hpexpire(key: Key, milliseconds: NonNegLong, fields: OneOrMoreKeys): Single[Seq[FieldExpireResponse]] =
     Protocol("HPEXPIRE", key *: milliseconds *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
-  final def hpexpire(key: Key, milliseconds: NonNegLong, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireResponse]] =
+  final def hpexpire(key: Key, milliseconds: NonNegLong, field: Key, fields: Key*): Single[Seq[FieldExpireResponse]] =
     hpexpire(key, milliseconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
   final def hpexpire(
       key: Key,
       milliseconds: NonNegLong,
       condition: ExpireCondition,
       fields: OneOrMoreKeys
-  ): Single.Aux[Seq[FieldExpireResponse]] =
+  ): Single[Seq[FieldExpireResponse]] =
     Protocol("HPEXPIRE", key *: milliseconds *: condition *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
   final def hpexpire(
       key: Key,
@@ -402,19 +402,19 @@ trait HashFieldExpiryP extends HashFieldExpiryCoreP {
       condition: ExpireCondition,
       field: Key,
       fields: Key*
-  ): Single.Aux[Seq[FieldExpireResponse]] =
+  ): Single[Seq[FieldExpireResponse]] =
     hpexpire(key, milliseconds, condition, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
-  final def hpexpireat(key: Key, milliseconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResponse]] =
+  final def hpexpireat(key: Key, milliseconds: NonNegLong, fields: OneOrMoreKeys): Single[Seq[FieldExpireResponse]] =
     Protocol("HPEXPIREAT", key *: milliseconds *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
-  final def hpexpireat(key: Key, milliseconds: NonNegLong, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireResponse]] =
+  final def hpexpireat(key: Key, milliseconds: NonNegLong, field: Key, fields: Key*): Single[Seq[FieldExpireResponse]] =
     hpexpireat(key, milliseconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
   final def hpexpireat(
       key: Key,
       milliseconds: NonNegLong,
       condition: ExpireCondition,
       fields: OneOrMoreKeys
-  ): Single.Aux[Seq[FieldExpireResponse]] =
+  ): Single[Seq[FieldExpireResponse]] =
     Protocol("HPEXPIREAT", key *: milliseconds *: condition *: HashP.fields(fields) *: EmptyTuple).using(expireResponses)
   final def hpexpireat(
       key: Key,
@@ -422,22 +422,22 @@ trait HashFieldExpiryP extends HashFieldExpiryCoreP {
       condition: ExpireCondition,
       field: Key,
       fields: Key*
-  ): Single.Aux[Seq[FieldExpireResponse]] =
+  ): Single[Seq[FieldExpireResponse]] =
     hpexpireat(key, milliseconds, condition, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
-  final def hexpiretime(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireTimeResponse]] =
+  final def hexpiretime(key: Key, fields: OneOrMoreKeys): Single[Seq[FieldExpireTimeResponse]] =
     Protocol("HEXPIRETIME", key *: HashP.fields(fields) *: EmptyTuple).using(expireTimeResponses)
-  final def hexpiretime(key: Key, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireTimeResponse]] =
+  final def hexpiretime(key: Key, field: Key, fields: Key*): Single[Seq[FieldExpireTimeResponse]] =
     hexpiretime(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
-  final def hpersist(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldPersistResponse]] =
+  final def hpersist(key: Key, fields: OneOrMoreKeys): Single[Seq[FieldPersistResponse]] =
     Protocol("HPERSIST", key *: HashP.fields(fields) *: EmptyTuple).using(persistResponses)
-  final def hpersist(key: Key, field: Key, fields: Key*): Single.Aux[Seq[FieldPersistResponse]] =
+  final def hpersist(key: Key, field: Key, fields: Key*): Single[Seq[FieldPersistResponse]] =
     hpersist(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
-  final def hpttl(key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[FieldTTLResponse]] =
+  final def hpttl(key: Key, fields: OneOrMoreKeys): Single[Seq[FieldTTLResponse]] =
     Protocol("HPTTL", key *: HashP.fields(fields) *: EmptyTuple).using(ttlResponses)
-  final def hpttl(key: Key, field: Key, fields: Key*): Single.Aux[Seq[FieldTTLResponse]] =
+  final def hpttl(key: Key, field: Key, fields: Key*): Single[Seq[FieldTTLResponse]] =
     hpttl(key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
 }
@@ -450,27 +450,27 @@ trait HashGetSetExpiryP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("HGETEX: EX EXAT FIELDS PERSIST PX PXAT", "HSETEX: EX EXAT FIELDS FNX FXX KEEPTTL PX PXAT")
 
-  final def hgetex[A: Read[Bulk, _]](key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[Option[A]]] =
+  final def hgetex[A: Read[Bulk, _]](key: Key, fields: OneOrMoreKeys): Single[Seq[Option[A]]] =
     Protocol("HGETEX", key *: HashP.fields(fields) *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
-  final def hgetex[A: Read[Bulk, _]](key: Key, field: Key, fields: Key*): Single.Aux[Seq[Option[A]]] =
+  final def hgetex[A: Read[Bulk, _]](key: Key, field: Key, fields: Key*): Single[Seq[Option[A]]] =
     hgetex[A](key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
-  final def hgetex[A: Read[Bulk, _]](key: Key, expiry: GetExpiry, fields: OneOrMoreKeys): Single.Aux[Seq[Option[A]]] =
+  final def hgetex[A: Read[Bulk, _]](key: Key, expiry: GetExpiry, fields: OneOrMoreKeys): Single[Seq[Option[A]]] =
     Protocol("HGETEX", key *: expiry.params *: HashP.fields(fields) *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
-  final def hgetex[A: Read[Bulk, _]](key: Key, expiry: GetExpiry, field: Key, fields: Key*): Single.Aux[Seq[Option[A]]] =
+  final def hgetex[A: Read[Bulk, _]](key: Key, expiry: GetExpiry, field: Key, fields: Key*): Single[Seq[Option[A]]] =
     hgetex[A](key, expiry, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
-  final def hsetex[A: Show](key: Key, fieldValues: OneOrMore[(Key, A)]): Single.Aux[Boolean] =
+  final def hsetex[A: Show](key: Key, fieldValues: OneOrMore[(Key, A)]): Single[Boolean] =
     Protocol("HSETEX", key *: HashP.fieldsAndValues(fieldValues) *: EmptyTuple).as[Num, Boolean]
-  final def hsetex[A: Show](key: Key, condition: FieldsCondition, fieldValues: OneOrMore[(Key, A)]): Single.Aux[Boolean] =
+  final def hsetex[A: Show](key: Key, condition: FieldsCondition, fieldValues: OneOrMore[(Key, A)]): Single[Boolean] =
     Protocol("HSETEX", key *: condition *: HashP.fieldsAndValues(fieldValues) *: EmptyTuple).as[Num, Boolean]
-  final def hsetex[A: Show](key: Key, expiry: SetExpiry, fieldValues: OneOrMore[(Key, A)]): Single.Aux[Boolean] =
+  final def hsetex[A: Show](key: Key, expiry: SetExpiry, fieldValues: OneOrMore[(Key, A)]): Single[Boolean] =
     Protocol("HSETEX", key *: expiry.params *: HashP.fieldsAndValues(fieldValues) *: EmptyTuple).as[Num, Boolean]
   final def hsetex[A: Show](
       key: Key,
       condition: FieldsCondition,
       expiry: SetExpiry,
       fieldValues: OneOrMore[(Key, A)]
-  ): Single.Aux[Boolean] =
+  ): Single[Boolean] =
     Protocol("HSETEX", key *: condition *: expiry.params *: HashP.fieldsAndValues(fieldValues) *: EmptyTuple).as[Num, Boolean]
 }
 
@@ -481,21 +481,21 @@ trait HashSetExKeyConditionP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("HSETEX: NX XX")
 
-  final def hsetex[A: Show](key: Key, keyCondition: KeyCondition, fieldValues: OneOrMore[(Key, A)]): Single.Aux[Boolean] =
+  final def hsetex[A: Show](key: Key, keyCondition: KeyCondition, fieldValues: OneOrMore[(Key, A)]): Single[Boolean] =
     Protocol("HSETEX", key *: keyCondition *: HashP.fieldsAndValues(fieldValues) *: EmptyTuple).as[Num, Boolean]
   final def hsetex[A: Show](
       key: Key,
       keyCondition: KeyCondition,
       condition: FieldsCondition,
       fieldValues: OneOrMore[(Key, A)]
-  ): Single.Aux[Boolean] =
+  ): Single[Boolean] =
     Protocol("HSETEX", key *: keyCondition *: condition *: HashP.fieldsAndValues(fieldValues) *: EmptyTuple).as[Num, Boolean]
   final def hsetex[A: Show](
       key: Key,
       keyCondition: KeyCondition,
       expiry: SetExpiry,
       fieldValues: OneOrMore[(Key, A)]
-  ): Single.Aux[Boolean] =
+  ): Single[Boolean] =
     Protocol("HSETEX", key *: keyCondition *: expiry.params *: HashP.fieldsAndValues(fieldValues) *: EmptyTuple).as[Num, Boolean]
   final def hsetex[A: Show](
       key: Key,
@@ -503,7 +503,7 @@ trait HashSetExKeyConditionP extends Features {
       condition: FieldsCondition,
       expiry: SetExpiry,
       fieldValues: OneOrMore[(Key, A)]
-  ): Single.Aux[Boolean] =
+  ): Single[Boolean] =
     Protocol("HSETEX", key *: keyCondition *: condition *: expiry.params *: HashP.fieldsAndValues(fieldValues) *: EmptyTuple)
       .as[Num, Boolean]
 }
@@ -512,9 +512,9 @@ trait HashSetExKeyConditionP extends Features {
 trait HashGetDelP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("HGETDEL: FIELDS")
 
-  final def hgetdel[A: Read[Bulk, _]](key: Key, fields: OneOrMoreKeys): Single.Aux[Seq[Option[A]]] =
+  final def hgetdel[A: Read[Bulk, _]](key: Key, fields: OneOrMoreKeys): Single[Seq[Option[A]]] =
     Protocol("HGETDEL", key *: HashP.fields(fields) *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
-  final def hgetdel[A: Read[Bulk, _]](key: Key, field: Key, fields: Key*): Single.Aux[Seq[Option[A]]] =
+  final def hgetdel[A: Read[Bulk, _]](key: Key, field: Key, fields: Key*): Single[Seq[Option[A]]] =
     hgetdel[A](key, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 }
 
@@ -528,22 +528,22 @@ trait HashImportP extends Features {
     super.supported ++ List("HIMPORT DISCARD", "HIMPORT DISCARDALL", "HIMPORT PREPARE", "HIMPORT SET")
 
   /** Remembers the fields under a name for `himportset`, replacing any fieldset of that name */
-  final def himportprepare(name: Key, fields: OneOrMoreKeys): Single.Aux[OK] =
+  final def himportprepare(name: Key, fields: OneOrMoreKeys): Single[OK] =
     Protocol("HIMPORT", "PREPARE" :: name.value :: fields.value.map(_.value)).as[Str, OK]
-  final def himportprepare(name: Key, field: Key, fields: Key*): Single.Aux[OK] =
+  final def himportprepare(name: Key, field: Key, fields: Key*): Single[OK] =
     himportprepare(name, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   /** Sets the hash from one value per field of the fieldset, in the order the fields were given to `himportprepare` */
-  final def himportset[A: Show](key: Key, name: Key, values: OneOrMore[A]): Single.Aux[OK] =
+  final def himportset[A: Show](key: Key, name: Key, values: OneOrMore[A]): Single[OK] =
     Protocol("HIMPORT", "SET" *: key *: name *: values.value *: EmptyTuple).as[Str, OK]
-  final def himportset[A: Show](key: Key, name: Key, value: A, values: A*): Single.Aux[OK] =
+  final def himportset[A: Show](key: Key, name: Key, value: A, values: A*): Single[OK] =
     himportset(key, name, OneOrMore.unsafeFrom(value :: values.toList))
 
   /** Forgets the fieldset, and replies whether there was one */
-  final def himportdiscard(name: Key): Single.Aux[Boolean] = Protocol("HIMPORT", "DISCARD" :: name.value :: Nil).as[Num, Boolean]
+  final def himportdiscard(name: Key): Single[Boolean] = Protocol("HIMPORT", "DISCARD" :: name.value :: Nil).as[Num, Boolean]
 
   /** Forgets every fieldset of this connection, and replies how many there were */
-  final val himportdiscardall: Single.Aux[NonNegInt] = Protocol("HIMPORT", "DISCARDALL").as[Num, NonNegInt]
+  final val himportdiscardall: Single[NonNegInt] = Protocol("HIMPORT", "DISCARDALL").as[Num, NonNegInt]
 }
 
 trait HashP

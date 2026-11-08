@@ -42,13 +42,13 @@ trait BStreamBaseP extends Features {
   final def xread[A: Read[Bulk, _]](
       streams: OneOrMore[(Key, From)],
       blockMilliseconds: NonNegLong
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREAD", "BLOCK" :: Show[NonNegLong].show(blockMilliseconds) :: streamsParams(streams)(_.param)).using(entries[A])
   final def xread[A: Read[Bulk, _]](
       streams: OneOrMore[(Key, From)],
       blockMilliseconds: NonNegLong,
       count: PosLong
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREAD",
       "COUNT" :: Show[PosLong].show(count) :: "BLOCK" :: Show[NonNegLong].show(blockMilliseconds) :: streamsParams(streams)(_.param)
@@ -63,7 +63,7 @@ trait BStreamBaseP extends Features {
       consumer: Key,
       streams: OneOrMore[(Key, GroupFrom)],
       blockMilliseconds: NonNegLong
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       this.group(group, consumer) ++ ("BLOCK" :: Show[NonNegLong].show(blockMilliseconds) :: streamsParams(streams)(_.param))
@@ -75,7 +75,7 @@ trait BStreamBaseP extends Features {
       streams: OneOrMore[(Key, GroupFrom)],
       blockMilliseconds: NonNegLong,
       count: PosLong
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       this.group(group, consumer) ++ ("COUNT" :: Show[PosLong]
@@ -89,7 +89,7 @@ trait BStreamBaseP extends Features {
       streams: OneOrMore[(Key, GroupFrom)],
       blockMilliseconds: NonNegLong,
       noAck: NoAck
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       this.group(group, consumer) ++ ("BLOCK" :: Show[NonNegLong].show(blockMilliseconds) :: Show[NoAck].show(noAck) :: streamsParams(
@@ -105,7 +105,7 @@ trait BStreamBaseP extends Features {
       blockMilliseconds: NonNegLong,
       count: PosLong,
       noAck: NoAck
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       this.group(group, consumer) ++ ("COUNT" :: Show[PosLong]
@@ -118,7 +118,7 @@ trait BStreamBaseP extends Features {
   private final def block(blockMilliseconds: PosLong): NonNegLong = NonNegLong.unsafeFrom(blockMilliseconds.value)
 
   private final def follow[K, A](blockMilliseconds: PosLong, streams: OneOrMore[(Key, K)])(
-      read: OneOrMore[(Key, K)] => Protocol.Aux[Option[Seq[KV[Seq[Entry[A]]]]]]
+      read: OneOrMore[(Key, K)] => Protocol[Option[Seq[KV[Seq[Entry[A]]]]]]
   )(next: (K, Option[Seq[Entry[A]]]) => K): Loop[KV[Entry[A]]] =
     Loop.blocking(FiniteDuration(blockMilliseconds.value, MILLISECONDS))(streams)(read) { (current, reply) =>
       val byKey = reply.getOrElse(Nil).map(kv => kv.key -> kv.value).toMap
@@ -197,7 +197,7 @@ trait BStreamReadGroupClaimP extends Features {
       keys: OneOrMoreKeys,
       minIdleMilliseconds: NonNegLong,
       blockMilliseconds: NonNegLong
-  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol("XREADGROUP", claimParams(group, consumer, minIdleMilliseconds, keys, blockParams(blockMilliseconds), Nil))
       .using(maybeClaimed[A])
   final def xreadgroupclaim[A: Read[Bulk, _]](
@@ -207,7 +207,7 @@ trait BStreamReadGroupClaimP extends Features {
       minIdleMilliseconds: NonNegLong,
       blockMilliseconds: NonNegLong,
       count: PosLong
-  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       claimParams(group, consumer, minIdleMilliseconds, keys, countParams(count) ++ blockParams(blockMilliseconds), Nil)
@@ -219,7 +219,7 @@ trait BStreamReadGroupClaimP extends Features {
       minIdleMilliseconds: NonNegLong,
       blockMilliseconds: NonNegLong,
       noAck: NoAck
-  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       claimParams(group, consumer, minIdleMilliseconds, keys, blockParams(blockMilliseconds), List(Show[NoAck].show(noAck)))
@@ -232,7 +232,7 @@ trait BStreamReadGroupClaimP extends Features {
       blockMilliseconds: NonNegLong,
       count: PosLong,
       noAck: NoAck
-  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       claimParams(
@@ -261,14 +261,14 @@ trait BStreamReadLimitsP extends Features {
       streams: OneOrMore[(Key, From)],
       blockMilliseconds: NonNegLong,
       limits: ReadLimits
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREAD", limits.params ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(_.param)).using(maybeStreams[A])
   final def xread[A: Read[Bulk, _]](
       streams: OneOrMore[(Key, From)],
       blockMilliseconds: NonNegLong,
       count: PosLong,
       limits: ReadLimits
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREAD", countParams(count) ++ limits.params ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(_.param))
       .using(maybeStreams[A])
 
@@ -283,7 +283,7 @@ trait BStreamReadLimitsP extends Features {
       streams: OneOrMore[(Key, GroupFrom)],
       blockMilliseconds: NonNegLong,
       limits: ReadLimits
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       this.group(group, consumer) ++ limits.params ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(_.param)
@@ -295,7 +295,7 @@ trait BStreamReadLimitsP extends Features {
       blockMilliseconds: NonNegLong,
       count: PosLong,
       limits: ReadLimits
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       this.group(group, consumer) ++ countParams(count) ++ limits.params ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(
@@ -309,7 +309,7 @@ trait BStreamReadLimitsP extends Features {
       blockMilliseconds: NonNegLong,
       limits: ReadLimits,
       noAck: NoAck
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       this.group(group, consumer) ++ limits.params ++ blockParams(blockMilliseconds) ++
@@ -323,7 +323,7 @@ trait BStreamReadLimitsP extends Features {
       count: PosLong,
       limits: ReadLimits,
       noAck: NoAck
-  ): Single.Aux[Option[Seq[KV[Seq[Entry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       this.group(group, consumer) ++ countParams(count) ++ limits.params ++ blockParams(blockMilliseconds) ++
@@ -338,7 +338,7 @@ trait BStreamReadLimitsP extends Features {
       minIdleMilliseconds: NonNegLong,
       blockMilliseconds: NonNegLong,
       limits: ReadLimits
-  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol("XREADGROUP", claimParams(group, consumer, minIdleMilliseconds, keys, limits.params ++ blockParams(blockMilliseconds), Nil))
       .using(maybeClaimed[A])
   final def xreadgroupclaim[A: Read[Bulk, _]](
@@ -349,7 +349,7 @@ trait BStreamReadLimitsP extends Features {
       blockMilliseconds: NonNegLong,
       count: PosLong,
       limits: ReadLimits
-  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       claimParams(group, consumer, minIdleMilliseconds, keys, countParams(count) ++ limits.params ++ blockParams(blockMilliseconds), Nil)
@@ -362,7 +362,7 @@ trait BStreamReadLimitsP extends Features {
       blockMilliseconds: NonNegLong,
       limits: ReadLimits,
       noAck: NoAck
-  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       claimParams(
@@ -383,7 +383,7 @@ trait BStreamReadLimitsP extends Features {
       count: PosLong,
       limits: ReadLimits,
       noAck: NoAck
-  ): Single.Aux[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
+  ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol(
       "XREADGROUP",
       claimParams(

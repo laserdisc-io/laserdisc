@@ -172,10 +172,10 @@ object LoopSpec {
     }
   }
 
-  implicit final def scriptedHandler[A]: Handler.Aux[Id, Scripted, Protocol.Aux[A] *: EmptyTuple, Maybe[A] *: EmptyTuple] =
-    new Handler[Id, Scripted, Protocol.Aux[A] *: EmptyTuple] {
+  implicit final def scriptedHandler[A]: Handler.Aux[Id, Scripted, Protocol[A] *: EmptyTuple, Maybe[A] *: EmptyTuple] =
+    new Handler[Id, Scripted, Protocol[A] *: EmptyTuple] {
       override type LOut = Maybe[A] *: EmptyTuple
-      override def apply(env: Scripted, in: Protocol.Aux[A] *: EmptyTuple): Maybe[A] *: EmptyTuple = in match {
+      override def apply(env: Scripted, in: Protocol[A] *: EmptyTuple): Maybe[A] *: EmptyTuple = in match {
         case protocol *: _ =>
           env.answer(protocol.frames).flatMap(reply => protocol.decodeReplies(Seq(reply))) *: EmptyTuple
       }

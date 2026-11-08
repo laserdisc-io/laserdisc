@@ -302,49 +302,49 @@ trait KeyBaseP extends Features {
     case Str(other)    => Read[Bulk, Key].read(Bulk(other)).map(name => Some(KeyType.other(name)))
   }
 
-  final def copy(source: Key, destination: Key): Single.Aux[Boolean] =
+  final def copy(source: Key, destination: Key): Single[Boolean] =
     Protocol("COPY", source *: destination *: EmptyTuple).as[Num, Boolean]
-  final def copy(source: Key, destination: Key, replace: KeyReplace): Single.Aux[Boolean] =
+  final def copy(source: Key, destination: Key, replace: KeyReplace): Single[Boolean] =
     Protocol("COPY", source *: destination *: replace *: EmptyTuple).as[Num, Boolean]
 
-  final def del(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]
+  final def del(keys: OneOrMoreKeys): Single[NonNegInt] = Protocol("DEL", keys.value).as[Num, NonNegInt]
 
-  final def dump(key: Key): Single.Aux[Option[Bulk]] = Protocol("DUMP", key).as[OrNullBulk[Bulk], Option[Bulk]]
+  final def dump(key: Key): Single[Option[Bulk]] = Protocol("DUMP", key).as[OrNullBulk[Bulk], Option[Bulk]]
 
-  final def exists(keys: OneOrMoreKeys): Single.Aux[Option[PosInt]] = Protocol("EXISTS", keys.value).using(zeroIsNone)
+  final def exists(keys: OneOrMoreKeys): Single[Option[PosInt]] = Protocol("EXISTS", keys.value).using(zeroIsNone)
 
   // TODO check if we must support deletions via timeout < 0
-  final def expire(key: Key, seconds: NonNegInt): Single.Aux[Boolean] = Protocol("EXPIRE", key *: seconds *: EmptyTuple).as[Num, Boolean]
+  final def expire(key: Key, seconds: NonNegInt): Single[Boolean] = Protocol("EXPIRE", key *: seconds *: EmptyTuple).as[Num, Boolean]
 
-  final def expireat(key: Key, seconds: NonNegInt): Single.Aux[Boolean] =
+  final def expireat(key: Key, seconds: NonNegInt): Single[Boolean] =
     Protocol("EXPIREAT", key *: seconds *: EmptyTuple).as[Num, Boolean]
 
-  final def keys(pattern: GlobPattern): Single.Aux[Seq[Key]] = Protocol("KEYS", pattern *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
+  final def keys(pattern: GlobPattern): Single[Seq[Key]] = Protocol("KEYS", pattern *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
 
-  final def move(key: Key, db: DbIndex): Single.Aux[Boolean] = Protocol("MOVE", key *: db *: EmptyTuple).as[Num, Boolean]
+  final def move(key: Key, db: DbIndex): Single[Boolean] = Protocol("MOVE", key *: db *: EmptyTuple).as[Num, Boolean]
 
-  final def persist(key: Key): Single.Aux[Boolean] = Protocol("PERSIST", key).as[Num, Boolean]
+  final def persist(key: Key): Single[Boolean] = Protocol("PERSIST", key).as[Num, Boolean]
 
   // TODO check if we must support deletions via timeout < 0
-  final def pexpire(key: Key, milliseconds: NonNegLong): Single.Aux[Boolean] =
+  final def pexpire(key: Key, milliseconds: NonNegLong): Single[Boolean] =
     Protocol("PEXPIRE", key *: milliseconds *: EmptyTuple).as[Num, Boolean]
 
-  final def pexpireat(key: Key, millisecondsTimestamp: NonNegLong): Single.Aux[Boolean] =
+  final def pexpireat(key: Key, millisecondsTimestamp: NonNegLong): Single[Boolean] =
     Protocol("PEXPIREAT", key *: millisecondsTimestamp *: EmptyTuple).as[Num, Boolean]
 
-  final def pttl(key: Key): Single.Aux[KeyTTLResponse] = Protocol("PTTL", key).as[Num, KeyTTLResponse]
+  final def pttl(key: Key): Single[KeyTTLResponse] = Protocol("PTTL", key).as[Num, KeyTTLResponse]
 
-  final val randomkey: Single.Aux[Option[Key]] = Protocol("RANDOMKEY", EmptyTuple).as[OrNullBulk[Bulk], Option[Key]]
+  final val randomkey: Single[Option[Key]] = Protocol("RANDOMKEY", EmptyTuple).as[OrNullBulk[Bulk], Option[Key]]
 
-  final def rename(key: Key, newKey: Key): Single.Aux[OK] = Protocol("RENAME", key :: newKey :: Nil).as[Str, OK]
+  final def rename(key: Key, newKey: Key): Single[OK] = Protocol("RENAME", key :: newKey :: Nil).as[Str, OK]
 
-  final def renamenx(key: Key, newKey: Key): Single.Aux[Boolean] = Protocol("RENAMENX", key :: newKey :: Nil).as[Num, Boolean]
+  final def renamenx(key: Key, newKey: Key): Single[Boolean] = Protocol("RENAMENX", key :: newKey :: Nil).as[Num, Boolean]
 
-  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk): Single.Aux[OK] =
+  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk): Single[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: EmptyTuple).as[Str, OK]
-  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, mode: KeyRestoreMode): Single.Aux[OK] =
+  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, mode: KeyRestoreMode): Single[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: EmptyTuple).as[Str, OK]
-  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, eviction: KeyRestoreEviction): Single.Aux[OK] =
+  final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, eviction: KeyRestoreEviction): Single[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: eviction.param *: eviction.seconds *: EmptyTuple).as[Str, OK]
   final def restore(
       key: Key,
@@ -352,23 +352,23 @@ trait KeyBaseP extends Features {
       serializedValue: Bulk,
       mode: KeyRestoreMode,
       eviction: KeyRestoreEviction
-  ): Single.Aux[OK] =
+  ): Single[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: eviction.param *: eviction.seconds *: EmptyTuple).as[Str, OK]
 
-  final def scan(cursor: NonNegLong): Single.Aux[Scan[Key]] = Protocol("SCAN", cursor).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
-  final def scan(cursor: NonNegLong, pattern: GlobPattern): Single.Aux[Scan[Key]] =
+  final def scan(cursor: NonNegLong): Single[Scan[Key]]                       = Protocol("SCAN", cursor).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
+  final def scan(cursor: NonNegLong, pattern: GlobPattern): Single[Scan[Key]] =
     Protocol("SCAN", cursor *: "MATCH" *: pattern *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
-  final def scan(cursor: NonNegLong, count: PosInt): Single.Aux[Scan[Key]] =
+  final def scan(cursor: NonNegLong, count: PosInt): Single[Scan[Key]] =
     Protocol("SCAN", cursor *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
-  final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single.Aux[Scan[Key]] =
+  final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt): Single[Scan[Key]] =
     Protocol("SCAN", cursor *: "MATCH" *: pattern *: "COUNT" *: count *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
-  final def scan(cursor: NonNegLong, keyType: KeyType): Single.Aux[Scan[Key]] =
+  final def scan(cursor: NonNegLong, keyType: KeyType): Single[Scan[Key]] =
     Protocol("SCAN", cursor *: "TYPE" *: keyType *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
-  final def scan(cursor: NonNegLong, pattern: GlobPattern, keyType: KeyType): Single.Aux[Scan[Key]] =
+  final def scan(cursor: NonNegLong, pattern: GlobPattern, keyType: KeyType): Single[Scan[Key]] =
     Protocol("SCAN", cursor *: "MATCH" *: pattern *: "TYPE" *: keyType *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
-  final def scan(cursor: NonNegLong, count: PosInt, keyType: KeyType): Single.Aux[Scan[Key]] =
+  final def scan(cursor: NonNegLong, count: PosInt, keyType: KeyType): Single[Scan[Key]] =
     Protocol("SCAN", cursor *: "COUNT" *: count *: "TYPE" *: keyType *: EmptyTuple).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
-  final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt, keyType: KeyType): Single.Aux[Scan[Key]] =
+  final def scan(cursor: NonNegLong, pattern: GlobPattern, count: PosInt, keyType: KeyType): Single[Scan[Key]] =
     Protocol("SCAN", cursor *: "MATCH" *: pattern *: "COUNT" *: count *: "TYPE" *: keyType *: EmptyTuple)
       .as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
 
@@ -383,34 +383,34 @@ trait KeyBaseP extends Features {
   final def scanAll(pattern: GlobPattern, count: PosInt, keyType: KeyType): Loop[Key] =
     Loop.cursor(scan(_, pattern, count, keyType))(scanned)
 
-  final def sort[A: Read[Bulk, _]](key: Key): Single.Aux[Seq[A]]                       = Protocol("SORT", key).as[Arr.Of[Bulk], Seq[A]]
-  final def sort[A: Read[Bulk, _]](key: Key, pattern: GlobPattern): Single.Aux[Seq[A]] =
+  final def sort[A: Read[Bulk, _]](key: Key): Single[Seq[A]]                       = Protocol("SORT", key).as[Arr.Of[Bulk], Seq[A]]
+  final def sort[A: Read[Bulk, _]](key: Key, pattern: GlobPattern): Single[Seq[A]] =
     Protocol("SORT", key *: "BY" *: pattern *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def sort[A: Read[Bulk, _]](key: Key, offset: NonNegLong, count: PosLong): Single.Aux[Seq[A]] =
+  final def sort[A: Read[Bulk, _]](key: Key, offset: NonNegLong, count: PosLong): Single[Seq[A]] =
     Protocol("SORT", key *: "LIMIT" *: offset *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def sort[A: Read[Bulk, _]](key: Key, direction: Direction): Single.Aux[Seq[A]] =
+  final def sort[A: Read[Bulk, _]](key: Key, direction: Direction): Single[Seq[A]] =
     Protocol("SORT", key *: direction *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def sort(key: Key, destination: Key): Single.Aux[NonNegInt] =
+  final def sort(key: Key, destination: Key): Single[NonNegInt] =
     Protocol("SORT", key.value :: "STORE" :: destination.value :: Nil).as[Num, NonNegInt]
-  final def sort[A: Read[Bulk, _]](key: Key, options: KeySort): Single.Aux[Seq[A]] =
+  final def sort[A: Read[Bulk, _]](key: Key, options: KeySort): Single[Seq[A]] =
     Protocol("SORT", key *: options.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def sort[A: Read[Bulk, _]](key: Key, options: KeySort, get: KeySortGet): Single.Aux[Seq[Option[A]]] =
+  final def sort[A: Read[Bulk, _]](key: Key, options: KeySort, get: KeySortGet): Single[Seq[Option[A]]] =
     Protocol("SORT", key *: options.params *: get.params *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
-  final def sort(key: Key, options: KeySort, destination: Key): Single.Aux[NonNegInt] =
+  final def sort(key: Key, options: KeySort, destination: Key): Single[NonNegInt] =
     Protocol("SORT", key *: options.params *: "STORE" *: destination *: EmptyTuple).as[Num, NonNegInt]
-  final def sort(key: Key, options: KeySort, get: KeySortGet, destination: Key): Single.Aux[NonNegInt] =
+  final def sort(key: Key, options: KeySort, get: KeySortGet, destination: Key): Single[NonNegInt] =
     Protocol("SORT", key *: options.params *: get.params *: "STORE" *: destination *: EmptyTuple).as[Num, NonNegInt]
 
-  final def touch(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("TOUCH", keys.value).as[Num, NonNegInt]
+  final def touch(keys: OneOrMoreKeys): Single[NonNegInt] = Protocol("TOUCH", keys.value).as[Num, NonNegInt]
 
-  final def ttl(key: Key): Single.Aux[KeyTTLResponse] = Protocol("TTL", key).as[Num, KeyTTLResponse]
+  final def ttl(key: Key): Single[KeyTTLResponse] = Protocol("TTL", key).as[Num, KeyTTLResponse]
 
-  final def typeof(key: Key): Single.Aux[Option[KeyType]] = Protocol("TYPE", key).as[OrNullBulk[Str], Option[KeyType]]
+  final def typeof(key: Key): Single[Option[KeyType]] = Protocol("TYPE", key).as[OrNullBulk[Str], Option[KeyType]]
 
-  final def unlink(keys: OneOrMoreKeys): Single.Aux[NonNegInt] = Protocol("UNLINK", keys.value).as[Num, NonNegInt]
+  final def unlink(keys: OneOrMoreKeys): Single[NonNegInt] = Protocol("UNLINK", keys.value).as[Num, NonNegInt]
 
-  final def wait(replicas: PosInt): Single.Aux[PosInt]                   = Protocol("WAIT", replicas *: 0 *: EmptyTuple).as[Num, PosInt]
-  final def wait(replicas: PosInt, timeout: PosLong): Single.Aux[PosInt] =
+  final def wait(replicas: PosInt): Single[PosInt]                   = Protocol("WAIT", replicas *: 0 *: EmptyTuple).as[Num, PosInt]
+  final def wait(replicas: PosInt, timeout: PosLong): Single[PosInt] =
     Protocol("WAIT", replicas *: timeout *: EmptyTuple).as[Num, PosInt]
 }
 
@@ -428,21 +428,21 @@ trait KeyExpireConditionP extends Features {
       "PEXPIRETIME"
     )
 
-  final def expire(key: Key, seconds: NonNegInt, condition: ExpireCondition): Single.Aux[Boolean] =
+  final def expire(key: Key, seconds: NonNegInt, condition: ExpireCondition): Single[Boolean] =
     Protocol("EXPIRE", key *: seconds *: condition.params *: EmptyTuple).as[Num, Boolean]
 
-  final def expireat(key: Key, seconds: NonNegInt, condition: ExpireCondition): Single.Aux[Boolean] =
+  final def expireat(key: Key, seconds: NonNegInt, condition: ExpireCondition): Single[Boolean] =
     Protocol("EXPIREAT", key *: seconds *: condition.params *: EmptyTuple).as[Num, Boolean]
 
-  final def expiretime(key: Key): Single.Aux[ExpireTimeResponse] = Protocol("EXPIRETIME", key).as[Num, ExpireTimeResponse]
+  final def expiretime(key: Key): Single[ExpireTimeResponse] = Protocol("EXPIRETIME", key).as[Num, ExpireTimeResponse]
 
-  final def pexpire(key: Key, milliseconds: NonNegLong, condition: ExpireCondition): Single.Aux[Boolean] =
+  final def pexpire(key: Key, milliseconds: NonNegLong, condition: ExpireCondition): Single[Boolean] =
     Protocol("PEXPIRE", key *: milliseconds *: condition.params *: EmptyTuple).as[Num, Boolean]
 
-  final def pexpireat(key: Key, millisecondsTimestamp: NonNegLong, condition: ExpireCondition): Single.Aux[Boolean] =
+  final def pexpireat(key: Key, millisecondsTimestamp: NonNegLong, condition: ExpireCondition): Single[Boolean] =
     Protocol("PEXPIREAT", key *: millisecondsTimestamp *: condition.params *: EmptyTuple).as[Num, Boolean]
 
-  final def pexpiretime(key: Key): Single.Aux[ExpireTimeResponse] = Protocol("PEXPIRETIME", key).as[Num, ExpireTimeResponse]
+  final def pexpiretime(key: Key): Single[ExpireTimeResponse] = Protocol("PEXPIRETIME", key).as[Num, ExpireTimeResponse]
 }
 
 /** SORT_RO: Redis 7.0 */
@@ -451,9 +451,9 @@ trait KeySortReadOnlyP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SORT_RO: ALPHA ASC BY DESC GET LIMIT")
 
-  final def sortro[A: Read[Bulk, _]](key: Key, options: Sort): Single.Aux[Seq[A]] =
+  final def sortro[A: Read[Bulk, _]](key: Key, options: Sort): Single[Seq[A]] =
     Protocol("SORT_RO", key *: options.params *: EmptyTuple).as[Arr.Of[Bulk], Seq[A]]
-  final def sortro[A: Read[Bulk, _]](key: Key, options: Sort, get: SortGet): Single.Aux[Seq[Option[A]]] =
+  final def sortro[A: Read[Bulk, _]](key: Key, options: Sort, get: SortGet): Single[Seq[Option[A]]] =
     Protocol("SORT_RO", key *: options.params *: get.params *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
 }
 
@@ -464,7 +464,7 @@ trait KeyWaitAofP extends Features {
   /** Waits until the writes before it are on disk locally (when `local` is 1) and on `replicas` replicas, or until `timeout` milliseconds
     * have passed (0 waits forever). Replies with how many of each it reached
     */
-  final def waitaof(local: NonNegInt, replicas: NonNegInt, timeout: NonNegLong): Single.Aux[(NonNegInt, NonNegInt)] =
+  final def waitaof(local: NonNegInt, replicas: NonNegInt, timeout: NonNegLong): Single[(NonNegInt, NonNegInt)] =
     Protocol("WAITAOF", local *: replicas *: timeout *: EmptyTuple).using(RESPRead.instance(KeyP.localAndReplicas))
 }
 
@@ -472,9 +472,9 @@ trait KeyWaitAofP extends Features {
 trait KeyCopyDbP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("COPY: DB")
 
-  final def copy(source: Key, destination: Key, db: DbIndex): Single.Aux[Boolean] =
+  final def copy(source: Key, destination: Key, db: DbIndex): Single[Boolean] =
     Protocol("COPY", source *: destination *: "DB" *: db *: EmptyTuple).as[Num, Boolean]
-  final def copy(source: Key, destination: Key, db: DbIndex, replace: KeyP.Replace): Single.Aux[Boolean] =
+  final def copy(source: Key, destination: Key, db: DbIndex, replace: KeyP.Replace): Single[Boolean] =
     Protocol("COPY", source *: destination *: "DB" *: db *: replace *: EmptyTuple).as[Num, Boolean]
 }
 
@@ -488,9 +488,9 @@ trait KeyMigrateP extends Features {
     case Str(other)   => Left(RESPDecErr(s"Unexpected string for Read[Str, (NOKEY | OK)]. Was $other"))
   }
 
-  final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+  final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: EmptyTuple).as[Str, Either[NOKEY, OK]]
-  final def migrate(keys: TwoOrMoreKeys, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single.Aux[Either[NOKEY, OK]] =
+  final def migrate(keys: TwoOrMoreKeys, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: "KEYS" *: keys.value *: EmptyTuple).as[Str, Either[NOKEY, OK]]
   final def migrate(
       key: Key,
@@ -499,7 +499,7 @@ trait KeyMigrateP extends Features {
       dbIndex: DbIndex,
       timeout: NonNegInt,
       mode: KeyP.MigrateMode
-  ): Single.Aux[Either[NOKEY, OK]] =
+  ): Single[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: mode.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
   final def migrate(
       keys: TwoOrMoreKeys,
@@ -508,7 +508,7 @@ trait KeyMigrateP extends Features {
       dbIndex: DbIndex,
       timeout: NonNegInt,
       mode: KeyP.MigrateMode
-  ): Single.Aux[Either[NOKEY, OK]] =
+  ): Single[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: mode.params *: "KEYS" *: keys.value *: EmptyTuple)
       .as[Str, Either[NOKEY, OK]]
   final def migrate(
@@ -518,7 +518,7 @@ trait KeyMigrateP extends Features {
       dbIndex: DbIndex,
       timeout: NonNegInt,
       auth: KeyP.MigrateAuth
-  ): Single.Aux[Either[NOKEY, OK]] =
+  ): Single[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: auth.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
   final def migrate(
       keys: TwoOrMoreKeys,
@@ -527,7 +527,7 @@ trait KeyMigrateP extends Features {
       dbIndex: DbIndex,
       timeout: NonNegInt,
       auth: KeyP.MigrateAuth
-  ): Single.Aux[Either[NOKEY, OK]] =
+  ): Single[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: auth.params *: "KEYS" *: keys.value *: EmptyTuple)
       .as[Str, Either[NOKEY, OK]]
   final def migrate(
@@ -538,7 +538,7 @@ trait KeyMigrateP extends Features {
       timeout: NonNegInt,
       mode: KeyP.MigrateMode,
       auth: KeyP.MigrateAuth
-  ): Single.Aux[Either[NOKEY, OK]] =
+  ): Single[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: key *: dbIndex *: timeout *: mode.params *: auth.params *: EmptyTuple).as[Str, Either[NOKEY, OK]]
   final def migrate(
       keys: TwoOrMoreKeys,
@@ -548,7 +548,7 @@ trait KeyMigrateP extends Features {
       timeout: NonNegInt,
       mode: KeyP.MigrateMode,
       auth: KeyP.MigrateAuth
-  ): Single.Aux[Either[NOKEY, OK]] =
+  ): Single[Either[NOKEY, OK]] =
     Protocol("MIGRATE", host *: port *: "" *: dbIndex *: timeout *: mode.params *: auth.params *: "KEYS" *: keys.value *: EmptyTuple)
       .as[Str, Either[NOKEY, OK]]
 }
@@ -559,16 +559,16 @@ trait KeyObjectP extends Features {
     super.supported ++ List("OBJECT ENCODING", "OBJECT FREQ", "OBJECT HELP", "OBJECT IDLETIME", "OBJECT REFCOUNT")
 
   object obj {
-    val help: Single.Aux[Seq[String]] = Protocol.help("OBJECT")
+    val help: Single[Seq[String]] = Protocol.help("OBJECT")
 
-    def encoding(key: Key): Single.Aux[Option[KeyP.Encoding]] =
+    def encoding(key: Key): Single[Option[KeyP.Encoding]] =
       Protocol("OBJECT", "ENCODING" :: key.value :: Nil).as[OrNullBulk[Bulk], Option[KeyP.Encoding]]
 
-    def freq(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
+    def freq(key: Key): Single[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
 
-    def idletime(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).as[Num, NonNegInt]
+    def idletime(key: Key): Single[NonNegInt] = Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).as[Num, NonNegInt]
 
-    def refcount(key: Key): Single.Aux[NonNegInt] = Protocol("OBJECT", "REFCOUNT" :: key.value :: Nil).as[Num, NonNegInt]
+    def refcount(key: Key): Single[NonNegInt] = Protocol("OBJECT", "REFCOUNT" :: key.value :: Nil).as[Num, NonNegInt]
   }
 }
 

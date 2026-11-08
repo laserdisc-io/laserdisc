@@ -75,7 +75,7 @@ final class ValkeySortedSetClientSpec extends SortedSetClientSpec(LiveServers.po
 }
 
 abstract class SortedSetClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
-  protected final def send[A](protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   test(s"a $dest client adds with INCR, NX, XX, GT and LT") {

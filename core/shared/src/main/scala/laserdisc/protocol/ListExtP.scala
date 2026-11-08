@@ -28,11 +28,11 @@ trait ListExtP { this: ListBaseP =>
 
   //format: off
   //LPUSH
-  final def lpush[A: Show](key: Key, value: A, values: A*): Single.Aux[PosInt] =
+  final def lpush[A: Show](key: Key, value: A, values: A*): Single[PosInt] =
     lpush(key, OneOrMore.unsafeFrom(value :: values.toList))
 
   //RPUSH
-  final def rpush[A: Show](key: Key, value: A, values: A*): Single.Aux[PosInt] =
+  final def rpush[A: Show](key: Key, value: A, values: A*): Single[PosInt] =
     rpush(key, OneOrMore.unsafeFrom(value :: values.toList))
   //format: on
 }

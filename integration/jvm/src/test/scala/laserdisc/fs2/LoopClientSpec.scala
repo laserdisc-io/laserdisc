@@ -49,7 +49,7 @@ final class ValkeyLoopClientSpec extends LoopClientSpec(LiveServers.port(6381), 
 final class DragonflyLoopClientSpec extends LoopClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class LoopClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
-  protected final def send[A](protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   protected final def run[A](loop: Loop[A], take: Long = Long.MaxValue): List[A] =

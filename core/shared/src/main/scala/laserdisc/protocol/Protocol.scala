@@ -35,10 +35,9 @@ sealed trait Protocol[+A] {
 }
 
 object Protocol {
-  final type Aux[+A] = Protocol[A]
 
   // the lines of text a command's HELP subcommand replies with
-  private[protocol] final def help(command: String): Single.Aux[Seq[String]] = Protocol(command, "HELP").as[Arr.Of[Str], Seq[String]]
+  private[protocol] final def help(command: String): Single[Seq[String]] = Protocol(command, "HELP").as[Arr.Of[Str], Seq[String]]
 
   /** A single Redis command */
   sealed trait Single[+A] extends Protocol[A] { self =>
@@ -61,10 +60,6 @@ object Protocol {
     override final def toString: String = s"Protocol($command)"
   }
 
-  object Single {
-    final type Aux[+A] = Single[A]
-  }
-
   /** A transaction: MULTI, then its [[Single]] commands, then EXEC. Redis replies QUEUED to each command, and EXEC's reply holds their
     * results
     */
@@ -80,10 +75,6 @@ object Protocol {
       }
 
     override final def toString: String = s"Protocol(MULTI ${protocols.map(_.command).mkString(" ")} EXEC)"
-  }
-
-  object Multi {
-    final type Aux[+A] = Multi[A]
   }
 
   sealed abstract class PartiallyAppliedProtocol[L: RESPParamWrite](
@@ -104,9 +95,9 @@ object Protocol {
       * @return
       *   A [[Single]] command, sending this command and parameters and reading the reply as a B
       */
-    final def as[A, B](implicit R: RESPRead.Aux[A, B]): Single.Aux[B] = using(R)
+    final def as[A, B](implicit R: RESPRead.Aux[A, B]): Single[B] = using(R)
 
-    final def using[B](R: RESPRead[B]): Single.Aux[B] =
+    final def using[B](R: RESPRead[B]): Single[B] =
       new Single[B] {
         override final val command: String              = self.command
         override final val parameters: Seq[GenBulk]     = RESPParamWrite[L].write(l)
@@ -134,12 +125,12 @@ object Protocol {
 
     implicit final def consMultiResults[A, T <: Tuple, TOut <: Tuple](
         implicit T: MultiResults.Aux[T, TOut]
-    ): MultiResults.Aux[Single.Aux[A] *: T, Maybe[A] *: TOut] =
-      new MultiResults[Single.Aux[A] *: T] {
+    ): MultiResults.Aux[Single[A] *: T, Maybe[A] *: TOut] =
+      new MultiResults[Single[A] *: T] {
         override final type Out = Maybe[A] *: TOut
-        override final def protocols(in: Single.Aux[A] *: T): List[Single[Any]] =
+        override final def protocols(in: Single[A] *: T): List[Single[Any]] =
           in match { case protocol *: rest => protocol :: T.protocols(rest) }
-        override final def read(in: Single.Aux[A] *: T, results: List[RESP]): Maybe[A] *: TOut =
+        override final def read(in: Single[A] *: T, results: List[RESP]): Maybe[A] *: TOut =
           in match { case protocol *: rest => protocol.decode(results.head) *: T.read(rest, results.tail) }
       }
   }
@@ -147,7 +138,7 @@ object Protocol {
   /** The way to create a [[Multi]] transaction for the commands in `in`. EXEC's reply is "null" when a WATCHed key changed and nothing ran,
     * which is read as `None`, otherwise it holds one result per command.
     */
-  final def multi[In <: Tuple, Out <: Tuple](in: In)(implicit M: MultiResults.Aux[In, Out]): Multi.Aux[Option[Out]] =
+  final def multi[In <: Tuple, Out <: Tuple](in: In)(implicit M: MultiResults.Aux[In, Out]): Multi[Option[Out]] =
     new Multi[Option[Out]] {
       override final val protocols: List[Single[Any]] = M.protocols(in)
 

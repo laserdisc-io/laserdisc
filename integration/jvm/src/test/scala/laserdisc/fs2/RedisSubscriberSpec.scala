@@ -52,7 +52,7 @@ abstract class RedisSubscriberSpec(p: Port, dest: String) extends LaserdiscFs2Su
 
   protected final def run[A](io: IO[A]): A = io.timeout(10.seconds).unsafeRunSync()(using runtime)
 
-  private def send[A](protocol: Protocol.Aux[A]): A =
+  private def send[A](protocol: Protocol[A]): A =
     run(client.send(protocol)).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   private def channels(names: String*) = OneOrMoreKeys.unsafeFrom(names.toList.map(Key.unsafeFrom(_)))
@@ -68,7 +68,7 @@ abstract class RedisSubscriberSpec(p: Port, dest: String) extends LaserdiscFs2Su
     val options = laserdisc.redis_6_2.servertypes.trackingOptions
     val checked = RedisSubscriber[IO].identified("127.0.0.1", p, c.invalidations).use { case (id, notices) =>
       RedisClient[IO].to("127.0.0.1", p).use { own =>
-        def ok[A](protocol: Protocol.Aux[A]) = own.send(protocol).flatMap(IO.fromEither)
+        def ok[A](protocol: Protocol[A]) = own.send(protocol).flatMap(IO.fromEither)
         for {
           _     <- ok(publisher.set(Key("sub:t"), "1"))
           _     <- ok(c.tracking(options.redirect(id)))

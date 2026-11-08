@@ -42,10 +42,10 @@ final class ClientExtSpec extends munit.FunSuite {
   // replies to each command with its position, from the last one
   private implicit def command[A, T <: Tuple, O <: Tuple](
       implicit T: Handler.Aux[Id, Unit, T, O]
-  ): Handler.Aux[Id, Unit, Protocol.Aux[A] *: T, Maybe[A] *: O] =
-    new Handler[Id, Unit, Protocol.Aux[A] *: T] {
+  ): Handler.Aux[Id, Unit, Protocol[A] *: T, Maybe[A] *: O] =
+    new Handler[Id, Unit, Protocol[A] *: T] {
       override final type LOut = Maybe[A] *: O
-      override final def apply(env: Unit, in: Protocol.Aux[A] *: T): Maybe[A] *: O = in match {
+      override final def apply(env: Unit, in: Protocol[A] *: T): Maybe[A] *: O = in match {
         case protocol *: rest => protocol.decodeReplies(Seq(Bulk("1"))) *: T(env, rest)
       }
     }

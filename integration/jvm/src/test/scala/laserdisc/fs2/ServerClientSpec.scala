@@ -62,7 +62,7 @@ final class ValkeyServerClientSpec extends ServerClientSpec(LiveServers.port(638
     val me    = send(v.client.id)
     val mine  = OneOrMore.unsafeFrom(List(me))
     assertEquals(send(v.client.setname("ld-filter")), OK)
-    def ids(protocol: Protocol.Aux[ConnectedClients]) =
+    def ids(protocol: Protocol[ConnectedClients]) =
       send(protocol).clients.map(_.get[String]("id").fold(e => fail(e.getMessage), identity))
 
     assertEquals(ids(v.client.list(servertypes.clientFilter.user("default").skipMe(false).id(me))), Seq(me.value.toString))
@@ -108,7 +108,7 @@ final class ValkeyServerClientSpec extends ServerClientSpec(LiveServers.port(638
 abstract class ServerClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   private def connection = client
 
-  protected final def send[A](protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A =
     connection.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   protected final def newer(version: Redis7_2, clientCommands: Client7_4): Unit = {

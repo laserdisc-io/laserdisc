@@ -30,10 +30,10 @@ import laserdisc.protocol.ServerP.InfoSection
 final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)) {
   import laserdisc.dragonfly_2_0.*
 
-  private def send[A](protocol: Protocol.Aux[A]): A =
+  private def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"dragonfly replied with an error: ${e.getMessage}", e), identity)
 
-  private def failure[A](protocol: Protocol.Aux[A]): String =
+  private def failure[A](protocol: Protocol[A]): String =
     client.send(protocol).unsafeRunSync()(using runtime).fold(_.getMessage, a => fail(s"expected an error, but got $a"))
 
   private val laserdiscDragonfly = laserdisc.dragonfly_2_0
@@ -287,7 +287,7 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)
 final class DragonflyClusterClientSpec extends LaserdiscFs2Suite(LiveServers.port(6383)) {
   import laserdisc.dragonfly_2_0.*
 
-  private def send[A](protocol: Protocol.Aux[A]): A =
+  private def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"dragonfly replied with an error: ${e.getMessage}", e), identity)
 
   test("a dragonfly client in cluster mode reads the cluster's information, nodes, slots and shards") {

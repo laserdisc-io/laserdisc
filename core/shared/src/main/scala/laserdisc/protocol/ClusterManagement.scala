@@ -228,9 +228,9 @@ trait ClusterScanP extends Features {
   /** A step through the keys of the cluster, from `ClusterScanCursor.start`. A cursor names a slot, so the next step must go to the node
     * serving that slot, while a client connected to one node can only walk what that node serves
     */
-  final def clusterscan(cursor: ScanCursor): Single.Aux[Scan] =
+  final def clusterscan(cursor: ScanCursor): Single[Scan] =
     Protocol("CLUSTERSCAN", cursor.value :: Nil).using(RESPRead.instance(ClusterManagement.scan))
-  final def clusterscan(cursor: ScanCursor, options: ScanOptions): Single.Aux[Scan] =
+  final def clusterscan(cursor: ScanCursor, options: ScanOptions): Single[Scan] =
     Protocol("CLUSTERSCAN", cursor.value :: options.params).using(RESPRead.instance(ClusterManagement.scan))
 }
 
@@ -240,7 +240,7 @@ trait ClusterShardsCoreP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLUSTER SHARDS")
 
-  final val shards: Single.Aux[Seq[Shard]] = Protocol("CLUSTER", "SHARDS").using(RESPRead.instance(ClusterManagement.shards))
+  final val shards: Single[Seq[Shard]] = Protocol("CLUSTER", "SHARDS").using(RESPRead.instance(ClusterManagement.shards))
 }
 
 trait ClusterShardsP extends ClusterShardsCoreP {
@@ -250,19 +250,19 @@ trait ClusterShardsP extends ClusterShardsCoreP {
     super.supported ++ List("CLUSTER ADDSLOTSRANGE", "CLUSTER DELSLOTSRANGE", "CLUSTER LINKS")
 
   /** Serves the slots of each range, from the first to the last of it */
-  final def addslotsrange(ranges: OneOrMore[(Slot, Slot)]): Single.Aux[OK] =
+  final def addslotsrange(ranges: OneOrMore[(Slot, Slot)]): Single[OK] =
     Protocol("CLUSTER", "ADDSLOTSRANGE" :: slotRanges(ranges)).as[Str, OK]
-  final def delslotsrange(ranges: OneOrMore[(Slot, Slot)]): Single.Aux[OK] =
+  final def delslotsrange(ranges: OneOrMore[(Slot, Slot)]): Single[OK] =
     Protocol("CLUSTER", "DELSLOTSRANGE" :: slotRanges(ranges)).as[Str, OK]
 
-  final val links: Single.Aux[Seq[ClusterLink]] = Protocol("CLUSTER", "LINKS").using(RESPRead.instance(ClusterManagement.links))
+  final val links: Single[Seq[ClusterLink]] = Protocol("CLUSTER", "LINKS").using(RESPRead.instance(ClusterManagement.links))
 }
 
 /** CLUSTER MYSHARDID: Redis 7.2 */
 trait ClusterMyShardIdP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLUSTER MYSHARDID")
 
-  final val myshardid: Single.Aux[String] = Protocol("CLUSTER", "MYSHARDID").as[Bulk, String]
+  final val myshardid: Single[String] = Protocol("CLUSTER", "MYSHARDID").as[Bulk, String]
 }
 
 /** CLUSTER SLOT-STATS: Redis 8.2, Valkey 8.0 */
@@ -274,17 +274,17 @@ trait ClusterSlotStatsP extends Features {
   private final val stats = RESPRead.instance(ClusterManagement.slotStats)
 
   /** The figures of each slot from `from` to `to` that this node serves */
-  final def slotstats(from: Slot, to: Slot): Single.Aux[Seq[SlotStats]] =
+  final def slotstats(from: Slot, to: Slot): Single[Seq[SlotStats]] =
     Protocol("CLUSTER", "SLOT-STATS" *: "SLOTSRANGE" *: from *: to *: EmptyTuple).using(stats)
 
   /** The figures of this node's slots, ordered by a metric */
-  final def slotstats(metric: SlotStatsMetric): Single.Aux[Seq[SlotStats]] =
+  final def slotstats(metric: SlotStatsMetric): Single[Seq[SlotStats]] =
     Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: metric *: EmptyTuple).using(stats)
-  final def slotstats(metric: SlotStatsMetric, limit: PosInt): Single.Aux[Seq[SlotStats]] =
+  final def slotstats(metric: SlotStatsMetric, limit: PosInt): Single[Seq[SlotStats]] =
     Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: metric *: "LIMIT" *: limit *: EmptyTuple).using(stats)
-  final def slotstats(metric: SlotStatsMetric, direction: Direction): Single.Aux[Seq[SlotStats]] =
+  final def slotstats(metric: SlotStatsMetric, direction: Direction): Single[Seq[SlotStats]] =
     Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: metric *: direction *: EmptyTuple).using(stats)
-  final def slotstats(metric: SlotStatsMetric, limit: PosInt, direction: Direction): Single.Aux[Seq[SlotStats]] =
+  final def slotstats(metric: SlotStatsMetric, limit: PosInt, direction: Direction): Single[Seq[SlotStats]] =
     Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: metric *: "LIMIT" *: limit *: direction *: EmptyTuple).using(stats)
 }
 
@@ -295,13 +295,13 @@ trait ClusterSlotStatsMemoryP extends Features {
   private final val stats = RESPRead.instance(ClusterManagement.slotStats)
 
   /** The figures of this node's slots, ordered by the memory they use. This needs the server's `cluster-slot-stats-enabled` setting */
-  final val slotstatsbymemory: Single.Aux[Seq[SlotStats]] =
+  final val slotstatsbymemory: Single[Seq[SlotStats]] =
     Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: "memory-bytes" *: EmptyTuple).using(stats)
-  final def slotstatsbymemory(limit: PosInt): Single.Aux[Seq[SlotStats]] =
+  final def slotstatsbymemory(limit: PosInt): Single[Seq[SlotStats]] =
     Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: "memory-bytes" *: "LIMIT" *: limit *: EmptyTuple).using(stats)
-  final def slotstatsbymemory(direction: Direction): Single.Aux[Seq[SlotStats]] =
+  final def slotstatsbymemory(direction: Direction): Single[Seq[SlotStats]] =
     Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: "memory-bytes" *: direction *: EmptyTuple).using(stats)
-  final def slotstatsbymemory(limit: PosInt, direction: Direction): Single.Aux[Seq[SlotStats]] =
+  final def slotstatsbymemory(limit: PosInt, direction: Direction): Single[Seq[SlotStats]] =
     Protocol("CLUSTER", "SLOT-STATS" *: "ORDERBY" *: "memory-bytes" *: "LIMIT" *: limit *: direction *: EmptyTuple).using(stats)
 }
 
@@ -315,23 +315,23 @@ trait ClusterMigrationP extends Features {
   object migration {
 
     /** Moves the slots of each range to this node from the nodes serving them, and replies with the migration's id */
-    def importslots(ranges: OneOrMore[(Slot, Slot)]): Single.Aux[String] =
+    def importslots(ranges: OneOrMore[(Slot, Slot)]): Single[String] =
       Protocol("CLUSTER", "MIGRATION" :: "IMPORT" :: slotRanges(ranges)).as[Bulk, String]
 
     /** Cancels a migration, or all of them, and replies how many it cancelled */
-    def cancel(id: Key): Single.Aux[NonNegLong] =
+    def cancel(id: Key): Single[NonNegLong] =
       Protocol("CLUSTER", "MIGRATION" :: "CANCEL" :: "ID" :: id.value :: Nil).as[Num, NonNegLong]
-    val cancelall: Single.Aux[NonNegLong] = Protocol("CLUSTER", "MIGRATION" :: "CANCEL" :: "ALL" :: Nil).as[Num, NonNegLong]
+    val cancelall: Single[NonNegLong] = Protocol("CLUSTER", "MIGRATION" :: "CANCEL" :: "ALL" :: Nil).as[Num, NonNegLong]
 
     /** The migrations in progress, or the one with that id */
-    val status: Single.Aux[Seq[SlotMigration]] =
+    val status: Single[Seq[SlotMigration]] =
       Protocol("CLUSTER", "MIGRATION" :: "STATUS" :: "ALL" :: Nil).using(RESPRead.instance(ClusterManagement.slotMigrations))
-    def status(id: Key): Single.Aux[Seq[SlotMigration]] =
+    def status(id: Key): Single[Seq[SlotMigration]] =
       Protocol("CLUSTER", "MIGRATION" :: "STATUS" :: "ID" :: id.value :: Nil).using(RESPRead.instance(ClusterManagement.slotMigrations))
   }
 
   /** Deletes the keys of the slots in each range from this node */
-  final def trimslots(ranges: OneOrMore[(Slot, Slot)]): Single.Aux[OK] =
+  final def trimslots(ranges: OneOrMore[(Slot, Slot)]): Single[OK] =
     Protocol("TRIMSLOTS", "RANGES" :: Show[Int].show(ranges.value.length) :: slotRanges(ranges)).as[Str, OK]
 }
 
@@ -342,9 +342,9 @@ trait ClusterSetSlotTimeoutP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLUSTER SETSLOT: TIMEOUT")
 
   /** Like `setslot`, waiting at most `milliseconds` for the replicas to take the change */
-  final def setslot(slot: Slot, milliseconds: NonNegLong): Single.Aux[OK] =
+  final def setslot(slot: Slot, milliseconds: NonNegLong): Single[OK] =
     Protocol("CLUSTER", "SETSLOT" *: slot *: "STABLE" *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
-  final def setslot(slot: Slot, mode: SetSlotMode, node: NodeId, milliseconds: NonNegLong): Single.Aux[OK] =
+  final def setslot(slot: Slot, mode: SetSlotMode, node: NodeId, milliseconds: NonNegLong): Single[OK] =
     Protocol("CLUSTER", "SETSLOT" *: slot *: mode *: node *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
 }
 
@@ -353,7 +353,7 @@ trait ClusterReplicateNoOneP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLUSTER REPLICATE: NO ONE")
 
   /** Makes this replica a primary with no slots */
-  final val replicatenoone: Single.Aux[OK] = Protocol("CLUSTER", "REPLICATE" :: "NO" :: "ONE" :: Nil).as[Str, OK]
+  final val replicatenoone: Single[OK] = Protocol("CLUSTER", "REPLICATE" :: "NO" :: "ONE" :: Nil).as[Str, OK]
 }
 
 /** CLUSTER MIGRATESLOTS, CLUSTER GETSLOTMIGRATIONS, CLUSTER CANCELSLOTMIGRATIONS and CLUSTER FLUSHSLOT: Valkey 9.0 */
@@ -369,25 +369,25 @@ trait ClusterSlotMigrationsP extends Features {
     )
 
   /** Moves the slots of each range from this node to `node` */
-  final def migrateslots(ranges: OneOrMore[(Slot, Slot)], node: NodeId): Single.Aux[OK] =
+  final def migrateslots(ranges: OneOrMore[(Slot, Slot)], node: NodeId): Single[OK] =
     Protocol("CLUSTER", "MIGRATESLOTS" :: "SLOTSRANGE" :: slotRanges(ranges) ++ List("NODE", node.value)).as[Str, OK]
 
   /** Moves several groups of slots at once, each to its own node. The server refuses ranges that overlap */
-  final def migrateslots(groups: OneOrMore[(OneOrMore[(Slot, Slot)], NodeId)]): Single.Aux[OK] =
+  final def migrateslots(groups: OneOrMore[(OneOrMore[(Slot, Slot)], NodeId)]): Single[OK] =
     Protocol(
       "CLUSTER",
       "MIGRATESLOTS" :: groups.value.flatMap { case (ranges, node) => "SLOTSRANGE" :: slotRanges(ranges) ++ List("NODE", node.value) }
     ).as[Str, OK]
 
   /** The migrations in progress and those finished recently */
-  final val getslotmigrations: Single.Aux[Seq[SlotMigration]] =
+  final val getslotmigrations: Single[Seq[SlotMigration]] =
     Protocol("CLUSTER", "GETSLOTMIGRATIONS").using(RESPRead.instance(ClusterManagement.slotMigrations))
 
-  final val cancelslotmigrations: Single.Aux[OK] = Protocol("CLUSTER", "CANCELSLOTMIGRATIONS").as[Str, OK]
+  final val cancelslotmigrations: Single[OK] = Protocol("CLUSTER", "CANCELSLOTMIGRATIONS").as[Str, OK]
 
   /** Deletes the keys of a slot */
-  final def flushslot(slot: Slot): Single.Aux[OK]                  = Protocol("CLUSTER", "FLUSHSLOT" *: slot *: EmptyTuple).as[Str, OK]
-  final def flushslot(slot: Slot, mode: FlushMode): Single.Aux[OK] =
+  final def flushslot(slot: Slot): Single[OK]                  = Protocol("CLUSTER", "FLUSHSLOT" *: slot *: EmptyTuple).as[Str, OK]
+  final def flushslot(slot: Slot, mode: FlushMode): Single[OK] =
     Protocol("CLUSTER", "FLUSHSLOT" *: slot *: mode *: EmptyTuple).as[Str, OK]
 }
 
@@ -402,12 +402,12 @@ trait ServerBackupP extends Features {
     * backup is left as failed until it is cleaned up
     */
   object backup {
-    val help: Single.Aux[Seq[String]]    = Protocol.help("BACKUP")
-    val start: Single.Aux[OK]            = Protocol("BACKUP", "START").as[Str, OK]
-    val status: Single.Aux[BackupStatus] = Protocol("BACKUP", "STATUS").using(RESPRead.instance(ClusterManagement.backupStatus))
-    val list: Single.Aux[Seq[String]]    = Protocol("BACKUP", "LIST").as[Arr.Of[Bulk], Seq[String]]
-    val seal: Single.Aux[OK]             = Protocol("BACKUP", "SEAL").as[Str, OK]
-    val abort: Single.Aux[OK]            = Protocol("BACKUP", "ABORT").as[Str, OK]
-    val cleanup: Single.Aux[OK]          = Protocol("BACKUP", "CLEANUP").as[Str, OK]
+    val help: Single[Seq[String]]    = Protocol.help("BACKUP")
+    val start: Single[OK]            = Protocol("BACKUP", "START").as[Str, OK]
+    val status: Single[BackupStatus] = Protocol("BACKUP", "STATUS").using(RESPRead.instance(ClusterManagement.backupStatus))
+    val list: Single[Seq[String]]    = Protocol("BACKUP", "LIST").as[Arr.Of[Bulk], Seq[String]]
+    val seal: Single[OK]             = Protocol("BACKUP", "SEAL").as[Str, OK]
+    val abort: Single[OK]            = Protocol("BACKUP", "ABORT").as[Str, OK]
+    val cleanup: Single[OK]          = Protocol("BACKUP", "CLEANUP").as[Str, OK]
   }
 }

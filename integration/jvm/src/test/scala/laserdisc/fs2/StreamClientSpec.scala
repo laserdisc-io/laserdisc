@@ -168,7 +168,7 @@ final class ValkeyStreamClientSpec extends StreamClientSpec(LiveServers.port(638
 }
 
 abstract class StreamClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
-  protected final def send[A](protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   // XCLAIM and XAUTOCLAIM's deleted entries, LPOP and RPOP with a count, ACL GETUSER: the replies that changed in Redis 7.0

@@ -31,5 +31,4 @@ object ClientTerminated                        extends RuntimeException("Client 
 final case class NoInFlightRequest(resp: RESP) extends RuntimeException(s"Got unsolicited message from server: $resp", null, true, false)
 final case class InvalidSocketAddress(host: Host, port: Port)
     extends RuntimeException(s"SocketAddress creation failed. Invalid Host or Port: ${host.value}, ${port.value}", null, true, false)
-final case class RequestTimedOut[A](protocol: Protocol.Aux[A])
-    extends RuntimeException(s"The request $protocol timed-out", null, true, false)
+final case class RequestTimedOut[A](protocol: Protocol[A]) extends RuntimeException(s"The request $protocol timed-out", null, true, false)

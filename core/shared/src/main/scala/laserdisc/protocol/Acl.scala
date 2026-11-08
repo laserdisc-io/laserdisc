@@ -251,45 +251,45 @@ trait AclCommands extends Features {
       "ACL WHOAMI"
     )
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("ACL")
+  val help: Single[Seq[String]] = Protocol.help("ACL")
 
   /** The ACL categories, or the commands of one */
-  val cat: Single.Aux[Seq[String]]                = Protocol("ACL", "CAT").as[Texts, Seq[String]]
-  def cat(category: Key): Single.Aux[Seq[String]] = Protocol("ACL", "CAT" :: category.value :: Nil).as[Texts, Seq[String]]
+  val cat: Single[Seq[String]]                = Protocol("ACL", "CAT").as[Texts, Seq[String]]
+  def cat(category: Key): Single[Seq[String]] = Protocol("ACL", "CAT" :: category.value :: Nil).as[Texts, Seq[String]]
 
   /** Deletes the users, and replies how many it deleted */
-  def deluser(users: OneOrMoreKeys): Single.Aux[NonNegLong] = Protocol("ACL", "DELUSER" :: users.value.map(_.value)).as[Num, NonNegLong]
+  def deluser(users: OneOrMoreKeys): Single[NonNegLong] = Protocol("ACL", "DELUSER" :: users.value.map(_.value)).as[Num, NonNegLong]
 
   /** A random password, as hex: 256 bits, or `bits` */
-  val genpass: Single.Aux[String]               = Protocol("ACL", "GENPASS").as[OneOf[Bulk *: Str *: EmptyTuple], String]
-  def genpass(bits: PosInt): Single.Aux[String] =
+  val genpass: Single[String]               = Protocol("ACL", "GENPASS").as[OneOf[Bulk *: Str *: EmptyTuple], String]
+  def genpass(bits: PosInt): Single[String] =
     Protocol("ACL", "GENPASS" *: bits *: EmptyTuple).as[OneOf[Bulk *: Str *: EmptyTuple], String]
 
   /** The user's rules, or `None` when there's no such user */
-  def getuser(user: Key): Single.Aux[Option[AclUser]] =
+  def getuser(user: Key): Single[Option[AclUser]] =
     Protocol("ACL", "GETUSER" :: user.value :: Nil).using(maybeUser)
 
   protected def maybeUser: RESPRead[Option[AclUser]] = Acl.maybeUser6_2
 
   /** Every user's rules, as the lines of an ACL file */
-  val list: Single.Aux[Seq[String]] = Protocol("ACL", "LIST").as[Texts, Seq[String]]
+  val list: Single[Seq[String]] = Protocol("ACL", "LIST").as[Texts, Seq[String]]
 
-  val load: Single.Aux[OK] = Protocol("ACL", "LOAD").as[Str, OK]
+  val load: Single[OK] = Protocol("ACL", "LOAD").as[Str, OK]
 
   /** The 10 most recent denials, or `count` of them */
-  val log: Single.Aux[Seq[AclLogEntry]]                = Protocol("ACL", "LOG").using(RESPRead.instance(Acl.logEntries))
-  def log(count: PosInt): Single.Aux[Seq[AclLogEntry]] =
+  val log: Single[Seq[AclLogEntry]]                = Protocol("ACL", "LOG").using(RESPRead.instance(Acl.logEntries))
+  def log(count: PosInt): Single[Seq[AclLogEntry]] =
     Protocol("ACL", "LOG" *: count *: EmptyTuple).using(RESPRead.instance(Acl.logEntries))
-  val logreset: Single.Aux[OK] = Protocol("ACL", "LOG" :: "RESET" :: Nil).as[Str, OK]
+  val logreset: Single[OK] = Protocol("ACL", "LOG" :: "RESET" :: Nil).as[Str, OK]
 
-  val save: Single.Aux[OK] = Protocol("ACL", "SAVE").as[Str, OK]
+  val save: Single[OK] = Protocol("ACL", "SAVE").as[Str, OK]
 
   /** Creates the user, or changes it, applying the rules in order */
-  def setuser(user: Key, rules: AclRules): Single.Aux[OK] = Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
+  def setuser(user: Key, rules: AclRules): Single[OK] = Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 
-  val users: Single.Aux[Seq[String]] = Protocol("ACL", "USERS").as[Texts, Seq[String]]
+  val users: Single[Seq[String]] = Protocol("ACL", "USERS").as[Texts, Seq[String]]
 
-  val whoami: Single.Aux[String] = Protocol("ACL", "WHOAMI").as[Bulk, String]
+  val whoami: Single[String] = Protocol("ACL", "WHOAMI").as[Bulk, String]
 }
 
 /** ACL DRYRUN: Redis 7.0 */
@@ -297,7 +297,7 @@ trait AclDryRunCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("ACL DRYRUN")
 
   /** Whether the user may run the command, without running it: `None` when it may, or the reason when it may not */
-  def dryrun(user: Key, command: Single[Any]): Single.Aux[Option[String]] =
+  def dryrun(user: Key, command: Single[Any]): Single[Option[String]] =
     Protocol("ACL", "DRYRUN" :: user.value :: ServerInspection.argumentsOf(command)).using(RESPRead.okOrMessage)
 }
 
@@ -305,7 +305,7 @@ trait AclDryRunCommands extends Features {
 trait AclDragonflyCommands extends AclCommands with AclDryRunCommands {
   override protected def maybeUser: RESPRead[Option[Acl.AclUser]] = Acl.maybeUserDragonfly
 
-  def setuser(user: Key, rules: Acl.AclDragonflyRules): Single.Aux[OK] =
+  def setuser(user: Key, rules: Acl.AclDragonflyRules): Single[OK] =
     Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 }
 
@@ -315,12 +315,12 @@ trait AclSelectorCommands extends AclCommands with AclDryRunCommands {
 
   override protected def maybeUser: RESPRead[Option[AclUser]] = Acl.maybeUser7_0
 
-  def setuser(user: Key, rules: AclRulesWithSelectors): Single.Aux[OK] =
+  def setuser(user: Key, rules: AclRulesWithSelectors): Single[OK] =
     Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 }
 
 /** ACL SETUSER with the databases a user may use: Valkey 9.1 */
 trait AclDatabaseCommands extends AclSelectorCommands {
-  def setuser(user: Key, rules: Acl.AclRulesWithDatabases): Single.Aux[OK] =
+  def setuser(user: Key, rules: Acl.AclRulesWithDatabases): Single[OK] =
     Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 }

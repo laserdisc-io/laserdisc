@@ -130,7 +130,7 @@ final class ValkeyStringClientSpec extends StringClientSpec(LiveServers.port(638
 final class DragonflyStringClientSpec extends StringClientSpec(LiveServers.port(6382), "dragonfly")
 
 abstract class StringClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
-  protected final def send[A](protocol: Protocol.Aux[A]): A =
+  protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
   protected final def lcsAndBits(version: Redis7_0): Unit = {

@@ -532,34 +532,34 @@ trait ClientCoreCommands extends Features {
       "CLIENT UNPAUSE"
     )
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("CLIENT")
+  val help: Single[Seq[String]] = Protocol.help("CLIENT")
 
-  val getname: Single.Aux[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").as[OrNullBulk[Bulk], Option[ConnectionName]]
+  val getname: Single[Option[ConnectionName]] = Protocol("CLIENT", "GETNAME").as[OrNullBulk[Bulk], Option[ConnectionName]]
 
-  val id: Single.Aux[NonNegLong] = Protocol("CLIENT", "ID").as[Num, NonNegLong]
+  val id: Single[NonNegLong] = Protocol("CLIENT", "ID").as[Num, NonNegLong]
 
-  val info: Single.Aux[ClientInfo] = Protocol("CLIENT", "INFO").as[Bulk, ClientInfo]
+  val info: Single[ClientInfo] = Protocol("CLIENT", "INFO").as[Bulk, ClientInfo]
 
-  def kill(host: Host, port: Port): Single.Aux[OK] =
+  def kill(host: Host, port: Port): Single[OK] =
     Protocol("CLIENT", "KILL" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Str, OK]
 
-  val list: Single.Aux[ConnectedClients]                         = Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
-  def list(clientType: ClientType): Single.Aux[ConnectedClients] =
+  val list: Single[ConnectedClients]                         = Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
+  def list(clientType: ClientType): Single[ConnectedClients] =
     Protocol("CLIENT", "LIST" *: "TYPE" *: clientType *: EmptyTuple).as[Bulk, ConnectedClients]
-  def list(ids: OneOrMore[NonNegLong]): Single.Aux[ConnectedClients] =
+  def list(ids: OneOrMore[NonNegLong]): Single[ConnectedClients] =
     Protocol("CLIENT", "LIST" *: "ID" *: ids.value *: EmptyTuple).as[Bulk, ConnectedClients]
-  def list(id: NonNegLong, ids: NonNegLong*): Single.Aux[ConnectedClients] =
+  def list(id: NonNegLong, ids: NonNegLong*): Single[ConnectedClients] =
     list(OneOrMore.unsafeFrom(id :: ids.toList))
 
-  def pause(milliseconds: PosLong): Single.Aux[OK]                  = Protocol("CLIENT", "PAUSE" *: milliseconds *: EmptyTuple).as[Str, OK]
-  def pause(milliseconds: PosLong, mode: PauseMode): Single.Aux[OK] =
+  def pause(milliseconds: PosLong): Single[OK]                  = Protocol("CLIENT", "PAUSE" *: milliseconds *: EmptyTuple).as[Str, OK]
+  def pause(milliseconds: PosLong, mode: PauseMode): Single[OK] =
     Protocol("CLIENT", "PAUSE" *: milliseconds *: mode *: EmptyTuple).as[Str, OK]
 
-  def setname(connectionName: ConnectionName): Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[Str, OK]
+  def setname(connectionName: ConnectionName): Single[OK] = Protocol("CLIENT", "SETNAME" :: connectionName.value :: Nil).as[Str, OK]
 
-  val unpause: Single.Aux[OK] = Protocol("CLIENT", "UNPAUSE").as[Str, OK]
+  val unpause: Single[OK] = Protocol("CLIENT", "UNPAUSE").as[Str, OK]
 
-  val unsetname: Single.Aux[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
+  val unsetname: Single[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
 }
 
 /** CLIENT TRACKING, CACHING, GETREDIR and TRACKINGINFO: Redis 6.2. Laserdisc reads protocol 2, so the notices go to another connection,
@@ -581,24 +581,24 @@ trait ClientTrackingCommands extends Features {
   val invalidations: Feed[Feed.Invalidation] = Feed.invalidations
 
   /** Asks for notices when the keys this connection reads change */
-  def tracking(options: TrackingOptions): Single.Aux[OK] = Protocol("CLIENT", "TRACKING" :: "ON" :: options.params).as[Str, OK]
+  def tracking(options: TrackingOptions): Single[OK] = Protocol("CLIENT", "TRACKING" :: "ON" :: options.params).as[Str, OK]
 
-  val trackingoff: Single.Aux[OK] = Protocol("CLIENT", "TRACKING" :: "OFF" :: Nil).as[Str, OK]
+  val trackingoff: Single[OK] = Protocol("CLIENT", "TRACKING" :: "OFF" :: Nil).as[Str, OK]
 
   /** With OPTIN or OPTOUT, whether to track the keys of the next command. It only applies to the very next command on the connection, so
     * send them together in the same `send`, or another caller's may come in between
     */
-  def caching(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "CACHING" :: (if (on) "YES" else "NO") :: Nil).as[Str, OK]
+  def caching(on: Boolean): Single[OK] = Protocol("CLIENT", "CACHING" :: (if (on) "YES" else "NO") :: Nil).as[Str, OK]
 
   /** The connection that gets this one's notices, or `None` when there isn't one */
-  val getredir: Single.Aux[Option[NonNegLong]] = Protocol("CLIENT", "GETREDIR").using(
+  val getredir: Single[Option[NonNegLong]] = Protocol("CLIENT", "GETREDIR").using(
     RESPRead.instance(Read.instance[Num, Option[NonNegLong]] {
       case Num(-1L) | Num(0L) => Right(None)
       case other              => Read[Num, NonNegLong].read(other).map(Some(_))
     })
   )
 
-  val trackinginfo: Single.Aux[TrackingInfo] = Protocol("CLIENT", "TRACKINGINFO").using(RESPRead.instance(ServerP.trackingInfo))
+  val trackinginfo: Single[TrackingInfo] = Protocol("CLIENT", "TRACKINGINFO").using(RESPRead.instance(ServerP.trackingInfo))
 }
 
 /** CLIENT: Redis 6.2 */
@@ -612,11 +612,11 @@ trait ClientCommands extends ClientCoreCommands with ClientTrackingCommands {
     )
 
   /** Closes the clients that match every filter, and replies how many it closed */
-  def kill(filter: ClientFilter): Single.Aux[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]
+  def kill(filter: ClientFilter): Single[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]
 
   /** Unblocks a client waiting in a blocking command, and replies whether there was one */
-  def unblock(id: NonNegLong): Single.Aux[Boolean]                    = Protocol("CLIENT", "UNBLOCK" *: id *: EmptyTuple).as[Num, Boolean]
-  def unblock(id: NonNegLong, mode: UnblockMode): Single.Aux[Boolean] =
+  def unblock(id: NonNegLong): Single[Boolean]                    = Protocol("CLIENT", "UNBLOCK" *: id *: EmptyTuple).as[Num, Boolean]
+  def unblock(id: NonNegLong, mode: UnblockMode): Single[Boolean] =
     Protocol("CLIENT", "UNBLOCK" *: id *: mode *: EmptyTuple).as[Num, Boolean]
 }
 
@@ -625,7 +625,7 @@ trait ClientNoEvictCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT NO-EVICT: OFF ON")
 
   /** Whether this connection is spared when the server evicts clients to free memory */
-  def noevict(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "NO-EVICT" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
+  def noevict(on: Boolean): Single[OK] = Protocol("CLIENT", "NO-EVICT" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
 }
 
 /** CLIENT SETINFO: Redis 7.2 */
@@ -633,10 +633,10 @@ trait ClientSetInfoCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT SETINFO: LIB-NAME LIB-VER")
 
   /** The name of the library this connection uses, shown by CLIENT LIST */
-  def setlibname(name: Key): Single.Aux[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-NAME" :: name.value :: Nil).as[Str, OK]
+  def setlibname(name: Key): Single[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-NAME" :: name.value :: Nil).as[Str, OK]
 
   /** The version of the library this connection uses, shown by CLIENT LIST */
-  def setlibversion(version: Key): Single.Aux[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-VER" :: version.value :: Nil).as[Str, OK]
+  def setlibversion(version: Key): Single[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-VER" :: version.value :: Nil).as[Str, OK]
 }
 
 /** CLIENT NO-TOUCH, with CLIENT SETINFO: Redis 7.2 */
@@ -644,7 +644,7 @@ trait ClientNoTouchCommands extends ClientSetInfoCommands {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT KILL: NO YES", "CLIENT NO-TOUCH: OFF ON")
 
   /** Whether this connection's commands leave the keys' last access time as it was */
-  def notouch(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "NO-TOUCH" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
+  def notouch(on: Boolean): Single[OK] = Protocol("CLIENT", "NO-TOUCH" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
 }
 
 /** CLIENT CAPA, and the primary client type for CLIENT KILL and CLIENT LIST: Valkey 8.0 */
@@ -655,8 +655,8 @@ trait ClientCapaCommands extends Features {
   val primary: ServerP.ClientType = ServerP.ClientType.primary
 
   /** Tells the server what this connection can handle, like `redirect`. A server takes names it doesn't know, and ignores them */
-  def capa(capabilities: OneOrMore[Key]): Single.Aux[OK]        = Protocol("CLIENT", "CAPA" :: capabilities.value.map(_.value)).as[Str, OK]
-  def capa(capability: Key, capabilities: Key*): Single.Aux[OK] =
+  def capa(capabilities: OneOrMore[Key]): Single[OK]        = Protocol("CLIENT", "CAPA" :: capabilities.value.map(_.value)).as[Str, OK]
+  def capa(capability: Key, capabilities: Key*): Single[OK] =
     capa(OneOrMore.unsafeFrom(capability :: capabilities.toList))
 }
 
@@ -665,7 +665,7 @@ trait ClientImportSourceCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT IMPORT-SOURCE: OFF ON")
 
   /** Whether this connection is an import source. Turning it on needs the server to be in import mode */
-  def importsource(on: Boolean): Single.Aux[OK] = Protocol("CLIENT", "IMPORT-SOURCE" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
+  def importsource(on: Boolean): Single[OK] = Protocol("CLIENT", "IMPORT-SOURCE" :: (if (on) "ON" else "OFF") :: Nil).as[Str, OK]
 }
 
 /** CLIENT KILL with several ids, and CLIENT LIST with the filters of CLIENT KILL: Valkey 8.1 */
@@ -679,10 +679,10 @@ trait ClientListFilterCommands extends Features {
   def ids(ids: OneOrMore[NonNegLong]): ClientFilter = ClientFilter.ids(ids)
 
   /** The clients that match every filter */
-  def list(filter: ClientFilter): Single.Aux[ConnectedClients] = Protocol("CLIENT", "LIST" :: filter.params).as[Bulk, ConnectedClients]
+  def list(filter: ClientFilter): Single[ConnectedClients] = Protocol("CLIENT", "LIST" :: filter.params).as[Bulk, ConnectedClients]
 
   /** The clients that match every filter and have been connected for longer than `seconds` */
-  def list(filter: ClientFilter, seconds: PosLong): Single.Aux[ConnectedClients] =
+  def list(filter: ClientFilter, seconds: PosLong): Single[ConnectedClients] =
     Protocol("CLIENT", "LIST" *: filter.params *: "MAXAGE" *: seconds *: EmptyTuple).as[Bulk, ConnectedClients]
 }
 
@@ -697,10 +697,10 @@ trait ClientValkeyFilterCommands extends Features {
     super.supported ++ List(s"CLIENT KILL: $keywords", s"CLIENT LIST: $keywords")
 
   /** Closes the clients that match every filter, and replies how many it closed */
-  def kill(filter: ValkeyClientFilter): Single.Aux[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]
+  def kill(filter: ValkeyClientFilter): Single[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]
 
   /** The clients that match every filter */
-  def list(filter: ValkeyClientFilter): Single.Aux[ConnectedClients] =
+  def list(filter: ValkeyClientFilter): Single[ConnectedClients] =
     Protocol("CLIENT", "LIST" :: filter.params).as[Bulk, ConnectedClients]
 }
 
@@ -711,7 +711,7 @@ trait ClientMaxAgeCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT KILL: MAXAGE")
 
   /** Closes the clients that match every filter and have been connected for longer than `seconds` */
-  def kill(filter: ClientFilter, seconds: PosLong): Single.Aux[NonNegLong] =
+  def kill(filter: ClientFilter, seconds: PosLong): Single[NonNegLong] =
     Protocol("CLIENT", "KILL" *: filter.params *: "MAXAGE" *: seconds *: EmptyTuple).as[Num, NonNegLong]
 }
 
@@ -722,29 +722,29 @@ trait ConfigCommands extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("CONFIG GET", "CONFIG HELP", "CONFIG RESETSTAT", "CONFIG REWRITE", "CONFIG SET")
 
-  val help: Single.Aux[Seq[String]] = Protocol.help("CONFIG")
+  val help: Single[Seq[String]] = Protocol.help("CONFIG")
 
-  def get(parameter: GlobPattern): Single.Aux[Configuration] =
+  def get(parameter: GlobPattern): Single[Configuration] =
     Protocol("CONFIG", "GET" :: parameter.value :: Nil).as[Arr.OfPairs[Bulk, Bulk], Configuration]
 
-  val resetstat: Single.Aux[OK] = Protocol("CONFIG", "RESETSTAT").as[Str, OK]
+  val resetstat: Single[OK] = Protocol("CONFIG", "RESETSTAT").as[Str, OK]
 
-  val rewrite: Single.Aux[OK] = Protocol("CONFIG", "REWRITE").as[Str, OK]
+  val rewrite: Single[OK] = Protocol("CONFIG", "REWRITE").as[Str, OK]
 
-  def set[A: Show](parameter: Key, value: A): Single.Aux[OK] = Protocol("CONFIG", "SET" *: parameter *: value *: EmptyTuple).as[Str, OK]
+  def set[A: Show](parameter: Key, value: A): Single[OK] = Protocol("CONFIG", "SET" *: parameter *: value *: EmptyTuple).as[Str, OK]
 }
 
 /** CONFIG GET and CONFIG SET with several parameters: Redis 7.0 */
 trait ConfigManyCommands extends Features {
   import ServerP.Configuration
 
-  def get(parameters: OneOrMore[GlobPattern]): Single.Aux[Configuration] =
+  def get(parameters: OneOrMore[GlobPattern]): Single[Configuration] =
     Protocol("CONFIG", "GET" :: parameters.value.map(_.value)).as[Arr.OfPairs[Bulk, Bulk], Configuration]
-  def get(parameter1: GlobPattern, parameter2: GlobPattern, parameters: GlobPattern*): Single.Aux[Configuration] =
+  def get(parameter1: GlobPattern, parameter2: GlobPattern, parameters: GlobPattern*): Single[Configuration] =
     get(OneOrMore.unsafeFrom(parameter1 :: parameter2 :: parameters.toList))
 
   /** Sets every parameter, or none of them if one can't be set */
-  def set[A: Show](parameters: OneOrMore[(Key, A)]): Single.Aux[OK] =
+  def set[A: Show](parameters: OneOrMore[(Key, A)]): Single[OK] =
     Protocol("CONFIG", "SET" *: parameters.value *: EmptyTuple).as[Str, OK]
 }
 
@@ -770,51 +770,51 @@ trait ServerCoreP extends ServerInspectionCoreP with MonitorP {
   val servertypes: ServerP.ServerTypes = new ServerP.ServerTypes {}
 
   /** Replies with the server's message, like "Background saving started" */
-  final val bgsave: Single.Aux[String] = Protocol("BGSAVE", EmptyTuple).as[Str, String]
+  final val bgsave: Single[String] = Protocol("BGSAVE", EmptyTuple).as[Str, String]
 
   /** BGSAVE that waits for a rewrite of the append only file in progress instead of failing */
-  final val bgsaveschedule: Single.Aux[String] = Protocol("BGSAVE", "SCHEDULE").as[Str, String]
+  final val bgsaveschedule: Single[String] = Protocol("BGSAVE", "SCHEDULE").as[Str, String]
 
-  final val dbsize: Single.Aux[NonNegLong] = Protocol("DBSIZE", EmptyTuple).as[Num, NonNegLong]
+  final val dbsize: Single[NonNegLong] = Protocol("DBSIZE", EmptyTuple).as[Num, NonNegLong]
 
   /** FAILOVER to that replica even if it hasn't caught up when the time is up */
-  final def replicafailoverforce(host: Host, port: Port, milliseconds: PosLong): Single.Aux[OK] =
+  final def replicafailoverforce(host: Host, port: Port, milliseconds: PosLong): Single[OK] =
     Protocol("FAILOVER", "TO" *: host *: port *: "FORCE" *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
 
   /** Stops a FAILOVER in progress */
-  final val replicafailoverabort: Single.Aux[OK] = Protocol("FAILOVER", "ABORT").as[Str, OK]
+  final val replicafailoverabort: Single[OK] = Protocol("FAILOVER", "ABORT").as[Str, OK]
 
-  final val flushall: Single.Aux[OK] = Protocol("FLUSHALL", EmptyTuple).as[Str, OK]
+  final val flushall: Single[OK] = Protocol("FLUSHALL", EmptyTuple).as[Str, OK]
 
-  final val flushallasync: Single.Aux[OK] = Protocol("FLUSHALL", "ASYNC").as[Str, OK]
+  final val flushallasync: Single[OK] = Protocol("FLUSHALL", "ASYNC").as[Str, OK]
 
-  final val flushallsync: Single.Aux[OK] = Protocol("FLUSHALL", "SYNC").as[Str, OK]
+  final val flushallsync: Single[OK] = Protocol("FLUSHALL", "SYNC").as[Str, OK]
 
-  final val flushdb: Single.Aux[OK] = Protocol("FLUSHDB", EmptyTuple).as[Str, OK]
+  final val flushdb: Single[OK] = Protocol("FLUSHDB", EmptyTuple).as[Str, OK]
 
-  final val flushdbasync: Single.Aux[OK] = Protocol("FLUSHDB", "ASYNC").as[Str, OK]
+  final val flushdbasync: Single[OK] = Protocol("FLUSHDB", "ASYNC").as[Str, OK]
 
-  final val flushdbsync: Single.Aux[OK] = Protocol("FLUSHDB", "SYNC").as[Str, OK]
+  final val flushdbsync: Single[OK] = Protocol("FLUSHDB", "SYNC").as[Str, OK]
 
-  final val info: Single.Aux[Info]                       = Protocol("INFO", EmptyTuple).as[Bulk, Info]
-  final def info(section: InfoSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
+  final val info: Single[Info]                       = Protocol("INFO", EmptyTuple).as[Bulk, Info]
+  final def info(section: InfoSection): Single[Info] = Protocol("INFO", section).as[Bulk, Info]
 
-  final val lastsave: Single.Aux[NonNegLong] = Protocol("LASTSAVE", EmptyTuple).as[Num, NonNegLong]
+  final val lastsave: Single[NonNegLong] = Protocol("LASTSAVE", EmptyTuple).as[Num, NonNegLong]
 
-  final def replicaof(host: Host, port: Port): Single.Aux[OK] = Protocol("REPLICAOF", host *: port *: EmptyTuple).as[Str, OK]
+  final def replicaof(host: Host, port: Port): Single[OK] = Protocol("REPLICAOF", host *: port *: EmptyTuple).as[Str, OK]
 
-  final val replicaofnoone: Single.Aux[OK] = Protocol("REPLICAOF", "NO" :: "ONE" :: Nil).as[Str, OK]
+  final val replicaofnoone: Single[OK] = Protocol("REPLICAOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
-  final val save: Single.Aux[OK] = Protocol("SAVE", EmptyTuple).as[Str, OK]
+  final val save: Single[OK] = Protocol("SAVE", EmptyTuple).as[Str, OK]
 
-  final val shutdown: Single.Aux[OK]                     = Protocol("SHUTDOWN", EmptyTuple).as[Str, OK]
-  final def shutdown(flag: ShutdownFlag): Single.Aux[OK] = Protocol("SHUTDOWN", flag).as[Str, OK]
+  final val shutdown: Single[OK]                     = Protocol("SHUTDOWN", EmptyTuple).as[Str, OK]
+  final def shutdown(flag: ShutdownFlag): Single[OK] = Protocol("SHUTDOWN", flag).as[Str, OK]
 
-  final def slaveof(host: Host, port: Port): Single.Aux[OK] = Protocol("SLAVEOF", host *: port *: EmptyTuple).as[Str, OK]
+  final def slaveof(host: Host, port: Port): Single[OK] = Protocol("SLAVEOF", host *: port *: EmptyTuple).as[Str, OK]
 
-  final val slaveofnoone: Single.Aux[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
+  final val slaveofnoone: Single[OK] = Protocol("SLAVEOF", "NO" :: "ONE" :: Nil).as[Str, OK]
 
-  final val time: Single.Aux[Time] =
+  final val time: Single[Time] =
     Protocol("TIME", EmptyTuple)
       .as[OneOf[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple] *: Arr.AsTuple[Num *: Num *: EmptyTuple] *: EmptyTuple], Time]
 }
@@ -833,11 +833,11 @@ trait ServerBaseP extends ServerCoreP with ServerInspectionBaseP {
       "ROLE"
     ) ++ client.supported ++ config.supported ++ latency.supported ++ command.supported ++ acl.supported
 
-  final val role: Single.Aux[Role] = Protocol("ROLE", EmptyTuple).using(RESPRead.instance(Role.roleRead))
+  final val role: Single[Role] = Protocol("ROLE", EmptyTuple).using(RESPRead.instance(Role.roleRead))
 
   /** A piece of art made by the server, and its version, as text. It's in every server below but KeyDB */
-  final val lolwut: Single.Aux[String]                  = Protocol("LOLWUT", EmptyTuple).as[Bulk, String]
-  final def lolwut(version: PosInt): Single.Aux[String] = Protocol("LOLWUT", "VERSION" *: version *: EmptyTuple).as[Bulk, String]
+  final val lolwut: Single[String]                  = Protocol("LOLWUT", EmptyTuple).as[Bulk, String]
+  final def lolwut(version: PosInt): Single[String] = Protocol("LOLWUT", "VERSION" *: version *: EmptyTuple).as[Bulk, String]
 
   lazy val client: ClientCommands = new ClientCommands {}
 
@@ -850,14 +850,14 @@ trait ServerBaseP extends ServerCoreP with ServerInspectionBaseP {
   lazy val acl: AclCommands = new AclCommands {}
 
   /** Replies with the server's message, like "Background append only file rewriting started" */
-  final val bgrewriteaof: Single.Aux[String] = Protocol("BGREWRITEAOF", EmptyTuple).as[Str, String]
+  final val bgrewriteaof: Single[String] = Protocol("BGREWRITEAOF", EmptyTuple).as[Str, String]
 
   /** FAILOVER: hands the primary role to a replica that has caught up, outside a cluster (CLUSTER FAILOVER is `failover`) */
-  final val replicafailover: Single.Aux[OK]                        = Protocol("FAILOVER", EmptyTuple).as[Str, OK]
-  final def replicafailover(milliseconds: PosLong): Single.Aux[OK] =
+  final val replicafailover: Single[OK]                        = Protocol("FAILOVER", EmptyTuple).as[Str, OK]
+  final def replicafailover(milliseconds: PosLong): Single[OK] =
     Protocol("FAILOVER", "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
-  final def replicafailover(host: Host, port: Port): Single.Aux[OK] = Protocol("FAILOVER", "TO" *: host *: port *: EmptyTuple).as[Str, OK]
-  final def replicafailover(host: Host, port: Port, milliseconds: PosLong): Single.Aux[OK] =
+  final def replicafailover(host: Host, port: Port): Single[OK] = Protocol("FAILOVER", "TO" *: host *: port *: EmptyTuple).as[Str, OK]
+  final def replicafailover(host: Host, port: Port, milliseconds: PosLong): Single[OK] =
     Protocol("FAILOVER", "TO" *: host *: port *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
 }
 
@@ -867,8 +867,8 @@ trait ServerShutdownSafeP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SHUTDOWN: FAILOVER SAFE")
 
-  final def shutdown(options: ValkeyShutdownOptions): Single.Aux[OK]                     = Protocol("SHUTDOWN", options.params).as[Str, OK]
-  final def shutdown(flag: ShutdownFlag, options: ValkeyShutdownOptions): Single.Aux[OK] =
+  final def shutdown(options: ValkeyShutdownOptions): Single[OK]                     = Protocol("SHUTDOWN", options.params).as[Str, OK]
+  final def shutdown(flag: ShutdownFlag, options: ValkeyShutdownOptions): Single[OK] =
     Protocol("SHUTDOWN", flag *: options.params *: EmptyTuple).as[Str, OK]
 }
 
@@ -878,8 +878,8 @@ trait ServerShutdownOptionsP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SHUTDOWN: FORCE NOW")
 
-  final def shutdown(options: ShutdownOptions): Single.Aux[OK]                     = Protocol("SHUTDOWN", options.params).as[Str, OK]
-  final def shutdown(flag: ShutdownFlag, options: ShutdownOptions): Single.Aux[OK] =
+  final def shutdown(options: ShutdownOptions): Single[OK]                     = Protocol("SHUTDOWN", options.params).as[Str, OK]
+  final def shutdown(flag: ShutdownFlag, options: ShutdownOptions): Single[OK] =
     Protocol("SHUTDOWN", flag *: options.params *: EmptyTuple).as[Str, OK]
 }
 
@@ -887,10 +887,10 @@ trait ServerShutdownOptionsP extends Features {
 trait ServerInfoManyP extends Features {
   import ServerP.{Info, InfoSection, LatencyStatsSection}
 
-  final def info(sections: OneOrMore[InfoSection]): Single.Aux[Info] = Protocol("INFO", sections.value).as[Bulk, Info]
-  final def info(section1: InfoSection, section2: InfoSection, sections: InfoSection*): Single.Aux[Info] =
+  final def info(sections: OneOrMore[InfoSection]): Single[Info] = Protocol("INFO", sections.value).as[Bulk, Info]
+  final def info(section1: InfoSection, section2: InfoSection, sections: InfoSection*): Single[Info] =
     info(OneOrMore.unsafeFrom(section1 :: section2 :: sections.toList))
-  final def info(section: LatencyStatsSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
+  final def info(section: LatencyStatsSection): Single[Info] = Protocol("INFO", section).as[Bulk, Info]
 }
 
 /** SHUTDOWN with NOW, FORCE and ABORT, and INFO with several sections: Redis 7.0 */
@@ -898,14 +898,14 @@ trait ServerShutdownAndInfoP extends ServerShutdownOptionsP with ServerInfoManyP
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SHUTDOWN: ABORT")
 
   /** Stops a shutdown that is waiting for replicas to catch up */
-  final val shutdownabort: Single.Aux[OK] = Protocol("SHUTDOWN", "ABORT").as[Str, OK]
+  final val shutdownabort: Single[OK] = Protocol("SHUTDOWN", "ABORT").as[Str, OK]
 }
 
 /** INFO THREADS and INFO KEYSIZES: Redis 8.0 */
 trait ServerInfoRedis8P extends Features {
   import ServerP.{Info, Redis8Section}
 
-  final def info(section: Redis8Section): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
+  final def info(section: Redis8Section): Single[Info] = Protocol("INFO", section).as[Bulk, Info]
 }
 
 /** HOTKEYS and INFO HOTKEYS: Redis 8.6 */
@@ -916,7 +916,7 @@ trait ServerHotKeysP extends Features {
 
   object hotkeys extends HotKeysCommands
 
-  final def info(section: HotKeysSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
+  final def info(section: HotKeysSection): Single[Info] = Protocol("INFO", section).as[Bulk, Info]
 }
 
 /** COMMANDLOG: Valkey 8.1 */
@@ -930,7 +930,7 @@ trait ServerCommandLogP extends Features {
 trait ServerInfoTlsP extends Features {
   import ServerP.{Info, TlsSection}
 
-  final def info(section: TlsSection): Single.Aux[Info] = Protocol("INFO", section).as[Bulk, Info]
+  final def info(section: TlsSection): Single[Info] = Protocol("INFO", section).as[Bulk, Info]
 }
 
 /** BGSAVE CANCEL: Valkey 8.1 */
@@ -938,7 +938,7 @@ trait ServerBgSaveCancelP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("BGSAVE: CANCEL")
 
   /** Stops a BGSAVE in progress, or one scheduled with BGSAVE SCHEDULE */
-  final val bgsavecancel: Single.Aux[String] = Protocol("BGSAVE", "CANCEL").as[Str, String]
+  final val bgsavecancel: Single[String] = Protocol("BGSAVE", "CANCEL").as[Str, String]
 }
 
 trait ClientAllCommands

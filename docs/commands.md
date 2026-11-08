@@ -1,6 +1,6 @@
 # Commands
 
-A command is a value of type `Protocol.Aux[A]`, where `A` is the type of its
+A command is a value of type `Protocol[A]`, where `A` is the type of its
 reply. Building one doesn't send anything; you send it with a
 [client](client.md).
 
@@ -9,8 +9,8 @@ import laserdisc.*
 import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 
-val setA: Protocol.Aux[OK]             = set("a", 23)
-val getA: Protocol.Aux[Option[PosInt]] = get[PosInt]("a")
+val setA: Protocol[OK]             = set("a", 23)
+val getA: Protocol[Option[PosInt]] = get[PosInt]("a")
 ```
 
 `laserdisc.redis_8_10.*` brings every command of Redis 8.10 into scope. Use the
@@ -205,13 +205,13 @@ val keys = OneOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
 val args = OneOrMore.unsafeFrom(List[Value](1, "two"))
 
 // a number
-val count: Protocol.Aux[Long] = eval[Num, Long]("return #KEYS + #ARGV", keys, args)
+val count: Protocol[Long] = eval[Num, Long]("return #KEYS + #ARGV", keys, args)
 // a table of numbers
-val counts: Protocol.Aux[Seq[Long]] = eval[Arr.Of[Num], Seq[Long]]("return {#KEYS, #ARGV}", keys, args)
+val counts: Protocol[Seq[Long]] = eval[Arr.Of[Num], Seq[Long]]("return {#KEYS, #ARGV}", keys, args)
 // a string, or nil
-val value: Protocol.Aux[Option[String]] = eval[OrNullBulk[Bulk], Option[String]]("return redis.call('GET', KEYS[1])", keys)
+val value: Protocol[Option[String]] = eval[OrNullBulk[Bulk], Option[String]]("return redis.call('GET', KEYS[1])", keys)
 // always nil
-val done: Protocol.Aux[Unit] = evalargs[NullBulk, Unit]("redis.log(redis.LOG_NOTICE, ARGV[1])", args)
+val done: Protocol[Unit] = evalargs[NullBulk, Unit]("redis.log(redis.LOG_NOTICE, ARGV[1])", args)
 ```
 
 When the script may return nil instead of a value, say so in the reply's kind:

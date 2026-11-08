@@ -158,49 +158,49 @@ trait DragonflyP extends Features {
   /** Allows or refuses an action on the key, with the generic cell rate algorithm: `count` actions per `periodSeconds`, with bursts of up
     * to `maxBurst` more, and each action counting as `quantity` of them (1 when not given)
     */
-  final def clthrottle(key: Key, maxBurst: NonNegLong, count: PosLong, periodSeconds: PosLong): Single.Aux[Throttle] =
+  final def clthrottle(key: Key, maxBurst: NonNegLong, count: PosLong, periodSeconds: PosLong): Single[Throttle] =
     Protocol("CL.THROTTLE", key *: maxBurst *: count *: periodSeconds *: EmptyTuple).using(RESPRead.instance(DragonflyP.throttle))
-  final def clthrottle(key: Key, maxBurst: NonNegLong, count: PosLong, periodSeconds: PosLong, quantity: NonNegLong): Single.Aux[Throttle] =
+  final def clthrottle(key: Key, maxBurst: NonNegLong, count: PosLong, periodSeconds: PosLong, quantity: NonNegLong): Single[Throttle] =
     Protocol("CL.THROTTLE", key *: maxBurst *: count *: periodSeconds *: quantity *: EmptyTuple)
       .using(RESPRead.instance(DragonflyP.throttle))
 
   /** Sets the expiry of fields of a hash, or members of a set */
-  final def fieldexpire(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single.Aux[Seq[FieldExpireResult]] =
+  final def fieldexpire(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single[Seq[FieldExpireResult]] =
     Protocol("FIELDEXPIRE", key *: seconds *: fields.value *: EmptyTuple).as[Arr.Of[Num], Seq[FieldExpireResult]]
-  final def fieldexpire(key: Key, seconds: NonNegLong, field: Key, fields: Key*): Single.Aux[Seq[FieldExpireResult]] =
+  final def fieldexpire(key: Key, seconds: NonNegLong, field: Key, fields: Key*): Single[Seq[FieldExpireResult]] =
     fieldexpire(key, seconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   /** The expiry of a field of a hash, or a member of a set */
-  final def fieldttl(key: Key, field: Key): Single.Aux[FieldTtl] = Protocol("FIELDTTL", key *: field *: EmptyTuple).as[Num, FieldTtl]
+  final def fieldttl(key: Key, field: Key): Single[FieldTtl] = Protocol("FIELDTTL", key *: field *: EmptyTuple).as[Num, FieldTtl]
 
   /** Puts the value before the one at the key, and replies with the new length */
-  final def prepend[A: Show](key: Key, value: A): Single.Aux[NonNegLong] =
+  final def prepend[A: Show](key: Key, value: A): Single[NonNegLong] =
     Protocol("PREPEND", key *: value *: EmptyTuple).as[Num, NonNegLong]
 
-  final val role: Single.Aux[Role] = Protocol("ROLE", EmptyTuple).using(RESPRead.instance(Role.roleRead))
+  final val role: Single[Role] = Protocol("ROLE", EmptyTuple).using(RESPRead.instance(Role.roleRead))
 
   /** Takes over from the primary this server replicates, waiting for it up to `timeoutSeconds`. It isn't in Dragonfly's command reference
     */
-  final def repltakeover(timeoutSeconds: PosInt): Single.Aux[OK] = Protocol("REPLTAKEOVER", timeoutSeconds).as[Str, OK]
+  final def repltakeover(timeoutSeconds: PosInt): Single[OK] = Protocol("REPLTAKEOVER", timeoutSeconds).as[Str, OK]
 
   /** Deletes keys while going through them like SCAN, from cursor 0 until it replies 0 */
-  final def rm(cursor: NonNegLong): Single.Aux[Rm]                     = Protocol("RM", cursor).using(RESPRead.instance(DragonflyP.rm))
-  final def rm(cursor: NonNegLong, options: RmOptions): Single.Aux[Rm] =
+  final def rm(cursor: NonNegLong): Single[Rm]                     = Protocol("RM", cursor).using(RESPRead.instance(DragonflyP.rm))
+  final def rm(cursor: NonNegLong, options: RmOptions): Single[Rm] =
     Protocol("RM", cursor *: options.params *: EmptyTuple).using(RESPRead.instance(DragonflyP.rm))
 
   /** Adds members to a set that each expire after `seconds`, and replies how many were added */
-  final def saddex[A: Show](key: Key, seconds: PosLong, members: OneOrMore[A]): Single.Aux[NonNegLong] =
+  final def saddex[A: Show](key: Key, seconds: PosLong, members: OneOrMore[A]): Single[NonNegLong] =
     Protocol("SADDEX", key *: seconds *: members.value *: EmptyTuple).as[Num, NonNegLong]
-  final def saddex[A: Show](key: Key, seconds: PosLong, member: A, members: A*): Single.Aux[NonNegLong] =
+  final def saddex[A: Show](key: Key, seconds: PosLong, member: A, members: A*): Single[NonNegLong] =
     saddex(key, seconds, OneOrMore.unsafeFrom(member :: members.toList))
-  final def saddex[A: Show](key: Key, keepTtl: KeepTtl, seconds: PosLong, members: OneOrMore[A]): Single.Aux[NonNegLong] =
+  final def saddex[A: Show](key: Key, keepTtl: KeepTtl, seconds: PosLong, members: OneOrMore[A]): Single[NonNegLong] =
     Protocol("SADDEX", key *: keepTtl *: seconds *: members.value *: EmptyTuple).as[Num, NonNegLong]
-  final def saddex[A: Show](key: Key, keepTtl: KeepTtl, seconds: PosLong, member: A, members: A*): Single.Aux[NonNegLong] =
+  final def saddex[A: Show](key: Key, keepTtl: KeepTtl, seconds: PosLong, member: A, members: A*): Single[NonNegLong] =
     saddex(key, keepTtl, seconds, OneOrMore.unsafeFrom(member :: members.toList))
 
   /** Makes the keys never get evicted when Dragonfly runs as a cache, and replies how many it changed */
-  final def stick(keys: OneOrMoreKeys): Single.Aux[NonNegLong]  = Protocol("STICK", keys.value).as[Num, NonNegLong]
-  final def stick(key: Key, keys: Key*): Single.Aux[NonNegLong] =
+  final def stick(keys: OneOrMoreKeys): Single[NonNegLong]  = Protocol("STICK", keys.value).as[Num, NonNegLong]
+  final def stick(key: Key, keys: Key*): Single[NonNegLong] =
     stick(OneOrMoreKeys.unsafeFrom(key :: keys.toList))
 }
 
@@ -209,13 +209,13 @@ trait ClientDragonflyKillCommands extends Features {
   import Show.{hostShow, portShow}
 
   /** Closes the client with this id, and replies how many it closed */
-  def kill(id: NonNegLong): Single.Aux[NonNegLong] = Protocol("CLIENT", "KILL" *: "ID" *: id *: EmptyTuple).as[Num, NonNegLong]
+  def kill(id: NonNegLong): Single[NonNegLong] = Protocol("CLIENT", "KILL" *: "ID" *: id *: EmptyTuple).as[Num, NonNegLong]
 
   /** Closes the client connected from this address, and replies how many it closed */
-  def killaddress(host: Host, port: Port): Single.Aux[NonNegLong] =
+  def killaddress(host: Host, port: Port): Single[NonNegLong] =
     Protocol("CLIENT", "KILL" :: "ADDR" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Num, NonNegLong]
 
   /** Closes the clients connected to this address of the server, and replies how many it closed */
-  def killlocaladdress(host: Host, port: Port): Single.Aux[NonNegLong] =
+  def killlocaladdress(host: Host, port: Port): Single[NonNegLong] =
     Protocol("CLIENT", "KILL" :: "LADDR" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Num, NonNegLong]
 }

@@ -87,10 +87,10 @@ package object fs2 {
   implicit final def consRedisHandler[F[_], A, T <: Tuple, LT <: Tuple](
       implicit F: Temporal[F],
       T: RedisHandler.Aux[F, T, LT]
-  ): RedisHandler.Aux[F, Protocol.Aux[A] *: T, Maybe[A] *: LT] =
-    new RedisHandler[F, Protocol.Aux[A] *: T] {
+  ): RedisHandler.Aux[F, Protocol[A] *: T, Maybe[A] *: LT] =
+    new RedisHandler[F, Protocol[A] *: T] {
       override final type LOut = Maybe[A] *: LT
-      override final def prepare(in: Protocol.Aux[A] *: T): F[Prepared[F, LOut]] =
+      override final def prepare(in: Protocol[A] *: T): F[Prepared[F, LOut]] =
         in match {
           case protocol *: rest =>
             F.map2(Deferred[F, Maybe[A]], T.prepare(rest)) { case (promise, (requests, replies)) =>

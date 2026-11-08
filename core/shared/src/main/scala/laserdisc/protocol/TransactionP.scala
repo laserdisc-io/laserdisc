@@ -34,13 +34,13 @@ trait TransactionBaseP extends Features {
     )
 
   /** Runs `protocol` as a transaction (see [[Protocol.multi]]): the result is `None` when nothing ran because a watched key changed */
-  final def multi[A](protocol: Single.Aux[A]): Multi.Aux[Option[Maybe[A]]] =
+  final def multi[A](protocol: Single[A]): Multi[Option[Maybe[A]]] =
     Protocol.multi(protocol *: EmptyTuple).map(_.map(_.head))
 
-  final val unwatch: Single.Aux[OK] = Protocol("UNWATCH", EmptyTuple).as[Str, OK]
+  final val unwatch: Single[OK] = Protocol("UNWATCH", EmptyTuple).as[Str, OK]
 
-  final def watch(keys: OneOrMoreKeys): Single.Aux[OK]  = Protocol("WATCH", keys.value).as[Str, OK]
-  final def watch(key: Key, keys: Key*): Single.Aux[OK] =
+  final def watch(keys: OneOrMoreKeys): Single[OK]  = Protocol("WATCH", keys.value).as[Str, OK]
+  final def watch(key: Key, keys: Key*): Single[OK] =
     watch(OneOrMoreKeys.unsafeFrom(key :: keys.toList))
 }
 

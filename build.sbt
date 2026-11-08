@@ -55,7 +55,7 @@ ThisBuild / developers                 := List(tlGitHubDev("sirocchj", "Julien S
 ThisBuild / crossScalaVersions         := Seq(scala_212, scala_213, scala_3)
 ThisBuild / scalaVersion               := scala_213
 ThisBuild / tlJdkRelease               := Some(17)
-ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("17"), JavaSpec.temurin("21"))
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("17"), JavaSpec.temurin("21"), JavaSpec.temurin("25"))
 
 ThisBuild / coverageFailOnMinimum      := true
 ThisBuild / coverageHighlighting       := true
@@ -100,12 +100,15 @@ ThisBuild / githubWorkflowAddedJobs ++= List(
     scalas = githubWorkflowScalaVersions.value.toList,
     javas = githubWorkflowJavaVersions.value.toList,
     matrixAdds = Map("project" -> List("integration", "integrationJS", "integrationNative")),
-    matrixExcs = List(
-      MatrixExclude(Map("scala" -> "2.12", "java" -> githubWorkflowJavaVersions.value.last.render)),
-      MatrixExclude(Map("scala" -> "3", "java" -> githubWorkflowJavaVersions.value.last.render)),
-      MatrixExclude(Map("project" -> "integrationJS", "java" -> githubWorkflowJavaVersions.value.last.render)),
-      MatrixExclude(Map("project" -> "integrationNative", "java" -> githubWorkflowJavaVersions.value.last.render))
-    ),
+    // the later Java versions only run Scala 2.13 on the JVM, as the build job does
+    matrixExcs = githubWorkflowJavaVersions.value.toList.tail.flatMap { java =>
+      List(
+        MatrixExclude(Map("scala" -> "2.12", "java" -> java.render)),
+        MatrixExclude(Map("scala" -> "3", "java" -> java.render)),
+        MatrixExclude(Map("project" -> "integrationJS", "java" -> java.render)),
+        MatrixExclude(Map("project" -> "integrationNative", "java" -> java.render))
+      )
+    },
     steps = githubWorkflowJobSetup.value.toList ++ startUpRedisServers :+
       WorkflowStep.Sbt(
         List("project ${{ matrix.project }}", "headerCheckAll", "scalafmtCheckAll", "test"),

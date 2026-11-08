@@ -29,17 +29,25 @@ jobs:
       matrix:
         os: [ubuntu-22.04]
         scala: [2.12, 2.13, 3]
-        java: [temurin@17, temurin@21]
+        java: [temurin@17, temurin@21, temurin@25]
         project: [laserdiscJVM, laserdiscNative, laserdiscJS]
         exclude:
           - scala: 2.12
             java: temurin@21
+          - scala: 2.12
+            java: temurin@25
           - scala: 3
             java: temurin@21
+          - scala: 3
+            java: temurin@25
           - project: laserdiscNative
             java: temurin@21
+          - project: laserdiscNative
+            java: temurin@25
           - project: laserdiscJS
             java: temurin@21
+          - project: laserdiscJS
+            java: temurin@25
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -75,6 +83,19 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
         run: sbt +update
 
       - name: Check that workflows are up to date
@@ -160,6 +181,19 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
         run: sbt +update
 
       - name: Download target directories (2.12, laserdiscJVM)
@@ -319,6 +353,19 @@ jobs:
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
         run: sbt +update
 
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
+
       - name: Submit Dependencies
         uses: scalacenter/sbt-dependency-submission@v2
         with:
@@ -367,6 +414,19 @@ jobs:
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
         run: sbt +update
 
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
+
       - name: Generate site
         run: sbt ++3.9.0 docs/tlSite
 
@@ -384,7 +444,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04]
         scala: [2.12, 2.13, 3]
-        java: [temurin@17, temurin@21]
+        java: [temurin@17, temurin@21, temurin@25]
         project: [integration, integrationJS, integrationNative]
         exclude:
           - scala: 2.12
@@ -395,6 +455,14 @@ jobs:
             java: temurin@21
           - project: integrationNative
             java: temurin@21
+          - scala: 2.12
+            java: temurin@25
+          - scala: 3
+            java: temurin@25
+          - project: integrationJS
+            java: temurin@25
+          - project: integrationNative
+            java: temurin@25
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
@@ -429,6 +497,19 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
         run: sbt +update
 
       - name: Start up Redis
@@ -503,6 +584,19 @@ jobs:
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
         run: sbt +update
 
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
+
       - name: Test the import against its server
         run: test-setup/matrix.sh ${{ matrix.import }}
 
@@ -547,6 +641,19 @@ jobs:
 
       - name: sbt update
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
         run: sbt +update
 
       - name: Start up Redis

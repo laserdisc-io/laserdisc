@@ -23,46 +23,61 @@ package laserdisc
 package cli
 
 import munit.FunSuite
+import scodec.bits.ByteVector
+
+import java.nio.charset.StandardCharsets.UTF_8
 
 final class CommandLineSpec extends FunSuite {
+  private def parse(line: String): Either[String, List[String]] = CommandLine.parse(line).map(_.map(b => new String(b.toArray, UTF_8)))
+
   test("splits a command and its arguments on whitespace") {
-    assertEquals(CommandLine.parse("  SET  key\tvalue "), Right(List("SET", "key", "value")))
+    assertEquals(parse("  SET  key\tvalue "), Right(List("SET", "key", "value")))
   }
 
   test("an empty or blank line has no arguments") {
-    assertEquals(CommandLine.parse(""), Right(Nil))
-    assertEquals(CommandLine.parse("   "), Right(Nil))
+    assertEquals(parse(""), Right(Nil))
+    assertEquals(parse("   "), Right(Nil))
   }
 
   test("double quotes keep whitespace and support escapes") {
-    assertEquals(CommandLine.parse("""SET "my key" "a\"b\\c\n\x41""""), Right(List("SET", "my key", "a\"b\\c\nA")))
+    assertEquals(parse("""SET "my key" "a\"b\\c\n\x41""""), Right(List("SET", "my key", "a\"b\\c\nA")))
   }
 
   test("single quotes are literal, except for an escaped single quote") {
-    assertEquals(CommandLine.parse("""SET 'my key' 'it\'s \n'"""), Right(List("SET", "my key", "it's \\n")))
+    assertEquals(parse("""SET 'my key' 'it\'s \n'"""), Right(List("SET", "my key", "it's \\n")))
   }
 
   test("an empty quoted argument is kept") {
-    assertEquals(CommandLine.parse("""SET k """""), Right(List("SET", "k", "")))
+    assertEquals(parse("""SET k """""), Right(List("SET", "k", "")))
   }
 
   test("unbalanced quotes or a closing quote not followed by a space are invalid") {
-    assertEquals(CommandLine.parse("""SET "k v"""), Left("Invalid argument(s)"))
-    assertEquals(CommandLine.parse("""SET "k"v"""), Left("Invalid argument(s)"))
+    assertEquals(parse("""SET "k v"""), Left("Invalid argument(s)"))
+    assertEquals(parse("""SET "k"v"""), Left("Invalid argument(s)"))
   }
 
   test("double quotes support every escape, and take any other escaped character as it is") {
-    assertEquals(CommandLine.parse("""GET "\r\t\b\a\q""""), Right(List("GET", "\r\t\b\u0007q")))
+    assertEquals(parse("""GET "\r\t\b\a\q""""), Right(List("GET", "\r\t\b\u0007q")))
   }
 
   test("an \\x not followed by two hex digits is an x") {
-    assertEquals(CommandLine.parse("""GET "\xZZ" "\x4""""), Right(List("GET", "xZZ", "x4")))
+    assertEquals(parse("""GET "\xZZ" "\x4""""), Right(List("GET", "xZZ", "x4")))
   }
 
   test("a quote starts quoting anywhere in an argument, as in redis-cli, and must still be closed") {
-    assertEquals(CommandLine.parse("""SET k prefix"value""""), Right(List("SET", "k", "prefixvalue")))
-    assertEquals(CommandLine.parse("""SET k prefix" suffix""""), Right(List("SET", "k", "prefix suffix")))
-    assertEquals(CommandLine.parse("""SET k it'\'s'"""), Right(List("SET", "k", "it's")))
-    assertEquals(CommandLine.parse("""SET k prefix"unclosed"""), Left("Invalid argument(s)"))
+    assertEquals(parse("""SET k prefix"value""""), Right(List("SET", "k", "prefixvalue")))
+    assertEquals(parse("""SET k prefix" suffix""""), Right(List("SET", "k", "prefix suffix")))
+    assertEquals(parse("""SET k it'\'s'"""), Right(List("SET", "k", "it's")))
+    assertEquals(parse("""SET k prefix"unclosed"""), Left("Invalid argument(s)"))
+  }
+
+  test("an \\xHH escape is that byte, and the text around it is UTF-8, as in redis-cli") {
+    def value(line: String): Either[String, List[ByteVector]] = CommandLine.parse(line).map(_.drop(2))
+    def utf8(text: String): ByteVector                        = ByteVector(text.getBytes(UTF_8))
+
+    assertEquals(value("""SET k "\xc3\xa9""""), Right(List(ByteVector(0xc3, 0xa9))))
+    assertEquals(value("""SET k "\xff""""), Right(List(ByteVector(0xff))))
+    assertEquals(value("""SET k "é\x80€""""), Right(List(utf8("é") ++ ByteVector(0x80) ++ utf8("€"))))
+    assertEquals(value("SET k \uD83D\uDE00"), Right(List(utf8("\uD83D\uDE00"))))
   }
 }

@@ -22,32 +22,68 @@
 package laserdisc
 package cli
 
+import scodec.bits.ByteVector
+
+import java.nio.charset.StandardCharsets.UTF_8
 import scala.annotation.tailrec
 
 /** Splits a line typed at the prompt into a command and its arguments, following redis-cli's rules: arguments are separated by whitespace,
   * and a quote starts quoting anywhere in one, so `a"b c"` is `ab c`. "Double quoted" text supports the escapes \\ \" \n \r \t \b \a and
-  * \xHH, 'single quoted' text only \'.
+  * \xHH, where \xHH is that byte, 'single quoted' text only \'. Each argument is the bytes of its text, in UTF-8, and of its \xHH escapes
   */
 private[cli] object CommandLine {
-  final def parse(line: String): Either[String, List[String]] = {
+  // an argument's text and the bytes of its escapes, in order: each run of text is encoded once, so characters made of two chars stay whole
+  private final class Argument {
+    private val bytes = Array.newBuilder[Byte]
+    private val text  = new StringBuilder
+    private var empty = true
+
+    def isEmpty: Boolean = empty
+
+    def +=(c: Char): Argument = {
+      text += c
+      empty = false
+      this
+    }
+
+    def byte(b: Byte): Argument = {
+      flush()
+      bytes += b
+      empty = false
+      this
+    }
+
+    def result(): ByteVector = {
+      flush()
+      ByteVector.view(bytes.result())
+    }
+
+    private def flush(): Unit =
+      if (text.nonEmpty) {
+        bytes ++= text.toString.getBytes(UTF_8)
+        text.clear()
+      }
+  }
+
+  final def parse(line: String): Either[String, List[ByteVector]] = {
     val error = Left("Invalid argument(s)")
 
-    @tailrec def unquoted(i: Int, acc: StringBuilder, args: List[String]): Either[String, List[String]] =
+    @tailrec def unquoted(i: Int, acc: Argument, args: List[ByteVector]): Either[String, List[ByteVector]] =
       if (i == line.length) Right((if (acc.isEmpty) args else acc.result() :: args).reverse)
       else
         line.charAt(i) match {
-          case c if c.isWhitespace => unquoted(i + 1, new StringBuilder, if (acc.isEmpty) args else acc.result() :: args)
+          case c if c.isWhitespace => unquoted(i + 1, new Argument, if (acc.isEmpty) args else acc.result() :: args)
           case '"'                 => quoted(i + 1, '"', acc, args)
           case '\''                => quoted(i + 1, '\'', acc, args)
           case c                   => unquoted(i + 1, acc += c, args)
         }
 
-    @tailrec def quoted(i: Int, quote: Char, acc: StringBuilder, args: List[String]): Either[String, List[String]] =
+    @tailrec def quoted(i: Int, quote: Char, acc: Argument, args: List[ByteVector]): Either[String, List[ByteVector]] =
       if (i == line.length) error
       else
         line.charAt(i) match {
           case `quote` if i + 1 == line.length || line.charAt(i + 1).isWhitespace =>
-            unquoted(i + 1, new StringBuilder, acc.result() :: args)
+            unquoted(i + 1, new Argument, acc.result() :: args)
           case `quote`                                      => error
           case '\\' if i + 1 < line.length && quote == '\'' =>
             line.charAt(i + 1) match {
@@ -62,13 +98,13 @@ private[cli] object CommandLine {
               case 'b' => quoted(i + 2, quote, acc += '\b', args)
               case 'a' => quoted(i + 2, quote, acc += '\u0007', args)
               case 'x' if i + 3 < line.length && isHex(line.charAt(i + 2)) && isHex(line.charAt(i + 3)) =>
-                quoted(i + 4, quote, acc += Integer.parseInt(line.substring(i + 2, i + 4), 16).toChar, args)
+                quoted(i + 4, quote, acc.byte(Integer.parseInt(line.substring(i + 2, i + 4), 16).toByte), args)
               case c => quoted(i + 2, quote, acc += c, args)
             }
           case c => quoted(i + 1, quote, acc += c, args)
         }
 
-    unquoted(0, new StringBuilder, Nil)
+    unquoted(0, new Argument, Nil)
   }
 
   private final def isHex(c: Char): Boolean = Character.digit(c, 16) >= 0

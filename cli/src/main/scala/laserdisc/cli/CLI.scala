@@ -22,6 +22,7 @@
 package laserdisc
 package cli
 
+import java.nio.charset.StandardCharsets.UTF_8
 import _root_.fs2.{io, text}
 import cats.effect.*
 import cats.syntax.all.*
@@ -122,7 +123,7 @@ object CLI extends IOApp { self =>
           _.map(CommandLine.parse).flatMap {
             case Left(error)            => Stream.exec(prompt(s"(error) $error$LF"))
             case Right(Nil)             => Stream.exec(emptyPrompt)
-            case Right(command :: args) => Stream.emit(Protocol(command, args).using(RESPRead.raw))
+            case Right(command :: args) => Stream.emit(Protocol(new String(command.toArray, UTF_8), args.map(Bulk(_))).using(RESPRead.raw))
           }
 
         emptyPrompt >>

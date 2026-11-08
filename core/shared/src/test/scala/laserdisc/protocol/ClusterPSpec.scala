@@ -52,6 +52,14 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   private def ClusterSlotInfo(master: ClusterSlotNode, replicas: Seq[ClusterSlotNode]): ClusterP.SlotInfo7_0 =
     ClusterP.SlotInfoOf7_0(master, replicas)
 
+  test("The Cluster protocol reads nofailover, and a flag it doesn't name as other, on every version") {
+    val line     = "99827067944ff3beebdc07a453dd36dd1f81c1bc :6379@16379 myself,master,nofailover,later - 0 0 0 connected"
+    val expected = Seq(Seq(ClusterP.Flag.myself, ClusterP.Flag.master, ClusterP.Flag.nofailover, ClusterP.Flag.other("later")))
+    assertEquals(nodes.decode(Bulk(line)).map(_.nodes.map(_.flags)), expected)
+    assertEquals(redis_6_2.nodes.decode(Bulk(line)).map(_.nodes.map(_.flags)), expected)
+    assert(nodes.decode(Bulk(line.replace("master,nofailover", "master,,nofailover"))).isLeft)
+  }
+
   test("The Cluster protocol of Redis 6.2 reads the nodes and slots of every version, without what Redis 7.0 adds") {
     val line =
       "07c37dfeb235213a872192d90877d0cd55635b91 127.0.0.1:30004@31004,my.host.example slave e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca 0 1426238317239 4 connected"
@@ -109,7 +117,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     val nid    = NodeIdRegexWit.value
     val ip     = IPv4RegexWit.value
     val domain = Rfc1123HostnameRegexWit.value
-    val flags  = raw"noflags|(myself|master|slave|fail\?|fail|handshake|noaddr)(,(myself|master|slave|fail\?|fail|handshake|noaddr))*"
+    val flags  = raw"noflags|([a-z?]+)(,([a-z?]+))*"
     val link   = raw"(connected|disconnected)"
     val slots  = raw"(\d+|(\d+-\d+)|\[\d+-[><]-$nid\])?(\s(\d+|(\d+-\d+)|\[\d+-[><]-$nid\]))*"
     val R      = raw"^$nid\s($ip|$domain)?:(\d+)(@\d+)?\s($flags)\s(-|$nid)\s\d+\s\d+\s\d+\s$link\s$slots$$".r
@@ -117,7 +125,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     _.map(rawNodeToString).forall { case R(_*) => true; case _ => false }
   }
   private val nodesGen: Gen[RawNodes] = {
-    val flag     = Gen.oneOf("myself", "master", "slave", "fail?", "fail", "handshake", "noaddr")
+    val flag     = Gen.oneOf("myself", "master", "slave", "fail?", "fail", "handshake", "noaddr", "nofailover", "later")
     val slotType = Gen.oneOf(
       slotGen.map(_.toString),
       slotGen.flatMap(f => slotGen.map(t => s"$f-$t")),

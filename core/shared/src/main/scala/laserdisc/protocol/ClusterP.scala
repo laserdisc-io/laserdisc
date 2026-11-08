@@ -127,15 +127,17 @@ object ClusterP {
       case "noflags" => Right(Seq.empty)
       case s         =>
         s.split(COMMA_CH).foldRight[Either[RESPDecErr, List[Flag]]](Right(Nil)) {
-          case ("myself", Right(fgs))    => Right(Flag.myself :: fgs)
-          case ("master", Right(fgs))    => Right(Flag.master :: fgs)
-          case ("slave", Right(fgs))     => Right(Flag.replica :: fgs)
-          case ("fail?", Right(fgs))     => Right(Flag.possiblefail :: fgs)
-          case ("fail", Right(fgs))      => Right(Flag.fail :: fgs)
-          case ("handshake", Right(fgs)) => Right(Flag.handshake :: fgs)
-          case ("noaddr", Right(fgs))    => Right(Flag.noaddress :: fgs)
-          case (other, Right(_))         => Left(RESPDecErr(s"Unexpected flag encoding. Was $other"))
-          case (_, left)                 => left
+          case ("myself", Right(fgs))     => Right(Flag.myself :: fgs)
+          case ("master", Right(fgs))     => Right(Flag.master :: fgs)
+          case ("slave", Right(fgs))      => Right(Flag.replica :: fgs)
+          case ("fail?", Right(fgs))      => Right(Flag.possiblefail :: fgs)
+          case ("fail", Right(fgs))       => Right(Flag.fail :: fgs)
+          case ("handshake", Right(fgs))  => Right(Flag.handshake :: fgs)
+          case ("noaddr", Right(fgs))     => Right(Flag.noaddress :: fgs)
+          case ("nofailover", Right(fgs)) => Right(Flag.nofailover :: fgs)
+          case ("", Right(_))             => Left(RESPDecErr(s"Unexpected flag encoding. Was $s"))
+          case (other, Right(fgs))        => Right(Flag.other(other) :: fgs)
+          case (_, left)                  => left
         }
     }
     private final val MM: Read[String, Option[NodeId]] = Read.instance {
@@ -215,15 +217,20 @@ object ClusterP {
     }
   }
 
+  /** A flag of a node in CLUSTER NODES. `nofailover` is a replica that won't take over from its master, and `other` is a flag laserdisc
+    * doesn't name, like one a later version adds
+    */
   sealed trait Flag
   object Flag {
-    case object myself       extends Flag
-    case object master       extends Flag
-    case object replica      extends Flag
-    case object possiblefail extends Flag
-    case object fail         extends Flag
-    case object handshake    extends Flag
-    case object noaddress    extends Flag
+    case object myself                   extends Flag
+    case object master                   extends Flag
+    case object replica                  extends Flag
+    case object possiblefail             extends Flag
+    case object fail                     extends Flag
+    case object handshake                extends Flag
+    case object noaddress                extends Flag
+    case object nofailover               extends Flag
+    final case class other(name: String) extends Flag
 
     implicit final val flagShow: Show[Flag] = Show.instance {
       case `myself`       => "myself"
@@ -233,6 +240,8 @@ object ClusterP {
       case `fail`         => "fail"
       case `handshake`    => "handshake"
       case `noaddress`    => "noaddr"
+      case `nofailover`   => "nofailover"
+      case other(name)    => name
     }
   }
 

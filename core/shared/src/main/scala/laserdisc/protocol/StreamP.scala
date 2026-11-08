@@ -26,26 +26,67 @@ import Protocol.Single
 
 object StreamP {
 
+  /** A part of a stream id: a whole number from 0 to 2^64^ - 1, as the server keeps both parts unsigned. It's kept in a `Long`, so the
+    * numbers above `Long.MaxValue` come from text or a `BigInt`
+    */
+  final class IdPart private (private val bits: Long) {
+    def toBigInt: BigInt = if (bits >= 0L) BigInt(bits) else BigInt(bits) + IdPart.range
+
+    override def equals(other: Any): Boolean = other match {
+      case that: IdPart => bits == that.bits
+      case _            => false
+    }
+    override def hashCode: Int    = java.lang.Long.hashCode(bits)
+    override def toString: String = java.lang.Long.toUnsignedString(bits)
+  }
+  object IdPart {
+    private val range = BigInt(1) << 64
+
+    final val zero: IdPart = new IdPart(0L)
+    final val max: IdPart  = new IdPart(-1L)
+
+    def apply(n: NonNegLong): IdPart = new IdPart(n.value)
+
+    def from(n: BigInt): Either[String, IdPart] =
+      if (n >= 0 && n < range) Right(new IdPart(n.longValue)) else Left(s"A part of a stream id goes from 0 to 2^64 - 1, but was $n")
+
+    /** Only digits, as the server sends them */
+    def from(text: String): Either[String, IdPart] =
+      if (text.nonEmpty && text.length <= 20 && text.forall(c => c >= '0' && c <= '9')) from(BigInt(text))
+      else Left(s"A part of a stream id is up to 20 digits, but was $text")
+
+    implicit final val idPartShow: Show[IdPart]         = Show.instance(p => java.lang.Long.toUnsignedString(p.bits))
+    implicit final val idPartOrdering: Ordering[IdPart] =
+      Ordering.fromLessThan((a, b) => java.lang.Long.compareUnsigned(a.bits, b.bits) < 0)
+  }
+
   /** The id of a stream entry: the time it was added, in milliseconds, and a sequence number for entries added in the same millisecond */
-  final case class Id(milliseconds: NonNegLong, sequence: NonNegLong)
+  final case class Id(milliseconds: IdPart, sequence: IdPart)
   object Id {
     private final val IdRegex = raw"(\d+)-(\d+)".r
 
-    implicit final val idShow: Show[Id]            = Show.instance(id => s"${id.milliseconds.value}-${id.sequence.value}")
-    implicit final val bulk2IdRead: Read[Bulk, Id] = Read.instancePF("Bulk(stream id)") {
-      case Bulk(IdRegex(ToLong(NonNegLong(ms)), ToLong(NonNegLong(seq)))) => Id(ms, seq)
+    def apply(milliseconds: NonNegLong, sequence: NonNegLong): Id = Id(IdPart(milliseconds), IdPart(sequence))
+
+    implicit final val idShow: Show[Id] =
+      Show.instance(id => s"${Show[IdPart].show(id.milliseconds)}-${Show[IdPart].show(id.sequence)}")
+    implicit final val bulk2IdRead: Read[Bulk, Id] = Read.instance {
+      case Bulk(s @ IdRegex(ms, seq)) =>
+        IdPart.from(ms).flatMap(m => IdPart.from(seq).map(Id(m, _))).leftMap(e => RESPDecErr(s"Read[Bulk, Id], $e in $s"))
+      case other => Left(RESPDecErr(s"Read[Bulk, Id], expected a stream id but was $other"))
     }
   }
 
   /** The id of an entry to add at the given milliseconds, for XADD: the server picks the sequence */
-  final case class IdAt private[laserdisc] (milliseconds: NonNegLong)
+  final case class IdAt private[laserdisc] (milliseconds: IdPart)
   trait IdAtBuilders {
     def apply(milliseconds: NonNegLong): IdAt
+    def apply(milliseconds: IdPart): IdAt
   }
   private[laserdisc] object IdAt extends IdAtBuilders {
-    def apply(milliseconds: NonNegLong): IdAt = new IdAt(milliseconds)
+    def apply(milliseconds: NonNegLong): IdAt = new IdAt(IdPart(milliseconds))
+    def apply(milliseconds: IdPart): IdAt     = new IdAt(milliseconds)
 
-    implicit final val idAtShow: Show[IdAt] = Show.instance(id => s"${id.milliseconds.value}-*")
+    implicit final val idAtShow: Show[IdAt] = Show.instance(id => s"${Show[IdPart].show(id.milliseconds)}-*")
   }
 
   /** An entry of a stream: its id and its fields, in the order they were added. An entry has at least one field, so empty fields mean the
@@ -731,6 +772,7 @@ object StreamP {
     final type StreamPending        = StreamP.PendingEntry
     final type StreamPendingSummary = StreamP.PendingSummary
     final type StreamId             = StreamP.Id
+    final type StreamIdPart         = StreamP.IdPart
     final type StreamNoMkStream     = StreamP.NoMkStream
     final type StreamTrim           = StreamP.Trim
     final val StreamBound          = StreamP.Bound
@@ -743,6 +785,7 @@ object StreamP {
     final val StreamPending        = StreamP.PendingEntry
     final val StreamPendingSummary = StreamP.PendingSummary
     final val StreamId             = StreamP.Id
+    final val StreamIdPart         = StreamP.IdPart
     final val StreamNoMkStream     = StreamP.NoMkStream
     final val StreamTrim           = StreamP.Trim
   }

@@ -30,6 +30,30 @@ final class StreamPSpec extends BaseSpec with StreamP {
   private val id2                     = StreamId(NonNegLong(9999999999999L), NonNegLong(1L))
   private val fields                  = OneOrMore.unsafeFrom(List(Key("a") -> 1, Key("b") -> 2))
 
+  test("The Stream protocol reads and writes ids whose parts go above Long.MaxValue, up to 2^64 - 1, as the server allows") {
+    def part(text: String): StreamIdPart = StreamIdPart.from(text).fold(e => fail(e), identity)
+    val big                              = StreamId(part("1"), part("9223372036854775808"))
+    val max                              = StreamId(StreamIdPart.max, StreamIdPart.max)
+
+    assertEquals(xadd(Key("s"), big, fields).encode, bulks("XADD", "s", "1-9223372036854775808", "a", "1", "b", "2"))
+    assertEquals(xadd(Key("s"), big, fields).decode(Bulk("1-9223372036854775808")), big)
+    assertEquals(xadd(Key("s"), max, fields).decode(Bulk("18446744073709551615-18446744073709551615")), max)
+    assertEquals(Show[StreamId].show(max), "18446744073709551615-18446744073709551615")
+    assertEquals(max.milliseconds.toBigInt, (BigInt(1) << 64) - 1)
+    assertEquals(StreamIdPart.from(BigInt(Long.MaxValue) + 1), part("9223372036854775808"))
+    assert(xadd(Key("s"), fields).decode(Bulk("18446744073709551616-0")).isLeft)
+    assert(StreamIdPart.from("18446744073709551616").isLeft)
+    assert(StreamIdPart.from(BigInt(-1)).isLeft)
+    assert(StreamIdPart.from("1a").isLeft)
+    // they compare as unsigned, so a part above Long.MaxValue comes after one below it
+    assert(Ordering[StreamIdPart].lt(part("9223372036854775807"), part("9223372036854775808")))
+    assert(Ordering[StreamIdPart].lt(StreamIdPart.zero, StreamIdPart.max))
+    assertEquals(
+      xadd(Key("s"), StreamIdAt(StreamIdPart.max), fields).encode,
+      bulks("XADD", "s", "18446744073709551615-*", "a", "1", "b", "2")
+    )
+  }
+
   test("The Stream protocol using xadd sends NOMKSTREAM, the trim, the id and the fields in Redis's order") {
     assertEquals(xadd(Key("s"), fields).encode, bulks("XADD", "s", "*", "a", "1", "b", "2"))
     assertEquals(xadd(Key("s"), id2, fields).encode, bulks("XADD", "s", "9999999999999-1", "a", "1", "b", "2"))

@@ -46,7 +46,14 @@ final class RedisStreamClientSpec extends StreamClientSpec(LiveServers.port(6379
     )
     assertEquals(send(xtrim("x:r", StreamTrim.maxLen(0L), StreamRefPolicy.acked)).value, 0L)
     assertEquals(send(xtrim("x:r", StreamTrim.maxLen(0L), StreamRefPolicy.delRef)).value, 1L)
-    assert(second.milliseconds.value > 0L)
+    assert(second.milliseconds.toBigInt > 0)
+
+    // the server keeps both parts of an id unsigned, up to 2^64 - 1
+    val big = StreamId(StreamIdPart.max, StreamIdPart.max)
+    send(del("x:big"))
+    assertEquals(send(xadd("x:big", big, OneOrMore.unsafeFrom(List(Key("a") -> 1)))), big)
+    assertEquals(send(xrange[Int]("x:big", StreamBound.min, StreamBound.max)).map(_.id), Seq(big))
+    send(del("x:big"))
 
     send(del("x:at"))
     assertEquals(send(xadd("x:at", StreamIdAt(5L), OneOrMore.unsafeFrom(List(Key("a") -> 1)))), StreamId(5L, 0L))

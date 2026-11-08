@@ -25,7 +25,8 @@ package cli
 import scala.annotation.tailrec
 
 /** Splits a line typed at the prompt into a command and its arguments, following redis-cli's rules: arguments are separated by whitespace,
-  * "double quoted" ones support the escapes \\ \" \n \r \t \b \a and \xHH, 'single quoted' ones only \'.
+  * and a quote starts quoting anywhere in one, so `a"b c"` is `ab c`. "Double quoted" text supports the escapes \\ \" \n \r \t \b \a and
+  * \xHH, 'single quoted' text only \'.
   */
 private[cli] object CommandLine {
   final def parse(line: String): Either[String, List[String]] = {
@@ -36,8 +37,8 @@ private[cli] object CommandLine {
       else
         line.charAt(i) match {
           case c if c.isWhitespace => unquoted(i + 1, new StringBuilder, if (acc.isEmpty) args else acc.result() :: args)
-          case '"' if acc.isEmpty  => quoted(i + 1, '"', acc, args)
-          case '\'' if acc.isEmpty => quoted(i + 1, '\'', acc, args)
+          case '"'                 => quoted(i + 1, '"', acc, args)
+          case '\''                => quoted(i + 1, '\'', acc, args)
           case c                   => unquoted(i + 1, acc += c, args)
         }
 

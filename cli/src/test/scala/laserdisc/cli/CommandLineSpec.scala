@@ -59,7 +59,10 @@ final class CommandLineSpec extends FunSuite {
     assertEquals(CommandLine.parse("""GET "\xZZ" "\x4""""), Right(List("GET", "xZZ", "x4")))
   }
 
-  test("a quote inside an unquoted argument is part of it") {
-    assertEquals(CommandLine.parse("""GET a"b'c"""), Right(List("GET", "a\"b'c")))
+  test("a quote starts quoting anywhere in an argument, as in redis-cli, and must still be closed") {
+    assertEquals(CommandLine.parse("""SET k prefix"value""""), Right(List("SET", "k", "prefixvalue")))
+    assertEquals(CommandLine.parse("""SET k prefix" suffix""""), Right(List("SET", "k", "prefix suffix")))
+    assertEquals(CommandLine.parse("""SET k it'\'s'"""), Right(List("SET", "k", "it's")))
+    assertEquals(CommandLine.parse("""SET k prefix"unclosed"""), Left("Invalid argument(s)"))
   }
 }

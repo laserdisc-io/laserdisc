@@ -41,11 +41,13 @@ object ClusterManagement {
     List(Show[Slot].show(from), Show[Slot].show(to))
   }
 
-  /** A node of CLUSTER SHARDS. A node may have a port, a TLS port or both, and a hostname */
+  /** A node of CLUSTER SHARDS. A node may have a port, a TLS port or both, and a hostname. `endpoint` is `None` when the server says to use
+    * the host you connected to
+    */
   final case class ShardNode(
       id: String,
       ip: String,
-      endpoint: String,
+      endpoint: Option[String],
       role: String,
       health: String,
       replicationOffset: Long,
@@ -72,7 +74,7 @@ object ClusterManagement {
     for {
       id       <- f.bulk[String]("id")
       ip       <- f.bulk[String]("ip")
-      endpoint <- f.bulk[String]("endpoint")
+      endpoint <- f[OrNullBulk[Bulk], Option[String]]("endpoint").map(_.filter(_.nonEmpty))
       role     <- f.bulk[String]("role")
       health   <- f.bulk[String]("health")
       offset   <- f.num[Long]("replication-offset")

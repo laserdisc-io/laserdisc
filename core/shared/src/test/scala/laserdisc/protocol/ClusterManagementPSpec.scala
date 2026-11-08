@@ -62,11 +62,40 @@ final class ClusterManagementPSpec extends BaseSpec with ClusterP with ServerBac
         Bulk("4638e2605f114ba2283c979cb2b36add1200d95c")
       )
     )
-    val expected = ShardNode(nodeId.value, "172.18.0.3", "172.18.0.3", "master", "online", 0L, Some(6379), None, None)
+    val expected = ShardNode(nodeId.value, "172.18.0.3", Some("172.18.0.3"), "master", "online", 0L, Some(6379), None, None)
     laserdisc.redis_7_0.shards.decode(redis).onRight(_ == Seq(ShardOf7_0(Seq(Slot(0) -> Slot(16383)), Seq(expected))))
     // Valkey 9.1's import reads each shard's id, which it always sends
     shards.decode(valkey).onRight(_.map(_.id) == Seq("4638e2605f114ba2283c979cb2b36add1200d95c"))
     assert(shards.decode(redis).isLeft)
+  }
+
+  test("The Cluster protocol using shards reads an endpoint sent as null or empty as the host you connected to") {
+    def withEndpoint(endpoint: RESP) = Arr(
+      Arr(
+        Bulk("slots"),
+        Arr(Nil),
+        Bulk("nodes"),
+        Arr(
+          Arr(
+            List[RESP](
+              Bulk("id"),
+              Bulk(nodeId.value),
+              Bulk("ip"),
+              Bulk("10.0.0.1"),
+              Bulk("endpoint"),
+              endpoint,
+              Bulk("role"),
+              Bulk("master")
+            ) ++
+              List[RESP](Bulk("replication-offset"), Num(0L), Bulk("health"), Bulk("online"))
+          )
+        )
+      )
+    )
+    val v = laserdisc.redis_7_0
+    v.shards.decode(withEndpoint(NullBulk)).onRight(_.flatMap(_.nodes.map(_.endpoint)) == Seq(None))
+    v.shards.decode(withEndpoint(Bulk(""))).onRight(_.flatMap(_.nodes.map(_.endpoint)) == Seq(None))
+    v.shards.decode(withEndpoint(Bulk("?"))).onRight(_.flatMap(_.nodes.map(_.endpoint)) == Seq(Some("?")))
   }
 
   test("The Cluster protocol using links reads each link") {

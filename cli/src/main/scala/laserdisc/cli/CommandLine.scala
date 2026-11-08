@@ -72,17 +72,17 @@ private[cli] object CommandLine {
       if (i == line.length) Right((if (acc.isEmpty) args else acc.result() :: args).reverse)
       else
         line.charAt(i) match {
-          case c if c.isWhitespace => unquoted(i + 1, new Argument, if (acc.isEmpty) args else acc.result() :: args)
-          case '"'                 => quoted(i + 1, '"', acc, args)
-          case '\''                => quoted(i + 1, '\'', acc, args)
-          case c                   => unquoted(i + 1, acc += c, args)
+          case c if ends(c) || (acc.isEmpty && isSpace(c)) => unquoted(i + 1, new Argument, if (acc.isEmpty) args else acc.result() :: args)
+          case '"'                                         => quoted(i + 1, '"', acc, args)
+          case '\''                                        => quoted(i + 1, '\'', acc, args)
+          case c                                           => unquoted(i + 1, acc += c, args)
         }
 
     @tailrec def quoted(i: Int, quote: Char, acc: Argument, args: List[ByteVector]): Either[String, List[ByteVector]] =
       if (i == line.length) error
       else
         line.charAt(i) match {
-          case `quote` if i + 1 == line.length || line.charAt(i + 1).isWhitespace =>
+          case `quote` if i + 1 == line.length || isSpace(line.charAt(i + 1)) =>
             unquoted(i + 1, new Argument, acc.result() :: args)
           case `quote`                                      => error
           case '\\' if i + 1 < line.length && quote == '\'' =>
@@ -108,4 +108,9 @@ private[cli] object CommandLine {
   }
 
   private final def isHex(c: Char): Boolean = Character.digit(c, 16) >= 0
+
+  // redis-cli's spaces are ASCII only: any of them separates arguments, but only these end an unquoted one, so a vertical tab or a form
+  // feed inside it stays, as does a space that isn't ASCII, like U+2003
+  private final def isSpace(c: Char): Boolean = c == ' ' || (c >= '\t' && c <= '\r')
+  private final def ends(c: Char): Boolean    = c == ' ' || c == '\t' || c == '\n' || c == '\r'
 }

@@ -34,6 +34,13 @@ final class CommandLineSpec extends FunSuite {
     assertEquals(parse("  SET  key\tvalue "), Right(List("SET", "key", "value")))
   }
 
+  test("only ASCII spaces separate arguments, as in redis-cli: a space that isn't ASCII, a vertical tab or a form feed stays in one") {
+    assertEquals(parse("SET k a\u2003b"), Right(List("SET", "k", "a\u2003b")))
+    assertEquals(parse("SET k a\u000bb\fc"), Right(List("SET", "k", "a\u000bb\fc")))
+    assertEquals(parse("\u000b\fSET k \u000b\f\t\r\nv"), Right(List("SET", "k", "v")))
+    assertEquals(parse("SET k \"v\"\u000b"), Right(List("SET", "k", "v")))
+  }
+
   test("an empty or blank line has no arguments") {
     assertEquals(parse(""), Right(Nil))
     assertEquals(parse("   "), Right(Nil))

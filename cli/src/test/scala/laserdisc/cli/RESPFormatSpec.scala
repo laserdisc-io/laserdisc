@@ -35,6 +35,12 @@ final class RESPFormatSpec extends FunSuite {
     assertEquals(RESPFormat.format(Arr(Nil)), "(empty array)")
   }
 
+  test("formats a value byte by byte, with \\xHH for each byte that isn't printable ASCII, as redis-cli does") {
+    assertEquals(RESPFormat.format(Bulk("€")), "\"\\xe2\\x82\\xac\"")
+    assertEquals(RESPFormat.format(Bulk(scodec.bits.ByteVector(0x80, 0xff))), "\"\\x80\\xff\"")
+    assertEquals(RESPFormat.format(Bulk("a\u0007\bz")), "\"a\\a\\bz\"")
+  }
+
   test("formats (nested) arrays as numbered, aligned lines") {
     val nested = Arr(Bulk("a"), Arr(Num(1L), NullBulk))
     assertEquals(RESPFormat.format(nested), List("1) \"a\"", "2) 1) (integer) 1", "   2) (nil)").mkString("\n"))

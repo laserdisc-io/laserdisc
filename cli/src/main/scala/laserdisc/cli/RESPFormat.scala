@@ -28,7 +28,7 @@ private[cli] object RESPFormat {
 
   private final def lines(resp: RESP): List[String] = resp match {
     case Str(value)        => value :: Nil
-    case Bulk(value)       => quote(value) :: Nil
+    case bulk: Bulk        => quote(bulk.bytes) :: Nil
     case Num(value)        => s"(integer) $value" :: Nil
     case Err(message)      => s"(error) $message" :: Nil
     case NullBulk | NilArr => "(nil)" :: Nil
@@ -44,14 +44,20 @@ private[cli] object RESPFormat {
       }
   }
 
-  private final def quote(s: String): String =
-    s.flatMap {
-      case '"'                     => "\\\""
-      case '\\'                    => "\\\\"
-      case '\n'                    => "\\n"
-      case '\r'                    => "\\r"
-      case '\t'                    => "\\t"
-      case c if c < ' ' || c > '~' => f"\\x${c.toInt}%02x"
-      case c                       => c.toString
-    }.mkString("\"", "", "\"")
+  // as redis-cli shows a value: byte by byte, with the bytes that aren't printable ASCII as \xHH
+  private final def quote(bytes: scodec.bits.ByteVector): String =
+    bytes.toArray.iterator
+      .map(b => (b & 0xff).toChar)
+      .map {
+        case '"'                     => "\\\""
+        case '\\'                    => "\\\\"
+        case '\n'                    => "\\n"
+        case '\r'                    => "\\r"
+        case '\t'                    => "\\t"
+        case '\u0007'                => "\\a"
+        case '\b'                    => "\\b"
+        case c if c < ' ' || c > '~' => f"\\x${c.toInt}%02x"
+        case c                       => c.toString
+      }
+      .mkString("\"", "", "\"")
 }

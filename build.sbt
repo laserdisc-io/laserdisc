@@ -150,12 +150,30 @@ ThisBuild / githubWorkflowAddedJobs ++= List(
         ),
         name = Some("Run tests with coverage")
       )
+  ),
+  // the one check for master's protection and for Mergify to require, so adding a version to a matrix doesn't need them changed. It
+  // runs no sbt, so its matrix is fixed: its check's name, CI passed (ubuntu-22.04, 2.13, temurin@17), stays the same
+  WorkflowJob(
+    id = "ci-passed",
+    name = "CI passed",
+    cond = Some("always()"),
+    needs = List("build", "integration", "server-versions", "coverage", "site"),
+    scalas = List("2.13"),
+    javas = List(JavaSpec.temurin("17")),
+    env = Map("RESULTS" -> "${{ join(needs.*.result, ' ') }}"),
+    steps = List(
+      WorkflowStep.Run(
+        commands = List("""for result in $RESULTS; do [ "$result" = success ] || { echo "a job ended with $result"; exit 1; }; done"""),
+        name = Some("Check that every job succeeded")
+      )
+    )
   )
 )
 ThisBuild / tlSitePublishBranch := Some("master")
 
 ThisBuild / mergifyLabelPaths    := Map.empty
 ThisBuild / mergifyStewardConfig := Some(MergifyStewardConfig(action = MergifyAction.Merge(Some("squash"))))
+ThisBuild / mergifyRequiredJobs  := Seq("ci-passed")
 
 lazy val commonSettings = Seq(
   headerEndYear := Some(2026)

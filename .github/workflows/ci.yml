@@ -575,3 +575,19 @@ jobs:
 
       - name: Run tests with coverage
         run: sbt '++ ${{ matrix.scala }}' coverage core/test core/coverageReport circe/test circe/coverageReport fs2/test fs2/coverageReport cli/test cli/coverageReport laws/test integration/test laserdiscJVM/coverageAggregate
+
+  ci-passed:
+    name: CI passed
+    needs: [build, integration, server-versions, coverage, site]
+    if: always()
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        scala: [2.13]
+        java: [temurin@17]
+    runs-on: ${{ matrix.os }}
+    env:
+      RESULTS: ${{ join(needs.*.result, ' ') }}
+    steps:
+      - name: Check that every job succeeded
+        run: for result in $RESULTS; do [ "$result" = success ] || { echo "a job ended with $result"; exit 1; }; done

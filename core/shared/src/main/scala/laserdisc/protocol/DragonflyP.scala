@@ -32,7 +32,7 @@ object DragonflyP {
     implicit val keepTtlShow: Show[KeepTtl] = Show.const("KEEPTTL")
   }
 
-  /** What FIELDEXPIRE did to a field: set its expiry, deleted it because the expiry was 0 seconds, or found no such field or key */
+  /** What FIELDEXPIRE did to a field: set its expiry, deleted it, or found no such field or key */
   sealed trait FieldExpireResult
   object FieldExpireResult {
     case object Set     extends FieldExpireResult
@@ -166,9 +166,9 @@ trait DragonflyP extends Features {
       .using(RESPRead.instance(DragonflyP.throttle))
 
   /** Sets the expiry of fields of a hash, or members of a set */
-  final def fieldexpire(key: Key, seconds: NonNegLong, fields: OneOrMoreKeys): Single[Seq[FieldExpireResult]] =
+  final def fieldexpire(key: Key, seconds: PosLong, fields: OneOrMoreKeys): Single[Seq[FieldExpireResult]] =
     Protocol("FIELDEXPIRE", key *: seconds *: fields.value *: EmptyTuple).as[Arr.Of[Num], Seq[FieldExpireResult]]
-  final def fieldexpire(key: Key, seconds: NonNegLong, field: Key, fields: Key*): Single[Seq[FieldExpireResult]] =
+  final def fieldexpire(key: Key, seconds: PosLong, field: Key, fields: Key*): Single[Seq[FieldExpireResult]] =
     fieldexpire(key, seconds, OneOrMoreKeys.unsafeFrom(field :: fields.toList))
 
   /** The expiry of a field of a hash, or a member of a set */

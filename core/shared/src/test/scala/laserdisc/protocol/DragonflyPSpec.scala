@@ -42,12 +42,14 @@ final class DragonflyPSpec extends BaseSpec with DragonflyP {
 
   test("The Dragonfly protocol using fieldexpire and fieldttl reads what the numbers mean") {
     val fields = OneOrMoreKeys.unsafeFrom(List(Key("f"), Key("g"), Key("h")))
-    assertEquals(fieldexpire(a, NonNegLong(5L), fields).encode, bulks("FIELDEXPIRE", "a", "5", "f", "g", "h"))
+    assertEquals(fieldexpire(a, PosLong(5L), fields).encode, bulks("FIELDEXPIRE", "a", "5", "f", "g", "h"))
     assertEquals(
-      fieldexpire(a, NonNegLong(5L), fields).decode(Arr(Num(1L), Num(2L), Num(-2L))),
+      fieldexpire(a, PosLong(5L), fields).decode(Arr(Num(1L), Num(2L), Num(-2L))),
       Seq[FieldExpireResult](FieldExpireResult.Set, FieldExpireResult.Deleted, FieldExpireResult.Missing)
     )
-    assert(fieldexpire(a, NonNegLong(5L), fields).decode(Arr(Num(9L))).isLeft)
+    assert(fieldexpire(a, PosLong(5L), fields).decode(Arr(Num(9L))).isLeft)
+    // Dragonfly refuses an expiry of 0 seconds
+    assert(compileErrors("fieldexpire(a, PosLong(0L), fields)").nonEmpty)
     assertEquals(fieldttl(a, Key("f")).encode, bulks("FIELDTTL", "a", "f"))
     assertEquals(fieldttl(a, Key("f")).decode(Num(7L)), FieldTtl.Expires(NonNegLong(7L)): FieldTtl)
     assertEquals(fieldttl(a, Key("f")).decode(Num(-1L)), FieldTtl.NoExpiry: FieldTtl)

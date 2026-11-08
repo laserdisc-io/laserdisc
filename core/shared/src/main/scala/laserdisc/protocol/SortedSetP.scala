@@ -72,7 +72,11 @@ object SortedSetP {
     }
 
   sealed trait Pop
-  object Pop {
+  trait PopBuilders {
+    val min: Pop
+    val max: Pop
+  }
+  private[laserdisc] object Pop extends PopBuilders {
     object min extends Pop
     object max extends Pop
 
@@ -194,7 +198,7 @@ object SortedSetP {
     final val scorerange = ScoreRange
   }
   trait SortedSetMPopTypes {
-    final val pop = Pop
+    final val pop: SortedSetP.PopBuilders = SortedSetP.Pop
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built

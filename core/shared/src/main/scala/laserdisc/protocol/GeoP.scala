@@ -164,7 +164,10 @@ object GeoP {
 
   /** BYPOLYGON, for GEOSEARCH and GEOSEARCHSTORE: Valkey 9.0 */
   final class Polygon private (val params: List[String])
-  object Polygon {
+  trait PolygonBuilders {
+    def apply(first: Coordinates, second: Coordinates, third: Coordinates, more: Coordinates*): Polygon
+  }
+  private[laserdisc] object Polygon extends PolygonBuilders {
     def apply(first: Coordinates, second: Coordinates, third: Coordinates, more: Coordinates*): Polygon = {
       val vertices = first :: second :: third :: more.toList
       new Polygon(
@@ -272,7 +275,7 @@ object GeoP {
   }
   trait GeoPolygonTypes {
     final type GeoPolygon = GeoP.Polygon
-    final val GeoPolygon = GeoP.Polygon
+    final val GeoPolygon: GeoP.PolygonBuilders = GeoP.Polygon
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built

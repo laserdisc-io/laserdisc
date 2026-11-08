@@ -28,13 +28,13 @@ object ScriptingP {
 
   /** REPLACE, for FUNCTION LOAD: replace the library if one of the same name is loaded */
   sealed trait Replace
-  object Replace extends Replace {
+  private[laserdisc] object Replace extends Replace {
     implicit val replaceShow: Show[Replace] = Show.const("REPLACE")
   }
 
   /** WITHCODE, for FUNCTION LIST: also give each library's code */
   sealed trait WithCode
-  object WithCode extends WithCode {
+  private[laserdisc] object WithCode extends WithCode {
     implicit val withCodeShow: Show[WithCode] = Show.const("WITHCODE")
   }
 
@@ -42,7 +42,12 @@ object ScriptingP {
     * `flush` them first, or `replace` those of the same name
     */
   sealed trait RestorePolicy
-  object RestorePolicy {
+  trait RestorePolicyBuilders {
+    val append: RestorePolicy
+    val flush: RestorePolicy
+    val replace: RestorePolicy
+  }
+  private[laserdisc] object RestorePolicy extends RestorePolicyBuilders {
     case object append  extends RestorePolicy
     case object flush   extends RestorePolicy
     case object replace extends RestorePolicy
@@ -130,14 +135,14 @@ object ScriptingP {
     final type ScriptingRunning       = ScriptingP.Running
     final type ScriptingStats         = ScriptingP.Stats
     final type ScriptingWithCode      = ScriptingP.WithCode
-    final val ScriptingEngine        = ScriptingP.Engine
-    final val ScriptingFunction      = ScriptingP.Function
-    final val ScriptingLibrary       = ScriptingP.Library
-    final val ScriptingReplace       = ScriptingP.Replace
-    final val ScriptingRestorePolicy = ScriptingP.RestorePolicy
-    final val ScriptingRunning       = ScriptingP.Running
-    final val ScriptingStats         = ScriptingP.Stats
-    final val ScriptingWithCode      = ScriptingP.WithCode
+    final val ScriptingEngine                                          = ScriptingP.Engine
+    final val ScriptingFunction                                        = ScriptingP.Function
+    final val ScriptingLibrary                                         = ScriptingP.Library
+    final val ScriptingReplace: ScriptingP.Replace                     = ScriptingP.Replace
+    final val ScriptingRestorePolicy: ScriptingP.RestorePolicyBuilders = ScriptingP.RestorePolicy
+    final val ScriptingRunning                                         = ScriptingP.Running
+    final val ScriptingStats                                           = ScriptingP.Stats
+    final val ScriptingWithCode: ScriptingP.WithCode                   = ScriptingP.WithCode
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built

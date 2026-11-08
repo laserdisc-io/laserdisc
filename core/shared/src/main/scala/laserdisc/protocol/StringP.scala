@@ -63,7 +63,11 @@ object StringP {
 
   /** BYTE and BIT, for BITCOUNT and BITPOS: whether start and end count bytes or bits */
   sealed trait BitUnit
-  object BitUnit {
+  trait BitUnitBuilders {
+    val byte: BitUnit
+    val bit: BitUnit
+  }
+  private[laserdisc] object BitUnit extends BitUnitBuilders {
     object byte extends BitUnit
     object bit  extends BitUnit
 
@@ -127,7 +131,11 @@ object StringP {
     /** Sets the expiry only if the key has none yet */
     def expiryIfNone(expiry: Expiry): IncrExOptions[A] = new IncrExOptions(params ++ expiry.params :+ "ENX")
   }
-  object IncrExOptions {
+  trait IncrExOptionsBuilders {
+    val int: IncrExOptions[Long]
+    val float: IncrExOptions[ValidDouble]
+  }
+  private[laserdisc] object IncrExOptions extends IncrExOptionsBuilders {
     final val int: IncrExOptions[Long]          = new IncrExOptions[Long](Nil)
     final val float: IncrExOptions[ValidDouble] = new IncrExOptions[ValidDouble](Nil)
   }
@@ -145,8 +153,12 @@ object StringP {
     }
 
   /** What STRALGO LCS compares: the values at two keys, or two values given directly */
-  sealed trait StrAlgoInput { def params: List[String] }
-  object StrAlgoInput       {
+  sealed trait StrAlgoInput  { def params: List[String] }
+  trait StrAlgoInputBuilders {
+    def keys(key1: Key, key2: Key): StrAlgoInput
+    def strings[A: Show](value1: A, value2: A): StrAlgoInput
+  }
+  private[laserdisc] object StrAlgoInput extends StrAlgoInputBuilders {
     private final class Of(override final val params: List[String]) extends StrAlgoInput
 
     def keys(key1: Key, key2: Key): StrAlgoInput             = new Of(List("KEYS", key1.value, key2.value))
@@ -212,12 +224,17 @@ object StringP {
 
   /** IFEQ, which Valkey and Redis added separately from IFNE, IFDEQ and IFDNE */
   final class IfEq private (val params: List[String])
-  object IfEq {
+  private[laserdisc] object IfEq {
     def apply[A: Show](a: A): IfEq = new IfEq(List("IFEQ", Show[A].show(a)))
   }
 
-  sealed trait Compare { def params: List[String] }
-  object Compare       {
+  sealed trait Compare  { def params: List[String] }
+  trait CompareBuilders {
+    def ifNe[A: Show](a: A): Compare
+    def ifDeq(digest: String): Compare
+    def ifDne(digest: String): Compare
+  }
+  private[laserdisc] object Compare extends CompareBuilders {
     private final class Of(override final val params: List[String]) extends Compare
 
     def ifNe[A: Show](a: A): Compare   = new Of(List("IFNE", Show[A].show(a)))
@@ -234,19 +251,19 @@ object StringP {
     final val flag     = Flag
   }
   trait StringBitUnitTypes {
-    final val bitUnit = BitUnit
+    final val bitUnit: StringP.BitUnitBuilders = StringP.BitUnit
   }
   trait StringAlgoTypes {
-    final val strAlgoInput = StringP.StrAlgoInput
+    final val strAlgoInput: StringP.StrAlgoInputBuilders = StringP.StrAlgoInput
   }
   trait StringCompareTypes {
-    final val compare = Compare
+    final val compare: StringP.CompareBuilders = StringP.Compare
   }
   trait StringIfEqTypes {
     final def ifEq[A: Show](a: A): IfEq = IfEq(a)
   }
   trait StringIncrExTypes {
-    final val increx = IncrExOptions
+    final val increx: StringP.IncrExOptionsBuilders = StringP.IncrExOptions
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built

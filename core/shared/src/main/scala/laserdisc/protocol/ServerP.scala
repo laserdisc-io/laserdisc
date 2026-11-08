@@ -487,14 +487,14 @@ object ServerP {
     final val trackingOptions = TrackingOptions
     final val unblockMode     = UnblockMode
   }
-  trait AclSelectorTypes  { final val aclSelectorRules = Acl.AclRulesWithSelectors.none }
-  trait AclDatabaseTypes  { final val aclDatabaseRules = Acl.AclRulesWithDatabases.none }
-  trait AclDragonflyTypes { final val aclDragonflyRules = Acl.AclDragonflyRules.none    }
-  trait CommandListTypes  { final val commandFilter = ServerInspection.CommandFilter    }
-  trait CommandLogTypes   { final val commandLogType = ServerInspection.CommandLogType  }
+  trait AclSelectorTypes  { final val aclSelectorRules: Acl.AclRulesWithSelectors = Acl.AclRulesWithSelectors.none              }
+  trait AclDatabaseTypes  { final val aclDatabaseRules: Acl.AclRulesWithDatabases = Acl.AclRulesWithDatabases.none              }
+  trait AclDragonflyTypes { final val aclDragonflyRules: Acl.AclDragonflyRules = Acl.AclDragonflyRules.none                     }
+  trait CommandListTypes  { final val commandFilter: ServerInspection.CommandFilterBuilders = ServerInspection.CommandFilter    }
+  trait CommandLogTypes   { final val commandLogType: ServerInspection.CommandLogTypeBuilders = ServerInspection.CommandLogType }
   trait HotKeysTypes      {
-    final val hotKeysMetrics = ServerInspection.HotKeysMetrics
-    final val hotKeysOptions = ServerInspection.HotKeysOptions
+    final val hotKeysMetrics: ServerInspection.HotKeysMetricsBuilders = ServerInspection.HotKeysMetrics
+    final val hotKeysOptions: ServerInspection.HotKeysOptionsBuilders = ServerInspection.HotKeysOptions
   }
   trait ShutdownTypes       { final val shutdownOptions = ShutdownOptions             }
   trait ValkeyShutdownTypes { final val valkeyShutdownOptions = ValkeyShutdownOptions }

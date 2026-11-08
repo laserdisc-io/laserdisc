@@ -324,14 +324,14 @@ object ClusterP {
     final val ClusterResetMode    = ClusterP.ResetMode
     final val ClusterSetSlotMode  = ClusterP.SetSlotMode
   }
-  trait ClusterSlotStatsTypes { final val slotStatsMetric = ClusterManagement.SlotStatsMetric }
+  trait ClusterSlotStatsTypes { final val slotStatsMetric: ClusterManagement.SlotStatsMetricBuilders = ClusterManagement.SlotStatsMetric }
   trait ClusterScanTypes      {
     final type ClusterScan        = ClusterManagement.Scan
     final type ClusterScanCursor  = ClusterManagement.ScanCursor
     final type ClusterScanOptions = ClusterManagement.ScanOptions
 
-    final val ClusterScanCursor  = ClusterManagement.ScanCursor
-    final val ClusterScanOptions = ClusterManagement.ScanOptions
+    final val ClusterScanCursor: ClusterManagement.ScanCursorBuilders   = ClusterManagement.ScanCursor
+    final val ClusterScanOptions: ClusterManagement.ScanOptionsBuilders = ClusterManagement.ScanOptions
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built

@@ -114,7 +114,13 @@ object ClusterManagement {
     * `cluster-slot-stats-enabled` setting
     */
   sealed trait SlotStatsMetric
-  object SlotStatsMetric {
+  trait SlotStatsMetricBuilders {
+    val keyCount: SlotStatsMetric
+    val cpuUsec: SlotStatsMetric
+    val networkBytesIn: SlotStatsMetric
+    val networkBytesOut: SlotStatsMetric
+  }
+  private[laserdisc] object SlotStatsMetric extends SlotStatsMetricBuilders {
     object keyCount        extends SlotStatsMetric
     object cpuUsec         extends SlotStatsMetric
     object networkBytesIn  extends SlotStatsMetric
@@ -167,9 +173,16 @@ object ClusterManagement {
   private[protocol] final val nonNegLong: Read[Num, NonNegLong]                        = num
 
   /** Where a CLUSTERSCAN has got to */
-  final case class ScanCursor(value: String)
-  object ScanCursor {
-    final val start: ScanCursor = ScanCursor("0")
+  final case class ScanCursor private[laserdisc] (value: String)
+  trait ScanCursorBuilders {
+    val start: ScanCursor
+
+    /** A cursor a scan gave earlier, to carry on from there */
+    def apply(value: String): ScanCursor
+  }
+  private[laserdisc] object ScanCursor extends ScanCursorBuilders {
+    final val start: ScanCursor          = new ScanCursor("0")
+    def apply(value: String): ScanCursor = new ScanCursor(value)
   }
 
   /** A step of CLUSTERSCAN: the keys found, and the cursor for the next step. It's `finished` when the cursor is back at the start */
@@ -190,7 +203,13 @@ object ClusterManagement {
     def ofType(keyType: KeyP.Type): ScanOptions    = new ScanOptions(params ++ List("TYPE", KeyP.Type.typeShow.show(keyType)))
     def slot(slot: Slot): ScanOptions              = new ScanOptions(params ++ List("SLOT", Show[Slot].show(slot)))
   }
-  object ScanOptions {
+  trait ScanOptionsBuilders {
+    def pattern(pattern: GlobPattern): ScanOptions
+    def count(keys: PosInt): ScanOptions
+    def ofType(keyType: KeyP.Type): ScanOptions
+    def slot(slot: Slot): ScanOptions
+  }
+  private[laserdisc] object ScanOptions extends ScanOptionsBuilders {
     private final val none = new ScanOptions(Nil)
 
     def pattern(pattern: GlobPattern): ScanOptions = none.pattern(pattern)

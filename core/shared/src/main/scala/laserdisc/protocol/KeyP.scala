@@ -61,8 +61,12 @@ object KeyP {
   }
 
   /** AUTH and AUTH2, for MIGRATE */
-  sealed trait MigrateAuth { def params: List[String] }
-  object MigrateAuth       {
+  sealed trait MigrateAuth  { def params: List[String] }
+  trait MigrateAuthBuilders {
+    def password(password: String): MigrateAuth
+    def userAndPassword(username: String, password: String): MigrateAuth
+  }
+  private[laserdisc] object MigrateAuth extends MigrateAuthBuilders {
     private final class Of(override final val params: List[String]) extends MigrateAuth
 
     def password(password: String): MigrateAuth                          = new Of(List("AUTH", password))
@@ -103,8 +107,16 @@ object KeyP {
   }
 
   /** NX, XX, GT and LT, for EXPIRE, PEXPIRE, EXPIREAT and PEXPIREAT */
-  sealed trait ExpireCondition { def params: List[String] }
-  object ExpireCondition       {
+  sealed trait ExpireCondition  { def params: List[String] }
+  trait ExpireConditionBuilders {
+    val nx: ExpireCondition
+    val xx: ExpireCondition
+    val gt: ExpireCondition
+    val lt: ExpireCondition
+    val xxGt: ExpireCondition
+    val xxLt: ExpireCondition
+  }
+  private[laserdisc] object ExpireCondition extends ExpireConditionBuilders {
     private final class Of(override final val params: List[String]) extends ExpireCondition
 
     final val nx: ExpireCondition   = new Of(List("NX"))
@@ -115,8 +127,13 @@ object KeyP {
     final val xxLt: ExpireCondition = new Of(List("XX", "LT"))
   }
 
-  sealed trait MigrateMode { def params: List[String] }
-  object MigrateMode       {
+  sealed trait MigrateMode  { def params: List[String] }
+  trait MigrateModeBuilders {
+    val copy: MigrateMode
+    val replace: MigrateMode
+    val both: MigrateMode
+  }
+  private[laserdisc] object MigrateMode extends MigrateModeBuilders {
     object copy    extends MigrateMode { override final val params: List[String] = List("COPY")            }
     object replace extends MigrateMode { override final val params: List[String] = List("REPLACE")         }
     object both    extends MigrateMode { override final val params: List[String] = List("COPY", "REPLACE") }
@@ -224,14 +241,14 @@ object KeyP {
   trait KeyExpireTypes {
     final type KeyExpireCondition = KeyP.ExpireCondition
     final type KeyExpireTime      = KeyP.ExpireTimeResponse
-    final val KeyExpireCondition = KeyP.ExpireCondition
-    final val KeyExpireAt        = KeyP.ExpireTimeResponse.ExpireAt
+    final val KeyExpireCondition: KeyP.ExpireConditionBuilders = KeyP.ExpireCondition
+    final val KeyExpireAt                                      = KeyP.ExpireTimeResponse.ExpireAt
   }
   trait KeyMigrateTypes {
     final type KeyMigrateAuth = KeyP.MigrateAuth
     final type KeyMigrateMode = KeyP.MigrateMode
-    final val KeyMigrateAuth = KeyP.MigrateAuth
-    final val KeyMigrateMode = KeyP.MigrateMode
+    final val KeyMigrateAuth: KeyP.MigrateAuthBuilders = KeyP.MigrateAuth
+    final val KeyMigrateMode: KeyP.MigrateModeBuilders = KeyP.MigrateMode
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built

@@ -62,8 +62,12 @@ object ListP {
   }
 
   /** COUNT and EXACTLY, for LMOVEM and BLMOVEM */
-  sealed trait Amount { def params: List[String] }
-  object Amount       {
+  sealed trait Amount  { def params: List[String] }
+  trait AmountBuilders {
+    def upTo(count: PosInt): Amount
+    def exactly(count: PosInt): Amount
+  }
+  private[laserdisc] object Amount extends AmountBuilders {
     private final class Of(override final val params: List[String]) extends Amount
 
     def upTo(count: PosInt): Amount    = new Of(List("COUNT", Show[PosInt].show(count)))
@@ -72,7 +76,11 @@ object ListP {
 
   /** OBO and BULK, for LMOVEM and BLMOVEM: one element at a time, or all of them as one block keeping their order */
   sealed trait Order
-  object Order {
+  trait OrderBuilders {
+    val oneByOne: Order
+    val asBlock: Order
+  }
+  private[laserdisc] object Order extends OrderBuilders {
     object oneByOne extends Order
     object asBlock  extends Order
 
@@ -99,8 +107,8 @@ object ListP {
   trait ListMoveManyTypes {
     final type ListAmount = ListP.Amount
     final type ListOrder  = ListP.Order
-    final val ListAmount = ListP.Amount
-    final val ListOrder  = ListP.Order
+    final val ListAmount: ListP.AmountBuilders = ListP.Amount
+    final val ListOrder: ListP.OrderBuilders   = ListP.Order
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built

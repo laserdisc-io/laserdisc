@@ -38,8 +38,13 @@ object StreamP {
   }
 
   /** The id of an entry to add at the given milliseconds, for XADD: the server picks the sequence */
-  final case class IdAt(milliseconds: NonNegLong)
-  object IdAt {
+  final case class IdAt private[laserdisc] (milliseconds: NonNegLong)
+  trait IdAtBuilders {
+    def apply(milliseconds: NonNegLong): IdAt
+  }
+  private[laserdisc] object IdAt extends IdAtBuilders {
+    def apply(milliseconds: NonNegLong): IdAt = new IdAt(milliseconds)
+
     implicit final val idAtShow: Show[IdAt] = Show.instance(id => s"${id.milliseconds.value}-*")
   }
 
@@ -247,7 +252,12 @@ object StreamP {
     * those too, or only delete entries every group has acknowledged. Redis 8.2
     */
   sealed trait RefPolicy
-  object RefPolicy {
+  trait RefPolicyBuilders {
+    val keepRef: RefPolicy
+    val delRef: RefPolicy
+    val acked: RefPolicy
+  }
+  private[laserdisc] object RefPolicy extends RefPolicyBuilders {
     object keepRef extends RefPolicy
     object delRef  extends RefPolicy
     object acked   extends RefPolicy
@@ -277,8 +287,12 @@ object StreamP {
   /** IDMP and IDMPAUTO, for XADD: add the entry only once for a producer and an idempotency id (or one the server derives from the fields),
     * replying with the first entry's id on a repeat. Redis 8.6, with ids the server picks
     */
-  sealed trait Idmp { def params: List[String] }
-  object Idmp       {
+  sealed trait Idmp  { def params: List[String] }
+  trait IdmpBuilders {
+    def of(producer: Key, id: Key): Idmp
+    def auto(producer: Key): Idmp
+  }
+  private[laserdisc] object Idmp extends IdmpBuilders {
     private final class Of(override final val params: List[String]) extends Idmp
 
     def of(producer: Key, id: Key): Idmp = new Of(List("IDMP", producer.value, id.value))
@@ -290,7 +304,11 @@ object StreamP {
     def duration(seconds: PosLong): IdmpConfig = new IdmpConfig(params ++ List("IDMP-DURATION", Show[PosLong].show(seconds)))
     def maxSize(ids: PosLong): IdmpConfig      = new IdmpConfig(params ++ List("IDMP-MAXSIZE", Show[PosLong].show(ids)))
   }
-  object IdmpConfig {
+  trait IdmpConfigBuilders {
+    def duration(seconds: PosLong): IdmpConfig
+    def maxSize(ids: PosLong): IdmpConfig
+  }
+  private[laserdisc] object IdmpConfig extends IdmpConfigBuilders {
     def duration(seconds: PosLong): IdmpConfig = new IdmpConfig(List("IDMP-DURATION", Show[PosLong].show(seconds)))
     def maxSize(ids: PosLong): IdmpConfig      = new IdmpConfig(List("IDMP-MAXSIZE", Show[PosLong].show(ids)))
   }
@@ -299,7 +317,12 @@ object StreamP {
     * can never be processed. Redis 8.8
     */
   sealed trait NackMode
-  object NackMode {
+  trait NackModeBuilders {
+    val silent: NackMode
+    val fail: NackMode
+    val fatal: NackMode
+  }
+  private[laserdisc] object NackMode extends NackModeBuilders {
     object silent extends NackMode
     object fail   extends NackMode
     object fatal  extends NackMode
@@ -318,7 +341,11 @@ object StreamP {
     def retryCount(count: NonNegLong): NackOptions = new NackOptions(params ++ List("RETRYCOUNT", Show[NonNegLong].show(count)))
     def force: NackOptions                         = new NackOptions(params :+ "FORCE")
   }
-  object NackOptions {
+  trait NackOptionsBuilders {
+    def retryCount(count: NonNegLong): NackOptions
+    def force: NackOptions
+  }
+  private[laserdisc] object NackOptions extends NackOptionsBuilders {
     def retryCount(count: NonNegLong): NackOptions = new NackOptions(List("RETRYCOUNT", Show[NonNegLong].show(count)))
     def force: NackOptions                         = new NackOptions(List("FORCE"))
   }
@@ -335,7 +362,11 @@ object StreamP {
     def maxCount(entries: PosLong): ReadLimits = new ReadLimits(params ++ List("MAXCOUNT", Show[PosLong].show(entries)))
     def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(params ++ List("MAXSIZE", Show[PosLong].show(bytes)))
   }
-  object ReadLimits {
+  trait ReadLimitsBuilders {
+    def maxCount(entries: PosLong): ReadLimits
+    def maxSize(bytes: PosLong): ReadLimits
+  }
+  private[laserdisc] object ReadLimits extends ReadLimitsBuilders {
     def maxCount(entries: PosLong): ReadLimits = new ReadLimits(List("MAXCOUNT", Show[PosLong].show(entries)))
     def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(List("MAXSIZE", Show[PosLong].show(bytes)))
   }
@@ -541,13 +572,13 @@ object StreamP {
   }
   trait StreamIdAtTypes {
     final type StreamIdAt = StreamP.IdAt
-    final val StreamIdAt = StreamP.IdAt
+    final val StreamIdAt: StreamP.IdAtBuilders = StreamP.IdAt
   }
   trait StreamRefPolicyTypes {
     final type StreamRefPolicy    = StreamP.RefPolicy
     final type StreamDeleteResult = StreamP.DeleteResult
-    final val StreamRefPolicy    = StreamP.RefPolicy
-    final val StreamDeleteResult = StreamP.DeleteResult
+    final val StreamRefPolicy: StreamP.RefPolicyBuilders = StreamP.RefPolicy
+    final val StreamDeleteResult                         = StreamP.DeleteResult
   }
   trait StreamClaimTypes {
     final type StreamClaimedEntry[A] = StreamP.ClaimedEntry[A]
@@ -556,18 +587,18 @@ object StreamP {
   trait StreamIdmpTypes {
     final type StreamIdmp       = StreamP.Idmp
     final type StreamIdmpConfig = StreamP.IdmpConfig
-    final val StreamIdmp       = StreamP.Idmp
-    final val StreamIdmpConfig = StreamP.IdmpConfig
+    final val StreamIdmp: StreamP.IdmpBuilders             = StreamP.Idmp
+    final val StreamIdmpConfig: StreamP.IdmpConfigBuilders = StreamP.IdmpConfig
   }
   trait StreamNackTypes {
     final type StreamNackMode    = StreamP.NackMode
     final type StreamNackOptions = StreamP.NackOptions
-    final val StreamNackMode    = StreamP.NackMode
-    final val StreamNackOptions = StreamP.NackOptions
+    final val StreamNackMode: StreamP.NackModeBuilders       = StreamP.NackMode
+    final val StreamNackOptions: StreamP.NackOptionsBuilders = StreamP.NackOptions
   }
   trait StreamReadLimitsTypes {
     final type StreamReadLimits = StreamP.ReadLimits
-    final val StreamReadLimits = StreamP.ReadLimits
+    final val StreamReadLimits: StreamP.ReadLimitsBuilders = StreamP.ReadLimits
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built

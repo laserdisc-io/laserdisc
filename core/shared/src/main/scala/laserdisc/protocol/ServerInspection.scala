@@ -323,8 +323,13 @@ object ServerInspection {
     Read[Arr.Of[Arr.AsTuple[Bulk *: Arr.Of[Str] *: EmptyTuple]], Seq[KeyAndFlags]]
 
   /** FILTERBY, for COMMAND LIST: the commands of a module, of an ACL category, or whose names match a pattern */
-  sealed trait CommandFilter { def params: List[String] }
-  object CommandFilter       {
+  sealed trait CommandFilter  { def params: List[String] }
+  trait CommandFilterBuilders {
+    def module(name: Key): CommandFilter
+    def aclCategory(name: Key): CommandFilter
+    def pattern(pattern: GlobPattern): CommandFilter
+  }
+  private[laserdisc] object CommandFilter extends CommandFilterBuilders {
     private final class Of(override final val params: List[String]) extends CommandFilter
 
     def module(name: Key): CommandFilter             = new Of(List("FILTERBY", "MODULE", name.value))
@@ -385,7 +390,12 @@ object ServerInspection {
 
   /** SLOW, LARGE-REQUEST and LARGE-REPLY, for COMMANDLOG: Valkey 8.1 */
   sealed trait CommandLogType
-  object CommandLogType {
+  trait CommandLogTypeBuilders {
+    val slow: CommandLogType
+    val largeRequest: CommandLogType
+    val largeReply: CommandLogType
+  }
+  private[laserdisc] object CommandLogType extends CommandLogTypeBuilders {
     object slow         extends CommandLogType
     object largeRequest extends CommandLogType
     object largeReply   extends CommandLogType
@@ -398,8 +408,13 @@ object ServerInspection {
   }
 
   /** What HOTKEYS START tracks: CPU time, network bytes, or both */
-  sealed trait HotKeysMetrics { def params: List[String] }
-  object HotKeysMetrics       {
+  sealed trait HotKeysMetrics  { def params: List[String] }
+  trait HotKeysMetricsBuilders {
+    val cpu: HotKeysMetrics
+    val net: HotKeysMetrics
+    val cpuAndNet: HotKeysMetrics
+  }
+  private[laserdisc] object HotKeysMetrics extends HotKeysMetricsBuilders {
     private final class Of(override final val params: List[String]) extends HotKeysMetrics
 
     final val cpu: HotKeysMetrics       = new Of(List("METRICS", "1", "CPU"))
@@ -417,7 +432,13 @@ object ServerInspection {
     def slots(slots: OneOrMore[Slot]): HotKeysOptions =
       new HotKeysOptions(params ++ ("SLOTS" :: Show[Int].show(slots.value.length) :: slots.value.map(Show[Slot].show)))
   }
-  object HotKeysOptions {
+  trait HotKeysOptionsBuilders {
+    def count(keys: PosInt): HotKeysOptions
+    def duration(seconds: PosInt): HotKeysOptions
+    def sample(ratio: PosInt): HotKeysOptions
+    def slots(slots: OneOrMore[Slot]): HotKeysOptions
+  }
+  private[laserdisc] object HotKeysOptions extends HotKeysOptionsBuilders {
     private final val none = new HotKeysOptions(Nil)
 
     def count(keys: PosInt): HotKeysOptions           = none.count(keys)

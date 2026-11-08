@@ -28,7 +28,7 @@ object SetP {
 
   /** APPROX, for SUNIONCARD */
   final class Approx private[SetP] ()
-  object Approx {
+  private[laserdisc] object Approx {
     final val approx: Approx = new Approx
 
     implicit val approxShow: Show[Approx] = Show.const("APPROX")

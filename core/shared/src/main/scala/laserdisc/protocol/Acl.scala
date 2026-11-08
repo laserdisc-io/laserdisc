@@ -87,7 +87,7 @@ object Acl {
   final class AclRulesWithSelectors private (params: List[String]) extends SelectorRules[AclRulesWithSelectors](params) {
     override protected def next(params: List[String]): AclRulesWithSelectors = new AclRulesWithSelectors(params)
   }
-  object AclRulesWithSelectors {
+  private[laserdisc] object AclRulesWithSelectors {
     final val none: AclRulesWithSelectors = new AclRulesWithSelectors(Nil)
   }
 
@@ -95,7 +95,7 @@ object Acl {
   final class AclDragonflyRules private (params: List[String]) extends KeyPermissionRules[AclDragonflyRules](params) {
     override protected def next(params: List[String]): AclDragonflyRules = new AclDragonflyRules(params)
   }
-  object AclDragonflyRules {
+  private[laserdisc] object AclDragonflyRules {
     final val none: AclDragonflyRules = new AclDragonflyRules(Nil)
   }
 
@@ -111,7 +111,7 @@ object Acl {
       next(params :+ indexes.value.map(Show[DbIndex].show).mkString("db=", ",", ""))
     def resetDatabases: AclRulesWithDatabases = next(params :+ "resetdbs")
   }
-  object AclRulesWithDatabases {
+  private[laserdisc] object AclRulesWithDatabases {
     final val none: AclRulesWithDatabases = new AclRulesWithDatabases(Nil)
   }
 

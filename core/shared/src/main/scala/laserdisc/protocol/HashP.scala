@@ -28,7 +28,13 @@ object HashP {
 
   /** NX, XX, GT and LT, for HEXPIRE, HPEXPIRE, HEXPIREAT and HPEXPIREAT */
   sealed trait ExpireCondition
-  object ExpireCondition {
+  trait ExpireConditionBuilders {
+    val nx: ExpireCondition
+    val xx: ExpireCondition
+    val gt: ExpireCondition
+    val lt: ExpireCondition
+  }
+  private[laserdisc] object ExpireCondition extends ExpireConditionBuilders {
     object nx extends ExpireCondition
     object xx extends ExpireCondition
     object gt extends ExpireCondition
@@ -44,7 +50,11 @@ object HashP {
 
   /** FNX and FXX, for HSETEX: set the fields only if none of them exist, or only if all of them do */
   sealed trait FieldsCondition
-  object FieldsCondition {
+  trait FieldsConditionBuilders {
+    val fnx: FieldsCondition
+    val fxx: FieldsCondition
+  }
+  private[laserdisc] object FieldsCondition extends FieldsConditionBuilders {
     object fnx extends FieldsCondition
     object fxx extends FieldsCondition
 
@@ -56,7 +66,11 @@ object HashP {
 
   /** NX and XX, for HSETEX: set the fields only if the hash doesn't exist, or only if it does. Valkey 9.1 */
   sealed trait KeyCondition
-  object KeyCondition {
+  trait KeyConditionBuilders {
+    val nx: KeyCondition
+    val xx: KeyCondition
+  }
+  private[laserdisc] object KeyCondition extends KeyConditionBuilders {
     object nx extends KeyCondition
     object xx extends KeyCondition
 
@@ -145,14 +159,14 @@ object HashP {
     final type HashFieldExpireResponse     = HashP.FieldExpireResponse
     final type HashFieldTTLResponse        = HashP.FieldTTLResponse
     final type HashFieldExpireTimeResponse = HashP.FieldExpireTimeResponse
-    final val HashExpireCondition  = HashP.ExpireCondition
-    final val HashNoField          = HashP.NoField
-    final val HashNoExpire         = HashP.NoExpire
-    final val HashFieldNotSet      = HashP.FieldExpireResponse.NotSet
-    final val HashFieldSet         = HashP.FieldExpireResponse.Set
-    final val HashFieldDeleted     = HashP.FieldExpireResponse.Deleted
-    final val HashFieldExpireAfter = HashP.FieldTTLResponse.ExpireAfter
-    final val HashFieldExpireAt    = HashP.FieldExpireTimeResponse.ExpireAt
+    final val HashExpireCondition: HashP.ExpireConditionBuilders = HashP.ExpireCondition
+    final val HashNoField                                        = HashP.NoField
+    final val HashNoExpire                                       = HashP.NoExpire
+    final val HashFieldNotSet                                    = HashP.FieldExpireResponse.NotSet
+    final val HashFieldSet                                       = HashP.FieldExpireResponse.Set
+    final val HashFieldDeleted                                   = HashP.FieldExpireResponse.Deleted
+    final val HashFieldExpireAfter                               = HashP.FieldTTLResponse.ExpireAfter
+    final val HashFieldExpireAt                                  = HashP.FieldExpireTimeResponse.ExpireAt
   }
   trait HashPersistTypes {
     final type HashFieldPersistResponse = HashP.FieldPersistResponse
@@ -160,11 +174,11 @@ object HashP {
   }
   trait HashFieldsConditionTypes {
     final type HashFieldsCondition = HashP.FieldsCondition
-    final val HashFieldsCondition = HashP.FieldsCondition
+    final val HashFieldsCondition: HashP.FieldsConditionBuilders = HashP.FieldsCondition
   }
   trait HashKeyConditionTypes {
     final type HashKeyCondition = HashP.KeyCondition
-    final val HashKeyCondition = HashP.KeyCondition
+    final val HashKeyCondition: HashP.KeyConditionBuilders = HashP.KeyCondition
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built

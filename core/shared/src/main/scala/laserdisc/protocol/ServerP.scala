@@ -841,13 +841,6 @@ trait ServerCoreP extends ServerInspectionCoreP with MonitorP with ServerInfoSec
 
   final val dbsize: Single[NonNegLong] = Protocol("DBSIZE", EmptyTuple).as[Num, NonNegLong]
 
-  /** FAILOVER to that replica even if it hasn't caught up when the time is up */
-  final def replicafailoverforce(host: Host, port: Port, milliseconds: PosLong): Single[OK] =
-    Protocol("FAILOVER", "TO" *: host *: port *: "FORCE" *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
-
-  /** Stops a FAILOVER in progress */
-  final val replicafailoverabort: Single[OK] = Protocol("FAILOVER", "ABORT").as[Str, OK]
-
   final val flushall: Single[OK] = Protocol("FLUSHALL", EmptyTuple).as[Str, OK]
 
   final val flushallasync: Single[OK] = Protocol("FLUSHALL", "ASYNC").as[Str, OK]
@@ -923,6 +916,13 @@ trait ServerBaseP extends ServerCoreP with ServerInspectionBaseP {
   final def replicafailover(host: Host, port: Port): Single[OK] = Protocol("FAILOVER", "TO" *: host *: port *: EmptyTuple).as[Str, OK]
   final def replicafailover(host: Host, port: Port, milliseconds: PosLong): Single[OK] =
     Protocol("FAILOVER", "TO" *: host *: port *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
+
+  /** FAILOVER to that replica even if it hasn't caught up when the time is up */
+  final def replicafailoverforce(host: Host, port: Port, milliseconds: PosLong): Single[OK] =
+    Protocol("FAILOVER", "TO" *: host *: port *: "FORCE" *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
+
+  /** Stops a FAILOVER in progress */
+  final val replicafailoverabort: Single[OK] = Protocol("FAILOVER", "ABORT").as[Str, OK]
 }
 
 /** SHUTDOWN with SAFE and FAILOVER: Valkey 9.0 */

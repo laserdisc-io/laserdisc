@@ -623,6 +623,11 @@ final class VersionImportsSpec extends BaseSpec {
     assert(compileErrors("""countkeysinslot(1)""").nonEmpty)
     assert(compileErrors("""hpersist("a", OneOrMoreKeys.unsafeFrom(List(Key("b"))))""").nonEmpty)
     assert(compileErrors("""shutdownabort""").nonEmpty)
+    // Dragonfly has no FAILOVER
+    assert(compileErrors("""replicafailoverabort""").nonEmpty)
+    assert(compileErrors("""replicafailoverforce(Host("h.example"), Port(1), PosLong(5L))""").nonEmpty)
+    assert(compileErrors("""server.replicafailoverabort""").nonEmpty)
+    assert(compileErrors("""server.replicafailoverforce(Host("h.example"), Port(1), PosLong(5L))""").nonEmpty)
     // Dragonfly takes NOW or FORCE alone, and neither with SAVE or NOSAVE
     assertEquals(shutdown(servertypes.dragonflyShutdownOption.now).frames, frame("SHUTDOWN", "NOW"))
     assertEquals(shutdown(servertypes.dragonflyShutdownOption.force).frames, frame("SHUTDOWN", "FORCE"))

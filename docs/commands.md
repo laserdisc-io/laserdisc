@@ -74,6 +74,13 @@ change the import afterwards. A later import can send commands an older server
 doesn't have, and can't read some of its replies. For example,
 `laserdisc.redis_7_0.*` can't read `XAUTOCLAIM` from Redis 6.2.
 
+Only one command an import has is gone from a later version: Redis 7.0 removed
+`STRALGO` and added `LCS` in its place. So `stralgolcs`, `stralgolcslen` and
+`stralgolcsidx` in `laserdisc.redis_6_2.*` fail on Redis 7.0 and later. Once all
+your servers run Redis 7.0 or later, switch to `laserdisc.redis_7_0.*` and use
+`lcs`, `lcslen` and `lcsidx` instead. `LCS` only compares the values at two
+keys, so to compare two values directly, store them at keys first.
+
 ## Dragonfly
 
 `laserdisc.dragonfly_2_0.*` has only what Dragonfly accepts. That leaves out, for

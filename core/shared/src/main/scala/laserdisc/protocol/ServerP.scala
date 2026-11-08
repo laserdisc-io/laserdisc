@@ -574,7 +574,6 @@ object ServerP {
 /** CLIENT without UNBLOCK and CLIENT KILL's filters: Redis 6.2 */
 trait ClientCoreCommands extends Features {
   import ServerP.{ClientInfo, ClientType, ConnectedClients, PauseMode}
-  import Show.{hostShow, portShow}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -596,9 +595,6 @@ trait ClientCoreCommands extends Features {
   val id: Single[NonNegLong] = Protocol("CLIENT", "ID").as[Num, NonNegLong]
 
   val info: Single[ClientInfo] = Protocol("CLIENT", "INFO").as[Bulk, ClientInfo]
-
-  def kill(host: Host, port: Port): Single[OK] =
-    Protocol("CLIENT", "KILL" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Str, OK]
 
   val list: Single[ConnectedClients]                         = Protocol("CLIENT", "LIST").as[Bulk, ConnectedClients]
   def list(clientType: ClientType): Single[ConnectedClients] =
@@ -667,6 +663,10 @@ trait ClientCommands extends ClientCoreCommands with ClientTrackingCommands {
       "CLIENT KILL: ADDR ID LADDR MASTER NORMAL PUBSUB REPLICA SKIPME SLAVE TYPE USER",
       "CLIENT UNBLOCK: ERROR TIMEOUT"
     )
+
+  /** Closes the client at that address. Dragonfly replies to this with a count, so it has `killaddress` instead */
+  def kill(host: Host, port: Port): Single[OK] =
+    Protocol("CLIENT", "KILL" :: s"${Show.hostShow.show(host)}:${Show.portShow.show(port)}" :: Nil).as[Str, OK]
 
   /** Closes the clients that match every filter, and replies how many it closed */
   def kill(filter: ClientFilter): Single[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]

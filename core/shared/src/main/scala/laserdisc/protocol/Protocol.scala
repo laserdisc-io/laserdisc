@@ -22,11 +22,8 @@
 package laserdisc
 package protocol
 
-/** Something that can be sent to Redis: a [[Protocol.Single]] command, or a [[Protocol.Multi]] transaction */
-sealed trait Protocol {
-
-  /** The type of the reply */
-  type A
+/** Something that can be sent to Redis, replying with an `A`. It's covariant, so that a later version of a command can reply with more */
+sealed trait Protocol[+A] {
 
   /** What is sent to Redis, which replies to each one */
   private[laserdisc] def frames: Seq[RESP]
@@ -34,17 +31,17 @@ sealed trait Protocol {
   /** Reads the replies to [[frames]], one for each */
   private[laserdisc] def decodeReplies(replies: Seq[RESP]): Maybe[A]
 
-  def map[B](f: A => B): Protocol.Aux[B]
+  def map[B](f: A => B): Protocol[B]
 }
 
 object Protocol {
-  final type Aux[A0] = Protocol { type A = A0 }
+  final type Aux[+A] = Protocol[A]
 
   // the lines of text a command's HELP subcommand replies with
   private[protocol] final def help(command: String): Single.Aux[Seq[String]] = Protocol(command, "HELP").as[Arr.Of[Str], Seq[String]]
 
   /** A single Redis command */
-  sealed trait Single extends Protocol { self =>
+  sealed trait Single[+A] extends Protocol[A] { self =>
     def command: String
     def parameters: Seq[GenBulk]
     def decode(resp: RESP): Maybe[A]
@@ -54,9 +51,8 @@ object Protocol {
     override private[laserdisc] final def frames: Seq[RESP]                           = Seq(encode)
     override private[laserdisc] final def decodeReplies(replies: Seq[RESP]): Maybe[A] = decode(replies.head)
 
-    override final def map[B](f: A => B): Single.Aux[B] =
-      new Single {
-        override type A = B
+    override final def map[B](f: A => B): Single[B] =
+      new Single[B] {
         override def command: String              = self.command
         override def parameters: Seq[GenBulk]     = self.parameters
         override def decode(resp: RESP): Maybe[B] = self.decode(resp).map(f(_))
@@ -66,19 +62,18 @@ object Protocol {
   }
 
   object Single {
-    final type Aux[A0] = Single { type A = A0 }
+    final type Aux[+A] = Single[A]
   }
 
   /** A transaction: MULTI, then its [[Single]] commands, then EXEC. Redis replies QUEUED to each command, and EXEC's reply holds their
     * results
     */
-  sealed trait Multi extends Protocol { self =>
-    def protocols: List[Single]
+  sealed trait Multi[+A] extends Protocol[A] { self =>
+    def protocols: List[Single[Any]]
 
-    override final def map[B](f: A => B): Multi.Aux[B] =
-      new Multi {
-        override type A = B
-        override def protocols: List[Single] = self.protocols
+    override final def map[B](f: A => B): Multi[B] =
+      new Multi[B] {
+        override def protocols: List[Single[Any]] = self.protocols
 
         override private[laserdisc] def frames: Seq[RESP]                           = self.frames
         override private[laserdisc] def decodeReplies(replies: Seq[RESP]): Maybe[B] = self.decodeReplies(replies).map(f(_))
@@ -88,7 +83,7 @@ object Protocol {
   }
 
   object Multi {
-    final type Aux[A0] = Multi { type A = A0 }
+    final type Aux[+A] = Multi[A]
   }
 
   sealed abstract class PartiallyAppliedProtocol[L: RESPParamWrite](
@@ -112,8 +107,7 @@ object Protocol {
     final def as[A, B](implicit R: RESPRead.Aux[A, B]): Single.Aux[B] = using(R)
 
     final def using[B](R: RESPRead[B]): Single.Aux[B] =
-      new Single {
-        override final type A = B
+      new Single[B] {
         override final val command: String              = self.command
         override final val parameters: Seq[GenBulk]     = RESPParamWrite[L].write(l)
         override final def decode(resp: RESP): Maybe[B] = R.read(resp)
@@ -124,7 +118,7 @@ object Protocol {
   sealed trait MultiResults[In <: Tuple] {
     type Out <: Tuple
 
-    def protocols(in: In): List[Single]
+    def protocols(in: In): List[Single[Any]]
     def read(in: In, results: List[RESP]): Out
   }
 
@@ -134,7 +128,7 @@ object Protocol {
     implicit final val emptyMultiResults: MultiResults.Aux[EmptyTuple, EmptyTuple] =
       new MultiResults[EmptyTuple] {
         override final type Out = EmptyTuple
-        override final def protocols(in: EmptyTuple): List[Single]               = Nil
+        override final def protocols(in: EmptyTuple): List[Single[Any]]          = Nil
         override final def read(in: EmptyTuple, results: List[RESP]): EmptyTuple = EmptyTuple
       }
 
@@ -143,7 +137,7 @@ object Protocol {
     ): MultiResults.Aux[Single.Aux[A] *: T, Maybe[A] *: TOut] =
       new MultiResults[Single.Aux[A] *: T] {
         override final type Out = Maybe[A] *: TOut
-        override final def protocols(in: Single.Aux[A] *: T): List[Single] =
+        override final def protocols(in: Single.Aux[A] *: T): List[Single[Any]] =
           in match { case protocol *: rest => protocol :: T.protocols(rest) }
         override final def read(in: Single.Aux[A] *: T, results: List[RESP]): Maybe[A] *: TOut =
           in match { case protocol *: rest => protocol.decode(results.head) *: T.read(rest, results.tail) }
@@ -154,9 +148,8 @@ object Protocol {
     * which is read as `None`, otherwise it holds one result per command.
     */
   final def multi[In <: Tuple, Out <: Tuple](in: In)(implicit M: MultiResults.Aux[In, Out]): Multi.Aux[Option[Out]] =
-    new Multi {
-      override final type A = Option[Out]
-      override final val protocols: List[Single] = M.protocols(in)
+    new Multi[Option[Out]] {
+      override final val protocols: List[Single[Any]] = M.protocols(in)
 
       private def decodeExec(resp: RESP): Maybe[Option[Out]] = resp match {
         case Arr(results) if results.size == protocols.size => Right(Some(M.read(in, results)))

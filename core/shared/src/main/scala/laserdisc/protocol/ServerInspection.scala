@@ -468,7 +468,7 @@ object ServerInspection {
   }
   private[protocol] final val maybeHotKeys: RESPRead[Option[Seq[HotKeys]]] = RESPRead[OrNullBulk[Records], Option[Seq[HotKeys]]]
 
-  private[protocol] final def argumentsOf(protocol: Single): List[String] =
+  private[protocol] final def argumentsOf(protocol: Single[Any]): List[String] =
     protocol.command :: protocol.parameters.toList.collect { case Bulk(s) => s }
 }
 
@@ -643,7 +643,7 @@ trait CommandCommands extends CommandCoreCommands {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("COMMAND GETKEYS")
 
   /** The keys a command would use, without running it */
-  def getkeys(command: Single): Single.Aux[Seq[Key]] =
+  def getkeys(command: Single[Any]): Single.Aux[Seq[Key]] =
     Protocol("COMMAND", "GETKEYS" :: ServerInspection.argumentsOf(command)).as[Arr.Of[Bulk], Seq[Key]]
 }
 
@@ -660,7 +660,7 @@ trait CommandListCommands extends Features {
     Protocol("COMMAND", "DOCS" :: names.value.map(_.value)).using(RESPRead.instance(ServerInspection.commandDocs))
 
   /** The keys a command would use, with what it would do to each, without running it */
-  def getkeysandflags(command: Single): Single.Aux[Seq[KeyAndFlags]] =
+  def getkeysandflags(command: Single[Any]): Single.Aux[Seq[KeyAndFlags]] =
     Protocol("COMMAND", "GETKEYSANDFLAGS" :: ServerInspection.argumentsOf(command)).using(RESPRead.instance(ServerInspection.keysAndFlags))
 
   /** The names of every command, or of those the filter keeps */

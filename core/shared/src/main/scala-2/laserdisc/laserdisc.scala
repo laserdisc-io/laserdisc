@@ -54,7 +54,7 @@ package object laserdisc {
   type LUBConstraint[L <: Tuple, A] = shapeless.LUBConstraint[L, A]
 
   // Basic type aliases
-  final type Maybe[A] = Either[Throwable, A]
+  final type Maybe[+A] = Either[Throwable, A]
 
   // Type forwarders
   final type Arr               = protocol.Arr
@@ -65,7 +65,7 @@ package object laserdisc {
   final type Num               = protocol.Num
   final type OneOf[T <: Tuple] = protocol.OneOf[T]
   final type Str               = protocol.Str
-  final type Protocol          = protocol.Protocol
+  final type Protocol[+A]      = protocol.Protocol[A]
   final type Read[A, B]        = protocol.Read[A, B]
   final type RESP              = protocol.RESP
   final type Show[A]           = protocol.Show[A]

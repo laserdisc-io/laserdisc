@@ -297,7 +297,7 @@ trait AclDryRunCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("ACL DRYRUN")
 
   /** Whether the user may run the command, without running it: `None` when it may, or the reason when it may not */
-  def dryrun(user: Key, command: Single): Single.Aux[Option[String]] =
+  def dryrun(user: Key, command: Single[Any]): Single.Aux[Option[String]] =
     Protocol("ACL", "DRYRUN" :: user.value :: ServerInspection.argumentsOf(command)).using(RESPRead.okOrMessage)
 }
 

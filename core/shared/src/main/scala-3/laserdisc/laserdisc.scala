@@ -30,7 +30,7 @@ import scala.annotation.{implicitNotFound, nowarn}
 import scala.util.NotGiven
 
 // Basic type aliases
-final type Maybe[A] = Either[Throwable, A]
+final type Maybe[+A] = Either[Throwable, A]
 
 // Export all protocol
 export protocol.{Arr, Bulk, Err, NilArr, NullBulk, Num, OneOf, Protocol, RESP, RESPDecErr, Read, Show, Str, Value}

@@ -100,6 +100,11 @@ final val GeoHashRegexWit            = new Witness("[a-z0-9]{11}")
 final val GlobPatternRegexWit = new Witness(
   """[^\x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
 )
+
+/** A glob for the keys and channels of ACL rules: a [[GlobPattern]] without spaces, which ACL SETUSER refuses */
+final val AclPatternRegexWit = new Witness(
+  """[^ \x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
+)
 final val IPv4RegexWit                = new Witness("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
 final val LatitudeMinValueWit         = new Witness(-85.05112878d)
 final val LatitudeMaxValueWit         = new Witness(85.05112878d)
@@ -140,6 +145,7 @@ final type ConnectionNameRef = MinLength[1] & ForAll[NoWhitespace & NoControlCha
 final type DbIndexRef        = Interval.Closed[0, DbIndexMaxValueWit.T]
 final type GeoHashRef        = Match[GeoHashRegexWit.T]
 final type GlobPatternRef    = Match[GlobPatternRegexWit.T]
+final type AclPatternRef     = Match[AclPatternRegexWit.T]
 final type HostRef           = StrictEqual[AllNICsEqWit.T] | StrictEqual[LoopbackEqWit.T] |
   (Not[IPv4Ref] & MaxLength[Rfc1123HostnameMaxLengthWit.T] & Match[Rfc1123HostnameRegexWit.T]) | Rfc1918Ref | Rfc5737Ref | Rfc3927Ref |
   Rfc2544Ref
@@ -173,6 +179,7 @@ final type ConnectionName        = ConnectionName.T
 final type DbIndex               = DbIndex.T
 final type GeoHash               = GeoHash.T
 final type GlobPattern           = GlobPattern.T
+final type AclPattern            = AclPattern.T
 final type Host                  = Host.T
 final type Index                 = Index.T
 final type Key                   = Key.T
@@ -215,6 +222,7 @@ object ConnectionName        extends RefinedTypeOps[String, ConnectionNameRef]
 object DbIndex               extends RefinedTypeOps[Int, DbIndexRef]
 object GeoHash               extends RefinedTypeOps[String, GeoHashRef]
 object GlobPattern           extends RefinedTypeOps[String, GlobPatternRef]
+object AclPattern            extends RefinedTypeOps[String, AclPatternRef]
 object Host                  extends RefinedTypeOps[String, HostRef]
 object Index                 extends RefinedTypeOps[Long, IndexRef]
 object Key                   extends RefinedTypeOps[String, KeyRef]

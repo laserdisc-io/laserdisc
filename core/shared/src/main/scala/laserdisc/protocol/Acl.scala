@@ -36,24 +36,24 @@ object Acl {
 
     protected final def add(rule: String): Self = next(params :+ rule)
 
-    def on: Self                             = add("on")
-    def off: Self                            = add("off")
-    def nopass: Self                         = add("nopass")
-    def resetpass: Self                      = add("resetpass")
-    def password(password: Key): Self        = add(s">${password.value}")
-    def removePassword(password: Key): Self  = add(s"<${password.value}")
-    def keys(pattern: GlobPattern): Self     = add(s"~${pattern.value}")
-    def allKeys: Self                        = add("allkeys")
-    def resetKeys: Self                      = add("resetkeys")
-    def channels(pattern: GlobPattern): Self = add(s"&${pattern.value}")
-    def allChannels: Self                    = add("allchannels")
-    def resetChannels: Self                  = add("resetchannels")
-    def allow(command: Key): Self            = add(s"+${command.value}")
-    def deny(command: Key): Self             = add(s"-${command.value}")
-    def allowCategory(category: Key): Self   = add(s"+@${category.value}")
-    def denyCategory(category: Key): Self    = add(s"-@${category.value}")
-    def allCommands: Self                    = add("allcommands")
-    def noCommands: Self                     = add("nocommands")
+    def on: Self                            = add("on")
+    def off: Self                           = add("off")
+    def nopass: Self                        = add("nopass")
+    def resetpass: Self                     = add("resetpass")
+    def password(password: Key): Self       = add(s">${password.value}")
+    def removePassword(password: Key): Self = add(s"<${password.value}")
+    def keys(pattern: AclPattern): Self     = add(s"~${pattern.value}")
+    def allKeys: Self                       = add("allkeys")
+    def resetKeys: Self                     = add("resetkeys")
+    def channels(pattern: AclPattern): Self = add(s"&${pattern.value}")
+    def allChannels: Self                   = add("allchannels")
+    def resetChannels: Self                 = add("resetchannels")
+    def allow(command: Key): Self           = add(s"+${command.value}")
+    def deny(command: Key): Self            = add(s"-${command.value}")
+    def allowCategory(category: Key): Self  = add(s"+@${category.value}")
+    def denyCategory(category: Key): Self   = add(s"-@${category.value}")
+    def allCommands: Self                   = add("allcommands")
+    def noCommands: Self                    = add("nocommands")
   }
 
   /** The rules of Redis and Valkey: also passwords given by their SHA-256, and `reset` */
@@ -77,15 +77,18 @@ object Acl {
 
   /** Rules that add keys that may only be read or only be written, or both, which is the same as `keys` */
   sealed trait KeyPermissionRules[Self] extends BaseRules[Self] {
-    def readKeys(pattern: GlobPattern): Self      = add(s"%R~${pattern.value}")
-    def writeKeys(pattern: GlobPattern): Self     = add(s"%W~${pattern.value}")
-    def readWriteKeys(pattern: GlobPattern): Self = add(s"%RW~${pattern.value}")
+    def readKeys(pattern: AclPattern): Self      = add(s"%R~${pattern.value}")
+    def writeKeys(pattern: AclPattern): Self     = add(s"%W~${pattern.value}")
+    def readWriteKeys(pattern: AclPattern): Self = add(s"%RW~${pattern.value}")
   }
 
   /** Rules that add selectors: other sets of rules a command may match instead */
   sealed trait SelectorRules[Self <: BaseRules[Self]] extends KeyPermissionRules[Self] {
-    def selector(rules: Self): Self = add(rules.params.mkString("(", " ", ")"))
-    def clearSelectors: Self        = add("clearselectors")
+    // the server splits a selector into its rules again, taking quotes and backslashes out: each rule is quoted, so it stays as it is
+    def selector(rules: Self): Self = add(rules.params.map(quoted).mkString("(", " ", ")"))
+
+    private def quoted(rule: String): String = "\"" + rule.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    def clearSelectors: Self                 = add("clearselectors")
   }
 
   /** The rules of Redis 7.0, with keys that may only be read or only be written, and selectors */

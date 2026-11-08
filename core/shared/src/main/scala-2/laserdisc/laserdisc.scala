@@ -107,6 +107,11 @@ package object laserdisc {
   final val GlobPatternRegexWit = W(
     """[^\x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
   )
+
+  /** A glob for the keys and channels of ACL rules: a [[GlobPattern]] without spaces, which ACL SETUSER refuses */
+  final val AclPatternRegexWit = W(
+    """[^ \x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
+  )
   final val IPv4RegexWit                = W("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
   final val LatitudeMinValueWit         = W(-85.05112878d)
   final val LatitudeMaxValueWit         = W(85.05112878d)
@@ -140,6 +145,7 @@ package object laserdisc {
   final type DbIndexRef        = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
   final type GeoHashRef        = MatchesRegex[GeoHashRegexWit.T]
   final type GlobPatternRef    = MatchesRegex[GlobPatternRegexWit.T]
+  final type AclPatternRef     = MatchesRegex[AclPatternRegexWit.T]
   final type HostRef           = Equal[AllNICsEqWit.T] Or Equal[LoopbackEqWit.T] Or
     (Not[IPv4] And MaxSize[Rfc1123HostnameMaxLengthWit.T] And MatchesRegex[Rfc1123HostnameRegexWit.T]) Or Rfc1918PrivateSpec Or
     Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec
@@ -174,6 +180,7 @@ package object laserdisc {
   final type DbIndex               = Int Refined DbIndexRef
   final type GeoHash               = String Refined GeoHashRef
   final type GlobPattern           = String Refined GlobPatternRef
+  final type AclPattern            = String Refined AclPatternRef
   final type Host                  = String Refined HostRef
   final type Index                 = Long Refined IndexRef
   final type Key                   = String Refined KeyRef
@@ -216,6 +223,7 @@ package object laserdisc {
   object DbIndex               extends RefinedTypeOps.Numeric[DbIndex, Int]
   object GeoHash               extends RefinedTypeOps[GeoHash, String]
   object GlobPattern           extends RefinedTypeOps[GlobPattern, String]
+  object AclPattern            extends RefinedTypeOps[AclPattern, String]
   object Host                  extends RefinedTypeOps[Host, String]
   object Index                 extends RefinedTypeOps.Numeric[Index, Long]
   object Key                   extends RefinedTypeOps[Key, String]

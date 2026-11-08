@@ -30,7 +30,7 @@ final class AclPSpec extends BaseSpec with ServerP {
 
   test("The ACL protocol using setuser sends the rules in order") {
     val rules =
-      servertypes.aclRules.reset.on.password(Key("secret")).keys(GlobPattern("app:*")).allow(Key("get")).denyCategory(Key("dangerous"))
+      servertypes.aclRules.reset.on.password(Key("secret")).keys(AclPattern("app:*")).allow(Key("get")).denyCategory(Key("dangerous"))
     assertEquals(
       acl.setuser(Key("u"), rules).encode,
       bulks("ACL", "SETUSER", "u", "reset", "on", ">secret", "~app:*", "+get", "-@dangerous")
@@ -38,11 +38,17 @@ final class AclPSpec extends BaseSpec with ServerP {
     assertEquals(acl.setuser(Key("u"), servertypes.aclRules).encode, bulks("ACL", "SETUSER", "u"))
     val withSelectors =
       servertypes.aclSelectorRules.on
-        .readKeys(GlobPattern("r:*"))
-        .selector(servertypes.aclSelectorRules.keys(GlobPattern("b:*")).allow(Key("set")))
-    assertEquals(acl.setuser(Key("u"), withSelectors).encode, bulks("ACL", "SETUSER", "u", "on", "%R~r:*", "(~b:* +set)"))
+        .readKeys(AclPattern("r:*"))
+        .selector(servertypes.aclSelectorRules.keys(AclPattern("b:*")).allow(Key("set")))
+    assertEquals(acl.setuser(Key("u"), withSelectors).encode, bulks("ACL", "SETUSER", "u", "on", "%R~r:*", "(\"~b:*\" \"+set\")"))
+    // the server takes quotes and backslashes out of a selector's rules, so they're quoted and escaped to stay as they are
+    val quoting = servertypes.aclSelectorRules.selector(servertypes.aclSelectorRules.keys(AclPattern.unsafeFrom("\"q\\:*\"")))
+    assertEquals(acl.setuser(Key("u"), quoting).encode, bulks("ACL", "SETUSER", "u", "(\"~\\\"q\\\\:*\\\"\")"))
+    // and refuses spaces in the patterns of keys and channels
+    assert(AclPattern.from("a b").isLeft)
+    assert(compileErrors("""servertypes.aclSelectorRules.keys(AclPattern("a b"))""").nonEmpty)
     assertEquals(
-      acl.setuser(Key("u"), servertypes.aclSelectorRules.readWriteKeys(GlobPattern("k:*"))).encode,
+      acl.setuser(Key("u"), servertypes.aclSelectorRules.readWriteKeys(AclPattern("k:*"))).encode,
       bulks("ACL", "SETUSER", "u", "%RW~k:*")
     )
   }
@@ -56,15 +62,15 @@ final class AclPSpec extends BaseSpec with ServerP {
     assertEquals(acl.setuser(Key("u"), rules.allDatabases).encode, bulks("ACL", "SETUSER", "u", "alldbs"))
     assertEquals(acl.setuser(Key("u"), rules.resetDatabases).encode, bulks("ACL", "SETUSER", "u", "resetdbs"))
     assertEquals(
-      acl.setuser(Key("u"), rules.selector(rules.databases(OneOrMore.unsafeFrom(List(DbIndex(1)))).keys(GlobPattern("b:*")))).encode,
-      bulks("ACL", "SETUSER", "u", "(db=1 ~b:*)")
+      acl.setuser(Key("u"), rules.selector(rules.databases(OneOrMore.unsafeFrom(List(DbIndex(1)))).keys(AclPattern("b:*")))).encode,
+      bulks("ACL", "SETUSER", "u", "(\"db=1\" \"~b:*\")")
     )
   }
 
   test("The ACL protocol using setuser on Dragonfly sends the keys that may only be read or written") {
     assertEquals(
       dragonfly_2_0.acl
-        .setuser(Key("u"), dragonfly_2_0.servertypes.aclDragonflyRules.readKeys(GlobPattern("r:*")).readWriteKeys(GlobPattern("k:*")))
+        .setuser(Key("u"), dragonfly_2_0.servertypes.aclDragonflyRules.readKeys(AclPattern("r:*")).readWriteKeys(AclPattern("k:*")))
         .encode,
       bulks("ACL", "SETUSER", "u", "%R~r:*", "%RW~k:*")
     )

@@ -24,7 +24,7 @@ package fs2
 
 import cats.effect.std.Queue as CatsQueue
 import cats.effect.syntax.all.*
-import cats.effect.{Async, Resource}
+import cats.effect.{Async, Ref, Resource}
 import cats.syntax.all.*
 import laserdisc.protocol.{Err, Feed, RESP}
 import log.effect.fs2.LogSelector
@@ -80,10 +80,14 @@ object RedisSubscriber {
           confirm(replies, before.size, feed.confirmations, feed, Vector.empty, Vector.empty)
             .timeoutTo(confirmationTimeout, Async[F].raiseError[(Vector[RESP], Vector[A])](ServerNotResponding(address)))
         )
-      } yield confirmed._1 -> (Stream.emits(confirmed._2) ++ Stream.fromQueueUnterminated(replies).flatMap {
-        case Left(failure) => Stream.raiseError[F](failure)
-        case Right(reply)  => Stream.fromEither[F](feed.message(reply)).flatMap(Stream.fromOption[F](_))
-      })
+        early <- Resource.eval(Ref.of[F, Vector[A]](confirmed._2))
+        // the stream may be run more than once: what came during confirmation goes to the first run only, and each message is taken from
+        // the queue on its own, so that a run stopping early leaves the next ones there
+      } yield confirmed._1 -> (Stream.eval(early.getAndSet(Vector.empty)).flatMap(Stream.emits) ++
+        Stream.fromQueueUnterminated(replies, limit = 1).flatMap {
+          case Left(failure) => Stream.raiseError[F](failure)
+          case Right(reply)  => Stream.fromEither[F](feed.message(reply)).flatMap(Stream.fromOption[F](_))
+        })
 
     // what arrives while the rest is being confirmed is kept for the stream
     private def confirm[A](

@@ -23,6 +23,7 @@ package laserdisc
 package fs2
 
 import cats.effect.{IO, Resource}
+import cats.syntax.all.*
 import laserdisc.auto.*
 import laserdisc.protocol.Feed
 import laserdisc.protocol.Feed.Message
@@ -57,6 +58,28 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
         .to("127.0.0.1", port, feed)
         .use(_.take(2).compile.toList)
         .assertEquals(List(Message(Key("a"), "early"), Message(Key("b"), "late")))
+    }
+  }
+
+  test("a run that stops early leaves the next messages for the next run") {
+    serving(1)(confirmed + message("a", "first") + message("b", "second")).use { case (port, _) =>
+      RedisSubscriber[IO]
+        .to("127.0.0.1", port, feed)
+        .use { messages =>
+          IO.sleep(200.millis) >> (messages.take(1).compile.toList, messages.take(1).compile.toList).tupled
+        }
+        .assertEquals(List(Message(Key("a"), "first")) -> List(Message(Key("b"), "second")))
+    }
+  }
+
+  test("a message that arrives between two confirmations comes in the first run only") {
+    serving(1)(confirmation("a", 1) + message("a", "early") + confirmation("b", 2) + message("b", "late")).use { case (port, _) =>
+      RedisSubscriber[IO]
+        .to("127.0.0.1", port, feed)
+        .use { messages =>
+          (messages.take(1).compile.toList, messages.take(1).compile.toList).tupled
+        }
+        .assertEquals(List(Message(Key("a"), "early")) -> List(Message(Key("b"), "late")))
     }
   }
 

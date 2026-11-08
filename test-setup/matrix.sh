@@ -28,15 +28,20 @@ for p in $ports; do
   if [ "$p" = "$((first + 3))" ]; then nodes="$nodes exec $(node "$p")"; else nodes="$nodes $(node "$p") --daemonize yes;"; fi
 done
 
-trap 'docker rm -f "$name" "$name-cluster" >/dev/null 2>&1 || true' EXIT
-docker run -d --name "$name" -p "$port:6379" "$image" >/dev/null
+# only the containers this run started are stopped, by the ids docker gave them, and --rm removes them once stopped: a container of
+# another run with the same name is left alone, as this run's docker run fails before it has an id
+server_id=""
+cluster_id=""
+stop() { for id in $server_id $cluster_id; do docker stop "$id" >/dev/null 2>&1 || true; done; }
+trap stop EXIT
+server_id=$(docker run --rm -d --name "$name" -p "$port:6379" "$image")
 # shellcheck disable=SC2086
-docker run -d --name "$name-cluster" $published --entrypoint sh "$image" -c "$nodes" >/dev/null
+cluster_id=$(docker run --rm -d --name "$name-cluster" $published --entrypoint sh "$image" -c "$nodes")
 
 for _ in $(seq 1 60); do
   ready=yes
-  docker exec "$name" "$cli" ping >/dev/null 2>&1 || ready=no
-  for p in $ports; do docker exec "$name-cluster" "$cli" -p "$p" ping >/dev/null 2>&1 || ready=no; done
+  docker exec "$server_id" "$cli" ping >/dev/null 2>&1 || ready=no
+  for p in $ports; do docker exec "$cluster_id" "$cli" -p "$p" ping >/dev/null 2>&1 || ready=no; done
   [ "$ready" = yes ] && break
   sleep 1
 done

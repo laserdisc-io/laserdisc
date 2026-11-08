@@ -171,18 +171,20 @@ final class StreamPSpec extends BaseSpec with StreamP {
     val older   = redis_6_2.xautoclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), start, PosLong(10L))
     val newer   = redis_7_0.xautoclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), start, PosLong(10L))
     assertEquals(newer.encode, bulks("XAUTOCLAIM", "s", "g", "c", "0", "0-0", "COUNT", "10"))
-    assertEquals(older.decode(redis62), StreamP.AutoClaimed(start, Seq(StreamEntry(id(1L), Seq(Key("a") -> 1))), Nil))
-    assertEquals(older.decode(redis70), StreamP.AutoClaimed(start, Seq(StreamEntry(id(1L), Seq(Key("a") -> 1))), Seq(id(2L))))
-    assertEquals(newer.decode(redis70), StreamP.AutoClaimed(start, Seq(StreamEntry(id(1L), Seq(Key("a") -> 1))), Seq(id(2L))))
+    val claimed = Seq(StreamEntry(id(1L), Seq(Key("a") -> 1)))
+    assertEquals(older.decode(redis62), StreamP.AutoClaimedOf6_2(start, claimed))
+    assertEquals(older.decode(redis70), StreamP.AutoClaimedOf6_2(start, claimed))
+    assertEquals(newer.decode(redis70), StreamP.AutoClaimedOf7_0(start, claimed, Seq(id(2L))))
+    assert(compileErrors("older.decode(redis70).map(_.deleted)").nonEmpty)
     assert(newer.decode(redis62).isLeft)
     val justIds = Arr(Bulk("0-0"), bulks("1-1", "3-1"), Arr(Nil))
     assertEquals(
       redis_7_0.xautoclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), start).decode(justIds),
-      StreamP.AutoClaimed(start, Seq(id(1L), id(3L)), Nil)
+      StreamP.AutoClaimedOf7_0(start, Seq(id(1L), id(3L)), Nil)
     )
     assertEquals(
       redis_6_2.xautoclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), start).decode(justIds),
-      StreamP.AutoClaimed(start, Seq(id(1L), id(3L)), Nil)
+      StreamP.AutoClaimedOf6_2(start, Seq(id(1L), id(3L)))
     )
     assert(redis_7_0.xautoclaimjustid(Key("s"), Key("g"), Key("c"), NonNegLong(0L), start).decode(Arr(Bulk("0-0"), bulks("1-1"))).isLeft)
   }
@@ -215,18 +217,25 @@ final class StreamPSpec extends BaseSpec with StreamP {
       ) :: Nil
     )
     val redisGroup = Arr(keydbGroup.elements ::: List(Bulk("entries-read"), Num(3L), Bulk("lag"), NullBulk))
+    // Redis 6.2's import reads either reply, without what Redis 7.0 adds; Redis 7.0's needs it
     assertEquals(
-      xinfogroups(Key("s")).decode(Arr(keydbGroup, redisGroup)),
-      Seq(
-        StreamP.GroupInfo(Key("g"), NonNegLong(3L), NonNegLong(3L), id(3L), None, None),
-        StreamP.GroupInfo(Key("g"), NonNegLong(3L), NonNegLong(3L), id(3L), Some(NonNegLong(3L)), None)
-      )
+      redis_6_2.xinfogroups(Key("s")).decode(Arr(keydbGroup, redisGroup)),
+      Seq.fill(2)(StreamP.GroupInfoOf6_2(Key("g"), NonNegLong(3L), NonNegLong(3L), id(3L)))
     )
+    assertEquals(
+      redis_7_0.xinfogroups(Key("s")).decode(Arr(redisGroup)),
+      Seq(StreamP.GroupInfoOf7_0(Key("g"), NonNegLong(3L), NonNegLong(3L), id(3L), Some(NonNegLong(3L)), None))
+    )
+    assert(redis_7_0.xinfogroups(Key("s")).decode(Arr(keydbGroup)).isLeft)
     val consumer =
       Arr(Bulk("name") :: Bulk("c1") :: Bulk("pending") :: Num(0L) :: Bulk("idle") :: Num(29L) :: Bulk("inactive") :: Num(-1L) :: Nil)
     assertEquals(
       xinfoconsumers(Key("s"), Key("g")).decode(Arr(consumer)),
-      Seq(StreamP.ConsumerInfo(Key("c1"), NonNegLong(0L), NonNegLong(29L), Some(-1L)))
+      Seq(StreamP.ConsumerInfoOf7_2(Key("c1"), NonNegLong(0L), NonNegLong(29L), -1L))
+    )
+    assertEquals(
+      redis_7_0.xinfoconsumers(Key("s"), Key("g")).decode(Arr(consumer)),
+      Seq(StreamP.ConsumerInfoOf6_2(Key("c1"), NonNegLong(0L), NonNegLong(29L)))
     )
     assertEquals(
       xsetid(Key("s"), id(9L), NonNegLong(3L), id(2L)).encode,
@@ -402,14 +411,14 @@ final class StreamPSpec extends BaseSpec with StreamP {
     )
     assertEquals(
       xinfostreamfull[Int](Key("s")).decode(Arr(fullStream ++ List(Bulk("groups"), Arr(group)))),
-      StreamP.StreamInfoFull(
+      StreamP.StreamInfoFullOf7_2(
         NonNegLong(2L),
         NonNegLong(1L),
         NonNegLong(2L),
         idB,
         Seq(StreamEntry(idA, Seq(Key("a") -> 1))),
         Seq(
-          StreamP.GroupInfoFull(
+          StreamP.GroupInfoFullOf7_2(
             Key("g"),
             idB,
             Some(NonNegLong(2L)),
@@ -420,14 +429,14 @@ final class StreamPSpec extends BaseSpec with StreamP {
               StreamP.GroupPendingFull(idB, Some(Key("c1")), NonNegLong(80L), NonNegLong(1L))
             ),
             Seq(
-              StreamP.ConsumerInfoFull(
+              StreamP.ConsumerInfoFullOf7_2(
                 Key("c1"),
                 NonNegLong(100L),
                 Some(NonNegLong(90L)),
                 NonNegLong(1L),
                 Seq(StreamP.ConsumerPendingFull(idB, NonNegLong(80L), NonNegLong(1L)))
               ),
-              StreamP.ConsumerInfoFull(Key("c2"), NonNegLong(5L), None, NonNegLong(0L), Nil)
+              StreamP.ConsumerInfoFullOf7_2(Key("c2"), NonNegLong(5L), None, NonNegLong(0L), Nil)
             ),
             Map("nacked-count" -> "1")
           )
@@ -451,20 +460,19 @@ final class StreamPSpec extends BaseSpec with StreamP {
       Arr(Arr(Bulk("name"), Bulk("c"), Bulk("seen-time"), Num(5L), Bulk("pel-count"), Num(0L), Bulk("pending"), Arr(Nil)))
     )
     assertEquals(
-      xinfostreamfull[Int](Key("s")).decode(Arr(fullStream ++ List(Bulk("groups"), Arr(group)))).map(_.groups),
+      redis_6_2.xinfostreamfull[Int](Key("s")).decode(Arr(fullStream ++ List(Bulk("groups"), Arr(group)))).map(_.groups),
       Seq(
-        StreamP.GroupInfoFull(
+        StreamP.GroupInfoFullOf6_2(
           Key("g"),
           idA,
-          None,
-          None,
           NonNegLong(0L),
           Nil,
-          Seq(StreamP.ConsumerInfoFull(Key("c"), NonNegLong(5L), None, NonNegLong(0L), Nil)),
+          Seq(StreamP.ConsumerInfoFullOf6_2(Key("c"), NonNegLong(5L), NonNegLong(0L), Nil)),
           Map.empty
         )
       )
     )
+    assert(xinfostreamfull[Int](Key("s")).decode(Arr(fullStream ++ List(Bulk("groups"), Arr(group)))).isLeft)
   }
 
   private val keys = OneOrMoreKeys.unsafeFrom(List(Key("s"), Key("t")))

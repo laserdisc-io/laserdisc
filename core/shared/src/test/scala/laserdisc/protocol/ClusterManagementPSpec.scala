@@ -63,8 +63,10 @@ final class ClusterManagementPSpec extends BaseSpec with ClusterP with ServerBac
       )
     )
     val expected = ShardNode(nodeId.value, "172.18.0.3", "172.18.0.3", "master", "online", 0L, Some(6379), None, None)
-    shards.decode(redis).onRight(_ == Seq(Shard(Seq(Slot(0) -> Slot(16383)), Seq(expected), None)))
-    shards.decode(valkey).onRight(_.map(_.id) == Seq(Some("4638e2605f114ba2283c979cb2b36add1200d95c")))
+    laserdisc.redis_7_0.shards.decode(redis).onRight(_ == Seq(ShardOf7_0(Seq(Slot(0) -> Slot(16383)), Seq(expected))))
+    // Valkey 9.1's import reads each shard's id, which it always sends
+    shards.decode(valkey).onRight(_.map(_.id) == Seq("4638e2605f114ba2283c979cb2b36add1200d95c"))
+    assert(shards.decode(redis).isLeft)
   }
 
   test("The Cluster protocol using links reads each link") {

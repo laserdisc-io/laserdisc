@@ -86,7 +86,7 @@ final class AclPSpec extends BaseSpec with ServerP {
       bulks("*")
     )
     redis_6_2.acl.getuser(Key("u")).decode(redis62).onRight {
-      _ == Some(AclUser(Seq("on", "allchannels"), Seq(hash), "-@all +get +set", "~app:* ~other:*", "&*", Nil, None))
+      _ == Some(AclUserOf6_2(Seq("on", "allchannels"), Seq(hash), "-@all +get +set", "~app:* ~other:*", "&*"))
     }
     assert(acl.getuser(Key("u")).decode(redis62).isLeft)
     val valkey = Arr(
@@ -105,32 +105,28 @@ final class AclPSpec extends BaseSpec with ServerP {
       Bulk("selectors"),
       Arr(bulks("commands", "-@all +set", "keys", "~b:*", "channels", "", "databases", "db=1"))
     )
+    // Valkey 9.1's import reads the databases of the user and of its selectors
     acl.getuser(Key("u")).decode(valkey).onRight {
       _ == Some(
-        AclUser(
+        AclUserOfValkey9_1(
           Seq("on"),
           Seq(hash),
           "-@all +get",
           "~a:*",
           "&c:*",
-          Seq(AclSelector("-@all +set", "~b:*", "", Some("db=1"))),
-          Some("alldbs")
+          Seq(AclSelectorOfValkey9_1("-@all +set", "~b:*", "", "db=1")),
+          "alldbs"
         )
       )
+    }
+    // the imports before read the same reply without what they don't have
+    redis_7_0.acl.getuser(Key("u")).decode(valkey).onRight {
+      _ == Some(AclUserOf7_0(Seq("on"), Seq(hash), "-@all +get", "~a:*", "&c:*", Seq(AclSelectorOf7_0("-@all +set", "~b:*", ""))))
     }
     redis_6_2.acl.getuser(Key("u")).decode(valkey).onRight {
-      _ == Some(
-        AclUser(
-          Seq("on"),
-          Seq(hash),
-          "-@all +get",
-          "~a:*",
-          "&c:*",
-          Seq(AclSelector("-@all +set", "~b:*", "", Some("db=1"))),
-          Some("alldbs")
-        )
-      )
+      _ == Some(AclUserOf6_2(Seq("on"), Seq(hash), "-@all +get", "~a:*", "&c:*"))
     }
+    assert(compileErrors("redis_7_0.acl.getuser(Key(\"u\")).decode(valkey).map(_.map(_.databases))").nonEmpty)
     assertEquals(acl.getuser(Key("nosuch")).decode(NullBulk), None)
     assert(acl.getuser(Key("nosuch")).decode(NilArr).isLeft)
   }
@@ -152,13 +148,12 @@ final class AclPSpec extends BaseSpec with ServerP {
         "id=1"
       ).elements ::: extra
     )
-    acl.log.decode(Arr(entry(Nil))).onRight(_ == Seq(AclLogEntry(1L, "auth", "toplevel", "AUTH", "u", 0.5, "id=1", None, None, None)))
-    acl
-      .log(PosInt(1))
-      .decode(Arr(entry(List(Bulk("entry-id"), Num(0L), Bulk("timestamp-created"), Num(17L), Bulk("timestamp-last-updated"), Num(18L)))))
-      .onRight {
-        _.map(e => (e.entryId, e.createdAt, e.updatedAt)) == Seq((Some(0L), Some(17L), Some(18L)))
-      }
+    val withIds = entry(List(Bulk("entry-id"), Num(0L), Bulk("timestamp-created"), Num(17L), Bulk("timestamp-last-updated"), Num(18L)))
+    redis_6_2.acl.log.decode(Arr(entry(Nil), withIds)).onRight {
+      _ == Seq.fill(2)(AclLogEntryOf6_2(1L, "auth", "toplevel", "AUTH", "u", 0.5, "id=1"))
+    }
+    acl.log(PosInt(1)).decode(Arr(withIds)).onRight(_.map(e => (e.entryId, e.createdAt, e.updatedAt)) == Seq((0L, 17L, 18L)))
+    assert(acl.log.decode(Arr(entry(Nil))).isLeft)
   }
 
   test("The ACL protocol using dryrun sends the command it is given and reads OK as None and a reason as Some") {

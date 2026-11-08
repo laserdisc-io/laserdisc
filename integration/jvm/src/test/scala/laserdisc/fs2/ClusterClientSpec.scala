@@ -32,7 +32,7 @@ import scala.annotation.tailrec
 final class RedisClusterClientSpec extends ClusterClientSpec(LiveServers.port(7100), "redis", LiveServers.redis.cluster) {
   since[Redis7_0]("a redis cluster client reads the hostname a node announces, with the nodes and the slots") { v =>
     import v.config
-    hostname(config.set(OneOrMore.unsafeFrom(List(Key("cluster-announce-hostname") -> "my.host.example"))))
+    hostname(v.cluster, config.set(OneOrMore.unsafeFrom(List(Key("cluster-announce-hostname") -> "my.host.example"))))
   }
 }
 
@@ -59,7 +59,7 @@ final class ValkeyClusterClientSpec extends ClusterClientSpec(LiveServers.port(7
 
   since[Valkey7_2]("a valkey cluster client reads the hostname a node announces, with the nodes and the slots") { v =>
     import v.config
-    hostname(config.set(OneOrMore.unsafeFrom(List(Key("cluster-announce-hostname") -> "my.host.example"))))
+    hostname(v.cluster, config.set(OneOrMore.unsafeFrom(List(Key("cluster-announce-hostname") -> "my.host.example"))))
   }
 }
 
@@ -90,7 +90,7 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
     retry(300)
   }
 
-  private def seenBy(port: Port): Seq[ClusterP.Node] = sendTo(port)(nodes).nodes
+  private def seenBy(port: Port): Seq[ClusterP.Node6_2] = sendTo(port)(nodes).nodes
 
   // what's already been done is skipped, as the servers outlive the tests
   private lazy val ids: (NodeId, NodeId, NodeId) = {
@@ -165,7 +165,7 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
     assertEquals(send(replicas(master)).nodes.map(_.id), Seq(replica))
     assertEquals(send(slaves(master)).nodes.map(_.id), Seq(replica))
     assertEquals(send(replicas(master)).nodes.flatMap(_.maybeMaster), Seq(master))
-    assertEquals(send(replicas(other)).nodes, Seq.empty[ClusterP.Node])
+    assertEquals(send(replicas(other)).nodes, Seq.empty[ClusterP.Node6_2])
   }
 
   test("a cluster client reads who serves the slots") {
@@ -186,13 +186,13 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
     assertEquals(send(clusterinfo).get[String]("cluster_slots_assigned"), Right("16384"))
   }
 
-  // sets the hostname on the master with the command given, then reads it back
-  protected final def hostname(set: Protocol[OK]): Unit = {
+  // sets the hostname on the master with the command given, then reads it back with the version's own replies
+  protected final def hostname(version: Cluster7_0, set: Protocol[OK]): Unit = {
     val (master, _, _) = ids
     val name           = "my.host.example"
 
     assertEquals(send(set), OK)
-    assertEquals(send(nodes).nodes.find(_.id == master).flatMap(_.address).flatMap(_.hostname), Some(Host.unsafeFrom(name)))
-    assertEquals(send(slots).infoFor(Slot.unsafeFrom(0)).map(_.master.metadata.get("hostname")), Some(Some(name)))
+    assertEquals(send(version.nodes).nodes.find(_.id == master).flatMap(_.address).flatMap(_.hostname), Some(Host.unsafeFrom(name)))
+    assertEquals(send(version.slots).infoFor(Slot.unsafeFrom(0)).map(_.master.metadata.get("hostname")), Some(Some(name)))
   }
 }

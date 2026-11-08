@@ -952,9 +952,9 @@ trait ClientAllCommands
     with ClientValkeyFilterCommands
 trait ConfigAllCommands  extends ConfigCommands with ConfigManyCommands
 trait LatencyAllCommands extends LatencyCommands with LatencyHistogramCommands
-trait CommandAllCommands extends CommandCommands with CommandListCommands
-trait ModuleAllCommands  extends ModuleCommands with ModuleLoadExCommands
-trait AclAllCommands     extends AclCommands with AclDatabaseCommands
+trait CommandAllCommands extends CommandCommands with CommandListCommands with CommandInfo7_0Commands
+trait ModuleAllCommands  extends ModuleCommands with ModuleLoadExCommands with ModuleList7_0Commands
+trait AclAllCommands     extends AclCommands with AclDatabaseCommands with AclLog7_2Commands
 
 trait ServerP
     extends ServerBaseP
@@ -974,4 +974,6 @@ trait ServerP
   override lazy val acl: AclAllCommands         = new AclAllCommands {}
 
   override val servertypes: ServerP.AllTypes = new ServerP.AllTypes {}
+
+  override val slowlog: SlowLogCommands8_10 = new SlowLogCommands8_10 {}
 }

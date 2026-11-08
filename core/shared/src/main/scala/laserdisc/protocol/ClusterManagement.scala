@@ -54,8 +54,19 @@ object ClusterManagement {
       hostname: Option[String]
   )
 
-  /** A shard of CLUSTER SHARDS: the slot ranges it serves and its nodes. Valkey also replies with the shard's id */
-  final case class Shard(slots: Seq[(Slot, Slot)], nodes: Seq[ShardNode], id: Option[String])
+  /** A shard of CLUSTER SHARDS: the slot ranges it serves and its nodes */
+  sealed trait Shard7_0 {
+    def slots: Seq[(Slot, Slot)]
+    def nodes: Seq[ShardNode]
+  }
+
+  /** A shard of CLUSTER SHARDS from Valkey 9.1, with the shard's id */
+  sealed trait ShardValkey9_1 extends Shard7_0 {
+    def id: String
+  }
+
+  private[laserdisc] final case class ShardOf7_0(slots: Seq[(Slot, Slot)], nodes: Seq[ShardNode])                   extends Shard7_0
+  private[laserdisc] final case class ShardOfValkey9_1(slots: Seq[(Slot, Slot)], nodes: Seq[ShardNode], id: String) extends ShardValkey9_1
 
   private implicit final val shardNode: Read[Record, ShardNode] = Read.record("shard node") { f =>
     for {
@@ -70,14 +81,20 @@ object ClusterManagement {
       hostname <- f.optionalBulk[String]("hostname")
     } yield ShardNode(id, ip, endpoint, role, health, offset, port, tlsPort, hostname)
   }
-  private implicit final val shard: Read[Record, Shard] = Read.record("shard") { f =>
+  private final def shard(f: Fields): Either[RESPDecErr, ShardOf7_0] =
     for {
       slots <- f[Arr.OfPairs[Num, Num], Seq[(Slot, Slot)]]("slots")
       nodes <- f[Records, Seq[ShardNode]]("nodes")
-      id    <- f.optionalBulk[String]("id")
-    } yield Shard(slots, nodes, id)
+    } yield ShardOf7_0(slots, nodes)
+  private implicit final val shard7_0: Read[Record, Shard7_0]             = Read.record("shard")(shard)
+  private implicit final val shardValkey9_1: Read[Record, ShardValkey9_1] = Read.record("shard") { f =>
+    for {
+      s  <- shard(f)
+      id <- f.bulk[String]("id")
+    } yield ShardOfValkey9_1(s.slots, s.nodes, id)
   }
-  private[protocol] final val shards: Read[Records, Seq[Shard]] = Read[Records, Seq[Shard]]
+  private[protocol] final val shards7_0: Read[Records, Seq[Shard7_0]]             = Read[Records, Seq[Shard7_0]]
+  private[protocol] final val shardsValkey9_1: Read[Records, Seq[ShardValkey9_1]] = Read[Records, Seq[ShardValkey9_1]]
 
   /** A link of CLUSTER LINKS: a connection to (`to`) or from (`from`) another node, with its buffer use in bytes */
   final case class ClusterLink(
@@ -236,11 +253,17 @@ trait ClusterScanP extends Features {
 
 /** CLUSTER SHARDS, CLUSTER LINKS, CLUSTER ADDSLOTSRANGE and CLUSTER DELSLOTSRANGE: Redis 7.0 */
 trait ClusterShardsCoreP extends Features {
-  import ClusterManagement.Shard
+  import ClusterManagement.Shard7_0
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLUSTER SHARDS")
 
-  final val shards: Single[Seq[Shard]] = Protocol("CLUSTER", "SHARDS").using(RESPRead.instance(ClusterManagement.shards))
+  val shards: Single[Seq[Shard7_0]] = Protocol("CLUSTER", "SHARDS").using(RESPRead.instance(ClusterManagement.shards7_0))
+}
+
+/** CLUSTER SHARDS with each shard's id: Valkey 9.1 */
+trait ClusterShardIdP extends ClusterShardsCoreP {
+  override val shards: Single[Seq[ClusterManagement.ShardValkey9_1]] =
+    Protocol("CLUSTER", "SHARDS").using(RESPRead.instance(ClusterManagement.shardsValkey9_1))
 }
 
 trait ClusterShardsP extends ClusterShardsCoreP {

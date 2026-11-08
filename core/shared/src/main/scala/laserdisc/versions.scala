@@ -130,10 +130,17 @@ trait GeoValkey9_0 extends Geo6_2 with GeoSearchPolygonP {
 }
 
 trait Streams6_2 extends StreamBaseP with StreamGroupBaseP with StreamClaimAndInfoBaseP
-trait Streams7_0 extends Streams6_2 with StreamClaimDeletedP with StreamGroupEntriesReadP with StreamSetIdEntriesP with StreamIdAtP {
+trait Streams7_0
+    extends Streams6_2
+    with StreamClaimDeletedP
+    with StreamGroupEntriesReadP
+    with StreamSetIdEntriesP
+    with StreamIdAtP
+    with StreamInfo7_0P {
   override val streamtypes: StreamP.StreamTypes with StreamP.StreamIdAtTypes = new StreamP.StreamTypes with StreamP.StreamIdAtTypes {}
 }
-trait Streams8_2 extends Streams7_0 with StreamRefPolicyP {
+trait Streams7_2 extends Streams7_0 with StreamInfo7_2P
+trait Streams8_2 extends Streams7_2 with StreamRefPolicyP {
   override val streamtypes: StreamP.StreamTypes with StreamP.StreamIdAtTypes with StreamP.StreamRefPolicyTypes = new StreamP.StreamTypes
     with StreamP.StreamIdAtTypes
     with StreamP.StreamRefPolicyTypes {}
@@ -208,7 +215,7 @@ trait ClusterValkey8_0 extends Cluster7_2 with ClusterSlotStatsP with ClusterSet
   override val clustertypes: ClusterTypes8_2 = new ClusterTypes8_2 {}
 }
 trait ClusterValkey9_0 extends ClusterValkey8_0 with ClusterReplicateNoOneP with ClusterSlotMigrationsP
-trait ClusterValkey9_1 extends ClusterValkey9_0 with ClusterScanP {
+trait ClusterValkey9_1 extends ClusterValkey9_0 with ClusterScanP with ClusterShardIdP {
   override val clustertypes: ClusterTypesValkey9_1 = new ClusterTypesValkey9_1 {}
 }
 
@@ -223,14 +230,15 @@ trait Config7_0       extends ConfigCommands with ConfigManyCommands
 
 /** The LATENCY and COMMAND commands, under `latency` and `command` */
 trait Latency7_0 extends LatencyCommands with LatencyHistogramCommands
-trait Command7_0 extends CommandCommands with CommandListCommands
+trait Command7_0 extends CommandCommands with CommandListCommands with CommandInfo7_0Commands
 
 /** The MODULE commands, under `module` */
-trait Module7_0 extends ModuleCommands with ModuleLoadExCommands
+trait Module7_0 extends ModuleCommands with ModuleLoadExCommands with ModuleList7_0Commands
 
 /** The ACL commands, under `acl` */
 trait Acl7_0       extends AclCommands with AclSelectorCommands
-trait AclValkey9_1 extends Acl7_0 with AclDatabaseCommands
+trait Acl7_2       extends Acl7_0 with AclLog7_2Commands
+trait AclValkey9_1 extends Acl7_2 with AclDatabaseCommands
 
 /** The SCRIPT commands, under `script` */
 trait ScriptValkey8_0 extends ScriptCommands with ScriptShowCommands
@@ -254,6 +262,7 @@ trait Server7_0 extends Server6_2 with ServerShutdownAndInfoP {
 }
 trait Server7_2 extends Server7_0 {
   override lazy val client: Client7_2 = new Client7_2 {}
+  override lazy val acl: Acl7_2       = new Acl7_2 {}
 }
 trait Server7_4 extends Server7_2 {
   override lazy val client: Client7_4 = new Client7_4 {}
@@ -262,7 +271,9 @@ trait Server8_0 extends Server7_4 with ServerInfoRedis8P
 trait Server8_6 extends Server8_0 with ServerHotKeysP {
   override val servertypes: ServerTypes8_6 = new ServerTypes8_6 {}
 }
-trait Server8_10      extends Server8_6 with ServerBackupP
+trait Server8_10 extends Server8_6 with ServerBackupP {
+  override val slowlog: SlowLogCommands8_10 = new SlowLogCommands8_10 {}
+}
 trait ServerValkey8_0 extends Server7_2 {
   override lazy val client: ClientValkey8_0 = new ClientValkey8_0 {}
 }
@@ -360,7 +371,8 @@ trait Redis7_0
   override val streams: Streams7_0       = new Streams7_0 {}
   override val strings: Strings7_0       = new Strings7_0 {}
 }
-trait Redis7_2 extends Redis7_0 with Cluster7_2 with Keys7_2 with Server7_2 with SortedSets7_2 {
+trait Redis7_2 extends Redis7_0 with Cluster7_2 with Keys7_2 with Server7_2 with SortedSets7_2 with Streams7_2 {
+  override val streams: Streams7_2       = new Streams7_2 {}
   override val cluster: Cluster7_2       = new Cluster7_2 {}
   override val keys: Keys7_2             = new Keys7_2 {}
   override val server: Server7_2         = new Server7_2 {}
@@ -535,21 +547,278 @@ trait Dragonfly2_0
   override private[laserdisc] def supported: List[String] = super.supported ++ blocking.supported
 }
 
-object dragonfly_2_0 extends Dragonfly2_0
+// what each import calls the replies that some versions send with more, mixed only into the imports
+trait SlowLogReplies6_2 {
+  final type LogEntry = ServerInspection.LogEntry6_2
+  object LogEntry {
+    def unapply(e: LogEntry): Some[(NonNegLong, NonNegLong, NonNegLong, Seq[String], String, String)] =
+      Some((e.id, e.timestamp, e.microseconds, e.arguments, e.clientAddress, e.clientName))
+  }
+}
+trait SlowLogReplies8_10 {
+  final type LogEntry = ServerInspection.LogEntry8_10
+  object LogEntry {
+    def unapply(e: LogEntry): Some[(NonNegLong, NonNegLong, NonNegLong, Seq[String], String, String, NonNegLong)] =
+      Some((e.id, e.timestamp, e.microseconds, e.arguments, e.clientAddress, e.clientName, e.totalArguments))
+  }
+}
 
-object redis_6_2  extends Redis6_2
-object redis_7_0  extends Redis7_0
-object redis_7_2  extends Redis7_2
-object redis_7_4  extends Redis7_4
-object redis_8_0  extends Redis8_0
-object redis_8_2  extends Redis8_2
-object redis_8_4  extends Redis8_4
-object redis_8_6  extends Redis8_6
-object redis_8_8  extends Redis8_8
-object redis_8_10 extends Redis8_10
+trait AutoClaimedReplies6_2 {
+  final type AutoClaimed[+A] = StreamP.AutoClaimed6_2[A]
+  object AutoClaimed { def unapply[A](a: AutoClaimed[A]): Some[(StreamP.Id, Seq[A])] = Some((a.next, a.claimed)) }
+}
+trait AutoClaimedReplies7_0 {
+  final type AutoClaimed[+A] = StreamP.AutoClaimed7_0[A]
+  object AutoClaimed {
+    def unapply[A](a: AutoClaimed[A]): Some[(StreamP.Id, Seq[A], Seq[StreamP.Id])] = Some((a.next, a.claimed, a.deleted))
+  }
+}
+trait GroupInfoReplies6_2 {
+  final type GroupInfo = StreamP.GroupInfo6_2
+  object GroupInfo {
+    def unapply(g: GroupInfo): Some[(Key, NonNegLong, NonNegLong, StreamP.Id)] = Some((g.name, g.consumers, g.pending, g.lastDeliveredId))
+  }
+}
+trait GroupInfoReplies7_0 {
+  final type GroupInfo = StreamP.GroupInfo7_0
+  object GroupInfo {
+    def unapply(g: GroupInfo): Some[(Key, NonNegLong, NonNegLong, StreamP.Id, Option[NonNegLong], Option[NonNegLong])] =
+      Some((g.name, g.consumers, g.pending, g.lastDeliveredId, g.entriesRead, g.lag))
+  }
+}
+trait ConsumerInfoReplies6_2 {
+  final type ConsumerInfo = StreamP.ConsumerInfo6_2
+  object ConsumerInfo { def unapply(c: ConsumerInfo): Some[(Key, NonNegLong, NonNegLong)] = Some((c.name, c.pending, c.idle)) }
+}
+trait ConsumerInfoReplies7_2 {
+  final type ConsumerInfo = StreamP.ConsumerInfo7_2
+  object ConsumerInfo {
+    def unapply(c: ConsumerInfo): Some[(Key, NonNegLong, NonNegLong, Long)] = Some((c.name, c.pending, c.idle, c.inactive))
+  }
+}
+trait StreamInfoFullReplies6_2 {
+  final type StreamInfoFull[A] = StreamP.StreamInfoFull6_2[A]
+  final type GroupInfoFull     = StreamP.GroupInfoFull6_2
+  final type ConsumerInfoFull  = StreamP.ConsumerInfoFull6_2
+}
+trait StreamInfoFullReplies7_0 {
+  final type StreamInfoFull[A] = StreamP.StreamInfoFull7_0[A]
+  final type GroupInfoFull     = StreamP.GroupInfoFull7_0
+  final type ConsumerInfoFull  = StreamP.ConsumerInfoFull6_2
+}
+trait StreamInfoFullReplies7_2 {
+  final type StreamInfoFull[A] = StreamP.StreamInfoFull7_2[A]
+  final type GroupInfoFull     = StreamP.GroupInfoFull7_2
+  final type ConsumerInfoFull  = StreamP.ConsumerInfoFull7_2
+}
 
-object valkey_7_2 extends Valkey7_2
-object valkey_8_0 extends Valkey8_0
-object valkey_8_1 extends Valkey8_1
-object valkey_9_0 extends Valkey9_0
-object valkey_9_1 extends Valkey9_1
+trait AclUserReplies6_2 {
+  final type AclUser = Acl.AclUser6_2
+  object AclUser {
+    def unapply(u: AclUser): Some[(Seq[String], Seq[String], String, String, String)] =
+      Some((u.flags, u.passwords, u.commands, u.keys, u.channels))
+  }
+}
+trait AclUserReplies7_0 {
+  final type AclUser     = Acl.AclUser7_0
+  final type AclSelector = Acl.AclSelector7_0
+  object AclUser {
+    def unapply(u: AclUser): Some[(Seq[String], Seq[String], String, String, String, Seq[AclSelector])] =
+      Some((u.flags, u.passwords, u.commands, u.keys, u.channels, u.selectors))
+  }
+  object AclSelector { def unapply(s: AclSelector): Some[(String, String, String)] = Some((s.commands, s.keys, s.channels)) }
+}
+trait AclUserRepliesValkey9_1 {
+  final type AclUser     = Acl.AclUserValkey9_1
+  final type AclSelector = Acl.AclSelectorValkey9_1
+  object AclUser {
+    def unapply(u: AclUser): Some[(Seq[String], Seq[String], String, String, String, Seq[AclSelector], String)] =
+      Some((u.flags, u.passwords, u.commands, u.keys, u.channels, u.selectors, u.databases))
+  }
+  object AclSelector {
+    def unapply(s: AclSelector): Some[(String, String, String, String)] = Some((s.commands, s.keys, s.channels, s.databases))
+  }
+}
+trait AclLogReplies6_2 {
+  final type AclLogEntry = Acl.AclLogEntry6_2
+  object AclLogEntry {
+    def unapply(e: AclLogEntry): Some[(Long, String, String, String, String, Double, String)] =
+      Some((e.count, e.reason, e.context, e.denied, e.username, e.ageSeconds, e.clientInfo))
+  }
+}
+trait AclLogReplies7_2 {
+  final type AclLogEntry = Acl.AclLogEntry7_2
+  object AclLogEntry {
+    def unapply(e: AclLogEntry): Some[(Long, String, String, String, String, Double, String, Long, Long, Long)] =
+      Some((e.count, e.reason, e.context, e.denied, e.username, e.ageSeconds, e.clientInfo, e.entryId, e.createdAt, e.updatedAt))
+  }
+}
+
+trait ClusterReplies6_2 {
+  final type ClusterAddress  = ClusterP.Address6_2
+  final type ClusterNode     = ClusterP.Node6_2
+  final type ClusterNodes    = ClusterP.Nodes6_2
+  final type ClusterSlotNode = ClusterP.SlotNode6_2
+  final type ClusterSlotInfo = ClusterP.SlotInfo6_2
+  final type ClusterSlots    = ClusterP.Slots6_2
+  object ClusterNode {
+    def unapply(n: ClusterNode): Some[
+      (NodeId, Option[ClusterAddress], Seq[ClusterP.Flag], Option[NodeId], NonNegLong, NonNegLong, NonNegInt, ClusterP.LinkState, Seq[ClusterP.SlotType])
+    ] = Some((n.id, n.address, n.flags, n.maybeMaster, n.ping, n.pong, n.configEpoch, n.link, n.slots))
+  }
+  object ClusterNodes    { def unapply(n: ClusterNodes): Some[Seq[ClusterNode]] = Some(n.nodes) }
+  object ClusterSlotInfo {
+    def unapply(i: ClusterSlotInfo): Some[(ClusterSlotNode, Seq[ClusterSlotNode])] = Some((i.master, i.replicas))
+  }
+  object ClusterSlots {
+    def unapply(s: ClusterSlots): Some[Map[ClusterP.SlotType.Range, ClusterSlotInfo]] = Some(s.slots)
+  }
+  object ClusterAddress  { def unapply(a: ClusterAddress): Some[(Option[Host], Port, Port)] = Some((a.host, a.port, a.clusterPort)) }
+  object ClusterSlotNode { def unapply(n: ClusterSlotNode): Some[(Option[Host], Port, NodeId)] = Some((n.host, n.port, n.nodeId))   }
+}
+trait ClusterReplies7_0 {
+  final type ClusterAddress  = ClusterP.Address7_0
+  final type ClusterNode     = ClusterP.Node7_0
+  final type ClusterNodes    = ClusterP.Nodes7_0
+  final type ClusterSlotNode = ClusterP.SlotNode7_0
+  final type ClusterSlotInfo = ClusterP.SlotInfo7_0
+  final type ClusterSlots    = ClusterP.Slots7_0
+  object ClusterNode {
+    def unapply(n: ClusterNode): Some[
+      (NodeId, Option[ClusterAddress], Seq[ClusterP.Flag], Option[NodeId], NonNegLong, NonNegLong, NonNegInt, ClusterP.LinkState, Seq[ClusterP.SlotType])
+    ] = Some((n.id, n.address, n.flags, n.maybeMaster, n.ping, n.pong, n.configEpoch, n.link, n.slots))
+  }
+  object ClusterNodes    { def unapply(n: ClusterNodes): Some[Seq[ClusterNode]] = Some(n.nodes) }
+  object ClusterSlotInfo {
+    def unapply(i: ClusterSlotInfo): Some[(ClusterSlotNode, Seq[ClusterSlotNode])] = Some((i.master, i.replicas))
+  }
+  object ClusterSlots {
+    def unapply(s: ClusterSlots): Some[Map[ClusterP.SlotType.Range, ClusterSlotInfo]] = Some(s.slots)
+  }
+  object ClusterAddress {
+    def unapply(a: ClusterAddress): Some[(Option[Host], Port, Port, Option[Host])] = Some((a.host, a.port, a.clusterPort, a.hostname))
+  }
+  object ClusterSlotNode {
+    def unapply(n: ClusterSlotNode): Some[(Option[Host], Port, NodeId, Map[String, String])] = Some((n.host, n.port, n.nodeId, n.metadata))
+  }
+}
+trait ShardReplies7_0 {
+  final type ClusterShard = ClusterManagement.Shard7_0
+  object ClusterShard {
+    def unapply(s: ClusterShard): Some[(Seq[(Slot, Slot)], Seq[ClusterManagement.ShardNode])] = Some((s.slots, s.nodes))
+  }
+}
+trait ShardRepliesValkey9_1 {
+  final type ClusterShard = ClusterManagement.ShardValkey9_1
+  object ClusterShard {
+    def unapply(s: ClusterShard): Some[(Seq[(Slot, Slot)], Seq[ClusterManagement.ShardNode], String)] = Some((s.slots, s.nodes, s.id))
+  }
+}
+
+trait CommandReplies6_2 {
+  final type CommandInfo = ServerInspection.CommandInfo6_2
+  final type ModuleInfo  = ServerInspection.ModuleInfo6_2
+  object CommandInfo {
+    def unapply(c: CommandInfo): Some[(String, Int, Seq[String], Int, Int, Int, Seq[String])] =
+      Some((c.name, c.arity, c.flags, c.firstKey, c.lastKey, c.step, c.aclCategories))
+  }
+  object ModuleInfo { def unapply(m: ModuleInfo): Some[(String, Long)] = Some((m.name, m.version)) }
+}
+trait CommandReplies7_0 {
+  final type CommandInfo = ServerInspection.CommandInfo7_0
+  final type ModuleInfo  = ServerInspection.ModuleInfo7_0
+  object CommandInfo {
+    def unapply(c: CommandInfo): Some[
+      (String, Int, Seq[String], Int, Int, Int, Seq[String], Seq[String], Seq[ServerInspection.KeySpecification], Seq[CommandInfo])
+    ] = Some((c.name, c.arity, c.flags, c.firstKey, c.lastKey, c.step, c.aclCategories, c.tips, c.keySpecifications, c.subcommands))
+  }
+  object ModuleInfo {
+    def unapply(m: ModuleInfo): Some[(String, Long, String, Seq[String])] = Some((m.name, m.version, m.path, m.arguments))
+  }
+}
+
+// the names of the replies whose shape changes along versions, as each import has them
+trait RepliesDragonfly2_0
+    extends SlowLogReplies6_2
+    with AutoClaimedReplies7_0
+    with GroupInfoReplies6_2
+    with ConsumerInfoReplies6_2
+    with StreamInfoFullReplies6_2
+    with AclUserReplies6_2
+    with AclLogReplies6_2
+    with ClusterReplies6_2
+    with ShardReplies7_0
+    with CommandReplies6_2
+trait Replies6_2
+    extends SlowLogReplies6_2
+    with AutoClaimedReplies6_2
+    with GroupInfoReplies6_2
+    with ConsumerInfoReplies6_2
+    with StreamInfoFullReplies6_2
+    with AclUserReplies6_2
+    with AclLogReplies6_2
+    with ClusterReplies6_2
+    with ShardReplies7_0
+    with CommandReplies6_2
+trait Replies7_0
+    extends SlowLogReplies6_2
+    with AutoClaimedReplies7_0
+    with GroupInfoReplies7_0
+    with ConsumerInfoReplies6_2
+    with StreamInfoFullReplies7_0
+    with AclUserReplies7_0
+    with AclLogReplies6_2
+    with ClusterReplies7_0
+    with ShardReplies7_0
+    with CommandReplies7_0
+trait Replies7_2
+    extends SlowLogReplies6_2
+    with AutoClaimedReplies7_0
+    with GroupInfoReplies7_0
+    with ConsumerInfoReplies7_2
+    with StreamInfoFullReplies7_2
+    with AclUserReplies7_0
+    with AclLogReplies7_2
+    with ClusterReplies7_0
+    with ShardReplies7_0
+    with CommandReplies7_0
+trait Replies8_10
+    extends SlowLogReplies8_10
+    with AutoClaimedReplies7_0
+    with GroupInfoReplies7_0
+    with ConsumerInfoReplies7_2
+    with StreamInfoFullReplies7_2
+    with AclUserReplies7_0
+    with AclLogReplies7_2
+    with ClusterReplies7_0
+    with ShardReplies7_0
+    with CommandReplies7_0
+trait RepliesValkey9_1
+    extends SlowLogReplies6_2
+    with AutoClaimedReplies7_0
+    with GroupInfoReplies7_0
+    with ConsumerInfoReplies7_2
+    with StreamInfoFullReplies7_2
+    with AclUserRepliesValkey9_1
+    with AclLogReplies7_2
+    with ClusterReplies7_0
+    with ShardRepliesValkey9_1
+    with CommandReplies7_0
+
+object dragonfly_2_0 extends Dragonfly2_0 with RepliesDragonfly2_0
+
+object redis_6_2  extends Redis6_2 with Replies6_2
+object redis_7_0  extends Redis7_0 with Replies7_0
+object redis_7_2  extends Redis7_2 with Replies7_2
+object redis_7_4  extends Redis7_4 with Replies7_2
+object redis_8_0  extends Redis8_0 with Replies7_2
+object redis_8_2  extends Redis8_2 with Replies7_2
+object redis_8_4  extends Redis8_4 with Replies7_2
+object redis_8_6  extends Redis8_6 with Replies7_2
+object redis_8_8  extends Redis8_8 with Replies7_2
+object redis_8_10 extends Redis8_10 with Replies8_10
+object valkey_7_2 extends Valkey7_2 with Replies7_2
+object valkey_8_0 extends Valkey8_0 with Replies7_2
+object valkey_8_1 extends Valkey8_1 with Replies7_2
+object valkey_9_0 extends Valkey9_0 with Replies7_2
+object valkey_9_1 extends Valkey9_1 with RepliesValkey9_1

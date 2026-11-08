@@ -27,15 +27,25 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
 
   private def bulks(ss: String*): Arr = Arr(ss.map(Bulk(_)).toList)
 
-  test("The Server protocol using slowlog.get reads the entries as Redis sends them") {
-    val reply = Arr(
-      Arr(Num(7L), Num(1793582639L), Num(36L), bulks("SET", "a", "1"), Bulk("172.17.0.1:56480"), Bulk("")),
-      Arr(Num(6L), Num(1793582638L), Num(160L), bulks("CONFIG", "SET", "x", "0"), Bulk("172.17.0.1:56480"), Bulk("me"), Num(4L))
-    )
-    slowlog.get(PosInt(2)).decode(reply).onRight { entries =>
-      entries.map(e => (e.id.value, e.microseconds.value, e.arguments, e.clientName, e.totalArguments.map(_.value))) ==
-        Seq((7L, 36L, Seq("SET", "a", "1"), "", None), (6L, 160L, Seq("CONFIG", "SET", "x", "0"), "me", Some(4L)))
+  private val withoutTotal = Arr(Num(7L), Num(1793582639L), Num(36L), bulks("SET", "a", "1"), Bulk("172.17.0.1:56480"), Bulk(""))
+  private val withTotal    =
+    Arr(Num(6L), Num(1793582638L), Num(160L), bulks("CONFIG", "SET", "x", "0"), Bulk("172.17.0.1:56480"), Bulk("me"), Num(4L))
+
+  test("The Server protocol using slowlog.get reads the entries of every version, without what later versions add") {
+    val v = laserdisc.redis_6_2
+    v.slowlog.get(PosInt(2)).decode(Arr(withoutTotal, withTotal)).onRight {
+      _.collect { case v.LogEntry(id, _, micros, arguments, _, name) => (id.value, micros.value, arguments, name) } ==
+        Seq((7L, 36L, Seq("SET", "a", "1"), ""), (6L, 160L, Seq("CONFIG", "SET", "x", "0"), "me"))
     }
+    assert(compileErrors("v.slowlog.get.decode(withTotal).map(_.map(_.totalArguments))").nonEmpty)
+  }
+
+  test("The Server protocol using slowlog.get of Redis 8.10 reads how many arguments each command had, which it always sends") {
+    val v = laserdisc.redis_8_10
+    v.slowlog.get(PosInt(1)).decode(Arr(withTotal)).onRight {
+      _.collect { case v.LogEntry(id, _, _, _, _, _, total) => id.value -> total.value } == Seq(6L -> 4L)
+    }
+    assert(v.slowlog.get.decode(Arr(withoutTotal)).isLeft)
     assertEquals(slowlog.get(PosInt(2)).encode, bulks("SLOWLOG", "GET", "2"))
     assertEquals(commandlog.get(servertypes.commandLogType.largeReply).encode, bulks("COMMANDLOG", "GET", "-1", "large-reply"))
   }
@@ -75,12 +85,21 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
     val redis62 = Arr(Bulk("get"), Num(2L), Arr(Str("readonly"), Str("fast")), Num(1L), Num(1L), Num(1L), Arr(Str("@read"), Str("@string")))
     val redis70 =
       Arr(Bulk("get"), Num(2L), Arr(Str("readonly")), Num(1L), Num(1L), Num(1L), Arr(Str("@read")), Arr(Nil), Arr(Nil), Arr(Nil))
-    command.info(OneOrMore.unsafeFrom(List(Key("get"), Key("nosuch")))).decode(Arr(redis62, NullBulk)).onRight {
-      _ == Seq(Some(CommandInfo("get", 2, Seq("readonly", "fast"), 1, 1, 1, Seq("@read", "@string"), Nil, Nil, Nil)), None)
+    val v = laserdisc.redis_6_2
+    v.command.info(OneOrMore.unsafeFrom(List(Key("get"), Key("nosuch")))).decode(Arr(redis62, NullBulk)).onRight {
+      _ == Seq(Some(CommandInfoOf6_2("get", 2, Seq("readonly", "fast"), 1, 1, 1, Seq("@read", "@string"))), None)
+    }
+    v.command.info(OneOrMore.unsafeFrom(List(Key("get")))).decode(Arr(redis70)).onRight {
+      _ == Seq(Some(CommandInfoOf6_2("get", 2, Seq("readonly"), 1, 1, 1, Seq("@read"))))
     }
     command.info(OneOrMore.unsafeFrom(List(Key("get")))).decode(Arr(redis70)).onRight {
-      _ == Seq(Some(CommandInfo("get", 2, Seq("readonly"), 1, 1, 1, Seq("@read"), Nil, Nil, Nil)))
+      _ == Seq(Some(CommandInfoOf7_0("get", 2, Seq("readonly"), 1, 1, 1, Seq("@read"), Nil, Nil, Nil)))
     }
+    // from Redis 7.0 the tips, key specifications and subcommands are always sent
+    assert(command.info(OneOrMore.unsafeFrom(List(Key("get")))).decode(Arr(redis62)).isLeft)
+    assert(
+      compileErrors("v.command.info(OneOrMore.unsafeFrom(List(Key(\"get\")))).decode(Arr(redis70)).map(_.flatten.map(_.tips))").nonEmpty
+    )
   }
 
   test("The Server protocol using command reads tips, key specifications and subcommands") {
@@ -112,7 +131,7 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
         specs,
         Arr(help)
       )
-    val expected = CommandInfo(
+    val expected = CommandInfoOf7_0(
       "x",
       -2,
       Nil,
@@ -127,7 +146,7 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
         KeySpecification(None, Seq("RO"), BeginSearch.Unknown, FindKeys.Unknown),
         KeySpecification(None, Seq("RO"), BeginSearch.Unknown, FindKeys.Unknown)
       ),
-      Seq(CommandInfo("x|help", 2, Seq("stale"), 0, 0, 0, Seq("@slow"), Nil, Nil, Nil))
+      Seq(CommandInfoOf7_0("x|help", 2, Seq("stale"), 0, 0, 0, Seq("@slow"), Nil, Nil, Nil))
     )
     assertEquals(command.info(OneOrMore.unsafeFrom(List(Key("x")))).decode(Arr(reply)), Seq(Some(expected)))
   }
@@ -146,14 +165,15 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
     )
   }
 
-  test("The Server protocol using module.list reads modules with and without a path") {
-    val reply = Arr(
-      Arr(Bulk("name"), Bulk("search"), Bulk("ver"), Num(81001L), Bulk("path"), Bulk("/modules/redisearch.so"), Bulk("args"), Arr(Nil)),
-      Arr(Bulk("name"), Bulk("old"), Bulk("ver"), Num(1L))
-    )
-    module.list.decode(reply).onRight {
-      _ == Seq(ModuleInfo("search", 81001L, Some("/modules/redisearch.so"), Nil), ModuleInfo("old", 1L, None, Nil))
+  test("The Server protocol using module.list reads modules with a path from Redis 7.0, and Redis 6.2 reads them all without") {
+    val search =
+      Arr(Bulk("name"), Bulk("search"), Bulk("ver"), Num(81001L), Bulk("path"), Bulk("/modules/redisearch.so"), Bulk("args"), Arr(Nil))
+    val old = Arr(Bulk("name"), Bulk("old"), Bulk("ver"), Num(1L))
+    laserdisc.redis_6_2.module.list.decode(Arr(search, old)).onRight {
+      _ == Seq(ModuleInfoOf6_2("search", 81001L), ModuleInfoOf6_2("old", 1L))
     }
+    module.list.decode(Arr(search)).onRight(_ == Seq(ModuleInfoOf7_0("search", 81001L, "/modules/redisearch.so", Nil)))
+    assert(module.list.decode(Arr(old)).isLeft)
   }
 
   test("The Server protocol using hotkeys sends the metrics and options, and reads the report or None") {

@@ -27,24 +27,58 @@ import Protocol.Single
 /** The replies and options of the commands that inspect a server: SLOWLOG, LATENCY, MEMORY, COMMAND, MODULE, HOTKEYS and COMMANDLOG */
 object ServerInspection {
 
-  /** An entry of SLOWLOG GET or COMMANDLOG GET. A long command's `arguments` are cut short; Redis 8.10 also replies with how many it had
-    */
-  final case class LogEntry(
+  /** An entry of SLOWLOG GET or COMMANDLOG GET, as Redis 6.2 and Valkey send it. A long command's `arguments` are cut short */
+  sealed trait LogEntry6_2 {
+    def id: NonNegLong
+    def timestamp: NonNegLong
+    def microseconds: NonNegLong
+    def arguments: Seq[String]
+    def clientAddress: String
+    def clientName: String
+  }
+
+  /** An entry of SLOWLOG GET from Redis 8.10, which also replies with how many arguments the command had */
+  sealed trait LogEntry8_10 extends LogEntry6_2 {
+    def totalArguments: NonNegLong
+  }
+
+  private[laserdisc] final case class Entry6_2(
+      id: NonNegLong,
+      timestamp: NonNegLong,
+      microseconds: NonNegLong,
+      arguments: Seq[String],
+      clientAddress: String,
+      clientName: String
+  ) extends LogEntry6_2
+  private[laserdisc] final case class Entry8_10(
       id: NonNegLong,
       timestamp: NonNegLong,
       microseconds: NonNegLong,
       arguments: Seq[String],
       clientAddress: String,
       clientName: String,
-      totalArguments: Option[NonNegLong]
-  )
-  private final type LogEntryReply = Arr.AsTupleThen[Num *: Num *: Num *: Arr.Of[Bulk] *: Bulk *: Bulk *: EmptyTuple, RESP]
-  private implicit final val logEntry: Read[LogEntryReply, LogEntry] =
-    Read[LogEntryReply, (NonNegLong *: NonNegLong *: NonNegLong *: Seq[String] *: String *: String *: EmptyTuple, Seq[RESP])].map {
-      case (id *: timestamp *: microseconds *: arguments *: address *: name *: _, rest) =>
-        LogEntry(id, timestamp, microseconds, arguments, address, name, rest.headOption.collect { case Num(NonNegLong(n)) => n })
+      totalArguments: NonNegLong
+  ) extends LogEntry8_10
+
+  private final type LogEntryReply  = Arr.AsTupleThen[Num *: Num *: Num *: Arr.Of[Bulk] *: Bulk *: Bulk *: EmptyTuple, RESP]
+  private final type LogEntryFields =
+    (NonNegLong *: NonNegLong *: NonNegLong *: Seq[String] *: String *: String *: EmptyTuple, Seq[RESP])
+
+  // what follows the fields is left alone, as later versions add to it
+  private implicit final val logEntry6_2: Read[LogEntryReply, LogEntry6_2] = Read[LogEntryReply, LogEntryFields].map {
+    case (id *: timestamp *: microseconds *: arguments *: address *: name *: _, _) =>
+      Entry6_2(id, timestamp, microseconds, arguments, address, name)
+  }
+  private final val logEntry8_10: Read[LogEntryReply, LogEntry8_10] = Read.instance { reply =>
+    Read[LogEntryReply, LogEntryFields].read(reply).flatMap {
+      case (id *: timestamp *: microseconds *: arguments *: address *: name *: _, Num(NonNegLong(total)) +: _) =>
+        Right(Entry8_10(id, timestamp, microseconds, arguments, address, name, total))
+      case (_, rest) => Left(RESPDecErr(s"Expected the total of the arguments after the entry's fields but got: $rest"))
     }
-  private[protocol] final val logEntries: Read[Arr.Of[LogEntryReply], Seq[LogEntry]] = Read[Arr.Of[LogEntryReply], Seq[LogEntry]]
+  }
+  private[protocol] final val logEntries6_2: Read[Arr.Of[LogEntryReply], Seq[LogEntry6_2]]   = Read[Arr.Of[LogEntryReply], Seq[LogEntry6_2]]
+  private[protocol] final val logEntries8_10: Read[Arr.Of[LogEntryReply], Seq[LogEntry8_10]] =
+    Read.arrOf2Seq[LogEntryReply, LogEntry8_10](implicitly, logEntry8_10)
 
   /** An event of LATENCY LATEST: when it last happened, how long it took then, and the longest it ever took */
   final case class LatencyEvent(name: String, timestamp: NonNegLong, latestMilliseconds: NonNegLong, maxMilliseconds: NonNegLong)
@@ -270,9 +304,35 @@ object ServerInspection {
   }
 
   /** COMMAND INFO of a command: its arity (negative when it takes at least that many arguments), flags, where its keys are and its ACL
-    * categories. Redis 7.0 and Valkey also reply with its tips, key specifications and subcommands, empty for servers that don't
+    * categories
     */
-  final case class CommandInfo(
+  sealed trait CommandInfo6_2 {
+    def name: String
+    def arity: Int
+    def flags: Seq[String]
+    def firstKey: Int
+    def lastKey: Int
+    def step: Int
+    def aclCategories: Seq[String]
+  }
+
+  /** COMMAND INFO of a command from Redis 7.0: also its tips, key specifications and subcommands */
+  sealed trait CommandInfo7_0 extends CommandInfo6_2 {
+    def tips: Seq[String]
+    def keySpecifications: Seq[KeySpecification]
+    def subcommands: Seq[CommandInfo7_0]
+  }
+
+  private[laserdisc] final case class CommandInfoOf6_2(
+      name: String,
+      arity: Int,
+      flags: Seq[String],
+      firstKey: Int,
+      lastKey: Int,
+      step: Int,
+      aclCategories: Seq[String]
+  ) extends CommandInfo6_2
+  private[laserdisc] final case class CommandInfoOf7_0(
       name: String,
       arity: Int,
       flags: Seq[String],
@@ -282,36 +342,32 @@ object ServerInspection {
       aclCategories: Seq[String],
       tips: Seq[String],
       keySpecifications: Seq[KeySpecification],
-      subcommands: Seq[CommandInfo]
-  )
+      subcommands: Seq[CommandInfo7_0]
+  ) extends CommandInfo7_0
+
   private type CommandInfoReply =
     Arr.AsTupleThen[OneOf[Bulk *: Str *: EmptyTuple] *: Num *: Arr.Of[Str] *: Num *: Num *: Num *: Arr.Of[Str] *: EmptyTuple, RESP]
-  private implicit final val commandInfo: Read[CommandInfoReply, CommandInfo] = {
-    val start = Read[CommandInfoReply, (String *: Int *: Seq[String] *: Int *: Int *: Int *: Seq[String] *: EmptyTuple, Seq[RESP])]
-    Read.instance { reply =>
-      start.read(reply).flatMap { case (name *: arity *: flags *: first *: last *: step *: categories *: _, rest) =>
-        val f = new Fields(List("tips", "key specifications", "subcommands").zip(rest).toMap)
-        for {
-          tips        <- f.optional[Arr.Of[Bulk], Seq[String]]("tips")
-          keySpecs    <- f.optional[Records, Seq[KeySpecification]]("key specifications")
-          subcommands <- f.optional[Arr.Of[CommandInfoReply], Seq[CommandInfo]]("subcommands")
-        } yield CommandInfo(
-          name,
-          arity,
-          flags,
-          first,
-          last,
-          step,
-          categories,
-          tips.getOrElse(Nil),
-          keySpecs.getOrElse(Nil),
-          subcommands.getOrElse(Nil)
-        )
-      }
+  private final val commandStart =
+    Read[CommandInfoReply, (String *: Int *: Seq[String] *: Int *: Int *: Int *: Seq[String] *: EmptyTuple, Seq[RESP])]
+  // what follows the first seven fields is left alone, as later versions add to it
+  private implicit final val commandInfo6_2: Read[CommandInfoReply, CommandInfo6_2] = commandStart.map {
+    case (name *: arity *: flags *: first *: last *: step *: categories *: _, _) =>
+      CommandInfoOf6_2(name, arity, flags, first, last, step, categories)
+  }
+  private implicit final val commandInfo7_0: Read[CommandInfoReply, CommandInfo7_0] = Read.instance { reply =>
+    commandStart.read(reply).flatMap { case (name *: arity *: flags *: first *: last *: step *: categories *: _, rest) =>
+      val f = new Fields(List("tips", "key specifications", "subcommands").zip(rest).toMap)
+      for {
+        tips        <- f[Arr.Of[Bulk], Seq[String]]("tips")
+        keySpecs    <- f[Records, Seq[KeySpecification]]("key specifications")
+        subcommands <- f[Arr.Of[CommandInfoReply], Seq[CommandInfo7_0]]("subcommands")
+      } yield CommandInfoOf7_0(name, arity, flags, first, last, step, categories, tips, keySpecs, subcommands)
     }
   }
-  private[protocol] final val commandInfos: Read[Arr.Of[OrNullBulk[CommandInfoReply]], Seq[Option[CommandInfo]]] =
-    Read[Arr.Of[OrNullBulk[CommandInfoReply]], Seq[Option[CommandInfo]]]
+  private[protocol] final val commandInfos6_2: Read[Arr.Of[OrNullBulk[CommandInfoReply]], Seq[Option[CommandInfo6_2]]] =
+    Read[Arr.Of[OrNullBulk[CommandInfoReply]], Seq[Option[CommandInfo6_2]]]
+  private[protocol] final val commandInfos7_0: Read[Arr.Of[OrNullBulk[CommandInfoReply]], Seq[Option[CommandInfo7_0]]] =
+    Read[Arr.Of[OrNullBulk[CommandInfoReply]], Seq[Option[CommandInfo7_0]]]
 
   /** A key of COMMAND GETKEYSANDFLAGS, with what the command does to it */
   final case class KeyAndFlags(key: Key, flags: Seq[String])
@@ -337,25 +393,45 @@ object ServerInspection {
     def pattern(pattern: GlobPattern): CommandFilter = new Of(List("FILTERBY", "PATTERN", pattern.value))
   }
 
-  /** A module of MODULE LIST. Redis 7.0 also replies with its path and arguments */
-  final case class ModuleInfo(name: String, version: Long, path: Option[String], arguments: Seq[String])
-  private implicit final val moduleInfo: Read[Record, ModuleInfo] = Read.record("module") { f =>
+  /** A module of MODULE LIST: its name and version */
+  sealed trait ModuleInfo6_2 {
+    def name: String
+    def version: Long
+  }
+
+  /** A module of MODULE LIST from Redis 7.0: also its path and the arguments it was loaded with */
+  sealed trait ModuleInfo7_0 extends ModuleInfo6_2 {
+    def path: String
+    def arguments: Seq[String]
+  }
+
+  private[laserdisc] final case class ModuleInfoOf6_2(name: String, version: Long) extends ModuleInfo6_2
+  private[laserdisc] final case class ModuleInfoOf7_0(name: String, version: Long, path: String, arguments: Seq[String])
+      extends ModuleInfo7_0
+
+  private final def module(f: Fields): Either[RESPDecErr, ModuleInfoOf6_2] =
     for {
-      name      <- f.bulk[String]("name")
-      version   <- f.num[Long]("ver")
-      path      <- f.optionalBulk[String]("path")
-      arguments <- f.optional[Texts, Seq[String]]("args")
-    } yield ModuleInfo(name, version, path, arguments.getOrElse(Nil))
+      name    <- f.bulk[String]("name")
+      version <- f.num[Long]("ver")
+    } yield ModuleInfoOf6_2(name, version)
+  private implicit final val moduleInfo6_2: Read[Record, ModuleInfo6_2] = Read.record("module")(module)
+  private implicit final val moduleInfo7_0: Read[Record, ModuleInfo7_0] = Read.record("module") { f =>
+    for {
+      m         <- module(f)
+      path      <- f.bulk[String]("path")
+      arguments <- f[Texts, Seq[String]]("args")
+    } yield ModuleInfoOf7_0(m.name, m.version, path, arguments)
   }
 
   // Dragonfly's names are simple strings, and it only sends a module's name and version
   private final type DragonflyModuleReply = Arr.AsTuple[Str *: Str *: Str *: Num *: EmptyTuple]
-  private implicit final val dragonflyModuleInfo: Read[DragonflyModuleReply, ModuleInfo] =
+  private implicit final val dragonflyModuleInfo: Read[DragonflyModuleReply, ModuleInfo6_2] =
     Read[DragonflyModuleReply, String *: String *: String *: Long *: EmptyTuple].map { case _ *: name *: _ *: version *: _ =>
-      ModuleInfo(name, version, None, Nil)
+      ModuleInfoOf6_2(name, version)
     }
-  private[protocol] final val moduleInfos: Read[OneOf[Records *: Arr.Of[DragonflyModuleReply] *: EmptyTuple], Seq[ModuleInfo]] =
-    Read[OneOf[Records *: Arr.Of[DragonflyModuleReply] *: EmptyTuple], Seq[ModuleInfo]]
+  private[protocol] final val moduleInfos6_2: Read[OneOf[Records *: Arr.Of[DragonflyModuleReply] *: EmptyTuple], Seq[ModuleInfo6_2]] =
+    Read[OneOf[Records *: Arr.Of[DragonflyModuleReply] *: EmptyTuple], Seq[ModuleInfo6_2]]
+  private[protocol] final val moduleInfos7_0: Read[Records, Seq[ModuleInfo7_0]] = Read[Records, Seq[ModuleInfo7_0]]
 
   /** HELLO's reply: the server's name and version, the protocol, this connection's id, how the server runs, and its modules, with anything
     * else the server sends as text
@@ -367,7 +443,7 @@ object ServerInspection {
       id: NonNegLong,
       mode: String,
       role: String,
-      modules: Seq[ModuleInfo],
+      modules: Seq[ModuleInfo6_2],
       others: Map[String, String]
   )
   private[protocol] final val hello: Read[Record, Hello] = {
@@ -380,7 +456,7 @@ object ServerInspection {
         id      <- f.num[NonNegLong]("id")
         mode    <- f.bulk[String]("mode")
         role    <- f.bulk[String]("role")
-        modules <- f.optional[Records, Seq[ModuleInfo]]("modules")
+        modules <- f.optional[Records, Seq[ModuleInfo6_2]]("modules")
       } yield {
         val others = f.others(typed).collect { case (k, Bulk(v)) => k -> v }
         Hello(server, version, proto, id, mode, role, modules.getOrElse(Nil), others)
@@ -472,23 +548,36 @@ object ServerInspection {
     protocol.command :: protocol.parameters.toList.collect { case Bulk(s) => s }
 }
 
+/** SLOWLOG, under `slowlog`: Redis 6.2 */
+trait SlowLogCommands {
+  import ServerInspection.LogEntry6_2
+
+  val help: Single[Seq[String]] = Protocol.help("SLOWLOG")
+
+  /** The 10 most recent entries */
+  val get: Single[Seq[LogEntry6_2]]                = Protocol("SLOWLOG", "GET").using(RESPRead.instance(ServerInspection.logEntries6_2))
+  def get(count: PosInt): Single[Seq[LogEntry6_2]] =
+    Protocol("SLOWLOG", "GET" *: count *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries6_2))
+  val len: Single[NonNegLong] = Protocol("SLOWLOG", "LEN").as[Num, NonNegLong]
+  val reset: Single[OK]       = Protocol("SLOWLOG", "RESET").as[Str, OK]
+}
+
+/** SLOWLOG of Redis 8.10, whose entries also have how many arguments their command had */
+trait SlowLogCommands8_10 extends SlowLogCommands {
+  import ServerInspection.LogEntry8_10
+
+  override val get: Single[Seq[LogEntry8_10]] = Protocol("SLOWLOG", "GET").using(RESPRead.instance(ServerInspection.logEntries8_10))
+  override def get(count: PosInt): Single[Seq[LogEntry8_10]] =
+    Protocol("SLOWLOG", "GET" *: count *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries8_10))
+}
+
 /** SLOWLOG: Redis 6.2 */
 trait ServerInspectionCoreP extends Features {
-  import ServerInspection.LogEntry
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("SLOWLOG GET", "SLOWLOG HELP", "SLOWLOG LEN", "SLOWLOG RESET")
 
-  object slowlog {
-    val help: Single[Seq[String]] = Protocol.help("SLOWLOG")
-
-    /** The 10 most recent entries */
-    val get: Single[Seq[LogEntry]]                = Protocol("SLOWLOG", "GET").using(RESPRead.instance(ServerInspection.logEntries))
-    def get(count: PosInt): Single[Seq[LogEntry]] =
-      Protocol("SLOWLOG", "GET" *: count *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries))
-    val len: Single[NonNegLong] = Protocol("SLOWLOG", "LEN").as[Num, NonNegLong]
-    val reset: Single[OK]       = Protocol("SLOWLOG", "RESET").as[Str, OK]
-  }
+  val slowlog: SlowLogCommands = new SlowLogCommands {}
 
 }
 
@@ -536,11 +625,17 @@ trait ServerInspectionBaseP extends ServerInspectionCoreP {
 
 /** MODULE LIST, under `module`. Redis 6.2 */
 trait ModuleListCommands extends Features {
-  import ServerInspection.ModuleInfo
+  import ServerInspection.ModuleInfo6_2
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("MODULE LIST")
 
-  val list: Single[Seq[ModuleInfo]] = Protocol("MODULE", "LIST").using(RESPRead.instance(ServerInspection.moduleInfos))
+  val list: Single[Seq[ModuleInfo6_2]] = Protocol("MODULE", "LIST").using(RESPRead.instance(ServerInspection.moduleInfos6_2))
+}
+
+/** MODULE LIST with each module's path and arguments: Redis 7.0 */
+trait ModuleList7_0Commands extends ModuleListCommands {
+  override val list: Single[Seq[ServerInspection.ModuleInfo7_0]] =
+    Protocol("MODULE", "LIST").using(RESPRead.instance(ServerInspection.moduleInfos7_0))
 }
 
 /** MODULE: Redis 6.2. Servers refuse LOAD and UNLOAD unless they were started with `enable-module-command` */
@@ -624,7 +719,7 @@ trait LatencyHistogramCommands extends Features {
 
 /** COMMAND without GETKEYS: Redis 6.2 */
 trait CommandCoreCommands extends Features {
-  import ServerInspection.CommandInfo
+  import ServerInspection.CommandInfo6_2
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("COMMAND COUNT", "COMMAND HELP", "COMMAND INFO")
@@ -634,8 +729,14 @@ trait CommandCoreCommands extends Features {
   val count: Single[NonNegInt] = Protocol("COMMAND", "COUNT").as[Num, NonNegInt]
 
   /** The information of each command, or `None` for a name the server doesn't know */
-  def info(names: OneOrMore[Key]): Single[Seq[Option[CommandInfo]]] =
-    Protocol("COMMAND", "INFO" :: names.value.map(_.value)).using(RESPRead.instance(ServerInspection.commandInfos))
+  def info(names: OneOrMore[Key]): Single[Seq[Option[CommandInfo6_2]]] =
+    Protocol("COMMAND", "INFO" :: names.value.map(_.value)).using(RESPRead.instance(ServerInspection.commandInfos6_2))
+}
+
+/** COMMAND INFO with each command's tips, key specifications and subcommands: Redis 7.0 */
+trait CommandInfo7_0Commands extends CommandCoreCommands {
+  override def info(names: OneOrMore[Key]): Single[Seq[Option[ServerInspection.CommandInfo7_0]]] =
+    Protocol("COMMAND", "INFO" :: names.value.map(_.value)).using(RESPRead.instance(ServerInspection.commandInfos7_0))
 }
 
 /** COMMAND: Redis 6.2 */
@@ -699,7 +800,7 @@ trait HotKeysCommands extends Features {
 
 /** COMMANDLOG: Valkey 8.1 */
 trait CommandLogCommands extends Features {
-  import ServerInspection.{CommandLogType, LogEntry}
+  import ServerInspection.{CommandLogType, LogEntry6_2}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -712,10 +813,10 @@ trait CommandLogCommands extends Features {
   val help: Single[Seq[String]] = Protocol.help("COMMANDLOG")
 
   /** Every entry of the log */
-  def get(log: CommandLogType): Single[Seq[LogEntry]] =
-    Protocol("COMMANDLOG", "GET" *: -1 *: log *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries))
-  def get(log: CommandLogType, count: PosInt): Single[Seq[LogEntry]] =
-    Protocol("COMMANDLOG", "GET" *: count *: log *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries))
+  def get(log: CommandLogType): Single[Seq[LogEntry6_2]] =
+    Protocol("COMMANDLOG", "GET" *: -1 *: log *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries6_2))
+  def get(log: CommandLogType, count: PosInt): Single[Seq[LogEntry6_2]] =
+    Protocol("COMMANDLOG", "GET" *: count *: log *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries6_2))
 
   def len(log: CommandLogType): Single[NonNegLong] = Protocol("COMMANDLOG", "LEN" *: log *: EmptyTuple).as[Num, NonNegLong]
 

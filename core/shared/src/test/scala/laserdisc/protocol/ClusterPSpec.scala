@@ -26,6 +26,55 @@ import org.scalacheck.Prop.forAll
 
 final class ClusterPSpec extends BaseSpec with ClusterP {
   import clustertypes.*
+
+  // what this spec's commands read, Redis 7.0's replies, under the names they had before each version had its own
+  private type ClusterNodes    = ClusterP.Nodes7_0
+  private type ClusterSlotNode = ClusterP.SlotNode7_0
+  private object ClusterNode {
+    def apply(
+        id: NodeId,
+        address: Option[ClusterP.Address7_0],
+        flags: Seq[ClusterFlag],
+        maybeMaster: Option[NodeId],
+        ping: NonNegLong,
+        pong: NonNegLong,
+        configEpoch: NonNegInt,
+        link: ClusterLinkState,
+        slots: Seq[ClusterP.SlotType]
+    ): ClusterP.Node7_0              = ClusterP.NodeOf7_0(id, address, flags, maybeMaster, ping, pong, configEpoch, link, slots)
+    def unapply(n: ClusterP.Node7_0) = Some((n.id, n.address, n.flags, n.maybeMaster, n.ping, n.pong, n.configEpoch, n.link, n.slots))
+  }
+  private def ClusterNodes(nodes: Seq[ClusterP.Node7_0]): ClusterNodes = ClusterP.NodesOf7_0(nodes)
+  private def ClusterAddress(host: Option[Host], port: Port, clusterPort: Port, hostname: Option[Host]): ClusterP.Address7_0 =
+    ClusterP.AddressOf7_0(host, port, clusterPort, hostname)
+  private def ClusterSlotNode(host: Option[Host], port: Port, nodeId: NodeId, metadata: Map[String, String]): ClusterSlotNode =
+    ClusterP.SlotNodeOf7_0(host, port, nodeId, metadata)
+  private def ClusterSlotInfo(master: ClusterSlotNode, replicas: Seq[ClusterSlotNode]): ClusterP.SlotInfo7_0 =
+    ClusterP.SlotInfoOf7_0(master, replicas)
+
+  test("The Cluster protocol of Redis 6.2 reads the nodes and slots of every version, without what Redis 7.0 adds") {
+    val line =
+      "07c37dfeb235213a872192d90877d0cd55635b91 127.0.0.1:30004@31004,my.host.example slave e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca 0 1426238317239 4 connected"
+    redis_6_2.nodes
+      .decode(Bulk(line))
+      .onRight(_.nodes.flatMap(_.address) == Seq(ClusterP.AddressOf6_2(Some(Host("127.0.0.1")), Port(30004), Port(31004))))
+    nodes.decode(Bulk(line)).onRight(_.nodes.flatMap(_.address).map(_.hostname) == Seq(Some(Host("my.host.example"))))
+    val withMetadata = Arr(
+      Arr(
+        Num(0L),
+        Num(16383L),
+        Arr(Bulk("127.0.0.1"), Num(30001L), Bulk("e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca"), Arr(Bulk("ip"), Bulk("10.0.0.1")))
+      )
+    )
+    redis_6_2.cluster.slots
+      .decode(withMetadata)
+      .onRight(
+        _.slots.values.map(_.master).toSeq == Seq(
+          ClusterP.SlotNodeOf6_2(Some(Host("127.0.0.1")), Port(30001), NodeId("e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca"))
+        )
+      )
+    assert(compileErrors("redis_6_2.nodes.decode(Bulk(line)).map(_.nodes.flatMap(_.address).map(_.hostname))").nonEmpty)
+  }
   import org.scalacheck.{Arbitrary, Gen}
   import org.scalacheck.Gen.*
 
@@ -423,14 +472,14 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   test("The Cluster protocol using slots reads a node with or without metadata, on a server of Redis 6.2") {
     val older = new ClusterBaseP {}
     val old   = Arr(Bulk(""), Num(6379L), Bulk(nodeId.value))
-    val node  = ClusterSlotNode(None, port, nodeId, Map.empty)
+    val node  = ClusterP.SlotNodeOf6_2(None, port, nodeId)
     assertEquals(
       older.slots.decode(Arr(Arr(Num(0L), Num(100L), old, old))).map(_.slots),
-      Map(range -> ClusterSlotInfo(node, List(node)))
+      Map(range -> ClusterP.SlotInfoOf6_2(node, List(node)))
     )
     assertEquals(
       older.slots.decode(Arr(Arr(Num(0L), Num(100L), Arr(NullBulk, Num(6379L), Bulk(nodeId.value), Arr(Nil))))).map(_.slots),
-      Map(range -> ClusterSlotInfo(ClusterSlotNode(None, port, nodeId, Map.empty), Nil))
+      Map(range -> ClusterP.SlotInfoOf6_2(node, Nil))
     )
   }
 }

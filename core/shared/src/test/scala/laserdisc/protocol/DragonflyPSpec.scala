@@ -109,12 +109,12 @@ final class DragonflyPSpec extends BaseSpec with DragonflyP {
     assertEquals(redis_8_10.info.encode, bulks("INFO"))
     assertEquals(
       dragonfly_2_0.module.list.decode(Arr(Arr(Str("name"), Str("search"), Str("ver"), Num(5L)))),
-      Seq(ServerInspection.ModuleInfo("search", 5L, None, Nil))
+      Seq(ServerInspection.ModuleInfoOf6_2("search", 5L))
     )
     assertEquals(
       redis_8_10.module.list
         .decode(Arr(Arr(Bulk("name"), Bulk("m"), Bulk("ver"), Num(5L), Bulk("path"), Bulk("/p"), Bulk("args"), Arr(Nil)))),
-      Seq(ServerInspection.ModuleInfo("m", 5L, Some("/p"), Nil))
+      Seq(ServerInspection.ModuleInfoOf7_0("m", 5L, "/p", Nil))
     )
   }
 

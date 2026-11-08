@@ -144,7 +144,7 @@ final class FeedSpec extends BaseSpec with PublishShardP with MonitorP {
     val module = Arr(Bulk("name"), Bulk("m"), Bulk("ver"), Num(1L), Bulk("path"), Bulk("/m"), Bulk("args"), Arr(Nil))
     assertEquals(
       h.hello.decode(fields(Bulk("modules"), Arr(module))).map(_.modules),
-      Seq(ServerInspection.ModuleInfo("m", 1L, Some("/m"), Nil))
+      Seq(ServerInspection.ModuleInfoOf6_2("m", 1L))
     )
   }
 }

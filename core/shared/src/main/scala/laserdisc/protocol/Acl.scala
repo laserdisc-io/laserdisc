@@ -115,20 +115,76 @@ object Acl {
     final val none: AclRulesWithDatabases = new AclRulesWithDatabases(Nil)
   }
 
-  /** A set of rules of a user's selectors. Valkey 9.0 adds the databases the selector may use */
-  final case class AclSelector(commands: String, keys: String, channels: String, databases: Option[String])
+  /** A set of rules of a user's selectors, from Redis 7.0 */
+  sealed trait AclSelector7_0 {
+    def commands: String
+    def keys: String
+    def channels: String
+  }
+
+  /** A set of rules of a user's selectors from Valkey 9.1, with the databases it may use, `alldbs` when not limited */
+  sealed trait AclSelectorValkey9_1 extends AclSelector7_0 {
+    def databases: String
+  }
 
   /** ACL GETUSER: the user's flags (like `on`), the SHA-256 of its passwords, and its command, key and channel rules, as rule text like
-    * `~app:*`. Redis 7.0 adds selectors, and Valkey 9.0 the databases the user may use
+    * `~app:*`
     */
+  sealed trait AclUser6_2 {
+    def flags: Seq[String]
+    def passwords: Seq[String]
+    def commands: String
+    def keys: String
+    def channels: String
+  }
+
+  /** ACL GETUSER from Redis 7.0, with the user's selectors */
+  sealed trait AclUser7_0 extends AclUser6_2 {
+    def selectors: Seq[AclSelector7_0]
+  }
+
+  /** ACL GETUSER from Valkey 9.1, with the databases the user, and each selector, may use, `alldbs` when not limited */
+  sealed trait AclUserValkey9_1 extends AclUser7_0 {
+    override def selectors: Seq[AclSelectorValkey9_1]
+    def databases: String
+  }
+
+  private[laserdisc] final case class AclSelectorOf7_0(commands: String, keys: String, channels: String) extends AclSelector7_0
+  private[laserdisc] final case class AclSelectorOfValkey9_1(commands: String, keys: String, channels: String, databases: String)
+      extends AclSelectorValkey9_1
+  private[laserdisc] final case class AclUserOf6_2(
+      flags: Seq[String],
+      passwords: Seq[String],
+      commands: String,
+      keys: String,
+      channels: String
+  ) extends AclUser6_2
+  private[laserdisc] final case class AclUserOf7_0(
+      flags: Seq[String],
+      passwords: Seq[String],
+      commands: String,
+      keys: String,
+      channels: String,
+      selectors: Seq[AclSelector7_0]
+  ) extends AclUser7_0
+  private[laserdisc] final case class AclUserOfValkey9_1(
+      flags: Seq[String],
+      passwords: Seq[String],
+      commands: String,
+      keys: String,
+      channels: String,
+      selectors: Seq[AclSelectorValkey9_1],
+      databases: String
+  ) extends AclUserValkey9_1
+
   // Dragonfly replies in simple strings, with a string of rules or an empty array for none
-  private[protocol] final val maybeUserDragonfly: RESPRead[Option[AclUser]] = {
+  private[protocol] final val maybeUserDragonfly: RESPRead[Option[AclUser6_2]] = {
     def text(resp: RESP): String = resp match {
       case Str(s)  => s
       case Bulk(s) => s
       case _       => ""
     }
-    implicit val user: Read[Arr, AclUser] = Read.instance { reply =>
+    implicit val user: Read[Arr, AclUser6_2] = Read.instance { reply =>
       val fields             = reply.elements.grouped(2).collect { case Seq(name, value) => text(name) -> value }.toMap
       def many(name: String) = fields.get(name) match {
         case Some(Arr(elements)) => elements.map(text)
@@ -136,20 +192,10 @@ object Acl {
         case None                => Nil
       }
       def rules(name: String) = many(name).mkString(" ")
-      Right(AclUser(many("flags"), many("passwords"), rules("commands"), rules("keys"), rules("channels"), Nil, None))
+      Right(AclUserOf6_2(many("flags"), many("passwords"), rules("commands"), rules("keys"), rules("channels")))
     }
-    RESPRead[OrNullBulk[Arr], Option[AclUser]]
+    RESPRead[OrNullBulk[Arr], Option[AclUser6_2]]
   }
-
-  final case class AclUser(
-      flags: Seq[String],
-      passwords: Seq[String],
-      commands: String,
-      keys: String,
-      channels: String,
-      selectors: Seq[AclSelector],
-      databases: Option[String]
-  )
 
   // what keys and channels hold: Redis 6.2 lists bare patterns, Redis 7.0 replies with the rules themselves
   private final case class Patterns(withPrefix: String => String)
@@ -158,50 +204,91 @@ object Acl {
     Patterns(prefix => patterns.map(p => s"$prefix$p").mkString(" "))
   }
 
-  private implicit final val selector: Read[Record, AclSelector] = Read.record("ACL selector") { f =>
+  private final def selector(f: Fields): Either[RESPDecErr, AclSelectorOf7_0] =
     for {
-      commands  <- f.bulk[String]("commands")
-      keys      <- f.bulk[String]("keys")
-      channels  <- f.bulk[String]("channels")
-      databases <- f.optionalBulk[String]("databases")
-    } yield AclSelector(commands, keys, channels, databases)
+      commands <- f.bulk[String]("commands")
+      keys     <- f.bulk[String]("keys")
+      channels <- f.bulk[String]("channels")
+    } yield AclSelectorOf7_0(commands, keys, channels)
+  private implicit final val selector7_0: Read[Record, AclSelector7_0]             = Read.record("ACL selector")(selector)
+  private implicit final val selectorValkey9_1: Read[Record, AclSelectorValkey9_1] = Read.record("ACL selector") { f =>
+    for {
+      sel       <- selector(f)
+      databases <- f.bulk[String]("databases")
+    } yield AclSelectorOfValkey9_1(sel.commands, sel.keys, sel.channels, databases)
   }
   // no such user is a null bulk string
-  private final def maybeUser(read: Read[Record, AclUser]): RESPRead[Option[AclUser]] = {
-    implicit val user: Read[Record, AclUser] = read
-    RESPRead[OrNullBulk[Record], Option[AclUser]]
+  private final def maybeUser[U](read: Read[Record, U]): RESPRead[Option[U]] = {
+    implicit val user: Read[Record, U] = read
+    RESPRead[OrNullBulk[Record], Option[U]]
   }
 
   // what Redis 6.2 replies, which also takes what later versions reply, so that a server can be upgraded before the import moves on
-  private[protocol] final val maybeUser6_2: RESPRead[Option[AclUser]] = maybeUser(Read.record("ACL user") { f =>
+  private[protocol] final val maybeUser6_2: RESPRead[Option[AclUser6_2]] = maybeUser(Read.record("ACL user") { f =>
     for {
       flags     <- f[Arr.Of[Bulk], Seq[String]]("flags")
       passwords <- f[Arr.Of[Bulk], Seq[String]]("passwords")
       commands  <- f.bulk[String]("commands")
       keys      <- f[OneOf[Bulk *: Arr.Of[Bulk] *: EmptyTuple], Patterns]("keys")
       channels  <- f[OneOf[Bulk *: Arr.Of[Bulk] *: EmptyTuple], Patterns]("channels")
-      selectors <- f.optional[Records, Seq[AclSelector]]("selectors")
-      databases <- f.optionalBulk[String]("databases")
-    } yield AclUser(flags, passwords, commands, keys.withPrefix("~"), channels.withPrefix("&"), selectors.getOrElse(Nil), databases)
+    } yield AclUserOf6_2(flags, passwords, commands, keys.withPrefix("~"), channels.withPrefix("&"))
   })
 
-  // Redis 7.0 replies with the rules, and with the selectors; Valkey 9.0 adds the databases
-  private[protocol] final val maybeUser7_0: RESPRead[Option[AclUser]] = maybeUser(Read.record("ACL user") { f =>
+  // Redis 7.0 replies with the rules, and with the selectors
+  private final def user7_0(f: Fields): Either[RESPDecErr, AclUserOf6_2] =
     for {
       flags     <- f[Arr.Of[Bulk], Seq[String]]("flags")
       passwords <- f[Arr.Of[Bulk], Seq[String]]("passwords")
       commands  <- f.bulk[String]("commands")
       keys      <- f.bulk[String]("keys")
       channels  <- f.bulk[String]("channels")
-      selectors <- f[Records, Seq[AclSelector]]("selectors")
-      databases <- f.optionalBulk[String]("databases")
-    } yield AclUser(flags, passwords, commands, keys, channels, selectors, databases)
+    } yield AclUserOf6_2(flags, passwords, commands, keys, channels)
+  private[protocol] final val maybeUser7_0: RESPRead[Option[AclUser7_0]] = maybeUser(Read.record("ACL user") { f =>
+    for {
+      u         <- user7_0(f)
+      selectors <- f[Records, Seq[AclSelector7_0]]("selectors")
+    } yield AclUserOf7_0(u.flags, u.passwords, u.commands, u.keys, u.channels, selectors)
+  })
+
+  // Valkey 9.1 adds the databases, to the user and to each selector
+  private[protocol] final val maybeUserValkey9_1: RESPRead[Option[AclUserValkey9_1]] = maybeUser(Read.record("ACL user") { f =>
+    for {
+      u         <- user7_0(f)
+      selectors <- f[Records, Seq[AclSelectorValkey9_1]]("selectors")
+      databases <- f.bulk[String]("databases")
+    } yield AclUserOfValkey9_1(u.flags, u.passwords, u.commands, u.keys, u.channels, selectors, databases)
   })
 
   /** An entry of ACL LOG: what was denied (`reason` like `auth` or `command`, `object` the command, key or channel), to whom, how many
-    * times and how long ago. Redis 7.2 adds the entry's id and when it was created and last updated, in milliseconds
+    * times and how long ago
     */
-  final case class AclLogEntry(
+  sealed trait AclLogEntry6_2 {
+    def count: Long
+    def reason: String
+    def context: String
+    def denied: String
+    def username: String
+    def ageSeconds: Double
+    def clientInfo: String
+  }
+
+  /** An entry of ACL LOG from Redis 7.2: also its id, and when it was created and last updated, in milliseconds */
+  sealed trait AclLogEntry7_2 extends AclLogEntry6_2 {
+    def entryId: Long
+    def createdAt: Long
+    def updatedAt: Long
+  }
+
+  private[laserdisc] final case class AclLogEntryOf6_2(
+      count: Long,
+      reason: String,
+      context: String,
+      denied: String,
+      username: String,
+      ageSeconds: Double,
+      clientInfo: String
+  ) extends AclLogEntry6_2
+  private[laserdisc] final case class AclLogEntryOf7_2(
       count: Long,
       reason: String,
       context: String,
@@ -209,31 +296,37 @@ object Acl {
       username: String,
       ageSeconds: Double,
       clientInfo: String,
-      entryId: Option[Long],
-      createdAt: Option[Long],
-      updatedAt: Option[Long]
-  )
+      entryId: Long,
+      createdAt: Long,
+      updatedAt: Long
+  ) extends AclLogEntry7_2
 
-  private implicit final val logEntry: Read[Record, AclLogEntry] = Read.record("ACL log entry") { f =>
+  private final def logEntry(f: Fields): Either[RESPDecErr, AclLogEntryOf6_2] =
     for {
-      count     <- f.num[Long]("count")
-      reason    <- f.bulk[String]("reason")
-      context   <- f.bulk[String]("context")
-      denied    <- f.bulk[String]("object")
-      username  <- f.bulk[String]("username")
-      age       <- f.bulk[Double]("age-seconds")
-      info      <- f.bulk[String]("client-info")
-      entryId   <- f.optionalNum[Long]("entry-id")
-      createdAt <- f.optionalNum[Long]("timestamp-created")
-      updatedAt <- f.optionalNum[Long]("timestamp-last-updated")
-    } yield AclLogEntry(count, reason, context, denied, username, age, info, entryId, createdAt, updatedAt)
+      count    <- f.num[Long]("count")
+      reason   <- f.bulk[String]("reason")
+      context  <- f.bulk[String]("context")
+      denied   <- f.bulk[String]("object")
+      username <- f.bulk[String]("username")
+      age      <- f.bulk[Double]("age-seconds")
+      info     <- f.bulk[String]("client-info")
+    } yield AclLogEntryOf6_2(count, reason, context, denied, username, age, info)
+  private implicit final val logEntry6_2: Read[Record, AclLogEntry6_2] = Read.record("ACL log entry")(logEntry)
+  private implicit final val logEntry7_2: Read[Record, AclLogEntry7_2] = Read.record("ACL log entry") { f =>
+    for {
+      e         <- logEntry(f)
+      entryId   <- f.num[Long]("entry-id")
+      createdAt <- f.num[Long]("timestamp-created")
+      updatedAt <- f.num[Long]("timestamp-last-updated")
+    } yield AclLogEntryOf7_2(e.count, e.reason, e.context, e.denied, e.username, e.ageSeconds, e.clientInfo, entryId, createdAt, updatedAt)
   }
-  private[protocol] final val logEntries: Read[Records, Seq[AclLogEntry]] = Read[Records, Seq[AclLogEntry]]
+  private[protocol] final val logEntries6_2: Read[Records, Seq[AclLogEntry6_2]] = Read[Records, Seq[AclLogEntry6_2]]
+  private[protocol] final val logEntries7_2: Read[Records, Seq[AclLogEntry7_2]] = Read[Records, Seq[AclLogEntry7_2]]
 }
 
 /** ACL: Redis 6.2 */
 trait AclCommands extends Features {
-  import Acl.{AclLogEntry, AclRules, AclUser}
+  import Acl.{AclLogEntry6_2, AclRules, AclUser6_2}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -266,10 +359,7 @@ trait AclCommands extends Features {
     Protocol("ACL", "GENPASS" *: bits *: EmptyTuple).as[OneOf[Bulk *: Str *: EmptyTuple], String]
 
   /** The user's rules, or `None` when there's no such user */
-  def getuser(user: Key): Single[Option[AclUser]] =
-    Protocol("ACL", "GETUSER" :: user.value :: Nil).using(maybeUser)
-
-  protected def maybeUser: RESPRead[Option[AclUser]] = Acl.maybeUser6_2
+  def getuser(user: Key): Single[Option[AclUser6_2]] = Protocol("ACL", "GETUSER" :: user.value :: Nil).using(Acl.maybeUser6_2)
 
   /** Every user's rules, as the lines of an ACL file */
   val list: Single[Seq[String]] = Protocol("ACL", "LIST").as[Texts, Seq[String]]
@@ -277,9 +367,9 @@ trait AclCommands extends Features {
   val load: Single[OK] = Protocol("ACL", "LOAD").as[Str, OK]
 
   /** The 10 most recent denials, or `count` of them */
-  val log: Single[Seq[AclLogEntry]]                = Protocol("ACL", "LOG").using(RESPRead.instance(Acl.logEntries))
-  def log(count: PosInt): Single[Seq[AclLogEntry]] =
-    Protocol("ACL", "LOG" *: count *: EmptyTuple).using(RESPRead.instance(Acl.logEntries))
+  val log: Single[Seq[AclLogEntry6_2]]                = Protocol("ACL", "LOG").using(RESPRead.instance(Acl.logEntries6_2))
+  def log(count: PosInt): Single[Seq[AclLogEntry6_2]] =
+    Protocol("ACL", "LOG" *: count *: EmptyTuple).using(RESPRead.instance(Acl.logEntries6_2))
   val logreset: Single[OK] = Protocol("ACL", "LOG" :: "RESET" :: Nil).as[Str, OK]
 
   val save: Single[OK] = Protocol("ACL", "SAVE").as[Str, OK]
@@ -303,7 +393,8 @@ trait AclDryRunCommands extends Features {
 
 /** ACL as Dragonfly has it: without selectors, and it refuses the rules `reset`, `hashedPassword` and `removeHashedPassword` */
 trait AclDragonflyCommands extends AclCommands with AclDryRunCommands {
-  override protected def maybeUser: RESPRead[Option[Acl.AclUser]] = Acl.maybeUserDragonfly
+  override def getuser(user: Key): Single[Option[Acl.AclUser6_2]] =
+    Protocol("ACL", "GETUSER" :: user.value :: Nil).using(Acl.maybeUserDragonfly)
 
   def setuser(user: Key, rules: Acl.AclDragonflyRules): Single[OK] =
     Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
@@ -311,16 +402,28 @@ trait AclDragonflyCommands extends AclCommands with AclDryRunCommands {
 
 /** ACL DRYRUN and ACL SETUSER with selectors: Redis 7.0 */
 trait AclSelectorCommands extends AclCommands with AclDryRunCommands {
-  import Acl.{AclRulesWithSelectors, AclUser}
+  import Acl.{AclRulesWithSelectors, AclUser7_0}
 
-  override protected def maybeUser: RESPRead[Option[AclUser]] = Acl.maybeUser7_0
+  override def getuser(user: Key): Single[Option[AclUser7_0]] = Protocol("ACL", "GETUSER" :: user.value :: Nil).using(Acl.maybeUser7_0)
 
   def setuser(user: Key, rules: AclRulesWithSelectors): Single[OK] =
     Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 }
 
-/** ACL SETUSER with the databases a user may use: Valkey 9.1 */
+/** ACL LOG with each entry's id and when it was created and last updated: Redis 7.2 */
+trait AclLog7_2Commands extends AclCommands {
+  import Acl.AclLogEntry7_2
+
+  override val log: Single[Seq[AclLogEntry7_2]]                = Protocol("ACL", "LOG").using(RESPRead.instance(Acl.logEntries7_2))
+  override def log(count: PosInt): Single[Seq[AclLogEntry7_2]] =
+    Protocol("ACL", "LOG" *: count *: EmptyTuple).using(RESPRead.instance(Acl.logEntries7_2))
+}
+
+/** ACL SETUSER with the databases a user may use, and ACL GETUSER with them: Valkey 9.1 */
 trait AclDatabaseCommands extends AclSelectorCommands {
+  override def getuser(user: Key): Single[Option[Acl.AclUserValkey9_1]] =
+    Protocol("ACL", "GETUSER" :: user.value :: Nil).using(Acl.maybeUserValkey9_1)
+
   def setuser(user: Key, rules: Acl.AclRulesWithDatabases): Single[OK] =
     Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
 }

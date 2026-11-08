@@ -47,12 +47,12 @@ final class ValkeyAclClientSpec extends AclClientSpec(LiveServers.port(6381), "v
       OK
     )
     val user = send(acl.getuser("ld-acl-d")).getOrElse(fail("expected the user"))
-    assertEquals(user.databases, Some("db=0,1"))
-    assertEquals(user.selectors.map(_.databases), Seq(Some("db=2")))
+    assertEquals(user.databases, "db=0,1")
+    assertEquals(user.selectors.map(_.databases), Seq("db=2"))
     assertEquals(send(acl.setuser("ld-acl-d", rules.resetDatabases)), OK)
-    assertEquals(send(acl.getuser("ld-acl-d")).flatMap(_.databases), Some(""))
+    assertEquals(send(acl.getuser("ld-acl-d")).map(_.databases), Some(""))
     assertEquals(send(acl.setuser("ld-acl-d", rules.allDatabases)), OK)
-    assertEquals(send(acl.getuser("ld-acl-d")).flatMap(_.databases), Some("alldbs"))
+    assertEquals(send(acl.getuser("ld-acl-d")).map(_.databases), Some("alldbs"))
     assertEquals(send(acl.deluser(OneOrMoreKeys.unsafeFrom(List(Key("ld-acl-d"))))).value, 1L)
   }
 }

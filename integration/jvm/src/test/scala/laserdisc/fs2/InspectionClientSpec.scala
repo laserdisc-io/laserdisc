@@ -54,7 +54,7 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(LiveServers.p
   since[Redis7_0]("a redis client reads the information of every command")(v => commandInfos(v))
 
   since[Redis8_10]("a redis client reads how many arguments a slow command had") { v =>
-    assert(slowEntry(v).totalArguments.nonEmpty)
+    assert(slowEntry(v)(v.slowlog.get(_)).totalArguments.value > 0L)
   }
 
   since[Redis6_2]("a redis client takes its art") { v =>
@@ -100,9 +100,9 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(LiveServers.p
 }
 
 final class KeyDbInspectionClientSpec extends InspectionClientSpec(LiveServers.port(6380), "keyDb") {
-  test("a keyDb client reads a command with no tips, key specifications or subcommands") {
+  test("a keyDb client reads a command as Redis 6.2 sends it") {
     val info = send(redis_6_2.command.info(OneOrMore.unsafeFrom(List(Key("get"))))).flatten
-    assertEquals(info.map(i => (i.name, i.tips, i.keySpecifications, i.subcommands)), Seq(("get", Nil, Nil, Nil)))
+    assertEquals(info.map(i => (i.name, i.firstKey, i.lastKey, i.step)), Seq(("get", 1, 1, 1)))
   }
 }
 
@@ -111,8 +111,8 @@ final class ValkeyInspectionClientSpec extends InspectionClientSpec(LiveServers.
 
   since[Valkey7_2]("a valkey client reads the information of every command")(v => commandInfos(v))
 
-  since[Valkey7_2]("a valkey client reads a slow command with no total of arguments") { v =>
-    assertEquals(slowEntry(v).totalArguments, None)
+  since[Valkey7_2]("a valkey client reads a slow command, which comes without how many arguments it had") { v =>
+    assert(slowEntry(v)(v.slowlog.get(_)).arguments.nonEmpty)
   }
 
   since[Valkey7_2]("a valkey client takes its art, and reads the help of FUNCTION") { v =>
@@ -163,11 +163,11 @@ abstract class InspectionClientSpec(p: Port, dest: String) extends LaserdiscFs2S
     assert(all.find(_.name == "config").exists(_.subcommands.exists(_.name == "config|help")))
   }
 
-  // every command is slow for a moment, so that there's an entry to read
-  protected final def slowEntry(v: Redis7_0): ServerInspection.LogEntry = {
+  // every command is slow for a moment, so that there's an entry to read, with what this version reads of it
+  protected final def slowEntry[E](v: Redis7_0)(get: PosInt => Protocol[Seq[E]]): E = {
     def slowerThan(micros: String) = send(v.config.set(OneOrMore.unsafeFrom(List(Key("slowlog-log-slower-than") -> micros))))
     slowerThan("0")
-    try send(v.slowlog.get(1)).head
+    try send(get(1)).head
     finally slowerThan("10000")
   }
 

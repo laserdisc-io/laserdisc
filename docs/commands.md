@@ -268,6 +268,11 @@ connection. Other commands sent through the same client between your `watch`
 and your `multi` can cancel the watch, so give code that uses `watch` a client
 of its own.
 
+If the connection closes between your `watch` and your `multi`, the server
+drops the watch with it. The client then doesn't send the transaction, and
+`multi` fails with `WatchLost`: send `watch` again, read the values again and
+retry.
+
 ## Your own types
 
 To store values of your own types, give LaserDisc a `Show` to write them and a

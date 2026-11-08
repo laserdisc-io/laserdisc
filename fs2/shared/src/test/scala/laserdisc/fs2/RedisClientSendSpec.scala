@@ -103,6 +103,52 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  test("a multi isn't sent when its keys were watched on a connection that closed, as the server dropped the watch with it") {
+    // the first connection answers WATCH and a GET, then closes; the next ones run transactions, keeping the names of what they get
+    def droppingWatch(seen: cats.effect.Ref[IO, List[String]]) =
+      FakeRedisServer { (n, commands) =>
+        if (n == 1) commands.take(2).map(c => if (name(c) == "WATCH") "+OK\r\n" else bulk("v"))
+        else
+          commands
+            .evalTap(c => seen.update(_ :+ name(c)))
+            .mapAccumulate(false) {
+              case (_, c) if name(c) == "MULTI" => true  -> "+OK\r\n"
+              case (_, c) if name(c) == "EXEC"  => false -> s"*1\r\n+OK\r\n"
+              case (true, _)                    => true  -> "+QUEUED\r\n"
+              case (false, c)                   => false -> (if (name(c) == "WATCH") "+OK\r\n" else bulk("w"))
+            }
+            .map(_._2)
+      }
+
+    IO.ref(List.empty[String]).flatMap { seen =>
+      droppingWatch(seen).use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use { client =>
+          for {
+            watched <- client.send(watch("k"), 2.seconds)
+            read    <- client.send(get[String]("k"), 2.seconds)
+            // until the client is on the next connection
+            _ <- untilReplied(
+              client
+                .send(get[String]("k"), 2.seconds)
+                .map(_.flatMap(r => if (r.contains("w")) Right(r) else Left(new Exception(s"still $r"))))
+            )
+            lost  <- client.send(multi(set("k", 2)), 2.seconds)
+            names <- seen.getAndSet(Nil)
+            again <- client.send(watch("k"), 2.seconds)
+            ran   <- client.send(multi(set("k", 2)), 2.seconds)
+          } yield {
+            assertEquals(watched, Right(OK))
+            assertEquals(read, Right(Some("v")))
+            assert(lost.left.exists(_.isInstanceOf[WatchLost]), s"expected WatchLost, got $lost")
+            assert(!names.contains("MULTI"), s"the transaction reached the server: $names")
+            assertEquals(again, Right(OK))
+            assertEquals(ran, Right(Some(Right(OK))))
+          }
+        }
+      }
+    }
+  }
+
   test("commands still waiting to be sent fail when the client is closed") {
     // a connection that never takes commands off the queue
     val neverSends = RedisClient.impl.connection[IO]((_, _) => _ => Stream.never[IO], Seq(address(Port.unsafeFrom(6379))))

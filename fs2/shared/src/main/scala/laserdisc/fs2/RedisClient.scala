@@ -90,13 +90,19 @@ object RedisClient {
     )(implicit logSelector: LogSelector[F]): Resource[F, Connection[F]] =
       Resource.eval(Deferred[F, Either[Throwable, Unit]]).flatMap { termSignal =>
         Resource.eval(Queue.bounded[F, Batch[F]](1024)).flatMap { queue =>
-          // the requests sent and waiting for their replies, and the address to try next
+          // the requests sent and waiting for their replies, the address to try next, the number of the current connection, and the number
+          // of the connection a WATCH last succeeded on, until a transaction or UNWATCH ends it
           Resource
-            .eval((Ref.of[F, Vector[InFlight[F]]](Vector.empty), Ref.of[F, Int](0)).tupled)
-            .flatMap { case (inFlight, nextIndex) =>
+            .eval(
+              (Ref.of[F, Vector[InFlight[F]]](Vector.empty), Ref.of[F, Int](0), Ref.of[F, Long](0L), Ref.of[F, Option[Long]](None)).tupled
+            )
+            .flatMap { case (inFlight, nextIndex, connections, watchedOn) =>
               val log = logSelector.log
 
-              def isTransaction(request: Request[F]): Boolean = request.protocol.isInstanceOf[Protocol.Multi[?]]
+              def isTransaction(request: Request[F]): Boolean  = request.protocol.isInstanceOf[Protocol.Multi[?]]
+              def command(request: Request[F]): Option[String] = request.protocol.frames.headOption.collect { case Arr(Bulk(name) :: _) =>
+                name.toUpperCase
+              }
 
               def sending(due: FiniteDuration, requests: List[Request[F]]): F[Chunk[RESP]] =
                 if (requests.isEmpty) Chunk.empty[RESP].pure[F]
@@ -107,50 +113,66 @@ object RedisClient {
                 }
 
               // a transaction's MULTI goes alone, and the rest only once the server has said OK to it, so that nothing runs when it refuses
-              // MULTI: until then nothing else is sent, so nothing else gets into the transaction
-              def transaction(due: FiniteDuration, request: Request[F]): Stream[F, RESP] =
-                Stream.eval(Deferred[F, Boolean]).flatMap { accepted =>
-                  val frames = request.protocol.frames
-                  val multi  = Request[F, RESP](
-                    Protocol("MULTI", EmptyTuple).using(RESPRead.raw),
-                    {
-                      case Right(Str("OK")) => accepted.complete(true).void
-                      case Right(other)     =>
-                        accepted.complete(false) >> request.callback(Left(RESPDecErr(s"Expected OK to MULTI but got: $other")))
-                      case Left(error) => accepted.complete(false) >> request.callback(Left(error))
-                    }
-                  )
-                  Stream.evalUnChunk(inFlight.modify(in => (in :+ InFlight(multi, due, 1, Vector.empty)) -> Chunk(frames.head))) ++
-                    Stream.eval(accepted.get).flatMap {
-                      case true =>
-                        Stream.evalUnChunk(
-                          inFlight
-                            .modify(in => (in :+ InFlight(request, due, frames.size, Vector(Str("OK")))) -> Chunk.from(frames.tail))
-                        )
-                      case false => Stream.empty
+              // MULTI: until then nothing else is sent, so nothing else gets into the transaction. And a transaction isn't sent at all when
+              // its keys were watched on a connection that's gone, as the server dropped the watch with that connection
+              def transaction(address: RedisAddress, connection: Long, due: FiniteDuration, request: Request[F]): Stream[F, RESP] =
+                Stream.eval(watchedOn.get).flatMap {
+                  case Some(watched) if watched != connection =>
+                    Stream.exec(watchedOn.set(None) >> request.callback(Left(WatchLost(address))))
+                  case _ =>
+                    Stream.eval(Deferred[F, Boolean]).flatMap { accepted =>
+                      val frames = request.protocol.frames
+                      val multi  = Request[F, RESP](
+                        Protocol("MULTI", EmptyTuple).using(RESPRead.raw),
+                        {
+                          case Right(Str("OK")) => accepted.complete(true).void
+                          case Right(other)     =>
+                            accepted.complete(false) >> request.callback(Left(RESPDecErr(s"Expected OK to MULTI but got: $other")))
+                          case Left(error) => accepted.complete(false) >> request.callback(Left(error))
+                        }
+                      )
+                      Stream.evalUnChunk(inFlight.modify(in => (in :+ InFlight(multi, due, 1, Vector.empty)) -> Chunk(frames.head))) ++
+                        Stream.eval(accepted.get).flatMap {
+                          case true =>
+                            Stream.evalUnChunk(
+                              inFlight
+                                .modify(in => (in :+ InFlight(request, due, frames.size, Vector(Str("OK")))) -> Chunk.from(frames.tail))
+                            )
+                          case false => Stream.empty
+                        }
                     }
                 }
 
-              def sendAll(due: FiniteDuration, requests: List[Request[F]]): Stream[F, RESP] = {
+              def sendAll(address: RedisAddress, connection: Long, due: FiniteDuration, requests: List[Request[F]]): Stream[F, RESP] = {
                 val (before, rest) = requests.span(request => !isTransaction(request))
                 Stream.evalUnChunk(sending(due, before)) ++ (rest match {
-                  case request :: after => transaction(due, request) ++ sendAll(due, after)
+                  case request :: after => transaction(address, connection, due, request) ++ sendAll(address, connection, due, after)
                   case Nil              => Stream.empty
                 })
               }
 
               // a batch the caller gave up on while it was queued isn't sent
-              def push(batch: Batch[F]): Stream[F, RESP] =
+              def push(address: RedisAddress, connection: Long)(batch: Batch[F]): Stream[F, RESP] =
                 Stream.eval(batch.claim.complete(())).flatMap {
                   case true =>
                     Stream
                       .eval(Temporal[F].monotonic)
-                      .flatMap(now => sendAll(now + batch.timeout, batch.requests.toList))
+                      .flatMap(now => sendAll(address, connection, now + batch.timeout, batch.requests.toList))
                   case false => Stream.empty
                 }
 
+              // what a WATCH that succeeded, an UNWATCH and a transaction that ran say about the watched keys, before the caller hears
+              def watch(connection: Long, request: Request[F], replies: Vector[RESP]): F[Unit] =
+                if (isTransaction(request)) watchedOn.set(None)
+                else
+                  command(request) match {
+                    case Some("WATCH") if replies.headOption.contains(Str("OK")) => watchedOn.set(Some(connection))
+                    case Some("UNWATCH")                                         => watchedOn.set(None)
+                    case _                                                       => Concurrent[F].unit
+                  }
+
               // a request is answered once it has a reply for each frame it sent
-              def receive(resp: RESP): F[Unit] =
+              def receive(connection: Long)(resp: RESP): F[Unit] =
                 inFlight
                   .modify {
                     case head +: rest =>
@@ -161,7 +183,7 @@ object RedisClient {
                   }
                   .flatMap {
                     case Right(Some((request, replies))) =>
-                      request.callback(request.protocol.decodeReplies(replies))
+                      watch(connection, request, replies) >> request.callback(request.protocol.decodeReplies(replies))
                     case Right(None) => Concurrent[F].unit
                     case Left(error) => Concurrent[F].raiseError[Unit](error)
                   }
@@ -186,12 +208,12 @@ object RedisClient {
               val nextAddress: F[RedisAddress] =
                 nextIndex.getAndUpdate(i => (i + 1) % addresses.size).map(addresses(_))
 
-              def serverAvailable(address: RedisAddress, onConnected: F[Unit]): Stream[F, Unit] =
+              def serverAvailable(address: RedisAddress, connection: Long, onConnected: F[Unit]): Stream[F, Unit] =
                 Stream
                   .fromQueueUnterminated(queue, limit = 8 * 1024)
-                  .flatMap(push)
+                  .flatMap(push(address, connection))
                   .through(redisNetChannel(address, onConnected))
-                  .evalMap(receive)
+                  .evalMap(receive(connection))
                   .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
 
               val serverUnavailable: Stream[F, Unit] =
@@ -206,15 +228,16 @@ object RedisClient {
               def runner(failures: Int): Stream[F, Unit] =
                 if (failures >= addresses.size) serverUnavailable ++ runner(0)
                 else
-                  Stream.eval((nextAddress, Ref.of[F, Boolean](false)).tupled).flatMap { case (address, connected) =>
-                    val onConnected = connected.set(true) >> log.info(s"Connected to server $address")
+                  Stream.eval((nextAddress, Ref.of[F, Boolean](false), connections.updateAndGet(_ + 1)).tupled).flatMap {
+                    case (address, connected, connection) =>
+                      val onConnected = connected.set(true) >> log.info(s"Connected to server $address")
 
-                    serverAvailable(address, onConnected).handleErrorWith { failure =>
-                      log.errorS(s"Failure of publishing connection to $address", failure) >>
-                        Stream.eval(failInFlight(failure) >> connected.get).flatMap { wasConnected =>
-                          runner(if (wasConnected) 1 else failures + 1)
-                        }
-                    }
+                      serverAvailable(address, connection, onConnected).handleErrorWith { failure =>
+                        log.errorS(s"Failure of publishing connection to $address", failure) >>
+                          Stream.eval(failInFlight(failure) >> connected.get).flatMap { wasConnected =>
+                            runner(if (wasConnected) 1 else failures + 1)
+                          }
+                      }
                   }
 
               val newConnection: Connection[F] = new Connection[F] {

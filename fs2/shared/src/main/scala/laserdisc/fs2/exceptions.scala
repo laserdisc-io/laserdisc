@@ -26,6 +26,13 @@ final case class ServerTerminatedConnection(redisAddress: RedisAddress)
     extends RuntimeException(s"Server $redisAddress terminated client connection", null, true, false)
 final case class ServerNotResponding(redisAddress: RedisAddress)
     extends RuntimeException(s"Server $redisAddress stopped replying", null, true, false)
+final case class WatchLost(redisAddress: RedisAddress)
+    extends RuntimeException(
+      s"The connection to $redisAddress that the keys were watched on was closed, and the server dropped the watch with it, so the transaction wasn't sent",
+      null,
+      true,
+      false
+    )
 object ServerUnavailable                       extends RuntimeException("No server available", null, true, false)
 object ClientTerminated                        extends RuntimeException("Client terminated connection", null, true, false)
 final case class NoInFlightRequest(resp: RESP) extends RuntimeException(s"Got unsolicited message from server: $resp", null, true, false)

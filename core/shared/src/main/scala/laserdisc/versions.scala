@@ -329,10 +329,13 @@ trait ScriptingValkey8_0 extends Scripting7_0 {
   override lazy val script: ScriptValkey8_0 = new ScriptValkey8_0 {}
 }
 
+trait Connection6_2 extends ConnectionBaseP with ConnectionSwapDbP with ConnectionHello6_2P
+trait Connection7_0 extends Connection6_2 with ConnectionHello7_0P
+
 /** What Redis 6.2 has, which every version below builds on */
 trait Base6_2
     extends Cluster6_2
-    with ConnectionP
+    with Connection6_2
     with Geo6_2
     with Hashes6_2
     with HyperLogLogP
@@ -349,7 +352,7 @@ trait Base6_2
   val blocking: Blocking6_2 = new Blocking6_2 {}
 
   val cluster: Cluster6_2       = new Cluster6_2 {}
-  val connection: ConnectionP   = new ConnectionP {}
+  val connection: Connection6_2 = new Connection6_2 {}
   val geo: Geo6_2               = new Geo6_2 {}
   val hashmaps: Hashes6_2       = new Hashes6_2 {}
   val hyperloglog: HyperLogLogP = new HyperLogLogP {}
@@ -376,6 +379,7 @@ trait Redis6_2 extends Base6_2 with StringAlgoP {
 trait Redis7_0
     extends Base6_2
     with Cluster7_0
+    with Connection7_0
     with Keys7_0
     with Lists7_0
     with PublishShardP
@@ -388,6 +392,7 @@ trait Redis7_0
   override val blocking: Blocking7_0 = new Blocking7_0 {}
 
   override val cluster: Cluster7_0       = new Cluster7_0 {}
+  override val connection: Connection7_0 = new Connection7_0 {}
   override val keys: Keys7_0             = new Keys7_0 {}
   override val lists: Lists7_0           = new Lists7_0 {}
   override val publish: PublishShardP    = new PublishShardP {}
@@ -765,6 +770,32 @@ trait CommandReplies7_0 {
   }
 }
 
+trait HelloRepliesCore {
+  final type Hello = ServerInspection.HelloCore
+  object Hello {
+    def unapply(h: Hello): Some[(String, String, Long, NonNegLong, String, String, Map[String, String])] =
+      Some((h.server, h.version, h.protocol, h.id, h.mode, h.role, h.others))
+  }
+}
+trait HelloReplies6_2 {
+  final type Hello = ServerInspection.Hello6_2
+  object Hello {
+    def unapply(
+        h: Hello
+    ): Some[(String, String, Long, NonNegLong, String, String, Seq[ServerInspection.ModuleInfo6_2], Map[String, String])] =
+      Some((h.server, h.version, h.protocol, h.id, h.mode, h.role, h.modules, h.others))
+  }
+}
+trait HelloReplies7_0 {
+  final type Hello = ServerInspection.Hello7_0
+  object Hello {
+    def unapply(
+        h: Hello
+    ): Some[(String, String, Long, NonNegLong, String, String, Seq[ServerInspection.ModuleInfo7_0], Map[String, String])] =
+      Some((h.server, h.version, h.protocol, h.id, h.mode, h.role, h.modules, h.others))
+  }
+}
+
 // the names of the replies whose shape changes along versions, as each import has them
 trait RepliesDragonfly2_0
     extends SlowLogReplies6_2
@@ -777,6 +808,7 @@ trait RepliesDragonfly2_0
     with ClusterReplies6_2
     with ShardReplies7_0
     with CommandReplies6_2
+    with HelloRepliesCore
 trait Replies6_2
     extends SlowLogReplies6_2
     with AutoClaimedReplies6_2
@@ -788,6 +820,7 @@ trait Replies6_2
     with ClusterReplies6_2
     with ShardReplies7_0
     with CommandReplies6_2
+    with HelloReplies6_2
 trait Replies7_0
     extends SlowLogReplies6_2
     with AutoClaimedReplies7_0
@@ -799,6 +832,7 @@ trait Replies7_0
     with ClusterReplies7_0
     with ShardReplies7_0
     with CommandReplies7_0
+    with HelloReplies7_0
 trait Replies7_2
     extends SlowLogReplies6_2
     with AutoClaimedReplies7_0
@@ -810,6 +844,7 @@ trait Replies7_2
     with ClusterReplies7_0
     with ShardReplies7_0
     with CommandReplies7_0
+    with HelloReplies7_0
 trait Replies8_10
     extends SlowLogReplies8_10
     with AutoClaimedReplies7_0
@@ -821,6 +856,7 @@ trait Replies8_10
     with ClusterReplies7_0
     with ShardReplies7_0
     with CommandReplies7_0
+    with HelloReplies7_0
 trait RepliesValkey9_1
     extends SlowLogReplies6_2
     with AutoClaimedReplies7_0
@@ -832,6 +868,7 @@ trait RepliesValkey9_1
     with ClusterReplies7_0
     with ShardRepliesValkey9_1
     with CommandReplies7_0
+    with HelloReplies7_0
 
 object dragonfly_2_0 extends Dragonfly2_0 with RepliesDragonfly2_0
 

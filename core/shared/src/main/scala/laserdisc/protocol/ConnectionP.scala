@@ -47,14 +47,16 @@ trait ConnectionBaseP extends Features {
   /** What the server says about itself and this connection, optionally logging in and naming the connection first. It always asks for
     * protocol 2, the one laserdisc reads
     */
-  final val hello: Single[ServerInspection.Hello] = Protocol("HELLO", "2").using(RESPRead.instance(ServerInspection.hello))
-  final def hello(username: Key, password: Key): Single[ServerInspection.Hello] =
-    Protocol("HELLO", "2" :: "AUTH" :: username.value :: password.value :: Nil).using(RESPRead.instance(ServerInspection.hello))
-  final def hello(name: ConnectionName): Single[ServerInspection.Hello] =
-    Protocol("HELLO", "2" :: "SETNAME" :: name.value :: Nil).using(RESPRead.instance(ServerInspection.hello))
-  final def hello(username: Key, password: Key, name: ConnectionName): Single[ServerInspection.Hello] =
-    Protocol("HELLO", "2" :: "AUTH" :: username.value :: password.value :: "SETNAME" :: name.value :: Nil)
-      .using(RESPRead.instance(ServerInspection.hello))
+  val hello: Single[ServerInspection.HelloCore]                               = helloWith(Nil, helloCore)
+  def hello(username: Key, password: Key): Single[ServerInspection.HelloCore] =
+    helloWith(List("AUTH", username.value, password.value), helloCore)
+  def hello(name: ConnectionName): Single[ServerInspection.HelloCore] = helloWith(List("SETNAME", name.value), helloCore)
+  def hello(username: Key, password: Key, name: ConnectionName): Single[ServerInspection.HelloCore] =
+    helloWith(List("AUTH", username.value, password.value, "SETNAME", name.value), helloCore)
+
+  private final lazy val helloCore = RESPRead.instance(ServerInspection.helloCore)
+
+  protected final def helloWith[H](params: List[String], read: RESPRead[H]): Single[H] = Protocol("HELLO", "2" :: params).using(read)
 
   final val ping: Single[PONG]                                  = Protocol("PING", EmptyTuple).as[Str, PONG]
   final def ping[A: Show: Read[Bulk, _]](message: A): Single[A] = Protocol("PING", message).as[Bulk, A]
@@ -70,4 +72,32 @@ trait ConnectionSwapDbP extends Features {
   final def swapdb(index1: DbIndex, index2: DbIndex): Single[OK] = Protocol("SWAPDB", index1 :: index2 :: Nil).as[Str, OK]
 }
 
-trait ConnectionP extends ConnectionBaseP with ConnectionSwapDbP
+/** HELLO with the server's modules: Redis 6.2 */
+trait ConnectionHello6_2P extends ConnectionBaseP {
+  import ServerInspection.Hello6_2
+
+  private final lazy val read6_2 = RESPRead.instance(ServerInspection.hello6_2)
+
+  override val hello: Single[Hello6_2]                               = helloWith(Nil, read6_2)
+  override def hello(username: Key, password: Key): Single[Hello6_2] =
+    helloWith(List("AUTH", username.value, password.value), read6_2)
+  override def hello(name: ConnectionName): Single[Hello6_2]                               = helloWith(List("SETNAME", name.value), read6_2)
+  override def hello(username: Key, password: Key, name: ConnectionName): Single[Hello6_2] =
+    helloWith(List("AUTH", username.value, password.value, "SETNAME", name.value), read6_2)
+}
+
+/** HELLO with each module's path and arguments: Redis 7.0 */
+trait ConnectionHello7_0P extends ConnectionHello6_2P {
+  import ServerInspection.Hello7_0
+
+  private final lazy val read7_0 = RESPRead.instance(ServerInspection.hello7_0)
+
+  override val hello: Single[Hello7_0]                               = helloWith(Nil, read7_0)
+  override def hello(username: Key, password: Key): Single[Hello7_0] =
+    helloWith(List("AUTH", username.value, password.value), read7_0)
+  override def hello(name: ConnectionName): Single[Hello7_0]                               = helloWith(List("SETNAME", name.value), read7_0)
+  override def hello(username: Key, password: Key, name: ConnectionName): Single[Hello7_0] =
+    helloWith(List("AUTH", username.value, password.value, "SETNAME", name.value), read7_0)
+}
+
+trait ConnectionP extends ConnectionBaseP with ConnectionSwapDbP with ConnectionHello7_0P

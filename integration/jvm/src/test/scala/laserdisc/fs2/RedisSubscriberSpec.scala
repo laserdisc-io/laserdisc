@@ -43,11 +43,14 @@ final class ValkeyRedisSubscriberSpec extends RedisSubscriberSpec(LiveServers.po
   since[Valkey7_2]("a valkey client reads messages of shard channels")(v => shards(v))
   test("a valkey client is told about a wrong password")(wrongPassword())
 }
-final class DragonflyRedisSubscriberSpec extends RedisSubscriberSpec(LiveServers.port(6382), "dragonfly") {
+final class DragonflyRedisSubscriberSpec
+    extends RedisSubscriberSpec(LiveServers.port(6382), "dragonfly", laserdisc.dragonfly_2_0.connection) {
   test("a dragonfly client reads messages of shard channels")(shards(laserdisc.dragonfly_2_0))
 }
 
-abstract class RedisSubscriberSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
+// `connection` is the server's own HELLO, as Dragonfly's reply has no modules
+abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.ConnectionBaseP = laserdisc.redis_6_2.connection)
+    extends LaserdiscFs2Suite(p) {
   private val publisher = laserdisc.redis_6_2
 
   protected final def run[A](io: IO[A]): A = io.timeout(10.seconds).unsafeRunSync()(using runtime)
@@ -142,7 +145,7 @@ abstract class RedisSubscriberSpec(p: Port, dest: String) extends LaserdiscFs2Su
 
   test(s"a $dest client says hello, names its connection and reads what the server says") {
     val named = RedisClient[IO].to("127.0.0.1", p).use { own =>
-      own.send(publisher.hello(ConnectionName("ld-hello"))).flatMap(IO.fromEither) product own
+      own.send(connection.hello(ConnectionName("ld-hello"))).flatMap(IO.fromEither) product own
         .send(publisher.client.getname)
         .flatMap(IO.fromEither)
     }

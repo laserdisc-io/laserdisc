@@ -433,10 +433,39 @@ object ServerInspection {
     Read[OneOf[Records *: Arr.Of[DragonflyModuleReply] *: EmptyTuple], Seq[ModuleInfo6_2]]
   private[protocol] final val moduleInfos7_0: Read[Records, Seq[ModuleInfo7_0]] = Read[Records, Seq[ModuleInfo7_0]]
 
-  /** HELLO's reply: the server's name and version, the protocol, this connection's id, how the server runs, and its modules, with anything
-    * else the server sends as text
+  /** HELLO's reply as Dragonfly sends it: the server's name and version, the protocol, this connection's id and how the server runs, with
+    * anything else the server sends as text
     */
-  final case class Hello(
+  sealed trait HelloCore {
+    def server: String
+    def version: String
+    def protocol: Long
+    def id: NonNegLong
+    def mode: String
+    def role: String
+    def others: Map[String, String]
+  }
+
+  /** HELLO's reply from Redis 6.2: also the server's modules */
+  sealed trait Hello6_2 extends HelloCore {
+    def modules: Seq[ModuleInfo6_2]
+  }
+
+  /** HELLO's reply from Redis 7.0: also each module's path and the arguments it was loaded with */
+  sealed trait Hello7_0 extends Hello6_2 {
+    override def modules: Seq[ModuleInfo7_0]
+  }
+
+  private[laserdisc] final case class HelloOfCore(
+      server: String,
+      version: String,
+      protocol: Long,
+      id: NonNegLong,
+      mode: String,
+      role: String,
+      others: Map[String, String]
+  ) extends HelloCore
+  private[laserdisc] final case class HelloOf6_2(
       server: String,
       version: String,
       protocol: Long,
@@ -445,23 +474,43 @@ object ServerInspection {
       role: String,
       modules: Seq[ModuleInfo6_2],
       others: Map[String, String]
-  )
-  private[protocol] final val hello: Read[Record, Hello] = {
-    val typed = Set("server", "version", "proto", "id", "mode", "role", "modules")
-    Read.record("hello") { f =>
-      for {
-        server  <- f.bulk[String]("server")
-        version <- f.bulk[String]("version")
-        proto   <- f.num[Long]("proto")
-        id      <- f.num[NonNegLong]("id")
-        mode    <- f.bulk[String]("mode")
-        role    <- f.bulk[String]("role")
-        modules <- f.optional[Records, Seq[ModuleInfo6_2]]("modules")
-      } yield {
-        val others = f.others(typed).collect { case (k, Bulk(v)) => k -> v }
-        Hello(server, version, proto, id, mode, role, modules.getOrElse(Nil), others)
-      }
+  ) extends Hello6_2
+  private[laserdisc] final case class HelloOf7_0(
+      server: String,
+      version: String,
+      protocol: Long,
+      id: NonNegLong,
+      mode: String,
+      role: String,
+      modules: Seq[ModuleInfo7_0],
+      others: Map[String, String]
+  ) extends Hello7_0
+
+  private final def helloOf(f: Fields): Either[RESPDecErr, HelloOfCore] =
+    for {
+      server  <- f.bulk[String]("server")
+      version <- f.bulk[String]("version")
+      proto   <- f.num[Long]("proto")
+      id      <- f.num[NonNegLong]("id")
+      mode    <- f.bulk[String]("mode")
+      role    <- f.bulk[String]("role")
+    } yield {
+      val typed  = Set("server", "version", "proto", "id", "mode", "role", "modules")
+      val others = f.others(typed).collect { case (k, Bulk(v)) => k -> v }
+      HelloOfCore(server, version, proto, id, mode, role, others)
     }
+  private[protocol] final val helloCore: Read[Record, HelloCore] = Read.record("hello")(helloOf)
+  private[protocol] final val hello6_2: Read[Record, Hello6_2]   = Read.record("hello") { f =>
+    for {
+      h       <- helloOf(f)
+      modules <- f[Records, Seq[ModuleInfo6_2]]("modules")
+    } yield HelloOf6_2(h.server, h.version, h.protocol, h.id, h.mode, h.role, modules, h.others)
+  }
+  private[protocol] final val hello7_0: Read[Record, Hello7_0] = Read.record("hello") { f =>
+    for {
+      h       <- helloOf(f)
+      modules <- f[Records, Seq[ModuleInfo7_0]]("modules")
+    } yield HelloOf7_0(h.server, h.version, h.protocol, h.id, h.mode, h.role, modules, h.others)
   }
 
   /** SLOW, LARGE-REQUEST and LARGE-REPLY, for COMMANDLOG: Valkey 8.1 */

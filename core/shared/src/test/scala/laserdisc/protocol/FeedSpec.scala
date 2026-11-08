@@ -137,14 +137,19 @@ final class FeedSpec extends BaseSpec with PublishShardP with MonitorP {
         List[RESP](Bulk("server"), Bulk("redis"), Bulk("version"), Bulk("7.4.0"), Bulk("proto"), Num(2L), Bulk("id"), Num(1L)) ++
           List[RESP](Bulk("mode"), Bulk("standalone"), Bulk("role"), Bulk("master")) ++ extra
       )
+    // Dragonfly sends no modules, and Redis and Valkey always do, with each module's path and arguments from Redis 7.0
     assertEquals(
-      h.hello.decode(fields(Bulk("dragonfly_version"), Bulk("df-v2.0.2"))),
-      ServerInspection.Hello("redis", "7.4.0", 2L, NonNegLong(1L), "standalone", "master", Nil, Map("dragonfly_version" -> "df-v2.0.2"))
+      dragonfly_2_0.hello.decode(fields(Bulk("dragonfly_version"), Bulk("df-v2.0.2"))),
+      ServerInspection.HelloOfCore("redis", "7.4.0", 2L, NonNegLong(1L), "standalone", "master", Map("dragonfly_version" -> "df-v2.0.2"))
     )
+    assert(h.hello.decode(fields(Bulk("dragonfly_version"), Bulk("df-v2.0.2"))).isLeft)
     val module = Arr(Bulk("name"), Bulk("m"), Bulk("ver"), Num(1L), Bulk("path"), Bulk("/m"), Bulk("args"), Arr(Nil))
+    assertEquals(h.hello.decode(fields(Bulk("modules"), Arr(module))).map(_.modules), Seq(ServerInspection.ModuleInfoOf6_2("m", 1L)))
     assertEquals(
-      h.hello.decode(fields(Bulk("modules"), Arr(module))).map(_.modules),
-      Seq(ServerInspection.ModuleInfoOf6_2("m", 1L))
+      redis_7_0.hello.decode(fields(Bulk("modules"), Arr(module))).map(_.modules),
+      Seq(ServerInspection.ModuleInfoOf7_0("m", 1L, "/m", Nil))
     )
+    assertEquals(redis_7_0.connection.hello.decode(fields(Bulk("modules"), Arr(Nil))).map(_.modules), Nil)
+    assert(compileErrors("dragonfly_2_0.hello.decode(fields()).map(_.modules)").nonEmpty)
   }
 }

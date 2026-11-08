@@ -22,9 +22,14 @@
 package laserdisc
 package protocol
 
-/** A value to send, for commands where you also choose the type of the reply: anything with a [[Show]] converts to it */
-final class Value(val shown: String) extends AnyVal
+/** A value to send, for commands where you also choose the type of the reply: anything with a [[Show]] converts to it, and a [[Bulk]] is
+  * sent as its bytes are
+  */
+final class Value(val bulk: Bulk) extends AnyVal
 
 object Value extends ValueWithoutShow {
-  implicit final def fromShow[A](a: A)(implicit A: Show[A]): Value = new Value(A.show(a))
+  implicit final def fromShow[A](a: A)(implicit A: Show[A]): Value = new Value(a match {
+    case bulk: Bulk => bulk
+    case _          => Bulk(A.show(a))
+  })
 }

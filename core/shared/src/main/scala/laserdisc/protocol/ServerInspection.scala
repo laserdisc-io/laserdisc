@@ -697,7 +697,7 @@ trait ModuleCommands extends ModuleListCommands {
   /** Loads the module at that path on the server */
   def load(path: Key): Single[OK]                         = Protocol("MODULE", "LOAD" :: path.value :: Nil).as[Str, OK]
   def load(path: Key, args: OneOrMore[Value]): Single[OK] =
-    Protocol("MODULE", "LOAD" :: path.value :: args.value.map(_.shown)).as[Str, OK]
+    Protocol("MODULE", Bulk("LOAD") :: Bulk(path.value) :: args.value.map(_.bulk)).as[Str, OK]
 
   /** Unloads the module of that name */
   def unload(name: Key): Single[OK] = Protocol("MODULE", "UNLOAD" :: name.value :: Nil).as[Str, OK]
@@ -707,18 +707,18 @@ trait ModuleCommands extends ModuleListCommands {
 trait ModuleLoadExCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("MODULE LOADEX: ARGS CONFIG")
 
-  private def configs(values: OneOrMore[(Key, Value)]): List[String] =
-    values.value.flatMap { case (name, value) => List("CONFIG", name.value, value.shown) }
-  private def arguments(values: OneOrMore[Value]): List[String] = "ARGS" :: values.value.map(_.shown)
+  private def configs(values: OneOrMore[(Key, Value)]): List[Bulk] =
+    values.value.flatMap { case (name, value) => List(Bulk("CONFIG"), Bulk(name.value), value.bulk) }
+  private def arguments(values: OneOrMore[Value]): List[Bulk] = Bulk("ARGS") :: values.value.map(_.bulk)
 
   /** Loads the module at that path on the server, setting its configuration */
   def loadex(path: Key): Single[OK]                                  = Protocol("MODULE", "LOADEX" :: path.value :: Nil).as[Str, OK]
   def loadex(path: Key, config: OneOrMore[(Key, Value)]): Single[OK] =
-    Protocol("MODULE", "LOADEX" :: path.value :: configs(config)).as[Str, OK]
+    Protocol("MODULE", Bulk("LOADEX") :: Bulk(path.value) :: configs(config)).as[Str, OK]
   def loadexargs(path: Key, args: OneOrMore[Value]): Single[OK] =
-    Protocol("MODULE", "LOADEX" :: path.value :: arguments(args)).as[Str, OK]
+    Protocol("MODULE", Bulk("LOADEX") :: Bulk(path.value) :: arguments(args)).as[Str, OK]
   def loadex(path: Key, config: OneOrMore[(Key, Value)], args: OneOrMore[Value]): Single[OK] =
-    Protocol("MODULE", "LOADEX" :: path.value :: (configs(config) ++ arguments(args))).as[Str, OK]
+    Protocol("MODULE", Bulk("LOADEX") :: Bulk(path.value) :: (configs(config) ++ arguments(args))).as[Str, OK]
 }
 
 /** LATENCY LATEST: Redis 6.2 */

@@ -48,8 +48,12 @@ object RESPParamWrite extends RESPParamWriteInstances {
 }
 
 private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteInstances1 {
-  implicit final val bulkRESPParamWrite: RESPParamWrite[Bulk]       = RESPParamWrite.instance(a => Seq(a))
-  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A] = RESPParamWrite.instance(a => Seq(Bulk(a)))
+  implicit final val bulkRESPParamWrite: RESPParamWrite[Bulk] = RESPParamWrite.instance(a => Seq(a))
+  // a Bulk is sent as its bytes are, even where the command takes any value with a Show, as Show would make it text
+  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A] = RESPParamWrite.instance {
+    case bulk: Bulk => Seq(bulk)
+    case a          => Seq(Bulk(a))
+  }
   implicit final def pairRESPParamWrite[A, B](
       implicit A: RESPParamWrite[A],
       B: RESPParamWrite[B]

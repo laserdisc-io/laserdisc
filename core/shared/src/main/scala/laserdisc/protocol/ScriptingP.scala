@@ -118,8 +118,8 @@ object ScriptingP {
   }
 
   // the number of keys, the keys, then the arguments
-  private[protocol] final def keysAndArgs(keys: List[Key], args: List[Value]): List[String] =
-    Show[Int].show(keys.size) :: keys.map(_.value) ++ args.map(_.shown)
+  private[protocol] final def keysAndArgs(keys: List[Key], args: List[Value]): List[Bulk] =
+    Bulk(Show[Int].show(keys.size)) :: keys.map(key => Bulk(key.value)) ++ args.map(_.bulk)
 
   // the builders each feature's commands take, and the types of their replies
   trait ScriptingTypes {
@@ -203,7 +203,7 @@ trait ScriptingCoreP extends Features {
 
   private[protocol] final def run[R, A](command: String, first: String, keys: List[Key], args: List[Value])(
       R: RESPRead.Aux[R, A]
-  ): Single[A] = Protocol(command, first :: keysAndArgs(keys, args)).using(R)
+  ): Single[A] = Protocol(command, Bulk(first) :: keysAndArgs(keys, args)).using(R)
 
   final def eval[R, A](script: String)(implicit R: RESPRead.Aux[R, A]): Single[A]                      = run("EVAL", script, Nil, Nil)(R)
   final def eval[R, A](script: String, keys: OneOrMoreKeys)(implicit R: RESPRead.Aux[R, A]): Single[A] =

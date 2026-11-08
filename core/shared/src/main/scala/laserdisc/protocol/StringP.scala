@@ -381,7 +381,7 @@ trait StringBaseP extends Features {
     Protocol("GETEX", key *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
   final def getset[A: Read[Bulk, _]](key: Key, value: Value): Single[Option[A]] =
-    Protocol("GETSET", key *: value.shown *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+    Protocol("GETSET", key *: value.bulk *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
   final def incr[A: Read[Num, _]](key: Key): Single[A] = Protocol("INCR", key).as[Num, A]
 
@@ -423,15 +423,15 @@ trait StringBaseP extends Features {
 
   /** SET with GET, which replies with the previous value */
   final def setget[A: Read[Bulk, _]](key: Key, value: Value): Single[Option[A]] =
-    Protocol("SET", key *: value.shown *: "GET" *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+    Protocol("SET", key *: value.bulk *: "GET" *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
   final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry): Single[Option[A]] =
-    Protocol("SET", key *: value.shown *: "GET" *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+    Protocol("SET", key *: value.bulk *: "GET" *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
   /** SET with XX and GET: Redis 6.2 takes XX with GET, and NX with it only from Redis 7.0 */
   final def setget[A: Read[Bulk, _]](key: Key, value: Value, flag: Flag.xx.type): Single[Option[A]] =
-    Protocol("SET", key *: value.shown *: (flag: Flag) *: "GET" *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+    Protocol("SET", key *: value.bulk *: (flag: Flag) *: "GET" *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
   final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry, flag: Flag.xx.type): Single[Option[A]] =
-    Protocol("SET", key *: value.shown *: (flag: Flag) *: "GET" *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+    Protocol("SET", key *: value.bulk *: (flag: Flag) *: "GET" *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
   final def setbit(key: Key, offset: StringLength, bit: Bit): Single[Bit] =
     Protocol("SETBIT", key *: offset *: bit *: EmptyTuple).as[Num, Bit]
@@ -458,9 +458,9 @@ trait StringSetGetFlagP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("SET: GET NX XX")
 
   final def setget[A: Read[Bulk, _]](key: Key, value: Value, flag: Flag): Single[Option[A]] =
-    Protocol("SET", key *: value.shown *: flag *: "GET" *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+    Protocol("SET", key *: value.bulk *: flag *: "GET" *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
   final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry, flag: Flag): Single[Option[A]] =
-    Protocol("SET", key *: value.shown *: flag *: "GET" *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+    Protocol("SET", key *: value.bulk *: flag *: "GET" *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 }
 
 /** SET with IFEQ: Valkey 8.1, Redis 8.4 */

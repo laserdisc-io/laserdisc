@@ -153,6 +153,16 @@ abstract class StringClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assertEquals(send(bitpos("s:b", stringtypes.bit.set, 4L, 15L, stringtypes.bitUnit.bit)).map(_.value), Some(9))
   }
 
+  test(s"a $dest client writes a value as its bytes, even ones that aren't UTF-8, and reads them back as they are") {
+    import laserdisc.redis_6_2.*
+    val binary = Bulk(scodec.bits.ByteVector(0xff, 0x80, 0x00))
+
+    assertEquals(send(set("s:bin", binary)), OK)
+    assertEquals(send(get[Bulk]("s:bin")).map(_.bytes), Some(binary.bytes))
+    assertEquals(send(setget[Bulk]("s:bin", binary)).map(_.bytes), Some(binary.bytes))
+    val _ = send(del("s:bin"))
+  }
+
   test(s"a $dest client reads, writes and increments numbers in a string with BITFIELD") {
     import laserdisc.redis_6_2.*
 

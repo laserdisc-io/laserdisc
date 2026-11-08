@@ -27,6 +27,21 @@ import org.scalacheck.Prop.forAll
 final class StringPSpec extends BaseSpec with StringP {
   import laserdisc.auto.*
 
+  test("The String protocol sends a Bulk value as its bytes, even ones that aren't UTF-8, through Show and through Value") {
+    val binary                                             = Bulk(scodec.bits.ByteVector(0xff, 0x80))
+    def value(sent: RESP, at: Int): scodec.bits.ByteVector = sent match {
+      case Arr(elements) => elements(at) match { case bulk: Bulk => bulk.bytes; case other => fail(s"not a Bulk: $other") }
+      case other         => fail(s"not an Arr: $other")
+    }
+    assertEquals(value(redis_8_10.set(Key("k"), binary).encode, 2), binary.bytes)
+    assertEquals(value(redis_8_10.setget[String](Key("k"), binary).encode, 2), binary.bytes)
+    assertEquals(value(redis_8_10.hset(Key("h"), Key("f"), binary).encode, 3), binary.bytes)
+    assertEquals(
+      value(redis_8_10.evalargs[Bulk, String]("return ARGV[1]", OneOrMore.unsafeFrom(List[Value](binary))).encode, 3),
+      binary.bytes
+    )
+  }
+
   test("The String protocol decoding the wrong type gives details about the decoding error") {
     val correct = redis_8_10.strings.set("a", 23)
     assertLeftEquals(

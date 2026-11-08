@@ -427,6 +427,12 @@ trait StringBaseP extends Features {
   final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry): Single[Option[A]] =
     Protocol("SET", key *: value.shown *: "GET" *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
+  /** SET with XX and GET: Redis 6.2 takes XX with GET, and NX with it only from Redis 7.0 */
+  final def setget[A: Read[Bulk, _]](key: Key, value: Value, flag: Flag.xx.type): Single[Option[A]] =
+    Protocol("SET", key *: value.shown *: (flag: Flag) *: "GET" *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+  final def setget[A: Read[Bulk, _]](key: Key, value: Value, expiry: SetExpiry, flag: Flag.xx.type): Single[Option[A]] =
+    Protocol("SET", key *: value.shown *: (flag: Flag) *: "GET" *: expiry.params *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+
   final def setbit(key: Key, offset: StringLength, bit: Bit): Single[Bit] =
     Protocol("SETBIT", key *: offset *: bit *: EmptyTuple).as[Num, Bit]
 

@@ -88,6 +88,12 @@ final class VersionImportsSpec extends BaseSpec {
 
     assertEquals(setget[Int]("a", 2).frames, frame("SET", "a", "2", "GET"))
     assert(compileErrors("""setget[Int]("a", 2, stringtypes.flag.nx)""").nonEmpty)
+    // Redis 6.2 already takes XX with GET
+    assertEquals(setget[Int]("a", 2, stringtypes.flag.xx).frames, frame("SET", "a", "2", "XX", "GET"))
+    assertEquals(
+      setget[Int]("a", 2, stringtypes.expiry.seconds(10L), stringtypes.flag.xx).frames,
+      frame("SET", "a", "2", "XX", "GET", "EX", "10")
+    )
   }
 
   test("redis_8_2 has setget with NX, but no IFEQ or IFNE") {

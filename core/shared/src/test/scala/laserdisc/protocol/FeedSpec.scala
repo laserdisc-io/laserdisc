@@ -22,7 +22,7 @@
 package laserdisc
 package protocol
 
-import scodec.bits._
+import scodec.bits.*
 
 final class FeedSpec extends BaseSpec with PublishShardP with MonitorP {
   import Feed.{Message, MonitorEvent, PatternMessage, ShardMessage}

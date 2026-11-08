@@ -26,9 +26,9 @@ import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.*
 import org.scalacheck.{Arbitrary, Gen}
 
-import scala.Double.{MaxValue => DMax, MinValue => DMin, NaN}
-import scala.Int.{MaxValue => IMax, MinValue => IMin}
-import scala.Long.{MaxValue => LMax, MinValue => LMin}
+import scala.Double.{MaxValue as DMax, MinValue as DMin, NaN}
+import scala.Int.{MaxValue as IMax, MinValue as IMin}
+import scala.Long.{MaxValue as LMax, MinValue as LMin}
 
 abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with BaseSpecPlatform {
 

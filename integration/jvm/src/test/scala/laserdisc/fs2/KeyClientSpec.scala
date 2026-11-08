@@ -40,7 +40,7 @@ final class RedisKeyClientSpec extends KeyClientSpec(LiveServers.port(6379), "re
     assertEquals(send(typeof("k:none")), None)
     assert(send(scan(0L, 10000, KeyType.array)).values.exists(_.contains(Key("k:a"))))
     assert(send(scan(0L, 10000, KeyType.other("vectorset"))).values.exists(_.contains(Key("k:v"))))
-    send(del("k:a", "k:v"))
+    val _ = send(del("k:a", "k:v"))
   }
 }
 

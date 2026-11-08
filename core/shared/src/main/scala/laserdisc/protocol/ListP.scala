@@ -251,5 +251,5 @@ trait ListPopNilArrP extends ListBaseP {
 }
 
 trait ListP extends ListBaseP with ListExtP with ListPopNilArrP with ListMPopP with ListMoveManyP {
-  override val listtypes: ListP.ListTypes with ListP.ListMoveManyTypes = new ListP.ListTypes with ListP.ListMoveManyTypes {}
+  override val listtypes: ListP.ListTypes & ListP.ListMoveManyTypes = new ListP.ListTypes with ListP.ListMoveManyTypes {}
 }

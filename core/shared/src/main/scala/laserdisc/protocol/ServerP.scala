@@ -259,7 +259,7 @@ object ServerP {
 
     // sections start with a "# Name" line, followed by "key:value" lines, and are separated by empty lines
     private[protocol] def read(later: List[LaterInfoSection]): Read[Bulk, Info] = Read.instance { case Bulk(s) =>
-      val section = this.section(later) _
+      val section: String => InfoSectionKey = this.section(later)
       s.split("\r?\n")
         .toList
         .foldLeft[Either[RESPDecErr, List[(InfoSectionKey, List[String])]]](Right(Nil)) {
@@ -567,7 +567,7 @@ object ServerP {
       with ValkeyFilterTypes
       with InfoHotKeysTypes
       with InfoTlsTypes {
-    override val info: InfoHotKeysBuilders with InfoTlsBuilders = InfoSections
+    override val info: InfoHotKeysBuilders & InfoTlsBuilders = InfoSections
   }
 }
 

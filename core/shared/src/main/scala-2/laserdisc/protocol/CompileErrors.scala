@@ -22,8 +22,6 @@
 package laserdisc
 package protocol
 
-import scala.annotation.compileTimeOnly
-import scala.language.experimental.macros
 import scala.reflect.macros.blackbox
 
 // found only when `H` is listed again, so that the error says so instead of the generic one about the reply's RESPRead, several implicits
@@ -40,7 +38,7 @@ private[protocol] trait ValueWithoutShow {
 // what these expand to doesn't compile. An error raised here would be lost in the implicit search, one found on what's left isn't
 object CompileErrors {
   private def failing(c: blackbox.Context)(message: String): c.Tree = {
-    import c.universe._
+    import c.universe.*
     q"""{
       @_root_.scala.annotation.compileTimeOnly($message)
       def compileError: _root_.scala.Nothing = throw new _root_.java.lang.IllegalStateException("never called: it doesn't compile")

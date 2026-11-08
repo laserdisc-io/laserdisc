@@ -609,6 +609,6 @@ trait KeyP
     with KeyExpireConditionP
     with KeySortReadOnlyP
     with KeyWaitAofP {
-  override val keytypes: KeyP.KeyArrayTypes with KeyP.KeyObjectTypes with KeyP.KeyExpireTypes with KeyP.KeyMigrateTypes =
+  override val keytypes: KeyP.KeyArrayTypes & KeyP.KeyObjectTypes & KeyP.KeyExpireTypes & KeyP.KeyMigrateTypes =
     new KeyP.KeyArrayTypes with KeyP.KeyObjectTypes with KeyP.KeyExpireTypes with KeyP.KeyMigrateTypes {}
 }

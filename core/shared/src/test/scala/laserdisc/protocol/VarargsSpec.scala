@@ -172,6 +172,7 @@ final class VarargsSpec extends BaseSpec {
   test("an invalid literal among the items doesn't compile") {
     import laserdisc.redis_8_10.*
 
+    assertEquals(watch("a", "b").encode, watch(oneOrMoreKeys).encode)
     assert(compileErrors("""watch("a", "")""").nonEmpty)
     assert(compileErrors("""sintercard("a")""").nonEmpty)
     assert(compileErrors("""zmscore("k", 1, "a")""").nonEmpty)

@@ -1554,17 +1554,12 @@ trait StreamP
     with StreamNackP
     with StreamReadLimitsP
     with StreamInfo7_2P {
-  override val streamtypes: StreamP.StreamTypes
-    with StreamP.StreamIdAtTypes
-    with StreamP.StreamRefPolicyTypes
-    with StreamP.StreamClaimTypes
-    with StreamP.StreamIdmpTypes
-    with StreamP.StreamNackTypes
-    with StreamP.StreamReadLimitsTypes = new StreamP.StreamTypes
-    with StreamP.StreamIdAtTypes
-    with StreamP.StreamRefPolicyTypes
-    with StreamP.StreamClaimTypes
-    with StreamP.StreamIdmpTypes
-    with StreamP.StreamNackTypes
-    with StreamP.StreamReadLimitsTypes {}
+  override val streamtypes: StreamP.StreamTypes & StreamP.StreamIdAtTypes & StreamP.StreamRefPolicyTypes & StreamP.StreamClaimTypes & StreamP.StreamIdmpTypes & StreamP.StreamNackTypes & StreamP.StreamReadLimitsTypes =
+    new StreamP.StreamTypes
+      with StreamP.StreamIdAtTypes
+      with StreamP.StreamRefPolicyTypes
+      with StreamP.StreamClaimTypes
+      with StreamP.StreamIdmpTypes
+      with StreamP.StreamNackTypes
+      with StreamP.StreamReadLimitsTypes {}
 }

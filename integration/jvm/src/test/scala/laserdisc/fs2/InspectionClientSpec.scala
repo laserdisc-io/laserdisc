@@ -77,7 +77,7 @@ final class RedisInspectionClientSpec extends InspectionClientSpec(LiveServers.p
     assert(failure(v.himportset("i:hi", "i:fs", OneOrMore.unsafeFrom(List("x")))).contains("no such fieldset"))
     send(v.himportprepare("i:fs2", fields))
     assertEquals(send(v.himportdiscardall), NonNegInt(1))
-    send(v.del("i:hi"))
+    val _ = send(v.del("i:hi"))
   }
 
   since[Redis7_0]("a redis client reads the help of FUNCTION")(v => assert(send(v.function.help).nonEmpty))
@@ -141,7 +141,6 @@ final class ValkeyInspectionClientSpec extends InspectionClientSpec(LiveServers.
 }
 
 abstract class InspectionClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
-  import protocol.ServerInspection
   import protocol.ServerInspection.{BeginSearch, FindKeys}
 
   protected final def send[A](protocol: Protocol[A]): A =
@@ -165,7 +164,8 @@ abstract class InspectionClientSpec(p: Port, dest: String) extends LaserdiscFs2S
 
   // every command is slow for a moment, so that there's an entry to read, with what this version reads of it
   protected final def slowEntry[E](v: Redis7_0)(get: PosInt => Protocol[Seq[E]]): E = {
-    def slowerThan(micros: String) = send(v.config.set(OneOrMore.unsafeFrom(List(Key("slowlog-log-slower-than") -> micros))))
+    def slowerThan(micros: String): Unit =
+      assertEquals(send(v.config.set(OneOrMore.unsafeFrom(List(Key("slowlog-log-slower-than") -> micros)))), OK)
     slowerThan("0")
     try send(get(1)).head
     finally slowerThan("10000")

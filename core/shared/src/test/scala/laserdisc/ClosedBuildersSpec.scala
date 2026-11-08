@@ -24,8 +24,6 @@ package elsewhere
 /** Outside laserdisc, a builder only some versions take is only reachable through the import of a version that takes it */
 final class ClosedBuildersSpec extends munit.FunSuite {
   test("the builders of later versions can't be reached around the imports") {
-    import laserdisc.auto.*
-
     assert(compileErrors("""laserdisc.protocol.StreamP.Idmp.auto(laserdisc.Key("p"))""").nonEmpty)
     assert(compileErrors("""laserdisc.redis_8_6.streamtypes.StreamIdmp.auto(laserdisc.Key("p"))""").isEmpty)
     assert(compileErrors("""laserdisc.protocol.StreamP.IdAt(laserdisc.NonNegLong(1L))""").nonEmpty)

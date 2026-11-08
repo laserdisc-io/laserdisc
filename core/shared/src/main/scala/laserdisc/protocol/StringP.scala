@@ -297,7 +297,7 @@ object StringP {
 }
 
 trait StringBaseP extends Features {
-  import StringP.{Bit, BitField, BitUnit, Bitwise, Compare, Expiry, Flag, GetExpiry, IfEq, IncrExOptions, SetExpiry}
+  import StringP.{Bit, BitField, Bitwise, Flag, GetExpiry, SetExpiry}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -627,17 +627,12 @@ trait StringP
     with StringDelIfEqP
     with StringMSetExP
     with StringIncrExP {
-  override val stringtypes: StringP.StringTypes
-    with StringP.StringBitopTypes
-    with StringP.StringBitUnitTypes
-    with StringP.StringAlgoTypes
-    with StringP.StringCompareTypes
-    with StringP.StringIfEqTypes
-    with StringP.StringIncrExTypes = new StringP.StringTypes
-    with StringP.StringBitopTypes
-    with StringP.StringBitUnitTypes
-    with StringP.StringAlgoTypes
-    with StringP.StringCompareTypes
-    with StringP.StringIfEqTypes
-    with StringP.StringIncrExTypes {}
+  override val stringtypes: StringP.StringTypes & StringP.StringBitopTypes & StringP.StringBitUnitTypes & StringP.StringAlgoTypes & StringP.StringCompareTypes & StringP.StringIfEqTypes & StringP.StringIncrExTypes =
+    new StringP.StringTypes
+      with StringP.StringBitopTypes
+      with StringP.StringBitUnitTypes
+      with StringP.StringAlgoTypes
+      with StringP.StringCompareTypes
+      with StringP.StringIfEqTypes
+      with StringP.StringIncrExTypes {}
 }

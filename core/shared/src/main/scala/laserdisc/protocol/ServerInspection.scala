@@ -78,7 +78,7 @@ object ServerInspection {
   }
   private[protocol] final val logEntries6_2: Read[Arr.Of[LogEntryReply], Seq[LogEntry6_2]]   = Read[Arr.Of[LogEntryReply], Seq[LogEntry6_2]]
   private[protocol] final val logEntries8_10: Read[Arr.Of[LogEntryReply], Seq[LogEntry8_10]] =
-    Read.arrOf2Seq[LogEntryReply, LogEntry8_10](implicitly, logEntry8_10)
+    Read.arrOf2Seq[LogEntryReply, LogEntry8_10](using implicitly, logEntry8_10)
 
   /** An event of LATENCY LATEST: when it last happened, how long it took then, and the longest it ever took */
   final case class LatencyEvent(name: String, timestamp: NonNegLong, latestMilliseconds: NonNegLong, maxMilliseconds: NonNegLong)
@@ -253,8 +253,8 @@ object ServerInspection {
     }
     private[ServerInspection] val read: Read[Record, BeginSearch] = Read.record("begin_search") { f =>
       f.bulk[String]("type").flatMap {
-        case "index"   => f[Record, BeginSearch]("spec")(implicitly, index)
-        case "keyword" => f[Record, BeginSearch]("spec")(implicitly, keyword)
+        case "index"   => f[Record, BeginSearch]("spec")(using implicitly, index)
+        case "keyword" => f[Record, BeginSearch]("spec")(using implicitly, keyword)
         case _         => Right(Unknown)
       }
     }
@@ -285,8 +285,8 @@ object ServerInspection {
     }
     private[ServerInspection] val read: Read[Record, FindKeys] = Read.record("find_keys") { f =>
       f.bulk[String]("type").flatMap {
-        case "range"  => f[Record, FindKeys]("spec")(implicitly, range)
-        case "keynum" => f[Record, FindKeys]("spec")(implicitly, keyNum)
+        case "range"  => f[Record, FindKeys]("spec")(using implicitly, range)
+        case "keynum" => f[Record, FindKeys]("spec")(using implicitly, keyNum)
         case _        => Right(Unknown)
       }
     }
@@ -298,8 +298,8 @@ object ServerInspection {
     for {
       notes       <- f.optionalBulk[String]("notes")
       flags       <- f[Arr.Of[Str], Seq[String]]("flags")
-      beginSearch <- f[Record, BeginSearch]("begin_search")(implicitly, BeginSearch.read)
-      findKeys    <- f[Record, FindKeys]("find_keys")(implicitly, FindKeys.read)
+      beginSearch <- f[Record, BeginSearch]("begin_search")(using implicitly, BeginSearch.read)
+      findKeys    <- f[Record, FindKeys]("find_keys")(using implicitly, FindKeys.read)
     } yield KeySpecification(notes, flags, beginSearch, findKeys)
   }
 

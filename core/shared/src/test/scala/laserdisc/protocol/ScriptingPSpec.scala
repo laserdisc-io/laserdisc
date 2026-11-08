@@ -22,7 +22,7 @@
 package laserdisc
 package protocol
 
-import scodec.bits._
+import scodec.bits.*
 
 final class ScriptingPSpec extends BaseSpec with ScriptingP {
   import scriptingtypes.*

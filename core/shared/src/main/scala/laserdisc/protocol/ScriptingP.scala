@@ -335,7 +335,7 @@ trait ScriptingFunctionsP extends ScriptingBaseP with ScriptingReadOnlyP {
 trait ScriptAllCommands extends ScriptCommands with ScriptShowCommands
 
 trait ScriptingP extends ScriptingFunctionsP {
-  override val scriptingtypes: ScriptingP.ScriptingTypes with ScriptingP.ScriptingFunctionTypes = new ScriptingP.ScriptingTypes
+  override val scriptingtypes: ScriptingP.ScriptingTypes & ScriptingP.ScriptingFunctionTypes = new ScriptingP.ScriptingTypes
     with ScriptingP.ScriptingFunctionTypes {}
 
   override lazy val script: ScriptAllCommands = new ScriptAllCommands {}

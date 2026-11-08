@@ -578,6 +578,6 @@ trait ClusterP
     with ClusterShardIdP
     with ClusterSlotMigrationsP
     with ClusterScanP {
-  override val clustertypes: ClusterP.ClusterBaseTypes with ClusterP.ClusterSlotStatsTypes with ClusterP.ClusterScanTypes =
+  override val clustertypes: ClusterP.ClusterBaseTypes & ClusterP.ClusterSlotStatsTypes & ClusterP.ClusterScanTypes =
     new ClusterP.ClusterBaseTypes with ClusterP.ClusterSlotStatsTypes with ClusterP.ClusterScanTypes {}
 }

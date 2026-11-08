@@ -127,7 +127,7 @@ trait BStreamBaseP extends Features {
     }
 
   /** Follows the streams with XREAD, as a [[Loop]] that doesn't end: each read waits up to `blockMilliseconds` and starts after the last
-    * entry read from each stream. From [[From.latest]], entries added between two reads are missed until the stream's first entry comes
+    * entry read from each stream. From `From.latest`, entries added between two reads are missed until the stream's first entry comes
     */
   final def xreadFollow[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)], blockMilliseconds: PosLong): Loop[KV[Entry[A]]] =
     follow(blockMilliseconds, streams)(xread[A](_, block(blockMilliseconds)))(after)
@@ -138,7 +138,7 @@ trait BStreamBaseP extends Features {
     read.flatMap(_.lastOption).fold(from)(entry => From.after(entry.id))
 
   /** Follows the streams with XREADGROUP for a consumer of the group, as a [[Loop]] that doesn't end: each read waits up to
-    * `blockMilliseconds`. A stream read from [[GroupFrom.pendingAfter]] first gives the consumer's pending entries, then new entries
+    * `blockMilliseconds`. A stream read from `GroupFrom.pendingAfter` first gives the consumer's pending entries, then new entries
     */
   final def xreadgroupFollow[A: Read[Bulk, _]](
       group: Key,

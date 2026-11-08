@@ -24,7 +24,7 @@ package laserdisc
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /** A command sent over and over, each time from what the last reply said, like SCAN with its cursor: each reply gives some values and says
-  * whether to go on. It's a description, like a [[Protocol]], which [[ClientBase.stream]] runs
+  * whether to go on. It's a description, like a [[Protocol]], which `stream` on a client runs
   */
 final class Loop[A] private (private[laserdisc] val first: Protocol[Loop.Step[A]], val waits: FiniteDuration)
 

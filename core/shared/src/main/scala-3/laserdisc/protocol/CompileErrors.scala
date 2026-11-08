@@ -22,6 +22,7 @@
 package laserdisc
 package protocol
 
+import scala.annotation.unused
 import scala.quoted.*
 
 // found only when `H` is listed again, so that the error says so instead of the generic one about the reply's RESPRead, several implicits
@@ -32,7 +33,7 @@ private[protocol] trait NotInListedTwice {
 
 // found only when there's no Show for `A`, so that the error says so instead of a type mismatch with Value
 private[protocol] trait ValueWithoutShow {
-  inline implicit final def withoutShow[A](a: A): Value = ${ CompileErrors.withoutShow[A] }
+  inline implicit final def withoutShow[A](@unused a: A): Value = ${ CompileErrors.withoutShow[A] }
 }
 
 object CompileErrors {

@@ -28,8 +28,8 @@ import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.*
 import org.scalacheck.Prop.forAll
 import org.scalacheck.{Arbitrary, Gen}
-import scodec.bits.{BitVector, _}
-import scodec.{Attempt, Codec, Err => SErr}
+import scodec.bits.*
+import scodec.{Attempt, Codec, Err as SErr}
 
 object RESPCodecsSpec {
   private object functions {

@@ -33,7 +33,7 @@ trait TransactionBaseP extends Features {
       "WATCH"
     )
 
-  /** Runs `protocol` as a transaction (see [[Protocol.multi]]): the result is `None` when nothing ran because a watched key changed */
+  /** Runs `protocol` as a transaction (see `Protocol.multi`): the result is `None` when nothing ran because a watched key changed */
   final def multi[A](protocol: Single[A]): Multi[Option[Maybe[A]]] =
     Protocol.multi(protocol *: EmptyTuple).map(_.map(_.head))
 

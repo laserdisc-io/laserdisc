@@ -863,5 +863,5 @@ trait GeoSearchPolygonP extends Features { this: GeoBaseP =>
 }
 
 trait GeoP extends GeoBaseP with GeoExtP with GeoSearchPolygonP {
-  override val geotypes: GeoP.GeoTypes with GeoP.GeoPolygonTypes = new GeoP.GeoTypes with GeoP.GeoPolygonTypes {}
+  override val geotypes: GeoP.GeoTypes & GeoP.GeoPolygonTypes = new GeoP.GeoTypes with GeoP.GeoPolygonTypes {}
 }

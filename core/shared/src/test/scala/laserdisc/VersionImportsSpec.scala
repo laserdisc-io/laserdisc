@@ -824,10 +824,12 @@ final class VersionImportsSpec extends BaseSpec {
 
     {
       import laserdisc.redis_8_10.*
+      assertEquals(acl.whoami.frames, frame("ACL", "WHOAMI"))
       assert(compileErrors("""acl.setuser("u", servertypes.aclDatabaseRules.allDatabases)""").nonEmpty)
     }
     {
       import laserdisc.valkey_9_0.*
+      assertEquals(acl.whoami.frames, frame("ACL", "WHOAMI"))
       assert(compileErrors("""acl.setuser("u", servertypes.aclDatabaseRules.allDatabases)""").nonEmpty)
     }
     {
@@ -922,7 +924,7 @@ final class VersionImportsSpec extends BaseSpec {
 
     {
       import laserdisc.redis_6_2.*
-      val _ = fields
+      val _ = (fields, streamtypes)
       assert(compileErrors("""xadd("s", streamtypes.StreamIdAt(5L), fields)""").nonEmpty)
     }
     {
@@ -1443,8 +1445,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("strings' builders are on the imports whose servers take them") {
-    import laserdisc.auto.*
-
     assert(compileErrors("""laserdisc.redis_6_2.stringtypes.bitUnit""").nonEmpty)
     assert(compileErrors("""laserdisc.redis_7_0.stringtypes.bitUnit""").isEmpty)
     assert(compileErrors("""laserdisc.redis_8_2.stringtypes.compare""").nonEmpty)
@@ -1460,8 +1460,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("keys' builders are on the imports whose servers take them") {
-    import laserdisc.auto.*
-
     assert(compileErrors("""laserdisc.dragonfly_2_0.keytypes.KeyMigrateMode""").nonEmpty)
     assert(compileErrors("""laserdisc.redis_6_2.keytypes.KeyMigrateMode""").isEmpty)
     assert(compileErrors("""laserdisc.dragonfly_2_0.keytypes.KeyEncoding""").nonEmpty)
@@ -1471,8 +1469,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("hashes' builders are on the imports whose servers take them") {
-    import laserdisc.auto.*
-
     assert(compileErrors("""laserdisc.redis_7_2.hashtypes.HashExpireCondition""").nonEmpty)
     assert(compileErrors("""laserdisc.redis_7_4.hashtypes.HashExpireCondition""").isEmpty)
     assert(compileErrors("""laserdisc.valkey_8_1.hashtypes.HashExpireCondition""").nonEmpty)
@@ -1486,8 +1482,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("lists', sets' and sorted sets' builders are on the imports whose servers take them") {
-    import laserdisc.auto.*
-
     assert(compileErrors("""laserdisc.redis_8_8.listtypes.ListAmount""").nonEmpty)
     assert(compileErrors("""laserdisc.redis_8_10.listtypes.ListAmount""").isEmpty)
     assert(compileErrors("""laserdisc.redis_8_8.settypes.approx""").nonEmpty)
@@ -1497,8 +1491,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("geo's builders are on the imports whose servers take them") {
-    import laserdisc.auto.*
-
     assert(compileErrors("""laserdisc.valkey_8_1.geotypes.GeoPolygon""").nonEmpty)
     assert(compileErrors("""laserdisc.valkey_9_0.geotypes.GeoPolygon""").isEmpty)
     assert(compileErrors("""laserdisc.redis_8_10.geotypes.GeoPolygon""").nonEmpty)
@@ -1506,8 +1498,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("streams' builders are on the imports whose servers take them") {
-    import laserdisc.auto.*
-
     assert(compileErrors("""laserdisc.redis_6_2.streamtypes.StreamIdAt""").nonEmpty)
     assert(compileErrors("""laserdisc.redis_7_0.streamtypes.StreamIdAt""").isEmpty)
     assert(compileErrors("""laserdisc.redis_8_0.streamtypes.StreamRefPolicy""").nonEmpty)
@@ -1523,8 +1513,6 @@ final class VersionImportsSpec extends BaseSpec {
   }
 
   test("scripting's builders are on the imports whose servers take them") {
-    import laserdisc.auto.*
-
     assert(compileErrors("""laserdisc.redis_6_2.scriptingtypes.ScriptingRestorePolicy""").nonEmpty)
     assert(compileErrors("""laserdisc.redis_7_0.scriptingtypes.ScriptingRestorePolicy""").isEmpty)
     assert(compileErrors("""laserdisc.dragonfly_2_0.scriptingtypes.ScriptingLibrary""").nonEmpty)

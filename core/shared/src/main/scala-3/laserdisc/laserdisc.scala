@@ -21,7 +21,7 @@
 
 package laserdisc
 
-import java.{lang => j}
+import java.lang as j
 
 import io.github.iltotore.iron.{:|, Constraint, RuntimeConstraint, refineEither, refineUnsafe}
 import io.github.iltotore.iron.constraint.all.*

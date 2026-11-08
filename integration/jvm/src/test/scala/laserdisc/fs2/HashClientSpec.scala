@@ -62,7 +62,7 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
       expiry: protocol.HashFieldExpiryP,
       getSet: protocol.HashGetSetExpiryP,
       getDel: protocol.HashGetDelP,
-      types: protocol.HashP.HashExpiryTypes with protocol.HashP.HashPersistTypes with protocol.HashP.HashFieldsConditionTypes
+      types: protocol.HashP.HashExpiryTypes & protocol.HashP.HashPersistTypes & protocol.HashP.HashFieldsConditionTypes
   ): Unit = {
     import version.*
     import types.*

@@ -19,7 +19,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import java.{lang => j}
+import java.lang as j
 
 import eu.timepit.refined.W
 import eu.timepit.refined.api.*

@@ -24,7 +24,6 @@ package fs2
 
 import cats.effect.{IO, Resource}
 import laserdisc.auto.*
-import laserdisc.fs2.FakeRedisServer.*
 import laserdisc.protocol.Feed
 import laserdisc.protocol.Feed.Message
 import munit.CatsEffectSuite

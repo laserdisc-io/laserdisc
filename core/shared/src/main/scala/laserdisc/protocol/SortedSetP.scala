@@ -256,7 +256,7 @@ trait SortedSetBaseP extends Features {
       "ZUNIONSTORE: AGGREGATE MAX MIN SUM WEIGHTS"
     )
 
-  import SortedSetP.{Aggregate, Flag, LexRange, Pop, ScoreRange, firstScored}
+  import SortedSetP.{Aggregate, Flag, LexRange, ScoreRange, firstScored}
 
   private final val zeroIsNone = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
@@ -746,6 +746,6 @@ trait SortedSetP
     with SortedSetRankWithScoreP
     with SortedSetScanNoScoresP
     with SortedSetAggregateCountP {
-  override val sortedsettypes: SortedSetP.SortedSetAggregateCountTypes with SortedSetP.SortedSetMPopTypes =
+  override val sortedsettypes: SortedSetP.SortedSetAggregateCountTypes & SortedSetP.SortedSetMPopTypes =
     new SortedSetP.SortedSetAggregateCountTypes with SortedSetP.SortedSetMPopTypes {}
 }

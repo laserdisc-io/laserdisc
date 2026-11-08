@@ -22,7 +22,7 @@
 package laserdisc
 package fs2
 
-import cats.effect.std.{Queue => CatsQueue}
+import cats.effect.std.Queue as CatsQueue
 import cats.effect.syntax.all.*
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*

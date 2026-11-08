@@ -35,7 +35,6 @@ final class RedisArrayClientSpec extends LaserdiscFs2Suite(LiveServers.port(6379
 
   since[Redis8_8]("a redis client sets, gets, deletes and scans elements, with gaps") { v =>
     import v.*
-    import v.arraytypes.*
 
     send(del("ar:s"))
     assertEquals(send(arset("ar:s", 0L, OneOrMore.unsafeFrom(List("x", "y", "z")))).value, 3L)

@@ -555,13 +555,10 @@ trait HashP
     with HashGetSetExpiryP
     with HashSetExKeyConditionP
     with HashGetDelP {
-  override val hashtypes: HashP.HashTypes
-    with HashP.HashExpiryTypes
-    with HashP.HashPersistTypes
-    with HashP.HashFieldsConditionTypes
-    with HashP.HashKeyConditionTypes = new HashP.HashTypes
-    with HashP.HashExpiryTypes
-    with HashP.HashPersistTypes
-    with HashP.HashFieldsConditionTypes
-    with HashP.HashKeyConditionTypes {}
+  override val hashtypes: HashP.HashTypes & HashP.HashExpiryTypes & HashP.HashPersistTypes & HashP.HashFieldsConditionTypes & HashP.HashKeyConditionTypes =
+    new HashP.HashTypes
+      with HashP.HashExpiryTypes
+      with HashP.HashPersistTypes
+      with HashP.HashFieldsConditionTypes
+      with HashP.HashKeyConditionTypes {}
 }

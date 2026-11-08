@@ -23,12 +23,12 @@ package laserdisc
 package protocol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.{lang => j}
+import java.lang as j
 
 import scodec.Err.{General, MatchingDiscriminatorNotFound}
-import scodec.bits.{BitVector, _}
+import scodec.bits.*
 import scodec.codecs.{bytes, filtered, fixedSizeBytes}
-import scodec.{Attempt, Codec, DecodeResult, Decoder, Err => SErr, SizeBound}
+import scodec.{Attempt, Codec, DecodeResult, Decoder, Err as SErr, SizeBound}
 
 import scala.annotation.tailrec
 

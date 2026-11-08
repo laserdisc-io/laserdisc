@@ -175,5 +175,5 @@ trait SetUnionCardP extends Features {
 }
 
 trait SetP extends SetBaseP with SetExtP with SetInterCardP with SetDiffCardP with SetUnionCardP {
-  override val settypes: SetP.SetTypes with SetP.SetUnionCardTypes = new SetP.SetTypes with SetP.SetUnionCardTypes {}
+  override val settypes: SetP.SetTypes & SetP.SetUnionCardTypes = new SetP.SetTypes with SetP.SetUnionCardTypes {}
 }

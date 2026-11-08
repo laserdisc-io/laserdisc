@@ -14,7 +14,8 @@ val getA: Protocol[Option[PosInt]] = get[PosInt]("a")
 ```
 
 `laserdisc.redis_8_10.*` brings every command of Redis 8.10 into scope. Use the
-import for your server: see [Your server's version](#your-servers-version).
+import for your server: see
+[The version of your server](#the-version-of-your-server).
 
 To import a single family instead, add its name:
 
@@ -38,7 +39,7 @@ To import a single family instead, add its name:
 | Cluster | `laserdisc.redis_8_10.cluster.*` |
 | Blocking commands of lists, sorted sets and streams | `laserdisc.redis_8_10.blocking.*` |
 
-## Your server's version
+## The version of your server
 
 Each server and version has its own import, with only what that server has:
 

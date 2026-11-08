@@ -29,14 +29,17 @@ final class RedisServerClientSpec extends ServerClientSpec(LiveServers.port(6379
   since[Redis8_0]("a redis client reads the sections Redis 8 added under their names") { v =>
     import v.{info, servertypes}
 
-    assert(send(info(servertypes.info.keysizes)).sections.contains(InfoSection.keysizes))
+    assert(send(info(servertypes.info.keysizes)).sections.contains(servertypes.info.keysizes))
     assert(send(info(servertypes.info.everything)).sections.keySet.exists(_.isInstanceOf[InfoSectionKey.Other]))
+    // Redis 6.2 has no name for the sections Redis 8 added
+    val older = laserdisc.redis_6_2
+    assert(send(older.info(older.servertypes.info.everything)).sections.contains(InfoSectionKey.Other("keysizes")))
   }
 
   since[Redis8_6]("a redis client reads the hot keys section under its name") { v =>
     import v.{info, servertypes}
 
-    assert(send(info(servertypes.info.hotkeys)).sections.contains(InfoSection.hotkeys))
+    assert(send(info(servertypes.info.hotkeys)).sections.contains(servertypes.info.hotkeys))
   }
 
   since[Redis7_4]("a redis client sets its library and reads several settings")(v => newer(v, v.client))
@@ -48,7 +51,7 @@ final class ValkeyServerClientSpec extends ServerClientSpec(LiveServers.port(638
   since[Valkey9_1]("a valkey client reads the TLS section under its name") { v =>
     import v.{info, servertypes}
 
-    assert(send(info(servertypes.info.tls)).sections.contains(InfoSection.tls))
+    assert(send(info(servertypes.info.tls)).sections.contains(servertypes.info.tls))
   }
 
   since[Valkey8_0]("a valkey client sets its library and reads several settings")(v => newer(v, v.client))

@@ -53,12 +53,6 @@ object ServerP {
     object everything   extends InfoSection
     object default      extends InfoSection
 
-    final val latencystats: LatencyStatsSection = new LatencyStatsSection
-    final val threads: Redis8Section            = new Redis8Section("threads")
-    final val keysizes: Redis8Section           = new Redis8Section("keysizes")
-    final val hotkeys: HotKeysSection           = new HotKeysSection
-    final val tls: TlsSection                   = new TlsSection
-
     implicit val defaultShow: Show[default]         = Show.const("default")
     implicit val infoSectionShow: Show[InfoSection] = Show.instance {
       case `server`       => "server"
@@ -96,6 +90,48 @@ object ServerP {
 
   /** TLS: Valkey 9.1 */
   final class TlsSection private[ServerP] () extends LaterInfoSection("tls")
+
+  /** The sections of INFO in Redis 6.2 */
+  trait InfoSectionBuilders {
+    final val server: InfoSection.server.type             = InfoSection.server
+    final val clients: InfoSection.clients.type           = InfoSection.clients
+    final val memory: InfoSection.memory.type             = InfoSection.memory
+    final val persistence: InfoSection.persistence.type   = InfoSection.persistence
+    final val stats: InfoSection.stats.type               = InfoSection.stats
+    final val replication: InfoSection.replication.type   = InfoSection.replication
+    final val cpu: InfoSection.cpu.type                   = InfoSection.cpu
+    final val modules: InfoSection.modules.type           = InfoSection.modules
+    final val commandstats: InfoSection.commandstats.type = InfoSection.commandstats
+    final val errorstats: InfoSection.errorstats.type     = InfoSection.errorstats
+    final val cluster: InfoSection.cluster.type           = InfoSection.cluster
+    final val keyspace: InfoSection.keyspace.type         = InfoSection.keyspace
+    final val all: InfoSection.all.type                   = InfoSection.all
+    final val everything: InfoSection.everything.type     = InfoSection.everything
+    final val default: InfoSection.default                = InfoSection.default
+  }
+
+  /** The sections of INFO, with LATENCYSTATS: Redis 7.0 */
+  trait InfoLatencyStatsBuilders extends InfoSectionBuilders { def latencystats: LatencyStatsSection }
+
+  /** The sections of INFO, with THREADS and KEYSIZES: Redis 8.0 */
+  trait InfoRedis8Builders extends InfoLatencyStatsBuilders {
+    def threads: Redis8Section
+    def keysizes: Redis8Section
+  }
+
+  /** The sections of INFO, with HOTKEYS: Redis 8.6 */
+  trait InfoHotKeysBuilders extends InfoRedis8Builders { def hotkeys: HotKeysSection }
+
+  /** The sections of INFO, with TLS: Valkey 9.1 */
+  trait InfoTlsBuilders extends InfoLatencyStatsBuilders { def tls: TlsSection }
+
+  private[laserdisc] object InfoSections extends InfoHotKeysBuilders with InfoTlsBuilders {
+    final val latencystats: LatencyStatsSection = new LatencyStatsSection
+    final val threads: Redis8Section            = new Redis8Section("threads")
+    final val keysizes: Redis8Section           = new Redis8Section("keysizes")
+    final val hotkeys: HotKeysSection           = new HotKeysSection
+    final val tls: TlsSection                   = new TlsSection
+  }
 
   sealed trait ShutdownFlag
   object ShutdownFlag {
@@ -202,9 +238,10 @@ object ServerP {
       Read[Arr.OfPairs[Bulk, Bulk], Map[String, String]].map(kvs => Configuration(new Parameters(kvs)))
   }
 
+  /** INFO's reply, by section. A section a later version added is `Other` with versions before it */
   final case class Info(sections: Map[InfoSectionKey, Parameters])
   object Info {
-    private def section(name: String): InfoSectionKey = name.toLowerCase match {
+    private def section(later: List[LaterInfoSection])(name: String): InfoSectionKey = name.toLowerCase match {
       case "server"       => InfoSection.server
       case "clients"      => InfoSection.clients
       case "memory"       => InfoSection.memory
@@ -217,16 +254,12 @@ object ServerP {
       case "errorstats"   => InfoSection.errorstats
       case "cluster"      => InfoSection.cluster
       case "keyspace"     => InfoSection.keyspace
-      case "latencystats" => InfoSection.latencystats
-      case "threads"      => InfoSection.threads
-      case "keysizes"     => InfoSection.keysizes
-      case "hotkeys"      => InfoSection.hotkeys
-      case "tls"          => InfoSection.tls
-      case other          => InfoSectionKey.Other(other)
+      case other          => later.find(_.name == other).getOrElse(InfoSectionKey.Other(other))
     }
 
     // sections start with a "# Name" line, followed by "key:value" lines, and are separated by empty lines
-    implicit val infoRead: Read[Bulk, Info] = Read.instance { case Bulk(s) =>
+    private[protocol] def read(later: List[LaterInfoSection]): Read[Bulk, Info] = Read.instance { case Bulk(s) =>
+      val section = this.section(later) _
       s.split("\r?\n")
         .toList
         .foldLeft[Either[RESPDecErr, List[(InfoSectionKey, List[String])]]](Right(Nil)) {
@@ -487,9 +520,14 @@ object ServerP {
     final val clientType = ClientType
     final val flag       = ShutdownFlag
     final val flushMode  = ClusterManagement.FlushMode
-    final val info       = InfoSection
     final val pauseMode  = PauseMode
+
+    val info: InfoSectionBuilders = InfoSections
   }
+  trait InfoLatencyStatsTypes extends ServerTypes           { override val info: InfoLatencyStatsBuilders = InfoSections }
+  trait InfoRedis8Types       extends InfoLatencyStatsTypes { override val info: InfoRedis8Builders = InfoSections       }
+  trait InfoHotKeysTypes      extends InfoRedis8Types       { override val info: InfoHotKeysBuilders = InfoSections      }
+  trait InfoTlsTypes          extends InfoLatencyStatsTypes { override val info: InfoTlsBuilders = InfoSections          }
 
   /** The builders of Redis 6.2's CLIENT and ACL */
   trait ServerBaseTypes extends ServerTypes {
@@ -527,6 +565,10 @@ object ServerP {
       with ValkeyShutdownTypes
       with DragonflyShutdownTypes
       with ValkeyFilterTypes
+      with InfoHotKeysTypes
+      with InfoTlsTypes {
+    override val info: InfoHotKeysBuilders with InfoTlsBuilders = InfoSections
+  }
 }
 
 /** CLIENT without UNBLOCK and CLIENT KILL's filters: Redis 6.2 */
@@ -763,7 +805,14 @@ trait ConfigManyCommands extends Features {
     Protocol("CONFIG", "SET" *: parameters.value *: EmptyTuple).as[Str, OK]
 }
 
-trait ServerCoreP extends ServerInspectionCoreP with MonitorP {
+/** INFO's reply names the sections of this version, and gives the later ones as `Other` */
+trait ServerInfoSectionsP extends Features {
+  protected def laterInfoSections: List[ServerP.LaterInfoSection] = Nil
+
+  protected final def infoRead: RESPRead[ServerP.Info] = RESPRead.instance(ServerP.Info.read(laterInfoSections))
+}
+
+trait ServerCoreP extends ServerInspectionCoreP with MonitorP with ServerInfoSectionsP {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
       "BGSAVE: SCHEDULE",
@@ -811,8 +860,8 @@ trait ServerCoreP extends ServerInspectionCoreP with MonitorP {
 
   final val flushdbsync: Single[OK] = Protocol("FLUSHDB", "SYNC").as[Str, OK]
 
-  final val info: Single[Info]                       = Protocol("INFO", EmptyTuple).as[Bulk, Info]
-  final def info(section: InfoSection): Single[Info] = Protocol("INFO", section).as[Bulk, Info]
+  final val info: Single[Info]                       = Protocol("INFO", EmptyTuple).using(infoRead)
+  final def info(section: InfoSection): Single[Info] = Protocol("INFO", section).using(infoRead)
 
   final val lastsave: Single[NonNegLong] = Protocol("LASTSAVE", EmptyTuple).as[Num, NonNegLong]
 
@@ -906,13 +955,16 @@ trait ServerShutdownDragonflyP extends Features {
 }
 
 /** INFO with several sections, and INFO LATENCYSTATS: Redis 7.0 */
-trait ServerInfoManyP extends Features {
+trait ServerInfoManyP extends ServerInfoSectionsP {
   import ServerP.{Info, InfoSection, LatencyStatsSection}
 
-  final def info(sections: OneOrMore[InfoSection]): Single[Info] = Protocol("INFO", sections.value).as[Bulk, Info]
+  override protected def laterInfoSections: List[ServerP.LaterInfoSection] =
+    ServerP.InfoSections.latencystats :: super.laterInfoSections
+
+  final def info(sections: OneOrMore[InfoSection]): Single[Info] = Protocol("INFO", sections.value).using(infoRead)
   final def info(section1: InfoSection, section2: InfoSection, sections: InfoSection*): Single[Info] =
     info(OneOrMore.unsafeFrom(section1 :: section2 :: sections.toList))
-  final def info(section: LatencyStatsSection): Single[Info] = Protocol("INFO", section).as[Bulk, Info]
+  final def info(section: LatencyStatsSection): Single[Info] = Protocol("INFO", section).using(infoRead)
 }
 
 /** SHUTDOWN with NOW, FORCE and ABORT, and INFO with several sections: Redis 7.0 */
@@ -924,21 +976,26 @@ trait ServerShutdownAndInfoP extends ServerShutdownOptionsP with ServerInfoManyP
 }
 
 /** INFO THREADS and INFO KEYSIZES: Redis 8.0 */
-trait ServerInfoRedis8P extends Features {
+trait ServerInfoRedis8P extends ServerInfoSectionsP {
   import ServerP.{Info, Redis8Section}
 
-  final def info(section: Redis8Section): Single[Info] = Protocol("INFO", section).as[Bulk, Info]
+  override protected def laterInfoSections: List[ServerP.LaterInfoSection] =
+    ServerP.InfoSections.threads :: ServerP.InfoSections.keysizes :: super.laterInfoSections
+
+  final def info(section: Redis8Section): Single[Info] = Protocol("INFO", section).using(infoRead)
 }
 
 /** HOTKEYS and INFO HOTKEYS: Redis 8.6 */
-trait ServerHotKeysP extends Features {
+trait ServerHotKeysP extends ServerInfoSectionsP {
   import ServerP.{HotKeysSection, Info}
+
+  override protected def laterInfoSections: List[ServerP.LaterInfoSection] = ServerP.InfoSections.hotkeys :: super.laterInfoSections
 
   override private[laserdisc] def supported: List[String] = super.supported ++ hotkeys.supported
 
   object hotkeys extends HotKeysCommands
 
-  final def info(section: HotKeysSection): Single[Info] = Protocol("INFO", section).as[Bulk, Info]
+  final def info(section: HotKeysSection): Single[Info] = Protocol("INFO", section).using(infoRead)
 }
 
 /** COMMANDLOG: Valkey 8.1 */
@@ -949,10 +1006,12 @@ trait ServerCommandLogP extends Features {
 }
 
 /** INFO TLS: Valkey 9.1 */
-trait ServerInfoTlsP extends Features {
+trait ServerInfoTlsP extends ServerInfoSectionsP {
   import ServerP.{Info, TlsSection}
 
-  final def info(section: TlsSection): Single[Info] = Protocol("INFO", section).as[Bulk, Info]
+  override protected def laterInfoSections: List[ServerP.LaterInfoSection] = ServerP.InfoSections.tls :: super.laterInfoSections
+
+  final def info(section: TlsSection): Single[Info] = Protocol("INFO", section).using(infoRead)
 }
 
 /** BGSAVE CANCEL: Valkey 8.1 */

@@ -156,8 +156,8 @@ object KeyP {
     case object both        extends RestoreMode { override final val params: List[String] = List("REPLACE", "ABSTTL") }
   }
 
-  /** What TYPE replies, and what SCAN can look for. `array` is from Redis 8.8, and `other` is any type of a server's module, like
-    * `vectorset`
+  /** What TYPE replies, and what SCAN can look for. `other` is any type laserdisc doesn't name, like a module's `vectorset`, or an array
+    * before Redis 8.8
     */
   sealed trait Type
   object Type {
@@ -167,7 +167,6 @@ object KeyP {
     case object zset                  extends Type
     case object hash                  extends Type
     case object stream                extends Type
-    case object array                 extends Type
     final case class other(name: Key) extends Type
 
     implicit final val typeShow: Show[Type] = Show.instance {
@@ -177,9 +176,35 @@ object KeyP {
       case `zset`   => "zset"
       case `hash`   => "hash"
       case `stream` => "stream"
-      case `array`  => "array"
       case other(n) => n.value
     }
+  }
+
+  /** The types of keys, for SCAN and to match TYPE's reply */
+  trait TypeBuilders {
+    final val string: Type.string.type = Type.string
+    final val list: Type.list.type     = Type.list
+    final val set: Type.set.type       = Type.set
+    final val zset: Type.zset.type     = Type.zset
+    final val hash: Type.hash.type     = Type.hash
+    final val stream: Type.stream.type = Type.stream
+
+    /** A type laserdisc doesn't name, to send or to match in a reply */
+    object other {
+      def apply(name: Key): Type.other        = Type.other(name)
+      def unapply(keyType: Type): Option[Key] = keyType match {
+        case Type.other(name) => Some(name)
+        case _                => None
+      }
+    }
+  }
+
+  /** The types of keys, with arrays: Redis 8.8. An array is the type `other` names `array`, so TYPE's reply matches it on every version */
+  trait TypeArrayBuilders extends TypeBuilders {
+    def array: Type
+  }
+  private[laserdisc] object TypeOf extends TypeArrayBuilders {
+    final val array: Type = Type.other(Key.unsafeFrom("array"))
   }
 
   sealed trait TTLResponse
@@ -229,10 +254,13 @@ object KeyP {
     final val KeyIdleTimeEviction       = KeyP.RestoreEviction.IdleTime
     final val KeyFrequencyEviction      = KeyP.RestoreEviction.Frequency
     final val KeyRestoreMode            = KeyP.RestoreMode
-    final val KeyType                   = KeyP.Type
+    val KeyType: KeyP.TypeBuilders      = KeyP.TypeOf
     final val KeyNoKeyTTLResponse       = KeyP.TTLResponse.NoKey
     final val KeyNoExpireTTLResponse    = KeyP.TTLResponse.NoExpire
     final val KeyExpireAfterTTLResponse = KeyP.TTLResponse.ExpireAfter
+  }
+  trait KeyArrayTypes extends KeyTypes {
+    override val KeyType: KeyP.TypeArrayBuilders = KeyP.TypeOf
   }
   trait KeyObjectTypes {
     final type KeyEncoding = KeyP.Encoding
@@ -252,7 +280,7 @@ object KeyP {
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
-  private[protocol] object internal extends KeyTypes with KeyObjectTypes with KeyExpireTypes with KeyMigrateTypes
+  private[protocol] object internal extends KeyArrayTypes with KeyObjectTypes with KeyExpireTypes with KeyMigrateTypes
 }
 
 trait KeyBaseP extends Features {
@@ -297,7 +325,6 @@ trait KeyBaseP extends Features {
     case Str("zset")   => Right(Some(KeyType.zset))
     case Str("hash")   => Right(Some(KeyType.hash))
     case Str("stream") => Right(Some(KeyType.stream))
-    case Str("array")  => Right(Some(KeyType.array))
     case Str("none")   => Right(None)
     case Str(other)    => Read[Bulk, Key].read(Bulk(other)).map(name => Some(KeyType.other(name)))
   }
@@ -582,8 +609,6 @@ trait KeyP
     with KeyExpireConditionP
     with KeySortReadOnlyP
     with KeyWaitAofP {
-  override val keytypes: KeyP.KeyTypes with KeyP.KeyObjectTypes with KeyP.KeyExpireTypes with KeyP.KeyMigrateTypes = new KeyP.KeyTypes
-    with KeyP.KeyObjectTypes
-    with KeyP.KeyExpireTypes
-    with KeyP.KeyMigrateTypes {}
+  override val keytypes: KeyP.KeyArrayTypes with KeyP.KeyObjectTypes with KeyP.KeyExpireTypes with KeyP.KeyMigrateTypes =
+    new KeyP.KeyArrayTypes with KeyP.KeyObjectTypes with KeyP.KeyExpireTypes with KeyP.KeyMigrateTypes {}
 }

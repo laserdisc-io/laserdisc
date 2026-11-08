@@ -49,7 +49,7 @@ final class ServerPSpec extends BaseSpec with ServerP {
     info.decode(Bulk(reply)).onRight { case Info(sections) =>
       sections.keySet == Set(
         InfoSection.server,
-        InfoSection.hotkeys,
+        servertypes.info.hotkeys,
         InfoSection.keyspace,
         InfoSection.errorstats,
         InfoSectionKey.Other("search_version")
@@ -58,6 +58,9 @@ final class ServerPSpec extends BaseSpec with ServerP {
       sections(InfoSection.server).get[String]("executable") == Right("/data/redis-server") &&
       sections(InfoSection.keyspace).get[String]("db0") == Right("keys=1,expires=0,avg_ttl=0")
     }
+    // Redis 8.6 added the hot keys section, so Redis 6.2 has no name for it
+    laserdisc.redis_6_2.info.decode(Bulk(reply)).onRight(_.sections.contains(InfoSectionKey.Other("hotkeys")))
+    laserdisc.redis_8_6.info.decode(Bulk(reply)).onRight(_.sections.contains(laserdisc.redis_8_6.servertypes.info.hotkeys))
     assertEquals(info(servertypes.info.keysizes).encode, Arr(Bulk("INFO"), Bulk("keysizes")))
     assertEquals(info(servertypes.info.latencystats).encode, Arr(Bulk("INFO"), Bulk("latencystats")))
     assertEquals(info(servertypes.info.everything).encode, Arr(Bulk("INFO"), Bulk("everything")))

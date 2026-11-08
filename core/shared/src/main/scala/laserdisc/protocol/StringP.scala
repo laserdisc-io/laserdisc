@@ -43,11 +43,6 @@ object StringP {
     case object or  extends Bitwise
     case object xor extends Bitwise
 
-    final val diff: ExtendedBitwise  = new ExtendedBitwise("DIFF")
-    final val diff1: ExtendedBitwise = new ExtendedBitwise("DIFF1")
-    final val andor: ExtendedBitwise = new ExtendedBitwise("ANDOR")
-    final val one: ExtendedBitwise   = new ExtendedBitwise("ONE")
-
     implicit val bitwiseShow: Show[Bitwise] = Show.instance {
       case `and` => "AND"
       case `or`  => "OR"
@@ -59,6 +54,27 @@ object StringP {
   final class ExtendedBitwise private[StringP] (private[StringP] val name: String)
   object ExtendedBitwise {
     implicit val extendedBitwiseShow: Show[ExtendedBitwise] = Show.instance(_.name)
+  }
+
+  /** AND, OR and XOR, for BITOP */
+  trait BitwiseBuilders {
+    final val and: Bitwise = Bitwise.and
+    final val or: Bitwise  = Bitwise.or
+    final val xor: Bitwise = Bitwise.xor
+  }
+
+  /** AND, OR and XOR, and DIFF, DIFF1, ANDOR and ONE, for BITOP: Redis 8.2 */
+  trait ExtendedBitwiseBuilders extends BitwiseBuilders {
+    def diff: ExtendedBitwise
+    def diff1: ExtendedBitwise
+    def andor: ExtendedBitwise
+    def one: ExtendedBitwise
+  }
+  private[laserdisc] object BitwiseOf extends ExtendedBitwiseBuilders {
+    final val diff: ExtendedBitwise  = new ExtendedBitwise("DIFF")
+    final val diff1: ExtendedBitwise = new ExtendedBitwise("DIFF1")
+    final val andor: ExtendedBitwise = new ExtendedBitwise("ANDOR")
+    final val one: ExtendedBitwise   = new ExtendedBitwise("ONE")
   }
 
   /** BYTE and BIT, for BITCOUNT and BITPOS: whether start and end count bytes or bits */
@@ -244,11 +260,14 @@ object StringP {
 
   // the builders each feature's commands take, and the types of their replies
   trait StringTypes {
-    final val bit      = Bit
-    final val bitfield = BitField
-    final val bitwise  = Bitwise
-    final val expiry   = Expiry
-    final val flag     = Flag
+    final val bit                        = Bit
+    final val bitfield                   = BitField
+    val bitwise: StringP.BitwiseBuilders = StringP.BitwiseOf
+    final val expiry                     = Expiry
+    final val flag                       = Flag
+  }
+  trait StringBitopTypes extends StringTypes {
+    override val bitwise: StringP.ExtendedBitwiseBuilders = StringP.BitwiseOf
   }
   trait StringBitUnitTypes {
     final val bitUnit: StringP.BitUnitBuilders = StringP.BitUnit
@@ -269,6 +288,7 @@ object StringP {
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
   private[protocol] object internal
       extends StringTypes
+      with StringBitopTypes
       with StringBitUnitTypes
       with StringAlgoTypes
       with StringCompareTypes
@@ -608,11 +628,13 @@ trait StringP
     with StringMSetExP
     with StringIncrExP {
   override val stringtypes: StringP.StringTypes
+    with StringP.StringBitopTypes
     with StringP.StringBitUnitTypes
     with StringP.StringAlgoTypes
     with StringP.StringCompareTypes
     with StringP.StringIfEqTypes
     with StringP.StringIncrExTypes = new StringP.StringTypes
+    with StringP.StringBitopTypes
     with StringP.StringBitUnitTypes
     with StringP.StringAlgoTypes
     with StringP.StringCompareTypes

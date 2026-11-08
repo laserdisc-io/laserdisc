@@ -1530,4 +1530,31 @@ final class VersionImportsSpec extends BaseSpec {
     assert(compileErrors("""laserdisc.dragonfly_2_0.scriptingtypes.ScriptingLibrary""").nonEmpty)
     assert(compileErrors("""laserdisc.redis_7_0.scriptingtypes.ScriptingLibrary""").isEmpty)
   }
+
+  test("the values only later versions take exist only on their imports, and older imports read what's new as other") {
+    import laserdisc.auto.*
+
+    assert(compileErrors("""laserdisc.redis_8_0.stringtypes.bitwise.diff""").nonEmpty)
+    assertEquals(laserdisc.redis_8_2.stringtypes.bitwise.diff, laserdisc.redis_8_10.stringtypes.bitwise.diff)
+    assert(compileErrors("""laserdisc.valkey_9_1.stringtypes.bitwise.one""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_6.sortedsettypes.aggregate.count""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_8.sortedsettypes.aggregate.count""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.servertypes.info.latencystats""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.info.latencystats""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_7_4.servertypes.info.keysizes""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.servertypes.info.hotkeys""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.servertypes.info.tls""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.servertypes.info.tls""").nonEmpty)
+
+    // an array is the type `other` names array: older imports send and read it as that, and Redis 8.8's import names it
+    assert(compileErrors("""laserdisc.redis_8_6.keytypes.KeyType.array""").nonEmpty)
+    val array = laserdisc.redis_8_8.keytypes.KeyType.array
+    assertEquals(laserdisc.redis_6_2.typeof("k").decode(Str("array")), Some(laserdisc.redis_6_2.keytypes.KeyType.other("array")))
+    assertEquals(laserdisc.redis_8_8.typeof("k").decode(Str("array")), Some(array))
+    assertEquals(laserdisc.redis_8_8.scan(0L, array).frames, frame("SCAN", "0", "TYPE", "array"))
+    laserdisc.redis_6_2.typeof("k").decode(Str("array")) match {
+      case Right(Some(laserdisc.redis_6_2.keytypes.KeyType.other(name))) => assertEquals(name, Key("array"))
+      case other                                                         => fail(s"expected other, was $other")
+    }
+  }
 }

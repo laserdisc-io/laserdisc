@@ -33,22 +33,30 @@ trait StringsAlgo6_2 extends Strings6_2 with StringAlgoP {
 trait Strings7_0 extends Strings6_2 with StringSetGetFlagP with StringBitUnitP with StringLcsP {
   override val stringtypes: StringP.StringTypes with StringP.StringBitUnitTypes = new StringP.StringTypes with StringP.StringBitUnitTypes {}
 }
-trait Strings8_2 extends Strings7_0 with StringBitopExtendedP
+trait Strings8_2 extends Strings7_0 with StringBitopExtendedP {
+  override val stringtypes: StringP.StringTypes with StringP.StringBitopTypes with StringP.StringBitUnitTypes = new StringP.StringTypes
+    with StringP.StringBitopTypes
+    with StringP.StringBitUnitTypes {}
+}
 trait Strings8_4 extends Strings8_2 with StringSetIfEqP with StringSetCompareP with StringDigestAndDelExP with StringMSetExP {
   override val stringtypes: StringP.StringTypes
+    with StringP.StringBitopTypes
     with StringP.StringBitUnitTypes
     with StringP.StringCompareTypes
     with StringP.StringIfEqTypes = new StringP.StringTypes
+    with StringP.StringBitopTypes
     with StringP.StringBitUnitTypes
     with StringP.StringCompareTypes
     with StringP.StringIfEqTypes {}
 }
 trait Strings8_8 extends Strings8_4 with StringIncrExP {
   override val stringtypes: StringP.StringTypes
+    with StringP.StringBitopTypes
     with StringP.StringBitUnitTypes
     with StringP.StringCompareTypes
     with StringP.StringIfEqTypes
     with StringP.StringIncrExTypes = new StringP.StringTypes
+    with StringP.StringBitopTypes
     with StringP.StringBitUnitTypes
     with StringP.StringCompareTypes
     with StringP.StringIfEqTypes
@@ -74,6 +82,10 @@ trait Keys7_0 extends Keys6_2 with KeyExpireConditionP with KeySortReadOnlyP {
     with KeyP.KeyExpireTypes {}
 }
 trait Keys7_2 extends Keys7_0 with KeyWaitAofP
+trait Keys8_8 extends Keys7_2 {
+  override val keytypes: KeyP.KeyArrayTypes with KeyP.KeyObjectTypes with KeyP.KeyMigrateTypes with KeyP.KeyExpireTypes =
+    new KeyP.KeyArrayTypes with KeyP.KeyObjectTypes with KeyP.KeyMigrateTypes with KeyP.KeyExpireTypes {}
+}
 
 trait Hashes6_2 extends HashBaseP with HashExtP
 trait Hashes7_4 extends Hashes6_2 with HashScanNoValuesP with HashFieldExpiryP {
@@ -120,8 +132,11 @@ trait SortedSets7_0 extends SortedSets6_2 with SortedSetInterCardP with SortedSe
   override val sortedsettypes: SortedSetP.SortedSetTypes with SortedSetP.SortedSetMPopTypes = new SortedSetP.SortedSetTypes
     with SortedSetP.SortedSetMPopTypes {}
 }
-trait SortedSets7_2       extends SortedSets7_0 with SortedSetRankWithScoreP
-trait SortedSets8_8       extends SortedSets7_2 with SortedSetAggregateCountP
+trait SortedSets7_2 extends SortedSets7_0 with SortedSetRankWithScoreP
+trait SortedSets8_8 extends SortedSets7_2 with SortedSetAggregateCountP {
+  override val sortedsettypes: SortedSetP.SortedSetAggregateCountTypes with SortedSetP.SortedSetMPopTypes =
+    new SortedSetP.SortedSetAggregateCountTypes with SortedSetP.SortedSetMPopTypes {}
+}
 trait SortedSetsValkey8_0 extends SortedSets7_2 with SortedSetScanNoScoresP
 
 trait Geo6_2       extends GeoBaseP with GeoExtP
@@ -197,12 +212,22 @@ trait Streams8_10 extends Streams8_8 with StreamReadLimitsP {
 // the builders each version's commands take, grouped like the commands
 trait ClusterTypes8_2       extends ClusterP.ClusterBaseTypes with ClusterP.ClusterSlotStatsTypes
 trait ClusterTypesValkey9_1 extends ClusterTypes8_2 with ClusterP.ClusterScanTypes
-trait ServerTypes7_0 extends ServerP.ServerBaseTypes with ServerP.CommandListTypes with ServerP.AclSelectorTypes with ServerP.ShutdownTypes
-trait ServerTypes8_6 extends ServerTypes7_0 with ServerP.HotKeysTypes
-trait ServerTypesValkey8_1    extends ServerTypes7_0 with ServerP.CommandLogTypes
-trait ServerTypesValkey9_0    extends ServerTypesValkey8_1 with ServerP.ValkeyFilterTypes with ServerP.ValkeyShutdownTypes
-trait ServerTypesValkey9_1    extends ServerTypesValkey9_0 with ServerP.AclDatabaseTypes
-trait ServerTypesDragonfly2_0 extends ServerP.ServerTypes with ServerP.AclDragonflyTypes with ServerP.DragonflyShutdownTypes
+trait ServerTypes7_0
+    extends ServerP.ServerBaseTypes
+    with ServerP.CommandListTypes
+    with ServerP.AclSelectorTypes
+    with ServerP.ShutdownTypes
+    with ServerP.InfoLatencyStatsTypes
+trait ServerTypes8_0       extends ServerTypes7_0 with ServerP.InfoRedis8Types
+trait ServerTypes8_6       extends ServerTypes8_0 with ServerP.HotKeysTypes with ServerP.InfoHotKeysTypes
+trait ServerTypesValkey8_1 extends ServerTypes7_0 with ServerP.CommandLogTypes
+trait ServerTypesValkey9_0 extends ServerTypesValkey8_1 with ServerP.ValkeyFilterTypes with ServerP.ValkeyShutdownTypes
+trait ServerTypesValkey9_1 extends ServerTypesValkey9_0 with ServerP.AclDatabaseTypes with ServerP.InfoTlsTypes
+trait ServerTypesDragonfly2_0
+    extends ServerP.ServerTypes
+    with ServerP.AclDragonflyTypes
+    with ServerP.DragonflyShutdownTypes
+    with ServerP.InfoLatencyStatsTypes
 
 trait Cluster6_2 extends ClusterBaseP
 trait Cluster7_0 extends Cluster6_2 with ClusterSlotsMetadataP with ClusterShardsP
@@ -267,7 +292,9 @@ trait Server7_2 extends Server7_0 {
 trait Server7_4 extends Server7_2 {
   override lazy val client: Client7_4 = new Client7_4 {}
 }
-trait Server8_0 extends Server7_4 with ServerInfoRedis8P
+trait Server8_0 extends Server7_4 with ServerInfoRedis8P {
+  override val servertypes: ServerTypes8_0 = new ServerTypes8_0 {}
+}
 trait Server8_6 extends Server8_0 with ServerHotKeysP {
   override val servertypes: ServerTypes8_6 = new ServerTypes8_6 {}
 }
@@ -402,9 +429,10 @@ trait Redis8_6 extends Redis8_4 with Server8_6 with Streams8_6 {
   override val server: Server8_6   = new Server8_6 {}
   override val streams: Streams8_6 = new Streams8_6 {}
 }
-trait Redis8_8 extends Redis8_6 with ArrayP with SortedSets8_8 with Streams8_8 with Strings8_8 {
+trait Redis8_8 extends Redis8_6 with ArrayP with Keys8_8 with SortedSets8_8 with Streams8_8 with Strings8_8 {
   val arrays: ArrayP = new ArrayP {}
 
+  override val keys: Keys8_8             = new Keys8_8 {}
   override val sortedsets: SortedSets8_8 = new SortedSets8_8 {}
   override val streams: Streams8_8       = new Streams8_8 {}
   override val strings: Strings8_8       = new Strings8_8 {}

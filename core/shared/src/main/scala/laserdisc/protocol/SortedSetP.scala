@@ -31,8 +31,6 @@ object SortedSetP {
     object min extends Aggregate
     object max extends Aggregate
 
-    final val count: AggregateCount = new AggregateCount
-
     implicit val aggregateShow: Show[Aggregate] = Show.instance {
       case `sum` => "SUM"
       case `min` => "MIN"
@@ -44,6 +42,21 @@ object SortedSetP {
   final class AggregateCount private[SortedSetP] ()
   object AggregateCount {
     implicit val aggregateCountShow: Show[AggregateCount] = Show.const("COUNT")
+  }
+
+  /** SUM, MIN and MAX, for AGGREGATE */
+  trait AggregateBuilders {
+    final val sum: Aggregate = Aggregate.sum
+    final val min: Aggregate = Aggregate.min
+    final val max: Aggregate = Aggregate.max
+  }
+
+  /** SUM, MIN and MAX, and COUNT, for AGGREGATE: Redis 8.8 */
+  trait AggregateCountBuilders extends AggregateBuilders {
+    def count: AggregateCount
+  }
+  private[laserdisc] object AggregateOf extends AggregateCountBuilders {
+    final val count: AggregateCount = new AggregateCount
   }
 
   /** NX, XX, GT and LT, for ZADD */
@@ -192,17 +205,20 @@ object SortedSetP {
 
   // the builders each feature's commands take, and the types of their replies
   trait SortedSetTypes {
-    final val aggregate  = Aggregate
-    final val flag       = Flag
-    final val lexrange   = LexRange
-    final val scorerange = ScoreRange
+    val aggregate: SortedSetP.AggregateBuilders = SortedSetP.AggregateOf
+    final val flag                              = Flag
+    final val lexrange                          = LexRange
+    final val scorerange                        = ScoreRange
+  }
+  trait SortedSetAggregateCountTypes extends SortedSetTypes {
+    override val aggregate: SortedSetP.AggregateCountBuilders = SortedSetP.AggregateOf
   }
   trait SortedSetMPopTypes {
     final val pop: SortedSetP.PopBuilders = SortedSetP.Pop
   }
 
   // the same names for laserdisc's own code, which can't read the members a version overrides while it's being built
-  private[protocol] object internal extends SortedSetTypes with SortedSetMPopTypes
+  private[protocol] object internal extends SortedSetAggregateCountTypes with SortedSetMPopTypes
 }
 
 trait SortedSetBaseP extends Features {
@@ -730,6 +746,6 @@ trait SortedSetP
     with SortedSetRankWithScoreP
     with SortedSetScanNoScoresP
     with SortedSetAggregateCountP {
-  override val sortedsettypes: SortedSetP.SortedSetTypes with SortedSetP.SortedSetMPopTypes = new SortedSetP.SortedSetTypes
-    with SortedSetP.SortedSetMPopTypes {}
+  override val sortedsettypes: SortedSetP.SortedSetAggregateCountTypes with SortedSetP.SortedSetMPopTypes =
+    new SortedSetP.SortedSetAggregateCountTypes with SortedSetP.SortedSetMPopTypes {}
 }

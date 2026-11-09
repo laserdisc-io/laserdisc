@@ -42,6 +42,16 @@ final class StringPSpec extends BaseSpec with StringP {
     )
   }
 
+  test("The String protocol sends a Bulk as its bytes in a comparison and in the strings LCS compares too") {
+    val binary = Bulk(scodec.bits.ByteVector(0xff, 0x80))
+    assertEquals(delex(Key("k"), stringtypes.compare.ifNe(binary)).encode, Arr(Bulk("DELEX"), Bulk("k"), Bulk("IFNE"), binary))
+    assertEquals(delex(Key("k"), stringtypes.ifEq(binary)).encode, Arr(Bulk("DELEX"), Bulk("k"), Bulk("IFEQ"), binary))
+    assertEquals(
+      stralgolcs[String](StringP.StrAlgoInput.strings(binary, binary)).encode,
+      Arr(Bulk("STRALGO"), Bulk("LCS"), Bulk("STRINGS"), binary, binary)
+    )
+  }
+
   test("The String protocol decoding the wrong type gives details about the decoding error") {
     val correct = redis_8_10.strings.set("a", 23)
     assertLeftEquals(

@@ -357,6 +357,14 @@ abstract class HashPSpec extends BaseSpec with HashP {
     }
   }
 
+  test("The Hash protocol using hsetex sends a Bulk value as its bytes") {
+    val binary = Bulk(scodec.bits.ByteVector(0xff, 0x80))
+    assertEquals(
+      hsetex(Key("h"), OneOrMore.unsafeFrom(List(Key("f") -> binary))).encode,
+      Arr(Bulk("HSETEX"), Bulk("h"), Bulk("FIELDS"), Bulk("1"), Bulk("f"), binary)
+    )
+  }
+
   property("The Hash protocol using hscannovalues reads only fields") {
     forAll { (k: Key, c: NonNegLong, fs: List[Key]) =>
       val protocol = hscannovalues(k, c)

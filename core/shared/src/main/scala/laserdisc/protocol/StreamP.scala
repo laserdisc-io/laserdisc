@@ -757,8 +757,8 @@ object StreamP {
   private[protocol] final val consumerInfos6_2: Read[Records, Seq[ConsumerInfo6_2]] = Read[Records, Seq[ConsumerInfo6_2]]
   private[protocol] final val consumerInfos7_2: Read[Records, Seq[ConsumerInfo7_2]] = Read[Records, Seq[ConsumerInfo7_2]]
 
-  private[protocol] final def fieldsParams[A: Show](fields: OneOrMore[(Key, A)]): List[String] =
-    fields.value.flatMap { case (k, v) => List(k.value, Show[A].show(v)) }
+  private[protocol] final def fieldsParams[A: Show](fields: OneOrMore[(Key, A)]): List[Bulk] =
+    fields.value.flatMap { case (k, v) => List(Bulk(k.value), Value.bulk(v)) }
 
   // the builders each feature's commands take, and the types of their replies
   trait StreamTypes {
@@ -852,11 +852,11 @@ trait StreamBaseP extends Features {
 
   /** Adds an entry with an id the server picks, and replies with it */
   final def xadd[A: Show](key: Key, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key.value :: "*" :: fieldsParams(fields)).as[Bulk, Id]
+    Protocol("XADD", key *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, fields: OneOrMore[(Key, A)]): Single[Id] =
     Protocol("XADD", key *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key.value :: trim.params ++ ("*" :: fieldsParams(fields))).as[Bulk, Id]
+    Protocol("XADD", key *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
     Protocol("XADD", key *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
 
@@ -1291,9 +1291,9 @@ trait StreamIdmpP extends Features {
 
   /** XADD that adds the entry only once for the producer and idempotency id, and replies with that entry's id */
   final def xadd[A: Show](key: Key, idmp: Idmp, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key.value :: idmp.params ++ ("*" :: fieldsParams(fields))).as[Bulk, Id]
+    Protocol("XADD", key *: idmp.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, idmp: Idmp, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key.value :: idmp.params ++ trim.params ++ ("*" :: fieldsParams(fields))).as[Bulk, Id]
+    Protocol("XADD", key *: idmp.params *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, idmp: Idmp, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single[Id] =
     Protocol("XADD", key *: policy *: idmp.params *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
 

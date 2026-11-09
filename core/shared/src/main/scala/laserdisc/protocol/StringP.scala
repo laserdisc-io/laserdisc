@@ -169,16 +169,16 @@ object StringP {
     }
 
   /** What STRALGO LCS compares: the values at two keys, or two values given directly */
-  sealed trait StrAlgoInput  { def params: List[String] }
+  sealed trait StrAlgoInput  { def params: List[Bulk] }
   trait StrAlgoInputBuilders {
     def keys(key1: Key, key2: Key): StrAlgoInput
     def strings[A: Show](value1: A, value2: A): StrAlgoInput
   }
   private[laserdisc] object StrAlgoInput extends StrAlgoInputBuilders {
-    private final class Of(override final val params: List[String]) extends StrAlgoInput
+    private final class Of(override final val params: List[Bulk]) extends StrAlgoInput
 
-    def keys(key1: Key, key2: Key): StrAlgoInput             = new Of(List("KEYS", key1.value, key2.value))
-    def strings[A: Show](value1: A, value2: A): StrAlgoInput = new Of(List("STRINGS", Show[A].show(value1), Show[A].show(value2)))
+    def keys(key1: Key, key2: Key): StrAlgoInput             = new Of(List(Bulk("KEYS"), Bulk(key1.value), Bulk(key2.value)))
+    def strings[A: Show](value1: A, value2: A): StrAlgoInput = new Of(List(Bulk("STRINGS"), Value.bulk(value1), Value.bulk(value2)))
   }
 
   /** Where a match is, in each of the two strings LCS compares */
@@ -239,23 +239,23 @@ object StringP {
   }
 
   /** IFEQ, which Valkey and Redis added separately from IFNE, IFDEQ and IFDNE */
-  final class IfEq private (val params: List[String])
+  final class IfEq private (val params: List[Bulk])
   private[laserdisc] object IfEq {
-    def apply[A: Show](a: A): IfEq = new IfEq(List("IFEQ", Show[A].show(a)))
+    def apply[A: Show](a: A): IfEq = new IfEq(List(Bulk("IFEQ"), Value.bulk(a)))
   }
 
-  sealed trait Compare  { def params: List[String] }
+  sealed trait Compare  { def params: List[Bulk] }
   trait CompareBuilders {
     def ifNe[A: Show](a: A): Compare
     def ifDeq(digest: String): Compare
     def ifDne(digest: String): Compare
   }
   private[laserdisc] object Compare extends CompareBuilders {
-    private final class Of(override final val params: List[String]) extends Compare
+    private final class Of(override final val params: List[Bulk]) extends Compare
 
-    def ifNe[A: Show](a: A): Compare   = new Of(List("IFNE", Show[A].show(a)))
-    def ifDeq(digest: String): Compare = new Of(List("IFDEQ", digest))
-    def ifDne(digest: String): Compare = new Of(List("IFDNE", digest))
+    def ifNe[A: Show](a: A): Compare   = new Of(List(Bulk("IFNE"), Value.bulk(a)))
+    def ifDeq(digest: String): Compare = new Of(List(Bulk("IFDEQ"), Bulk(digest)))
+    def ifDne(digest: String): Compare = new Of(List(Bulk("IFDNE"), Bulk(digest)))
   }
 
   // the builders each feature's commands take, and the types of their replies
@@ -508,17 +508,21 @@ trait StringAlgoP extends Features {
     super.supported ++ List("STRALGO: IDX KEYS LCS LEN MINMATCHLEN STRINGS WITHMATCHLEN")
 
   /** The longest common substring of the two values */
-  final def stralgolcs[A: Read[Bulk, _]](input: StrAlgoInput): Single[A] = Protocol("STRALGO", "LCS" :: input.params).as[Bulk, A]
+  final def stralgolcs[A: Read[Bulk, _]](input: StrAlgoInput): Single[A] =
+    Protocol("STRALGO", "LCS" *: input.params *: EmptyTuple).as[Bulk, A]
 
   /** The length of the longest common substring of the two values */
   final def stralgolcslen(input: StrAlgoInput): Single[NonNegInt] =
-    Protocol("STRALGO", "LCS" :: input.params ++ List("LEN")).as[Num, NonNegInt]
+    Protocol("STRALGO", "LCS" *: input.params *: "LEN" *: EmptyTuple).as[Num, NonNegInt]
 
   /** Where the matches are in each value, with their lengths */
   final def stralgolcsidx(input: StrAlgoInput): Single[LcsMatches] =
-    Protocol("STRALGO", "LCS" :: input.params ++ List("IDX", "WITHMATCHLEN")).using(RESPRead.instance(StringP.lcsMatches))
+    Protocol("STRALGO", "LCS" *: input.params *: List("IDX", "WITHMATCHLEN") *: EmptyTuple).using(RESPRead.instance(StringP.lcsMatches))
   final def stralgolcsidx(input: StrAlgoInput, minMatchLength: PosInt): Single[LcsMatches] =
-    Protocol("STRALGO", "LCS" :: input.params ++ List("IDX", "MINMATCHLEN", Show[PosInt].show(minMatchLength), "WITHMATCHLEN"))
+    Protocol(
+      "STRALGO",
+      "LCS" *: input.params *: List("IDX", "MINMATCHLEN", Show[PosInt].show(minMatchLength), "WITHMATCHLEN") *: EmptyTuple
+    )
       .using(RESPRead.instance(StringP.lcsMatches))
 }
 

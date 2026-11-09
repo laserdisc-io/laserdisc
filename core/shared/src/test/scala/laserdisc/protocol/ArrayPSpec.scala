@@ -31,6 +31,19 @@ final class ArrayPSpec extends BaseSpec with ArrayP {
   private val two                     = OneOrMore.unsafeFrom(List(i(1L), i(9L)))
   private val values                  = OneOrMore.unsafeFrom(List("x", "y"))
 
+  test("The Array protocol sends a Bulk as its bytes in a predicate, an operation and the values it sets") {
+    val binary = Bulk(scodec.bits.ByteVector(0xff, 0x80))
+    assertEquals(
+      argrep(k, ArrayBound.min, ArrayBound.max, ArrayPredicate.exact(binary), ArrayPredicate.matching(binary)).encode,
+      Arr(Bulk("ARGREP"), Bulk("a"), Bulk("-"), Bulk("+"), Bulk("EXACT"), binary, Bulk("MATCH"), binary)
+    )
+    assertEquals(
+      arop(k, i(0L), i(9L), ArrayOp.matching(binary)).encode,
+      Arr(Bulk("AROP"), Bulk("a"), Bulk("0"), Bulk("9"), Bulk("MATCH"), binary)
+    )
+    assertEquals(armset(k, OneOrMore.unsafeFrom(List(i(1L) -> binary))).encode, Arr(Bulk("ARMSET"), Bulk("a"), Bulk("1"), binary))
+  }
+
   test("The Array protocol sets and gets elements by index") {
     assertEquals(arset(k, i(2L), values).encode, bulks("ARSET", "a", "2", "x", "y"))
     assertEquals(arset(k, i(2L), values).decode(Num(2L)), i(2L))

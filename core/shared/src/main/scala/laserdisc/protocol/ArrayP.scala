@@ -49,14 +49,14 @@ object ArrayP {
   }
 
   /** What ARGREP looks for: a value that's exactly this, contains this, or matches a glob pattern or a regular expression */
-  sealed trait Predicate { def params: List[String] }
+  sealed trait Predicate { def params: List[Bulk] }
   object Predicate       {
-    private final class Of(override final val params: List[String]) extends Predicate
+    private final class Of(override final val params: List[Bulk]) extends Predicate
 
-    def exact[A: Show](value: A): Predicate    = new Of(List("EXACT", Show[A].show(value)))
-    def matching[A: Show](value: A): Predicate = new Of(List("MATCH", Show[A].show(value)))
-    def glob(pattern: GlobPattern): Predicate  = new Of(List("GLOB", pattern.value))
-    def re(pattern: String): Predicate         = new Of(List("RE", pattern))
+    def exact[A: Show](value: A): Predicate    = new Of(List(Bulk("EXACT"), Value.bulk(value)))
+    def matching[A: Show](value: A): Predicate = new Of(List(Bulk("MATCH"), Value.bulk(value)))
+    def glob(pattern: GlobPattern): Predicate  = new Of(List(Bulk("GLOB"), Bulk(pattern.value)))
+    def re(pattern: String): Predicate         = new Of(List(Bulk("RE"), Bulk(pattern)))
   }
 
   /** AND, OR, LIMIT and NOCASE, for ARGREP: match all the predicates or any of them, stop after some matches, and ignore case */
@@ -81,7 +81,7 @@ object ArrayP {
   object Op {
     final class Number private[ArrayP] (private[protocol] val param: String)
     final class Bits private[ArrayP] (private[protocol] val param: String)
-    final class Count private[ArrayP] (private[protocol] val params: List[String])
+    final class Count private[ArrayP] (private[protocol] val params: List[Bulk])
 
     final val sum: Number                  = new Number("SUM")
     final val min: Number                  = new Number("MIN")
@@ -89,8 +89,8 @@ object ArrayP {
     final val and: Bits                    = new Bits("AND")
     final val or: Bits                     = new Bits("OR")
     final val xor: Bits                    = new Bits("XOR")
-    final val used: Count                  = new Count(List("USED"))
-    def matching[A: Show](value: A): Count = new Count(List("MATCH", Show[A].show(value)))
+    final val used: Count                  = new Count(List(Bulk("USED")))
+    def matching[A: Show](value: A): Count = new Count(List(Bulk("MATCH"), Value.bulk(value)))
   }
 
   /** ARINFO's reply: how many elements are set, the highest index plus one, the next index of ARINSERT, and how the array is stored */
@@ -209,8 +209,8 @@ trait ArrayP extends Features {
   final def argetrange[A: Read[Bulk, _]](key: Key, start: NonNegLong, end: NonNegLong): Single[Seq[Option[A]]] =
     Protocol("ARGETRANGE", key *: start *: end *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
 
-  private final def grepParams(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): List[String] =
-    key.value :: start.param :: end.param :: predicates.value.flatMap(_.params)
+  private final def grepParams(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): List[Bulk] =
+    Bulk(key.value) :: Bulk(start.param) :: Bulk(end.param) :: predicates.value.flatMap(_.params)
 
   /** The indexes of the elements from `start` to `end` that match */
   final def argrep(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): Single[Seq[NonNegLong]] =
@@ -224,7 +224,7 @@ trait ArrayP extends Features {
       predicates: OneOrMore[Predicate],
       options: GrepOptions
   ): Single[Seq[NonNegLong]] =
-    Protocol("ARGREP", grepParams(key, start, end, predicates) ++ options.params).as[Arr.Of[Num], Seq[NonNegLong]]
+    Protocol("ARGREP", grepParams(key, start, end, predicates) ++ options.params.map(Bulk(_))).as[Arr.Of[Num], Seq[NonNegLong]]
 
   /** The indexes and values of the elements from `start` to `end` that match */
   final def argrepwithvalues[A: Read[Bulk, _]](
@@ -233,7 +233,7 @@ trait ArrayP extends Features {
       end: Bound,
       predicates: OneOrMore[Predicate]
   ): Single[Seq[(NonNegLong, A)]] =
-    Protocol("ARGREP", grepParams(key, start, end, predicates) :+ "WITHVALUES")
+    Protocol("ARGREP", grepParams(key, start, end, predicates) :+ Bulk("WITHVALUES"))
       .as[Arr.Of[Arr.AsTuple[Num *: Bulk *: EmptyTuple]], Seq[(NonNegLong, A)]]
   final def argrepwithvalues[A: Read[Bulk, _]](
       key: Key,
@@ -250,7 +250,7 @@ trait ArrayP extends Features {
       predicates: OneOrMore[Predicate],
       options: GrepOptions
   ): Single[Seq[(NonNegLong, A)]] =
-    Protocol("ARGREP", grepParams(key, start, end, predicates) ++ options.params :+ "WITHVALUES")
+    Protocol("ARGREP", grepParams(key, start, end, predicates) ++ options.params.map(Bulk(_)) :+ Bulk("WITHVALUES"))
       .as[Arr.Of[Arr.AsTuple[Num *: Bulk *: EmptyTuple]], Seq[(NonNegLong, A)]]
 
   /** Fails with an error when the key doesn't exist */
@@ -281,7 +281,7 @@ trait ArrayP extends Features {
 
   /** Sets the values at their indexes, with how many weren't set before */
   final def armset[A: Show](key: Key, values: OneOrMore[(NonNegLong, A)]): Single[NonNegLong] =
-    Protocol("ARMSET", key.value :: values.value.flatMap { case (index, value) => List(Show[NonNegLong].show(index), Show[A].show(value)) })
+    Protocol("ARMSET", Bulk(key.value) :: values.value.flatMap { case (index, value) => List(Bulk(index), Value.bulk(value)) })
       .as[Num, NonNegLong]
 
   /** The index the next `arinsert` will use */

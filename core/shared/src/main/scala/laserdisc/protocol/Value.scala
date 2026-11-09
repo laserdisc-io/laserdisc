@@ -32,4 +32,7 @@ object Value extends ValueWithoutShow {
     case bulk: Bulk => bulk
     case _          => Bulk(A.show(a))
   })
+
+  // a value inside a list of parameters, sent as its bytes are when it's a Bulk
+  private[protocol] final def bulk[A: Show](a: A): Bulk = fromShow(a).bulk
 }

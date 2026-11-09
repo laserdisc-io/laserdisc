@@ -30,6 +30,14 @@ final class StreamPSpec extends BaseSpec with StreamP {
   private val id2                     = StreamId(NonNegLong(9999999999999L), NonNegLong(1L))
   private val fields                  = OneOrMore.unsafeFrom(List(Key("a") -> 1, Key("b") -> 2))
 
+  test("The Stream protocol using xadd sends a Bulk value as its bytes") {
+    val binary = Bulk(scodec.bits.ByteVector(0xff, 0x80))
+    assertEquals(
+      xadd(Key("s"), OneOrMore.unsafeFrom(List(Key("f") -> binary))).encode,
+      Arr(Bulk("XADD"), Bulk("s"), Bulk("*"), Bulk("f"), binary)
+    )
+  }
+
   test("The Stream protocol reads and writes ids whose parts go above Long.MaxValue, up to 2^64 - 1, as the server allows") {
     def part(text: String): StreamIdPart = StreamIdPart.from(text).fold(e => fail(e), identity)
     val big                              = StreamId(part("1"), part("9223372036854775808"))

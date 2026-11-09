@@ -35,6 +35,26 @@ final class RedisClientSendSpec extends CatsEffectSuite {
 
   override val munitIOTimeout: Duration = 60.seconds
 
+  test("when the connection goes before MULTI's OK, the commands after the transaction fail too, without waiting for their timeout") {
+    val closesOnMulti = FakeRedisServer { (n, commands) =>
+      if (n == 1) commands.takeWhile(c => name(c) != "MULTI").drain else commands.as(bulk("v"))
+    }
+
+    closesOnMulti.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        client.send(multi(get[String]("a")), get[String]("b"), 30.seconds).attempt.timed.map { case (took, result) =>
+          assert(took < 10.seconds, s"took $took")
+          result match {
+            case Right((transaction, after)) =>
+              assert(transaction.isLeft, s"expected the transaction to fail, got $transaction")
+              assert(after.isLeft, s"expected the GET after it to fail, got $after")
+            case Left(error) => fail(s"expected each command to fail on its own, got $error")
+          }
+        }
+      }
+    }
+  }
+
   test("the commands of a send reach the server together, without waiting for each other's replies") {
     // replies only once it has received three commands
     val repliesInThrees =

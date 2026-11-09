@@ -151,6 +151,20 @@ object RedisClient {
                 })
               }
 
+              // when the connection goes, the requests of a batch that weren't sent yet, like those after a transaction waiting for
+              // MULTI's OK, fail with it: the ones sent are failed with the others in flight, and an answered one keeps its answer
+              def unsent(address: RedisAddress, batch: Batch[F]): Resource.ExitCase => F[Unit] = {
+                case Resource.ExitCase.Succeeded => Temporal[F].unit
+                case exit                        =>
+                  val error = exit match {
+                    case Resource.ExitCase.Errored(e) => e
+                    case _                            => ServerTerminatedConnection(address)
+                  }
+                  inFlight.get.flatMap { sent =>
+                    batch.requests.filterNot(request => sent.exists(_.request eq request)).traverse_(_.callback(Left(error)))
+                  }
+              }
+
               // a batch the caller gave up on while it was queued isn't sent
               def push(address: RedisAddress, connection: Long)(batch: Batch[F]): Stream[F, RESP] =
                 Stream.eval(batch.claim.complete(())).flatMap {
@@ -158,6 +172,7 @@ object RedisClient {
                     Stream
                       .eval(Temporal[F].monotonic)
                       .flatMap(now => sendAll(address, connection, now + batch.timeout, batch.requests.toList))
+                      .onFinalizeCase(unsent(address, batch))
                   case false => Stream.empty
                 }
 

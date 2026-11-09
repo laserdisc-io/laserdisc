@@ -107,7 +107,8 @@ private[cli] object CommandLine {
     unquoted(0, new Argument, Nil)
   }
 
-  private final def isHex(c: Char): Boolean = Character.digit(c, 16) >= 0
+  // ASCII only, as in redis-cli, where a fullwidth digit like U+FF26 isn't one
+  private final def isHex(c: Char): Boolean = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 
   // redis-cli's spaces are ASCII only: any of them separates arguments, but only these end an unquoted one, so a vertical tab or a form
   // feed inside it stays, as does a space that isn't ASCII, like U+2003

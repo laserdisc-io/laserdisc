@@ -67,8 +67,9 @@ final class CommandLineSpec extends FunSuite {
     assertEquals(parse("""GET "\r\t\b\a\q""""), Right(List("GET", "\r\t\b\u0007q")))
   }
 
-  test("an \\x not followed by two hex digits is an x") {
+  test("an \\x not followed by two ASCII hex digits is an x") {
     assertEquals(parse("""GET "\xZZ" "\x4""""), Right(List("GET", "xZZ", "x4")))
+    assertEquals(parse("GET \"\\x\uFF26\uFF26\""), Right(List("GET", "x\uFF26\uFF26")))
   }
 
   test("a quote starts quoting anywhere in an argument, as in redis-cli, and must still be closed") {

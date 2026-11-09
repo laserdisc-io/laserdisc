@@ -278,10 +278,16 @@ package object laserdisc {
       try Some(j.Long.parseLong(s))
       catch { case _: NumberFormatException => None }
   }
+  // as Redis writes doubles, which includes infinite ones as inf and -inf
   private[laserdisc] object ToDouble {
-    def unapply(s: String): Option[Double] =
-      try Some(j.Double.parseDouble(s))
-      catch { case _: NumberFormatException => None }
+    def unapply(s: String): Option[Double] = s match {
+      case "inf" | "+inf" => Some(Double.PositiveInfinity)
+      case "-inf"         => Some(Double.NegativeInfinity)
+      case "nan" | "-nan" => Some(Double.NaN)
+      case _              =>
+        try Some(j.Double.parseDouble(s))
+        catch { case _: NumberFormatException => None }
+    }
   }
 
   @nowarn private[laserdisc] sealed trait =:!=[A, B] extends Serializable

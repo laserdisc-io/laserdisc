@@ -78,6 +78,15 @@ abstract class SortedSetClientSpec(p: Port, dest: String) extends LaserdiscFs2Su
   protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
 
+  test(s"a $dest client reads infinite scores") {
+    import laserdisc.redis_6_2.*
+
+    send(del("ss:inf"))
+    send(zadd("ss:inf", "top", Double.PositiveInfinity, "bottom", Double.NegativeInfinity))
+    assertEquals(send(zscore("ss:inf", "top")), Some(Double.PositiveInfinity))
+    assertEquals(send(zrangewithscores[String]("ss:inf", 0L, -1L)), Seq("bottom" -> Double.NegativeInfinity, "top" -> Double.PositiveInfinity))
+  }
+
   test(s"a $dest client adds with INCR, NX, XX, GT and LT") {
     import laserdisc.redis_6_2.*
 

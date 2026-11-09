@@ -171,12 +171,15 @@ abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.C
   }
 
   test(s"a $dest client monitors the commands the server receives") {
+    // the SET is sent again until it's seen: Dragonfly can confirm MONITOR before all its threads report what they run
+    val setting =
+      Stream.eval(client.send(publisher.set(Key("sub:monitored"), "a \"quoted\" value")).rethrow) ++ Stream.sleep_[IO](200.millis)
     val received = RedisSubscriber[IO].to("127.0.0.1", p, publisher.monitor).use { events =>
-      IO(send(publisher.set(Key("sub:monitored"), "a \"quoted\" value"))) *>
-        events
-          .collectFirst { case seen @ MonitorEvent(_, _, _, command) if command.lift(1).contains("sub:monitored") => seen }
-          .compile
-          .toList
+      events
+        .concurrently(setting.repeat)
+        .collectFirst { case seen @ MonitorEvent(_, _, _, command) if command.lift(1).contains("sub:monitored") => seen }
+        .compile
+        .toList
     }
     val event = run(received).headOption.getOrElse(fail("expected an event"))
     assertEquals(event.command.map(_.toUpperCase).head, "SET")

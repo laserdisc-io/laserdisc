@@ -80,7 +80,7 @@ final class DragonflyPSpec extends BaseSpec with DragonflyP {
     assertEquals(rm(NonNegLong(0L)).decode(Arr(Bulk("3"), Num(10L))), Rm(NonNegLong(3L), NonNegLong(10L)))
   }
 
-  test("The Dragonfly protocol using role reads a primary and its replicas, and a replica and its primary") {
+  test("The Dragonfly protocol using role reads a primary and its replicas, and a replica and its primaries") {
     import dragonflytypes.role.*
     assertEquals(role.decode(Arr(Bulk("master"), Arr(Nil))), Primary(Nil): DragonflyP.Role)
     assertEquals(
@@ -95,6 +95,11 @@ final class DragonflyPSpec extends BaseSpec with DragonflyP {
       role.decode(bulks("replica", "df-primary", "6379", "online")),
       Follower(Host("df-primary"), Port(6379), "online"): DragonflyP.Role
     )
+    assertEquals(
+      role.decode(bulks("replica", "df-primary", "6379", "stable_sync", "df-other", "6380", "full_sync")),
+      Follower(Host("df-primary"), Port(6379), "stable_sync", Seq(Replica(Host("df-other"), Port(6380), "full_sync"))): DragonflyP.Role
+    )
+    assert(role.decode(bulks("replica", "df-primary", "6379", "stable_sync", "df-other", "6380")).isLeft)
     assert(role.decode(Arr(Bulk("sentinel"), Arr(Nil))).isLeft)
   }
 

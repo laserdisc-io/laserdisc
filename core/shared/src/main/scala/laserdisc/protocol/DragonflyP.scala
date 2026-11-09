@@ -83,17 +83,17 @@ object DragonflyP {
   }
 
   /** ROLE as Dragonfly replies: a primary and its replicas, or a replica and its primary, each with its state, like `online`. There are no
-    * replication offsets
+    * replication offsets. A replica of a cluster's node can also replicate other primaries, which ADDREPLICAOF adds
     */
   sealed trait Role
   object Role {
     final case class Replica(host: Host, port: Port, state: String)
-    final case class Primary(replicas: Seq[Replica])                 extends Role
-    final case class Follower(host: Host, port: Port, state: String) extends Role
+    final case class Primary(replicas: Seq[Replica])                                                     extends Role
+    final case class Follower(host: Host, port: Port, state: String, otherPrimaries: Seq[Replica] = Nil) extends Role
 
     private type ReplicaReply  = Arr.AsTuple[Bulk *: Bulk *: Bulk *: EmptyTuple]
     private type PrimaryReply  = Arr.AsTuple[Bulk *: Arr.Of[ReplicaReply] *: EmptyTuple]
-    private type FollowerReply = Arr.AsTuple[Bulk *: Bulk *: Bulk *: Bulk *: EmptyTuple]
+    private type FollowerReply = Arr.AsTupleThen[Bulk *: Bulk *: Bulk *: Bulk *: EmptyTuple, Bulk]
 
     private implicit final val hostRead: Read[Bulk, Host] = Read.instancePF("Bulk(Host)") { case Bulk(Host(h)) => h }
     private implicit final val portRead: Read[Bulk, Port] = Read.instancePF("Bulk(Port)") { case Bulk(ToInt(Port(p))) => p }
@@ -106,11 +106,18 @@ object DragonflyP {
         case name *: _                 => Left(RESPDecErr(s"Expected the role master but was $name"))
       }
     }
+    // each other primary as its host, port and state
+    private final def otherPrimaries(rest: Seq[String]): Either[RESPDecErr, List[Replica]] =
+      rest.grouped(3).foldRight[Either[RESPDecErr, List[Replica]]](Right(Nil)) {
+        case (Seq(Host(host), ToInt(Port(port)), state), others) => others.map(Replica(host, port, state) :: _)
+        case (other, _) => Left(RESPDecErr(s"Expected another primary's host, port and state but got ${other.mkString(" ")}"))
+      }
+
     private implicit final val followerRead: Read[FollowerReply, Role] = Read.instance { reply =>
-      Read[FollowerReply, String *: Host *: Port *: String *: EmptyTuple].read(reply).flatMap {
+      Read[FollowerReply, (String *: Host *: Port *: String *: EmptyTuple, Seq[String])].read(reply).flatMap {
         // "replica" when Dragonfly runs with --info_replication_valkey_compatible=false
-        case ("slave" | "replica") *: host *: port *: state *: _ => Right(Follower(host, port, state))
-        case name *: _                                           => Left(RESPDecErr(s"Expected the role slave but was $name"))
+        case (("slave" | "replica") *: host *: port *: state *: _, rest) => otherPrimaries(rest).map(Follower(host, port, state, _))
+        case (name *: _, _)                                              => Left(RESPDecErr(s"Expected the role slave but was $name"))
       }
     }
 

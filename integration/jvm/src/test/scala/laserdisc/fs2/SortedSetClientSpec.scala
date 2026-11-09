@@ -84,7 +84,10 @@ abstract class SortedSetClientSpec(p: Port, dest: String) extends LaserdiscFs2Su
     send(del("ss:inf"))
     send(zadd("ss:inf", "top", Double.PositiveInfinity, "bottom", Double.NegativeInfinity))
     assertEquals(send(zscore("ss:inf", "top")), Some(Double.PositiveInfinity))
-    assertEquals(send(zrangewithscores[String]("ss:inf", 0L, -1L)), Seq("bottom" -> Double.NegativeInfinity, "top" -> Double.PositiveInfinity))
+    assertEquals(
+      send(zrangewithscores[String]("ss:inf", 0L, -1L)),
+      Seq("bottom" -> Double.NegativeInfinity, "top" -> Double.PositiveInfinity)
+    )
   }
 
   test(s"a $dest client adds with INCR, NX, XX, GT and LT") {

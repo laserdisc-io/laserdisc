@@ -123,46 +123,95 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
-  test("a multi isn't sent when its keys were watched on a connection that closed, as the server dropped the watch with it") {
-    // the first connection answers WATCH and a GET, then closes; the next ones run transactions, keeping the names of what they get
-    def droppingWatch(seen: cats.effect.Ref[IO, List[String]]) =
-      FakeRedisServer { (n, commands) =>
-        if (n == 1) commands.take(2).map(c => if (name(c) == "WATCH") "+OK\r\n" else bulk("v"))
-        else
-          commands
-            .evalTap(c => seen.update(_ :+ name(c)))
-            .mapAccumulate(false) {
-              case (_, c) if name(c) == "MULTI" => true  -> "+OK\r\n"
-              case (_, c) if name(c) == "EXEC"  => false -> s"*1\r\n+OK\r\n"
-              case (true, _)                    => true  -> "+QUEUED\r\n"
-              case (false, c)                   => false -> (if (name(c) == "WATCH") "+OK\r\n" else bulk("w"))
-            }
-            .map(_._2)
-      }
+  // the first connection answers WATCH and a GET, then closes; the next ones run transactions, keeping the names of what they get
+  private def droppingWatch(seen: cats.effect.Ref[IO, List[String]]) =
+    FakeRedisServer { (n, commands) =>
+      def ok(c: RESP): Boolean = Set("WATCH", "UNWATCH", "DISCARD")(name(c))
+      if (n == 1) commands.take(2).map(c => if (ok(c)) "+OK\r\n" else bulk("v"))
+      else
+        commands
+          .evalTap(c => seen.update(_ :+ name(c)))
+          .mapAccumulate(false) {
+            case (_, c) if name(c) == "MULTI"   => true  -> "+OK\r\n"
+            case (_, c) if name(c) == "EXEC"    => false -> s"*1\r\n+OK\r\n"
+            case (_, c) if name(c) == "DISCARD" => false -> "+OK\r\n"
+            case (true, _)                      => true  -> "+QUEUED\r\n"
+            case (false, c)                     => false -> (if (ok(c)) "+OK\r\n" else bulk("w"))
+          }
+          .map(_._2)
+    }
 
+  // watches k and reads it on the first connection, then waits until the client is on the next one
+  private def watchedThenReconnected(client: RedisClient[IO]): IO[Unit] =
+    for {
+      watched <- client.send(watch("k"), 2.seconds)
+      read    <- client.send(get[String]("k"), 2.seconds)
+      _       <- untilReplied(
+        client
+          .send(get[String]("k"), 2.seconds)
+          .map(_.flatMap(r => if (r.contains("w")) Right(r) else Left(new Exception(s"still $r"))))
+      )
+    } yield {
+      assertEquals(watched, Right(OK))
+      assertEquals(read, Right(Some("v")))
+    }
+
+  private def assertNotRun(lost: Maybe[Option[Any]], names: List[String]): Unit = {
+    assert(lost.left.exists(_.isInstanceOf[WatchLost]), s"expected WatchLost, got $lost")
+    assertEquals(names, List("MULTI", "DISCARD", "UNWATCH"))
+  }
+
+  test("a multi doesn't run when its keys were watched on a connection that closed, as the server dropped the watch with it") {
     IO.ref(List.empty[String]).flatMap { seen =>
       droppingWatch(seen).use { port =>
         RedisClient[IO].to("127.0.0.1", port).use { client =>
           for {
-            watched <- client.send(watch("k"), 2.seconds)
-            read    <- client.send(get[String]("k"), 2.seconds)
-            // until the client is on the next connection
-            _ <- untilReplied(
-              client
-                .send(get[String]("k"), 2.seconds)
-                .map(_.flatMap(r => if (r.contains("w")) Right(r) else Left(new Exception(s"still $r"))))
-            )
+            _     <- watchedThenReconnected(client)
+            _     <- seen.set(Nil)
             lost  <- client.send(multi(set("k", 2)), 2.seconds)
             names <- seen.getAndSet(Nil)
             again <- client.send(watch("k"), 2.seconds)
             ran   <- client.send(multi(set("k", 2)), 2.seconds)
           } yield {
-            assertEquals(watched, Right(OK))
-            assertEquals(read, Right(Some("v")))
-            assert(lost.left.exists(_.isInstanceOf[WatchLost]), s"expected WatchLost, got $lost")
-            assert(!names.contains("MULTI"), s"the transaction reached the server: $names")
+            assertNotRun(lost, names)
             assertEquals(again, Right(OK))
             assertEquals(ran, Right(Some(Right(OK))))
+          }
+        }
+      }
+    }
+  }
+
+  test("watching more keys on the new connection doesn't bring back the watch that closed with the old one") {
+    IO.ref(List.empty[String]).flatMap { seen =>
+      droppingWatch(seen).use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use { client =>
+          for {
+            _     <- watchedThenReconnected(client)
+            more  <- client.send(watch("other"), 2.seconds)
+            _     <- seen.set(Nil)
+            lost  <- client.send(multi(set("k", 2)), 2.seconds)
+            names <- seen.get
+          } yield {
+            assertEquals(more, Right(OK))
+            assertNotRun(lost, names)
+          }
+        }
+      }
+    }
+  }
+
+  test("an UNWATCH and a WATCH sent with the multi count before it's checked") {
+    IO.ref(List.empty[String]).flatMap { seen =>
+      droppingWatch(seen).use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use { client =>
+          for {
+            _                            <- watchedThenReconnected(client)
+            (unwatched, watched, result) <- client.send(unwatch, watch("k"), multi(set("k", 2)), 2.seconds)
+          } yield {
+            assertEquals(unwatched, Right(OK))
+            assertEquals(watched, Right(OK))
+            assertEquals(result, Right(Some(Right(OK))))
           }
         }
       }

@@ -113,33 +113,40 @@ object RedisClient {
                 }
 
               // a transaction's MULTI goes alone, and the rest only once the server has said OK to it, so that nothing runs when it refuses
-              // MULTI: until then nothing else is sent, so nothing else gets into the transaction. And a transaction isn't sent at all when
-              // its keys were watched on a connection that's gone, as the server dropped the watch with that connection
+              // MULTI: until then nothing else is sent, so nothing else gets into the transaction. By then the replies to what was sent
+              // before it are in, WATCH's included, so it's then that the client checks the watch: when the keys were watched on a
+              // connection that's gone, the server dropped the watch with it, so the client sends DISCARD instead of the commands, and
+              // UNWATCH, as a transaction ends the watch whether it runs or not
               def transaction(address: RedisAddress, connection: Long, due: FiniteDuration, request: Request[F]): Stream[F, RESP] =
-                Stream.eval(watchedOn.get).flatMap {
-                  case Some(watched) if watched != connection =>
-                    Stream.exec(watchedOn.set(None) >> request.callback(Left(WatchLost(address))))
-                  case _ =>
-                    Stream.eval(Deferred[F, Boolean]).flatMap { accepted =>
-                      val frames = request.protocol.frames
-                      val multi  = Request[F, RESP](
-                        Protocol("MULTI", EmptyTuple).using(RESPRead.raw),
-                        {
-                          case Right(Str("OK")) => accepted.complete(true).void
-                          case Right(other)     =>
-                            accepted.complete(false) >> request.callback(Left(RESPDecErr(s"Expected OK to MULTI but got: $other")))
-                          case Left(error) => accepted.complete(false) >> request.callback(Left(error))
-                        }
-                      )
-                      Stream.evalUnChunk(inFlight.modify(in => (in :+ InFlight(multi, due, 1, Vector.empty)) -> Chunk(frames.head))) ++
-                        Stream.eval(accepted.get).flatMap {
-                          case true =>
+                Stream.eval(Deferred[F, Boolean]).flatMap { accepted =>
+                  val frames = request.protocol.frames
+                  val multi  = Request[F, RESP](
+                    Protocol("MULTI", EmptyTuple).using(RESPRead.raw),
+                    {
+                      case Right(Str("OK")) => accepted.complete(true).void
+                      case Right(other)     =>
+                        accepted.complete(false) >> request.callback(Left(RESPDecErr(s"Expected OK to MULTI but got: $other")))
+                      case Left(error) => accepted.complete(false) >> request.callback(Left(error))
+                    }
+                  )
+                  def ending(command: String)(answered: F[Unit]): Request[F] =
+                    Request[F, RESP](Protocol(command, EmptyTuple).using(RESPRead.raw), _ => answered)
+
+                  Stream.evalUnChunk(inFlight.modify(in => (in :+ InFlight(multi, due, 1, Vector.empty)) -> Chunk(frames.head))) ++
+                    Stream.eval(accepted.get).flatMap {
+                      case true =>
+                        Stream.eval(watchedOn.get).flatMap {
+                          case Some(watched) if watched != connection =>
+                            // the caller hears once the server has ended the watch
+                            val lost = watchedOn.set(None) >> request.callback(Left(WatchLost(address)))
+                            Stream.evalUnChunk(sending(due, List(ending("DISCARD")(Concurrent[F].unit), ending("UNWATCH")(lost))))
+                          case _ =>
                             Stream.evalUnChunk(
                               inFlight
                                 .modify(in => (in :+ InFlight(request, due, frames.size, Vector(Str("OK")))) -> Chunk.from(frames.tail))
                             )
-                          case false => Stream.empty
                         }
+                      case false => Stream.empty
                     }
                 }
 
@@ -176,14 +183,16 @@ object RedisClient {
                   case false => Stream.empty
                 }
 
-              // what a WATCH that succeeded, an UNWATCH and a transaction that ran say about the watched keys, before the caller hears
+              // what a WATCH that succeeded, an UNWATCH and a transaction that ran say about the watched keys, before the caller hears.
+              // WATCH adds keys to those already watched, so the connection the first of them was watched on is kept: watching more
+              // keys on a new connection doesn't bring back the watch that went with the old one
               def watch(connection: Long, request: Request[F], replies: Vector[RESP]): F[Unit] =
                 if (isTransaction(request)) watchedOn.set(None)
                 else
                   command(request) match {
-                    case Some("WATCH") if replies.headOption.contains(Str("OK")) => watchedOn.set(Some(connection))
-                    case Some("UNWATCH")                                         => watchedOn.set(None)
-                    case _                                                       => Concurrent[F].unit
+                    case Some("WATCH") if replies.headOption.contains(Str("OK"))   => watchedOn.update(_.orElse(Some(connection)))
+                    case Some("UNWATCH") if replies.headOption.contains(Str("OK")) => watchedOn.set(None)
+                    case _                                                         => Concurrent[F].unit
                   }
 
               // a request is answered once it has a reply for each frame it sent

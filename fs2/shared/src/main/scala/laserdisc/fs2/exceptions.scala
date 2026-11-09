@@ -28,7 +28,7 @@ final case class ServerNotResponding(redisAddress: RedisAddress)
     extends RuntimeException(s"Server $redisAddress stopped replying", null, true, false)
 final case class WatchLost(redisAddress: RedisAddress)
     extends RuntimeException(
-      s"The connection to $redisAddress that the keys were watched on was closed, and the server dropped the watch with it, so the transaction wasn't sent",
+      s"The connection to $redisAddress that the keys were watched on was closed, and the server dropped the watch with it, so none of the transaction's commands were sent",
       null,
       true,
       false

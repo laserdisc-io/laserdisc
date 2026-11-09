@@ -269,9 +269,9 @@ and your `multi` can cancel the watch, so give code that uses `watch` a client
 of its own.
 
 If the connection closes between your `watch` and your `multi`, the server
-drops the watch with it. The client then doesn't send the transaction, and
-`multi` fails with `WatchLost`: send `watch` again, read the values again and
-retry.
+drops the watch with it, even if you watch more keys after that. The client
+then cancels the transaction before any of its commands are sent, and `multi`
+fails with `WatchLost`: send `watch` again, read the values again and retry.
 
 ## Your own types
 

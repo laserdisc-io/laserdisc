@@ -256,7 +256,8 @@ object RedisClient {
                     case _                                                             => Concurrent[F].unit
                   }
 
-              // a request is answered once it has a reply for each frame it sent
+              // a request is answered once it has a reply for each frame it sent. Taking it off the requests in flight and answering it
+              // go together, as nothing else would answer it
               def receive(connection: Long)(resp: RESP): F[Unit] =
                 inFlight
                   .modify {
@@ -272,18 +273,21 @@ object RedisClient {
                     case Right(None) => Concurrent[F].unit
                     case Left(error) => Concurrent[F].raiseError[Unit](error)
                   }
+                  .uncancelable
 
               // the requests sent on a connection that's gone will never get a reply, and those of its batches it didn't get to send fail
-              // with them
+              // with them. Like failQueued, it can't be stopped once it has taken them, or those it didn't get to would never be answered
               def failInFlight(error: Throwable): F[Unit] =
                 (inFlight.getAndSet(Vector.empty), unsentRequests.getAndSet(Vector.empty)).flatMapN { (sent, unsent) =>
                   sent.traverse_(_.request.callback(Left(error))) >> unsent.traverse_(_.callback(Left(error)))
-                }
+                }.uncancelable
+
+              def failBatch(error: Throwable)(batch: Batch[F]): F[Unit] = batch.requests.traverse_(_.callback(Left(error)))
 
               def failQueued(error: Throwable): F[Unit] =
                 (retries.getAndSet(Chunk.empty), queue.tryTakeN(None)).flatMapN { (again, queued) =>
-                  (again.toList ++ queued).traverse_(_.requests.traverse_(_.callback(Left(error))))
-                }
+                  (again.toList ++ queued).traverse_(failBatch(error))
+                }.uncancelable
 
               // replies come in order, so when the oldest one is overdue the server has stopped answering
               def watchdog(address: RedisAddress): Stream[F, Unit] =
@@ -316,12 +320,14 @@ object RedisClient {
                   .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
               }
 
-              val serverUnavailable: Stream[F, Unit] =
+              // the batches are taken one at a time, each failed in the same step, so that stopping after 3 seconds leaves the next ones
+              // queued
+              val serverUnavailable: Stream[F, Unit] = {
+                val again  = retries.getAndSet(Chunk.empty).flatMap(_.traverse_(failBatch(ServerUnavailable))).uncancelable
+                val queued = Concurrent[F].uncancelable(poll => poll(queue.take).flatMap(failBatch(ServerUnavailable)))
                 log.errorS("Server unavailable for publishing") >>
-                  (Stream.eval(retries.getAndSet(Chunk.empty)).flatMap(Stream.chunk) ++ Stream.fromQueueUnterminated(queue))
-                    .evalMap(_.requests.traverse_(_.callback(Left(ServerUnavailable))))
-                    .drain
-                    .interruptAfter(3.seconds) // FIXME magic number
+                  (Stream.exec(again) ++ Stream.repeatEval(queued).drain).interruptAfter(3.seconds) // FIXME magic number
+              }
 
               // a connection that closed with nothing sent on it, as a server closes idle clients, is opened again only once there's
               // something to send: the send waiting for it goes first on the new connection

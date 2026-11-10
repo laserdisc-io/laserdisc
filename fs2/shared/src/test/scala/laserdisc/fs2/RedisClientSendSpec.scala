@@ -519,4 +519,31 @@ final class RedisClientSendSpec extends CatsEffectSuite {
       }
     }
   }
+
+  // queues each of two requests as a send of its own would, without waiting for replies
+  private implicit val queuedApart: Handler.Aux[IO, Env[IO], Request[IO] *: Request[IO] *: EmptyTuple, EmptyTuple] =
+    new Handler[IO, Env[IO], Request[IO] *: Request[IO] *: EmptyTuple] {
+      override type LOut = EmptyTuple
+      override def apply(env: Env[IO], in: Request[IO] *: Request[IO] *: EmptyTuple): IO[EmptyTuple] = in match {
+        case first *: second *: _ =>
+          List(first, second)
+            .traverse_(r => Deferred[IO, Unit].flatMap(claim => env._1(Batch(Vector(r), claim, 30.seconds))))
+            .as(EmptyTuple)
+      }
+    }
+
+  test("when the server is unavailable, a send failed slowly doesn't stop the sends queued with it from failing") {
+    // reads nothing for a moment, so that both sends are queued, and goes without connecting
+    val unreachable: (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] =
+      (_, _) => _ => Stream.sleep_[IO](200.millis) ++ Stream.raiseError[IO](new Exception("unreachable"))
+
+    RedisClient.impl.connection[IO](unreachable, List(address(6379))).use { connection =>
+      Deferred[IO, Maybe[Option[String]]].flatMap { answer =>
+        val slow = Request[IO, Option[String]](get[String]("a"), _ => IO.sleep(4.seconds))
+        val next = Request[IO, Option[String]](get[String]("b"), answer.complete(_).void)
+        connection.send(slow *: next *: EmptyTuple, 30.seconds) >>
+          answer.get.timeout(10.seconds).map(reply => assertEquals(reply.left.toOption, Some(ServerUnavailable: Throwable)))
+      }
+    }
+  }
 }

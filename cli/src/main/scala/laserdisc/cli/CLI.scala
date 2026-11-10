@@ -81,6 +81,23 @@ object CLI extends IOApp { self =>
   override final def run(args: List[String]): IO[ExitCode] = impl.session(args, io.stdin[IO](bufSize), io.stdout[IO])
 
   private[cli] object impl {
+    // what's typed is sent on a connection the prompt shares with the next commands, each taking the next reply: these would leave it
+    // out of step, or closed
+    def refusal(command: String, args: List[String]): Option[String] = {
+      def is(names: String*)                     = names.exists(_.equalsIgnoreCase(command))
+      def refused(typed: String, reason: String) = Some(s"$typed isn't supported here, as $reason")
+
+      if (is("SUBSCRIBE", "PSUBSCRIBE", "SSUBSCRIBE", "MONITOR")) refused(command, "its messages keep coming after the reply")
+      else if (is("UNSUBSCRIBE", "PUNSUBSCRIBE", "SUNSUBSCRIBE")) refused(command, "it replies once for each channel")
+      else if (is("SYNC", "PSYNC")) refused(command, "it turns the connection over to replication")
+      else if (is("REPLCONF")) refused(command, "it's for replicas, and some of its forms get no reply")
+      else if (is("CLIENT") && args.size >= 2 && args.head.equalsIgnoreCase("REPLY") && !args(1).equalsIgnoreCase("ON"))
+        refused(s"$command ${args.take(2).mkString(" ")}", "the server would stop replying")
+      else if (is("HELLO") && args.headOption.contains("3")) refused(s"$command 3", "the prompt reads RESP2 replies only")
+      else if (is("QUIT")) refused(command, "the server would close the connection. To leave, press Ctrl-D")
+      else None
+    }
+
     def session(args: List[String], in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing]): IO[ExitCode] = {
       def write(msg: String): IO[Unit] = Stream.emit(msg).through(text.utf8.encode).through(out).compile.drain
 
@@ -123,7 +140,12 @@ object CLI extends IOApp { self =>
           _.map(CommandLine.parse).flatMap {
             case Left(error)            => Stream.exec(prompt(s"(error) $error$LF"))
             case Right(Nil)             => Stream.exec(emptyPrompt)
-            case Right(command :: args) => Stream.emit(Protocol(new String(command.toArray, UTF_8), args.map(Bulk(_))).using(RESPRead.raw))
+            case Right(command :: args) =>
+              val name = new String(command.toArray, UTF_8)
+              refusal(name, args.map(arg => new String(arg.toArray, UTF_8))) match {
+                case Some(reason) => Stream.exec(prompt(s"(error) $reason$LF"))
+                case None         => Stream.emit(Protocol(name, args.map(Bulk(_))).using(RESPRead.raw))
+              }
           }
 
         emptyPrompt >>

@@ -105,6 +105,47 @@ final class CLISpec extends CatsEffectSuite {
     }
   }
 
+  test("commands that would leave the shared connection out of step, or closed, say so, without sending anything") {
+    val refused = List(
+      "subscribe a"        -> "subscribe isn't supported here, as its messages keep coming after the reply",
+      "PSUBSCRIBE a*"      -> "PSUBSCRIBE isn't supported here, as its messages keep coming after the reply",
+      "SSUBSCRIBE a"       -> "SSUBSCRIBE isn't supported here, as its messages keep coming after the reply",
+      "MONITOR"            -> "MONITOR isn't supported here, as its messages keep coming after the reply",
+      "UNSUBSCRIBE a b"    -> "UNSUBSCRIBE isn't supported here, as it replies once for each channel",
+      "PUNSUBSCRIBE"       -> "PUNSUBSCRIBE isn't supported here, as it replies once for each channel",
+      "SUNSUBSCRIBE a"     -> "SUNSUBSCRIBE isn't supported here, as it replies once for each channel",
+      "SYNC"               -> "SYNC isn't supported here, as it turns the connection over to replication",
+      "PSYNC ? -1"         -> "PSYNC isn't supported here, as it turns the connection over to replication",
+      "REPLCONF ACK 0"     -> "REPLCONF isn't supported here, as it's for replicas, and some of its forms get no reply",
+      "client reply off"   -> "client reply off isn't supported here, as the server would stop replying",
+      "CLIENT REPLY SKIP"  -> "CLIENT REPLY SKIP isn't supported here, as the server would stop replying",
+      "HELLO 3 SETNAME me" -> "HELLO 3 isn't supported here, as the prompt reads RESP2 replies only",
+      "QUIT"               -> "QUIT isn't supported here, as the server would close the connection. To leave, press Ctrl-D"
+    )
+    val allowed = List("CLIENT REPLY ON", "HELLO 2", "HELLO", "CLIENT LIST", "PING")
+
+    IO.ref(List.empty[String]).flatMap { sent =>
+      val recording = FakeRedisServer { (_, commands) =>
+        commands.evalMap {
+          case Arr(Bulk(name) :: _) => sent.update(_ :+ name).as(s"+$name\r\n")
+          case other                => IO.raiseError(new Exception(s"unexpected command $other"))
+        }
+      }
+      recording.use { port =>
+        session(List("127.0.0.1", port.value.toString), (refused.map(_._1) ++ allowed)*).flatMap { case (code, screen) =>
+          val prompt = s"127.0.0.1:${port.value}> "
+          assertEquals(code, ExitCode.Success)
+          assertEquals(
+            afterLogo(screen),
+            refused.map { case (_, message) => s"$prompt(error) $message\n" }.mkString +
+              allowed.map(line => s"$prompt<<< ${line.split(' ').head} - []\n").mkString + prompt
+          )
+          sent.get.assertEquals(allowed.map(_.split(' ').head))
+        }
+      }
+    }
+  }
+
   test("shows an error when no server can be reached") {
     unusedPort.use { port =>
       session(List("127.0.0.1", port.value.toString), "PING").map { case (code, screen) =>

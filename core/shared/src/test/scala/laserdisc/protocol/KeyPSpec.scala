@@ -412,11 +412,15 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using wait roundtrips successfully given replicas and timeout") {
-    forAll { (pi1: PosInt, pl: PosLong, pi2: PosInt) =>
+    forAll { (pi1: PosInt, pl: PosLong, nni: NonNegInt) =>
       val protocol = wait(pi1, pl)
       assertEquals(protocol.encode, Arr(Bulk("WAIT"), Bulk(pi1), Bulk(pl)))
-      assertEquals(protocol.decode(Num(pi2.value.toLong)), pi2)
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
+  }
+
+  test("The Key protocol using wait reads that no replica acknowledged the writes") {
+    assertEquals(wait(PosInt(1), PosLong(10L)).decode(Num(0L)), NonNegInt(0))
   }
 
   property("The Key protocol using copy roundtrips successfully given source, destination, db and REPLACE") {

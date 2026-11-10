@@ -27,6 +27,8 @@ import laserdisc.auto.*
 final class RedisKeyClientSpec extends KeyClientSpec(LiveServers.port(6379), "redis") {
   since[Redis7_2]("a redis client sets expiries with conditions and reads them")(v => expiries(v))
 
+  test("a redis client reads that no replica acknowledged the writes, as the server here has none")(noReplicas())
+
   since[Redis8_8]("a redis client reads the type of an array or a module's key, and scans by it") { v =>
     import v.*
     import keytypes.*
@@ -44,15 +46,24 @@ final class RedisKeyClientSpec extends KeyClientSpec(LiveServers.port(6379), "re
   }
 }
 
+// not asked to WAIT: KeyDB 6.3.4 crashes when a WAIT times out
 final class KeyDbKeyClientSpec extends KeyClientSpec(LiveServers.port(6380), "keyDb")
 
 final class ValkeyKeyClientSpec extends KeyClientSpec(LiveServers.port(6381), "valkey") {
   since[Valkey7_2]("a valkey client sets expiries with conditions and reads them")(v => expiries(v))
+
+  test("a valkey client reads that no replica acknowledged the writes, as the server here has none")(noReplicas())
 }
 
 abstract class KeyClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
+
+  // `wait` on its own would be Object's
+  protected final def noReplicas(): Unit = {
+    send(redis_6_2.set("k:w", 1))
+    assertEquals(send(redis_6_2.wait(1, 10L)).value, 0)
+  }
 
   protected final def expiries(version: Redis7_2): Unit = {
     import version.*

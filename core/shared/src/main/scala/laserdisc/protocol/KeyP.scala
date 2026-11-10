@@ -436,9 +436,9 @@ trait KeyBaseP extends Features {
 
   final def unlink(keys: OneOrMoreKeys): Single[NonNegInt] = Protocol("UNLINK", keys.value).as[Num, NonNegInt]
 
-  final def wait(replicas: PosInt): Single[PosInt]                   = Protocol("WAIT", replicas *: 0 *: EmptyTuple).as[Num, PosInt]
-  final def wait(replicas: PosInt, timeout: PosLong): Single[PosInt] =
-    Protocol("WAIT", replicas *: timeout *: EmptyTuple).as[Num, PosInt]
+  final def wait(replicas: PosInt): Single[NonNegInt]                   = Protocol("WAIT", replicas *: 0 *: EmptyTuple).as[Num, NonNegInt]
+  final def wait(replicas: PosInt, timeout: PosLong): Single[NonNegInt] =
+    Protocol("WAIT", replicas *: timeout *: EmptyTuple).as[Num, NonNegInt]
 }
 
 /** NX, XX, GT and LT for EXPIRE, PEXPIRE, EXPIREAT and PEXPIREAT, and EXPIRETIME and PEXPIRETIME: Redis 7.0 */

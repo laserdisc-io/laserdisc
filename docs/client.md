@@ -27,6 +27,20 @@ The client also reconnects when the server stops replying: once a reply is late
 by more than its `send`'s timeout, the client drops the connection and opens a
 new one.
 
+Connecting to a server gives up after 10 seconds, so a server that doesn't
+answer doesn't hold the client up. To choose another limit, pass
+`connectTimeout`:
+
+```scala mdoc:compile-only
+import cats.effect.{IO, Resource}
+import scala.concurrent.duration.*
+
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val client: Resource[IO, RedisClient[IO]] = RedisClient[IO].to("localhost", 6379, connectTimeout = 2.seconds)
+```
+
 ## Several servers
 
 `RedisClient[IO].toNodes` takes a set of addresses. The client uses one server

@@ -29,6 +29,7 @@ import log.effect.internal.Show
 import munit.CatsEffectSuite
 
 import java.nio.charset.StandardCharsets.UTF_8
+import scala.concurrent.duration.*
 
 final class RedisChannelSpec extends CatsEffectSuite {
   // what's read from the socket, chunk by chunk
@@ -82,5 +83,24 @@ final class RedisChannelSpec extends CatsEffectSuite {
 
   test("what isn't a reply fails") {
     received("?\r\n").attempt.map(outcome => assert(outcome.isLeft, outcome.toString))
+  }
+
+  test("connecting fails once its time is up, instead of waiting for as long as the system allows") {
+    val boom = new Exception("timed out")
+    RedisChannel
+      .withTimeout(cats.effect.Resource.eval(IO.never[Int]), 100.millis, boom)
+      .use(IO.pure)
+      .attempt
+      .assertEquals(Left(boom))
+  }
+
+  test("a connection made in time is closed when it's done with") {
+    IO.ref(false).flatMap { closed =>
+      RedisChannel
+        .withTimeout(cats.effect.Resource.make(IO.pure(1))(_ => closed.set(true)), 1.second, new Exception("timed out"))
+        .use(IO.pure)
+        .product(closed.get)
+        .assertEquals(1 -> true)
+    }
   }
 }

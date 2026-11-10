@@ -42,18 +42,20 @@ object RedisClient {
     @inline final def to(
         host: Host,
         port: Port,
-        receiveBufferSizeBytes: Int = 8 * 1024 * 1024
+        receiveBufferSizeBytes: Int = 8 * 1024 * 1024,
+        connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout
     ): Resource[F, RedisClient[F]] =
-      toNodes(Set(RedisAddress(host, port)), receiveBufferSizeBytes)
+      toNodes(Set(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout)
 
     @inline final def toNodes(
         addresses: Set[RedisAddress],
-        receiveBufferSizeBytes: Int = 8 * 1024 * 1024
+        receiveBufferSizeBytes: Int = 8 * 1024 * 1024,
+        connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout
     ): Resource[F, RedisClient[F]] = {
       def redisChannel(address: RedisAddress, onConnected: F[Unit]): Pipe[F, RESP, RESP] =
         stream =>
           Stream.eval(address.toSocketAddress).flatMap { address =>
-            stream.through(RedisChannel(address, receiveBufferSizeBytes, onConnected))
+            stream.through(RedisChannel(address, receiveBufferSizeBytes, connectTimeout, onConnected))
           }
 
       val establishedConnection: Resource[F, impl.Connection[F]] =

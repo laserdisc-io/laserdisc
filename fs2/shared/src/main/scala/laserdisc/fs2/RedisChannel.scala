@@ -26,24 +26,29 @@ import _root_.fs2.{Chunk, Pull}
 import _root_.fs2.interop.scodec.{StreamDecoder, StreamEncoder}
 import _root_.fs2.io.net.Socket
 import cats.MonadThrow
-import cats.effect.{Concurrent, Resource}
+import cats.effect.syntax.all.*
+import cats.effect.{Resource, Temporal}
+import cats.syntax.all.*
 import com.comcast.ip4s.{Host, SocketAddress}
 import laserdisc.protocol.*
 import log.effect.fs2.LogSelector
 import scodec.Codec
 import scodec.bits.BitVector
 
+import scala.concurrent.duration.*
+
 object RedisChannel {
   private final val streamDecoder = StreamDecoder.many(Codec[RESP])
   private final val streamEncoder = StreamEncoder.many(Codec[RESP])
 
-  private[fs2] final def apply[F[_]: Network: LogSelector: Concurrent](
+  private[fs2] final def apply[F[_]: Network: LogSelector: Temporal](
       address: SocketAddress[Host],
       receiveBufferSizeBytes: Int,
+      connectTimeout: FiniteDuration,
       onConnected: F[Unit]
   ): Pipe[F, RESP, RESP] =
     stream =>
-      Stream.resource(connectedSocket(address, receiveBufferSizeBytes)).evalTap(_ => onConnected).flatMap { socket =>
+      Stream.resource(connectedSocket(address, receiveBufferSizeBytes, connectTimeout)).evalTap(_ => onConnected).flatMap { socket =>
         val send    = stream.through(impl.send(socket.write))
         val receive = socket.reads.through(impl.receiveResp)
 
@@ -53,11 +58,33 @@ object RedisChannel {
           .onFinalizeWeak(socket.endOfOutput)
       }
 
-  private[fs2] final def connectedSocket[F[_]: Network](
+  /** How long connecting waits, unless told otherwise: an address that drops what's sent to it is otherwise waited on for as long as the
+    * system allows, which can be minutes
+    */
+  final val DefaultConnectTimeout: FiniteDuration = 10.seconds
+
+  private[fs2] final def connectedSocket[F[_]: Network: Temporal](
       address: SocketAddress[Host],
-      receiveBufferSizeBytes: Int
+      receiveBufferSizeBytes: Int,
+      connectTimeout: FiniteDuration = DefaultConnectTimeout
   ): Resource[F, Socket[F]] =
-    Network[F].connect(address, PlatformDependent.socketOptions(receiveBufferSizeBytes))
+    withTimeout(
+      Network[F].connect(address, PlatformDependent.socketOptions(receiveBufferSizeBytes)),
+      connectTimeout,
+      ConnectTimedOut(address, connectTimeout)
+    )
+
+  // acquiring the resource fails with the error once the time is up, and what it acquired by then is released
+  private[fs2] final def withTimeout[F[_]: Temporal, A](
+      resource: Resource[F, A],
+      after: FiniteDuration,
+      error: =>Throwable
+  ): Resource[F, A] =
+    Resource.applyFull { poll =>
+      poll(resource.allocated.timeoutTo(after, Temporal[F].raiseError[(A, F[Unit])](error))).map { case (a, release) =>
+        a -> ((_: Resource.ExitCase) => release)
+      }
+    }
 
   private[fs2] object impl {
     // what the trace log says of a command or a reply: never its values, which can be passwords or the application's data

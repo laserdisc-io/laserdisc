@@ -101,6 +101,18 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  test("a send waiting for room in the queue times out, as the time it waits counts towards its timeout") {
+    // never takes anything, so the queue fills up
+    val stuck: (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] = (_, _) => _ => Stream.never[IO]
+
+    RedisClient.impl.connection[IO](stuck, List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+      (1 to 1100).toList
+        .parTraverse(_ => client.send(get[String]("k"), 500.millis).attempt)
+        .timeout(10.seconds)
+        .map(results => assert(results.forall(_.left.exists(_.isInstanceOf[RequestTimedOut[?]])), results.distinct.toString))
+    }
+  }
+
   test("the commands of a send reach the server together, without waiting for each other's replies") {
     // replies only once it has received three commands
     val repliesInThrees =

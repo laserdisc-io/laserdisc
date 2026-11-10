@@ -22,10 +22,16 @@
 package laserdisc
 package fs2
 
+import com.comcast.ip4s.SocketAddress
+
+import scala.concurrent.duration.FiniteDuration
+
 final case class ServerTerminatedConnection(redisAddress: RedisAddress)
     extends RuntimeException(s"Server $redisAddress terminated client connection", null, true, false)
 final case class ServerNotResponding(redisAddress: RedisAddress)
     extends RuntimeException(s"Server $redisAddress stopped replying", null, true, false)
+final case class ConnectTimedOut(address: SocketAddress[com.comcast.ip4s.Host], after: FiniteDuration)
+    extends RuntimeException(s"Connecting to $address timed out after $after", null, true, false)
 final case class WatchLost(redisAddress: RedisAddress)
     extends RuntimeException(
       s"The connection to $redisAddress that the keys were watched on was closed, and the server dropped the watch with it, so none of the transaction's commands were sent",

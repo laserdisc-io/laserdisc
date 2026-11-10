@@ -41,15 +41,15 @@ package fs2 {
           Deferred[F, Unit].flatMap { claim =>
             val giveUp = claim.complete(()).void
 
-            queue.offer(Batch(requests.map(_._1), claim, duration)) >>
-              replies
-                .timeout(duration)
-                .onCancel(giveUp)
-                .recoverWith { case _: TimeoutException =>
-                  giveUp >> requests.findM(_._2.map(!_)).flatMap { unanswered =>
-                    F.raiseError(RequestTimedOut(unanswered.getOrElse(requests.head)._1.protocol))
-                  }
+            // waiting for room in the queue counts towards the timeout: a send that times out before it's queued is never sent
+            (queue.offer(Batch(requests.map(_._1), claim, duration)) >> replies)
+              .timeout(duration)
+              .onCancel(giveUp)
+              .recoverWith { case _: TimeoutException =>
+                giveUp >> requests.findM(_._2.map(!_)).flatMap { unanswered =>
+                  F.raiseError(RequestTimedOut(unanswered.getOrElse(requests.head)._1.protocol))
                 }
+              }
           }
       }
     }

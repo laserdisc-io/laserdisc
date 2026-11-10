@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Typelevel Laika + Helium Theme" />
+  <title>Contributing</title>
+  
+  <meta name="author" content="Julien Sirocchi"/>
+  
+  <meta name="author" content="Filippo Mariotti"/>
+  
+  
+  <meta name="description" content="docs"/>
+  
+  
+  
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700">
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:500">
+  
+  <link rel="stylesheet" type="text/css" href="helium/site/icofont.min.css" />
+    <link rel="stylesheet" type="text/css" href="helium/site/laika-helium.css" />
+  <script src="helium/site/laika-helium.js"></script>
+  
+  
+  <script> /* for avoiding page load transitions */ </script>
+</head>
+
+  <body>
+
+    <header id="top-bar" class="light-default dark-default">
+
+  <div class="row">
+    <a id="nav-icon">
+      <i class="icofont-laika navigationMenu" title="Navigation">&#xefa2;</i>
+    </a>
+    
+    
+  </div>
+
+  <a class="icon-link glyph-link" href="https://github.com/laserdisc-io/laserdisc"><i class="icofont-laika home" title="Home">&#xef47;</i></a>
+
+  <div class="row links">
+    
+    <a class="icon-link svg-link" href="https://github.com/laserdisc-io/laserdisc"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>  
+
+</header>
+    
+    <nav id="sidebar">
+
+  <div class="row">
+    
+    <a class="icon-link svg-link" href="https://github.com/laserdisc-io/laserdisc"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="index.html">LaserDisc</a></li>
+    <li class="level1 nav-leaf"><a href="getting-started.html">Getting started</a></li>
+    <li class="level1 nav-leaf"><a href="commands.html">Commands</a></li>
+    <li class="level1 nav-leaf"><a href="client.html">Client</a></li>
+    <li class="level1 nav-leaf"><a href="subscribing.html">Subscribing</a></li>
+    <li class="level1 nav-leaf"><a href="circe.html">JSON with circe</a></li>
+    <li class="level1 nav-leaf"><a href="cli.html">Command line</a></li>
+    <li class="level1 nav-leaf"><a href="platform-notes.html">Platform notes</a></li>
+    <li class="level1 active nav-leaf"><a href="#">Contributing</a></li>
+  </ul>
+
+</nav>
+
+    <div id="container">
+
+      
+<nav id="page-nav">
+  <p class="header"><a href="#">Contributing</a></p>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="#running-the-tests">Running the tests</a></li>
+    <li class="level1 nav-node"><a href="#integration-tests">Integration tests</a></li>
+    <li class="level2 nav-leaf"><a href="#one-server-version">One server version</a></li>
+    <li class="level1 nav-leaf"><a href="#coverage">Coverage</a></li>
+    <li class="level1 nav-leaf"><a href="#formatting">Formatting</a></li>
+    <li class="level1 nav-leaf"><a href="#the-site">The site</a></li>
+  </ul>
+
+  <p class="footer"></p>
+</nav>
+
+
+      <main class="content">
+
+        <h1 id="contributing" class="title">Contributing</h1>
+        
+        <h2 id="running-the-tests" class="section"><a class="anchor-link left" href="#running-the-tests"><i class="icofont-laika link">&#xef71;</i></a>Running the tests</h2>
+        <p>To run the tests for every Scala version and platform:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>sbt +test</span></code></pre>
+        <p>These don&#39;t need a server.</p>
+        
+        <h2 id="integration-tests" class="section"><a class="anchor-link left" href="#integration-tests"><i class="icofont-laika link">&#xef71;</i></a>Integration tests</h2>
+        <p>The integration tests talk to real servers. Start Redis, KeyDB, Valkey and Dragonfly with Docker:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>docker run -p </span><span class="number-literal">6379</span><span>:</span><span class="number-literal">6379</span><span> -d redis:alpine
+docker run -p </span><span class="number-literal">6380</span><span>:</span><span class="number-literal">6379</span><span> -d eqalpha/keydb
+docker run -p </span><span class="number-literal">6381</span><span>:</span><span class="number-literal">6379</span><span> -d valkey/valkey:alpine
+docker run -p </span><span class="number-literal">6382</span><span>:</span><span class="number-literal">6379</span><span> --</span><span class="identifier">ulimit</span><span> memlock=-</span><span class="number-literal">1</span><span> -d docker.dragonflydb.io/dragonflydb/dragonfly:latest
+docker run -p </span><span class="number-literal">6383</span><span>:</span><span class="number-literal">6379</span><span> --</span><span class="identifier">ulimit</span><span> memlock=-</span><span class="number-literal">1</span><span> -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated</span></code></pre>
+        <p>Some of them also need a cluster of each. The steps that start those are in
+        <code>.github/workflows/ci.yml</code>, named &quot;Start up a Redis cluster&quot; and so on: copy
+        their commands. The tests connect the nodes themselves.</p>
+        <p>Then run them for every Scala version and platform:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>sbt +integration/test +integrationJS/test +integrationNative/test</span></code></pre>
+        
+        <h3 id="one-server-version" class="section"><a class="anchor-link left" href="#one-server-version"><i class="icofont-laika link">&#xef71;</i></a>One server version</h3>
+        <p>CI also tests each version&#39;s import against a server of that version. To do the
+        same for one version, give its import to <code>test-setup/matrix.sh</code>:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>test-setup/matrix.sh redis_</span><span class="number-literal">7</span><span>_</span><span class="number-literal">4</span></code></pre>
+        <p>It starts the server and a cluster of it in containers, runs the tests for that
+        version, and removes the containers. To keep it clear of servers you already
+        run, move its ports with <code>LASERDISC_PORT_OFFSET</code>:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>LASERDISC_PORT_OFFSET=</span><span class="number-literal">40000</span><span> test-setup/matrix.sh valkey_</span><span class="number-literal">9</span><span>_</span><span class="number-literal">0</span></code></pre>
+        
+        <h2 id="coverage" class="section"><a class="anchor-link left" href="#coverage"><i class="icofont-laika link">&#xef71;</i></a>Coverage</h2>
+        <p>Each published module has to reach the minimums with its own tests. Tests also
+        count towards the modules they depend on, so run them in this order:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>sbt clean coverage \
+  core/test core/coverageReport \
+  circe/test circe/coverageReport \
+  fs</span><span class="number-literal">2</span><span>/test fs</span><span class="number-literal">2</span><span>/coverageReport \
+  cli/test cli/coverageReport \
+  laws/test integration/test laserdiscJVM/coverageAggregate</span></code></pre>
+        <p>This includes the integration tests, so it needs the same servers. Each module&#39;s
+        report is written to its <code>target/scala-2.13/scoverage-report/index.html</code>, and the
+        report for all of them to <code>.jvm/target/scala-2.13/scoverage-report/index.html</code>.</p>
+        
+        <h2 id="formatting" class="section"><a class="anchor-link left" href="#formatting"><i class="icofont-laika link">&#xef71;</i></a>Formatting</h2>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>sbt scalafmtAll integration/scalafmtAll scalafmtSbt</span></code></pre>
+        <p>To check formatting without changing files, use <code>scalafmtCheckAll</code>,
+        <code>integration/scalafmtCheckAll</code> and <code>scalafmtSbtCheck</code>.</p>
+        
+        <h2 id="the-site" class="section"><a class="anchor-link left" href="#the-site"><i class="icofont-laika link">&#xef71;</i></a>The site</h2>
+        <p>This site is built from the <code>docs</code> folder. To preview it locally:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span>sbt ++</span><span class="number-literal">3.9.0</span><span> docs/tlSitePreview</span></code></pre>
+        <p>Then open <a href="http://localhost:4242"><a href="http://localhost:4242">http://localhost:4242</a></a>.</p>
+
+        
+<hr class="footer-rule"/>
+<footer>
+  Site generated by <a href="https://typelevel.org/Laika/">Laika</a> with the Helium theme.
+</footer>
+
+
+      </main>
+
+    </div>
+
+  </body>
+
+</html>

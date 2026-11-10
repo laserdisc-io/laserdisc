@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Typelevel Laika + Helium Theme" />
+  <title>Client</title>
+  
+  <meta name="author" content="Julien Sirocchi"/>
+  
+  <meta name="author" content="Filippo Mariotti"/>
+  
+  
+  <meta name="description" content="docs"/>
+  
+  
+  
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700">
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:500">
+  
+  <link rel="stylesheet" type="text/css" href="helium/site/icofont.min.css" />
+    <link rel="stylesheet" type="text/css" href="helium/site/laika-helium.css" />
+  <script src="helium/site/laika-helium.js"></script>
+  
+  
+  <script> /* for avoiding page load transitions */ </script>
+</head>
+
+  <body>
+
+    <header id="top-bar" class="light-default dark-default">
+
+  <div class="row">
+    <a id="nav-icon">
+      <i class="icofont-laika navigationMenu" title="Navigation">&#xefa2;</i>
+    </a>
+    
+    
+  </div>
+
+  <a class="icon-link glyph-link" href="https://github.com/laserdisc-io/laserdisc"><i class="icofont-laika home" title="Home">&#xef47;</i></a>
+
+  <div class="row links">
+    
+    <a class="icon-link svg-link" href="https://github.com/laserdisc-io/laserdisc"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>  
+
+</header>
+    
+    <nav id="sidebar">
+
+  <div class="row">
+    
+    <a class="icon-link svg-link" href="https://github.com/laserdisc-io/laserdisc"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="index.html">LaserDisc</a></li>
+    <li class="level1 nav-leaf"><a href="getting-started.html">Getting started</a></li>
+    <li class="level1 nav-leaf"><a href="commands.html">Commands</a></li>
+    <li class="level1 active nav-leaf"><a href="#">Client</a></li>
+    <li class="level1 nav-leaf"><a href="subscribing.html">Subscribing</a></li>
+    <li class="level1 nav-leaf"><a href="circe.html">JSON with circe</a></li>
+    <li class="level1 nav-leaf"><a href="cli.html">Command line</a></li>
+    <li class="level1 nav-leaf"><a href="platform-notes.html">Platform notes</a></li>
+    <li class="level1 nav-leaf"><a href="contributing.html">Contributing</a></li>
+  </ul>
+
+</nav>
+
+    <div id="container">
+
+      
+<nav id="page-nav">
+  <p class="header"><a href="#">Client</a></p>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="#connecting">Connecting</a></li>
+    <li class="level1 nav-leaf"><a href="#several-servers">Several servers</a></li>
+    <li class="level1 nav-leaf"><a href="#sending-commands">Sending commands</a></li>
+    <li class="level1 nav-leaf"><a href="#timeouts">Timeouts</a></li>
+    <li class="level1 nav-leaf"><a href="#loops">Loops</a></li>
+    <li class="level1 nav-leaf"><a href="#blocking-commands">Blocking commands</a></li>
+    <li class="level1 nav-leaf"><a href="#logging">Logging</a></li>
+  </ul>
+
+  <p class="footer"></p>
+</nav>
+
+
+      <main class="content">
+
+        <h1 id="client" class="title">Client</h1>
+        <p><code>laserdisc-fs2</code> gives you <code>RedisClient</code>, which connects to a server and sends
+        commands.</p>
+        
+        <h2 id="connecting" class="section"><a class="anchor-link left" href="#connecting"><i class="icofont-laika link">&#xef71;</i></a>Connecting</h2>
+        <p><code>RedisClient[IO].to(host, port)</code> returns a <code>Resource</code>. The connection opens when
+        you use it and closes when you&#39;re done:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.{</span><span class="type-name">IO</span><span>, </span><span class="type-name">Resource</span><span>}
+
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">fs2</span><span>.*
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">client</span><span>: </span><span class="type-name">Resource</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">RedisClient</span><span>[</span><span class="type-name">IO</span><span>]] = </span><span class="type-name">RedisClient</span><span>[</span><span class="type-name">IO</span><span>].</span><span class="identifier">to</span><span>(</span><span class="string-literal">&quot;localhost&quot;</span><span>, </span><span class="number-literal">6379</span><span>)</span></code></pre>
+        <p>If the connection drops, commands still waiting for a reply get a <code>Left</code> right
+        away, and the client reconnects. While it can&#39;t reach the server, it tries again
+        every 3 seconds, and commands sent in the meantime fail with
+        <code>ServerUnavailable</code>.</p>
+        <p>The client also reconnects when the server stops replying: once a reply is late
+        by more than its <code>send</code>&#39;s timeout, the client drops the connection and opens a
+        new one.</p>
+        
+        <h2 id="several-servers" class="section"><a class="anchor-link left" href="#several-servers"><i class="icofont-laika link">&#xef71;</i></a>Several servers</h2>
+        <p><code>RedisClient[IO].toNodes</code> takes a set of addresses. The client uses one server
+        at a time. If it can&#39;t reach that server, or the connection drops, it moves on
+        to the next one:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.{</span><span class="type-name">IO</span><span>, </span><span class="type-name">Resource</span><span>}
+
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">fs2</span><span>.*
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">client</span><span>: </span><span class="type-name">Resource</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">RedisClient</span><span>[</span><span class="type-name">IO</span><span>]] =
+  </span><span class="type-name">RedisClient</span><span>[</span><span class="type-name">IO</span><span>].</span><span class="identifier">toNodes</span><span>(</span><span class="type-name">Set</span><span>(</span><span class="type-name">RedisAddress</span><span>(</span><span class="string-literal">&quot;redis-1&quot;</span><span>, </span><span class="number-literal">6379</span><span>), </span><span class="type-name">RedisAddress</span><span>(</span><span class="string-literal">&quot;redis-2&quot;</span><span>, </span><span class="number-literal">6379</span><span>)))</span></code></pre>
+        <p>When none of the servers can be reached, it waits 3 seconds before trying them
+        all again.</p>
+        <p>This doesn&#39;t make it a Redis Cluster client: laserdisc doesn&#39;t send each key to
+        the node that holds it, or follow a cluster&#39;s <code>MOVED</code> and <code>ASK</code> redirects. On a
+        cluster, a command for a key held by another node fails with a <code>MOVED</code> error.</p>
+        
+        <h2 id="sending-commands" class="section"><a class="anchor-link left" href="#sending-commands"><i class="icofont-laika link">&#xef71;</i></a>Sending commands</h2>
+        <p><code>send</code> takes from 1 to 22 commands and sends them together. You get back one
+        result per command, in the same order:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">redis_8_10</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">fs2</span><span>.*
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">setAndGet</span><span>(</span><span class="identifier">client</span><span>: </span><span class="type-name">RedisClient</span><span>[</span><span class="type-name">IO</span><span>]): </span><span class="type-name">IO</span><span>[(</span><span class="type-name">Maybe</span><span>[</span><span class="type-name">OK</span><span>], </span><span class="type-name">Maybe</span><span>[</span><span class="type-name">Option</span><span>[</span><span class="type-name">PosInt</span><span>]])] =
+  </span><span class="identifier">client</span><span>.</span><span class="identifier">send</span><span>(</span><span class="identifier">set</span><span>(</span><span class="string-literal">&quot;a&quot;</span><span>, </span><span class="number-literal">23</span><span>), </span><span class="identifier">get</span><span>[</span><span class="type-name">PosInt</span><span>](</span><span class="string-literal">&quot;a&quot;</span><span>))</span></code></pre>
+        <p>Each result is a <code>Maybe[A]</code>, which is an <code>Either[Throwable, A]</code>. It&#39;s a <code>Left</code>
+        when the server answers with an error or when the reply can&#39;t be read as the
+        type you asked for, so one failed command doesn&#39;t affect the others.</p>
+        
+        <h2 id="timeouts" class="section"><a class="anchor-link left" href="#timeouts"><i class="icofont-laika link">&#xef71;</i></a>Timeouts</h2>
+        <p>A <code>send</code> times out if its replies haven&#39;t all arrived within 20 seconds. To
+        choose another timeout, pass it after the commands:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">scala</span><span>.</span><span class="identifier">concurrent</span><span>.</span><span class="identifier">duration</span><span>.*
+
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">redis_8_10</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">fs2</span><span>.*
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">quickGet</span><span>(</span><span class="identifier">client</span><span>: </span><span class="type-name">RedisClient</span><span>[</span><span class="type-name">IO</span><span>]): </span><span class="type-name">IO</span><span>[</span><span class="type-name">Maybe</span><span>[</span><span class="type-name">Option</span><span>[</span><span class="type-name">String</span><span>]]] =
+  </span><span class="identifier">client</span><span>.</span><span class="identifier">send</span><span>(</span><span class="identifier">get</span><span>[</span><span class="type-name">String</span><span>](</span><span class="string-literal">&quot;a&quot;</span><span>), </span><span class="number-literal">2</span><span>.</span><span class="identifier">seconds</span><span>)</span></code></pre>
+        <p>When it times out, the whole <code>send</code> fails with <code>RequestTimedOut</code>, which names
+        the first command still without a reply. Commands that were still waiting to be
+        sent aren&#39;t sent at all.</p>
+        
+        <h2 id="loops" class="section"><a class="anchor-link left" href="#loops"><i class="icofont-laika link">&#xef71;</i></a>Loops</h2>
+        <p>Some commands are meant to be sent again and again. SCAN replies with a cursor
+        to send back until the server is done, XRANGE reads a stream a page at a time,
+        and XREAD can follow a stream as entries are added. For these there are loops:
+        <code>scanAll</code>, <code>hscanAll</code>, <code>hscannovaluesAll</code>, <code>sscanAll</code>, <code>zscanAll</code>,
+        <code>zscannoscoresAll</code>, <code>xrangeAll</code> and <code>xrevrangeAll</code>, and, with the blocking
+        commands, <code>xreadFollow</code> and <code>xreadgroupFollow</code>. <code>stream</code> runs a loop and gives
+        you its values as a <code>Stream</code>:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">redis_8_10</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">fs2</span><span>.*
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">userKeys</span><span>(</span><span class="identifier">client</span><span>: </span><span class="type-name">RedisClient</span><span>[</span><span class="type-name">IO</span><span>]): </span><span class="type-name">Stream</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">Key</span><span>] =
+  </span><span class="identifier">client</span><span>.</span><span class="identifier">stream</span><span>(</span><span class="identifier">scanAll</span><span>(</span><span class="string-literal">&quot;user:*&quot;</span><span>))</span></code></pre>
+        <p>Each command is sent once the reply to the one before it is in. A failed
+        command fails the stream. Each command gets the same timeout as a <code>send</code>, or the
+        one you pass after the loop, and for a blocking command its wait is added to it.</p>
+        <p>To make your own loop, give <code>Loop</code> where to start, the command to send from
+        there, and what to do with the reply: the values it gives, and where to go next,
+        or <code>None</code> to stop. This one reads a list 100 items at a time:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">redis_8_10</span><span>.*
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">wholeList</span><span>(</span><span class="identifier">key</span><span>: </span><span class="type-name">Key</span><span>): </span><span class="type-name">Loop</span><span>[</span><span class="type-name">String</span><span>] =
+  </span><span class="type-name">Loop</span><span>(</span><span class="number-literal">0L</span><span>)(</span><span class="identifier">start</span><span> =&gt; </span><span class="identifier">lrange</span><span>[</span><span class="type-name">String</span><span>](</span><span class="identifier">key</span><span>, </span><span class="type-name">Index</span><span>.</span><span class="identifier">unsafeFrom</span><span>(</span><span class="identifier">start</span><span>), </span><span class="type-name">Index</span><span>.</span><span class="identifier">unsafeFrom</span><span>(</span><span class="identifier">start</span><span> + </span><span class="number-literal">99</span><span>))) { (</span><span class="identifier">start</span><span>, </span><span class="identifier">page</span><span>) =&gt;
+    </span><span class="identifier">page</span><span> -&gt; (</span><span class="keyword">if</span><span> (</span><span class="identifier">page</span><span>.</span><span class="identifier">size</span><span> &lt; </span><span class="number-literal">100</span><span>) </span><span class="type-name">None</span><span> </span><span class="keyword">else</span><span> </span><span class="type-name">Some</span><span>(</span><span class="identifier">start</span><span> + </span><span class="number-literal">100</span><span>))
+  }</span></code></pre>
+        <p>For blocking commands, use <code>Loop.blocking</code> with how long each one waits.</p>
+        
+        <h2 id="blocking-commands" class="section"><a class="anchor-link left" href="#blocking-commands"><i class="icofont-laika link">&#xef71;</i></a>Blocking commands</h2>
+        <p>Blocking commands, under <code>blocking</code>, wait on the server for something to
+        happen. While one waits, it holds the client&#39;s connection: commands sent after
+        it on the same client, from anywhere in your program, only get their replies
+        once it&#39;s done. Give blocking commands, and loops that follow streams, a client
+        of their own.</p>
+        
+        <h2 id="logging" class="section"><a class="anchor-link left" href="#logging"><i class="icofont-laika link">&#xef71;</i></a>Logging</h2>
+        <p>The client logs through <a href="https://github.com/laserdisc-io/log-effect">log-effect</a>.
+        To see its logs, put a <code>LogWriter</code> in implicit scope, for example
+        <code>SyncLogWriter.consoleLog[IO]</code>. Without one, the client doesn&#39;t log.</p>
+
+        
+<hr class="footer-rule"/>
+<footer>
+  Site generated by <a href="https://typelevel.org/Laika/">Laika</a> with the Helium theme.
+</footer>
+
+
+      </main>
+
+    </div>
+
+  </body>
+
+</html>

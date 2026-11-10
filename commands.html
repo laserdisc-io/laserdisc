@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Typelevel Laika + Helium Theme" />
+  <title>Commands</title>
+  
+  <meta name="author" content="Julien Sirocchi"/>
+  
+  <meta name="author" content="Filippo Mariotti"/>
+  
+  
+  <meta name="description" content="docs"/>
+  
+  
+  
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700">
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:500">
+  
+  <link rel="stylesheet" type="text/css" href="helium/site/icofont.min.css" />
+    <link rel="stylesheet" type="text/css" href="helium/site/laika-helium.css" />
+  <script src="helium/site/laika-helium.js"></script>
+  
+  
+  <script> /* for avoiding page load transitions */ </script>
+</head>
+
+  <body>
+
+    <header id="top-bar" class="light-default dark-default">
+
+  <div class="row">
+    <a id="nav-icon">
+      <i class="icofont-laika navigationMenu" title="Navigation">&#xefa2;</i>
+    </a>
+    
+    
+  </div>
+
+  <a class="icon-link glyph-link" href="https://github.com/laserdisc-io/laserdisc"><i class="icofont-laika home" title="Home">&#xef47;</i></a>
+
+  <div class="row links">
+    
+    <a class="icon-link svg-link" href="https://github.com/laserdisc-io/laserdisc"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>  
+
+</header>
+    
+    <nav id="sidebar">
+
+  <div class="row">
+    
+    <a class="icon-link svg-link" href="https://github.com/laserdisc-io/laserdisc"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="index.html">LaserDisc</a></li>
+    <li class="level1 nav-leaf"><a href="getting-started.html">Getting started</a></li>
+    <li class="level1 active nav-leaf"><a href="#">Commands</a></li>
+    <li class="level1 nav-leaf"><a href="client.html">Client</a></li>
+    <li class="level1 nav-leaf"><a href="subscribing.html">Subscribing</a></li>
+    <li class="level1 nav-leaf"><a href="circe.html">JSON with circe</a></li>
+    <li class="level1 nav-leaf"><a href="cli.html">Command line</a></li>
+    <li class="level1 nav-leaf"><a href="platform-notes.html">Platform notes</a></li>
+    <li class="level1 nav-leaf"><a href="contributing.html">Contributing</a></li>
+  </ul>
+
+</nav>
+
+    <div id="container">
+
+      
+<nav id="page-nav">
+  <p class="header"><a href="#">Commands</a></p>
+
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="#the-version-of-your-server">The version of your server</a></li>
+    <li class="level1 nav-leaf"><a href="#dragonfly">Dragonfly</a></li>
+    <li class="level1 nav-leaf"><a href="#commands-laserdisc-doesn-t-send">Commands laserdisc doesn&#39;t send</a></li>
+    <li class="level1 nav-leaf"><a href="#arguments">Arguments</a></li>
+    <li class="level1 nav-leaf"><a href="#replies">Replies</a></li>
+    <li class="level1 nav-leaf"><a href="#hashes">Hashes</a></li>
+    <li class="level1 nav-leaf"><a href="#scripts">Scripts</a></li>
+    <li class="level1 nav-leaf"><a href="#transactions">Transactions</a></li>
+    <li class="level1 nav-leaf"><a href="#your-own-types">Your own types</a></li>
+  </ul>
+
+  <p class="footer"></p>
+</nav>
+
+
+      <main class="content">
+
+        <h1 id="commands" class="title">Commands</h1>
+        <p>A command is a value of type <code>Protocol[A]</code>, where <code>A</code> is the type of its
+        reply. Building one doesn&#39;t send anything; you send it with a
+        <a href="client.html">client</a>.</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">redis_8_10</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">setA</span><span>: </span><span class="type-name">Protocol</span><span>[</span><span class="type-name">OK</span><span>]             = </span><span class="identifier">set</span><span>(</span><span class="string-literal">&quot;a&quot;</span><span>, </span><span class="number-literal">23</span><span>)
+</span><span class="keyword">val</span><span> </span><span class="identifier">getA</span><span>: </span><span class="type-name">Protocol</span><span>[</span><span class="type-name">Option</span><span>[</span><span class="type-name">PosInt</span><span>]] = </span><span class="identifier">get</span><span>[</span><span class="type-name">PosInt</span><span>](</span><span class="string-literal">&quot;a&quot;</span><span>)</span></code></pre>
+        <p><code>laserdisc.redis_8_10.*</code> brings every command of Redis 8.10 into scope. Use the
+        import for your server: see
+        <a href="#the-version-of-your-server">The version of your server</a>.</p>
+        <p>To import a single family instead, add its name:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Family</th>
+              <th>Import</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Strings</td>
+              <td><code>laserdisc.redis_8_10.strings.*</code></td>
+            </tr>
+            <tr>
+              <td>Streams</td>
+              <td><code>laserdisc.redis_8_10.streams.*</code></td>
+            </tr>
+            <tr>
+              <td>Keys</td>
+              <td><code>laserdisc.redis_8_10.keys.*</code></td>
+            </tr>
+            <tr>
+              <td>Hashes</td>
+              <td><code>laserdisc.redis_8_10.hashmaps.*</code></td>
+            </tr>
+            <tr>
+              <td>Arrays</td>
+              <td><code>laserdisc.redis_8_10.arrays.*</code></td>
+            </tr>
+            <tr>
+              <td>Lists</td>
+              <td><code>laserdisc.redis_8_10.lists.*</code></td>
+            </tr>
+            <tr>
+              <td>Sets</td>
+              <td><code>laserdisc.redis_8_10.sets.*</code></td>
+            </tr>
+            <tr>
+              <td>Sorted sets</td>
+              <td><code>laserdisc.redis_8_10.sortedsets.*</code></td>
+            </tr>
+            <tr>
+              <td>Geospatial</td>
+              <td><code>laserdisc.redis_8_10.geo.*</code></td>
+            </tr>
+            <tr>
+              <td>HyperLogLog</td>
+              <td><code>laserdisc.redis_8_10.hyperloglog.*</code></td>
+            </tr>
+            <tr>
+              <td>Publish</td>
+              <td><code>laserdisc.redis_8_10.publish.*</code></td>
+            </tr>
+            <tr>
+              <td>Transactions</td>
+              <td><code>laserdisc.redis_8_10.transaction.*</code></td>
+            </tr>
+            <tr>
+              <td>Scripting</td>
+              <td><code>laserdisc.redis_8_10.scripting.*</code></td>
+            </tr>
+            <tr>
+              <td>Connection</td>
+              <td><code>laserdisc.redis_8_10.connection.*</code></td>
+            </tr>
+            <tr>
+              <td>Server</td>
+              <td><code>laserdisc.redis_8_10.server.*</code></td>
+            </tr>
+            <tr>
+              <td>Cluster</td>
+              <td><code>laserdisc.redis_8_10.cluster.*</code></td>
+            </tr>
+            <tr>
+              <td>Blocking commands of lists, sorted sets and streams</td>
+              <td><code>laserdisc.redis_8_10.blocking.*</code></td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <h2 id="the-version-of-your-server" class="section"><a class="anchor-link left" href="#the-version-of-your-server"><i class="icofont-laika link">&#xef71;</i></a>The version of your server</h2>
+        <p>Each server and version has its own import, with only what that server has:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">valkey_8_1</span><span>.*
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">setIfOne</span><span> = </span><span class="identifier">set</span><span>(</span><span class="string-literal">&quot;a&quot;</span><span>, </span><span class="number-literal">2</span><span>, </span><span class="identifier">stringtypes</span><span>.</span><span class="identifier">ifEq</span><span>(</span><span class="number-literal">1</span><span>))</span></code></pre>
+        <p>A command or option your server doesn&#39;t have won&#39;t compile. For example,
+        <code>stringtypes.ifEq</code> arrived in Valkey 8.1 and Redis 8.4, so the same line doesn&#39;t
+        compile with <code>laserdisc.redis_8_2.*</code>.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Server</th>
+              <th>Import</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Redis 6.2 to 8.10</td>
+              <td><code>laserdisc.redis_6_2.*</code>, <code>laserdisc.redis_7_0.*</code>, <code>laserdisc.redis_7_2.*</code>, <code>laserdisc.redis_7_4.*</code>, <code>laserdisc.redis_8_0.*</code>, <code>laserdisc.redis_8_2.*</code>, <code>laserdisc.redis_8_4.*</code>, <code>laserdisc.redis_8_6.*</code>, <code>laserdisc.redis_8_8.*</code>, <code>laserdisc.redis_8_10.*</code></td>
+            </tr>
+            <tr>
+              <td>Valkey 7.2 to 9.1</td>
+              <td><code>laserdisc.valkey_7_2.*</code>, <code>laserdisc.valkey_8_0.*</code>, <code>laserdisc.valkey_8_1.*</code>, <code>laserdisc.valkey_9_0.*</code>, <code>laserdisc.valkey_9_1.*</code></td>
+            </tr>
+            <tr>
+              <td>Dragonfly 2.0</td>
+              <td><code>laserdisc.dragonfly_2_0.*</code></td>
+            </tr>
+            <tr>
+              <td>KeyDB</td>
+              <td><code>laserdisc.redis_6_2.*</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <p>Each import matches the latest patch release of its version, so a command added
+        in a patch release needs that release or a later one. For example, <code>HOTKEYS HELP</code>
+        in <code>laserdisc.redis_8_6.*</code> needs Redis 8.6.1 or later.</p>
+        <p>KeyDB&#39;s latest release is based on Redis 6.2, so use <code>laserdisc.redis_6_2.*</code>. It
+        doesn&#39;t have <code>LOLWUT</code>, and laserdisc doesn&#39;t have KeyDB&#39;s own commands.</p>
+        <p>An import also works with later versions of its server, so use the import for
+        the oldest version you run. When you upgrade, upgrade your servers first and
+        change the import afterwards. A later import can send commands an older server
+        doesn&#39;t have, and can&#39;t read some of its replies. For example,
+        <code>laserdisc.redis_7_0.*</code> can&#39;t read <code>XAUTOCLAIM</code> from Redis 6.2.</p>
+        <p>Only one command an import has is gone from a later version: Redis 7.0 removed
+        <code>STRALGO</code> and added <code>LCS</code> in its place. So <code>stralgolcs</code>, <code>stralgolcslen</code> and
+        <code>stralgolcsidx</code> in <code>laserdisc.redis_6_2.*</code> fail on Redis 7.0 and later. Once all
+        your servers run Redis 7.0 or later, switch to <code>laserdisc.redis_7_0.*</code> and use
+        <code>lcs</code>, <code>lcslen</code> and <code>lcsidx</code> instead. <code>LCS</code> only compares the values at two
+        keys, so to compare two values directly, store them at keys first.</p>
+        
+        <h2 id="dragonfly" class="section"><a class="anchor-link left" href="#dragonfly"><i class="icofont-laika link">&#xef71;</i></a>Dragonfly</h2>
+        <p><code>laserdisc.dragonfly_2_0.*</code> has only what Dragonfly accepts. That leaves out, for
+        example, <code>MIGRATE</code>, <code>OBJECT</code>, <code>SWAPDB</code>, <code>FUNCTION</code> and most of <code>CLUSTER</code>. It also
+        adds Dragonfly&#39;s own commands: <code>prepend</code>, <code>saddex</code>, <code>fieldexpire</code>, <code>fieldttl</code>,
+        <code>stick</code>, <code>clthrottle</code>, <code>rm</code> and <code>repltakeover</code>.</p>
+        <p>Its rules for <code>ACL SETUSER</code> leave out <code>reset</code>, <code>hashedPassword</code> and
+        <code>removeHashedPassword</code>, which Dragonfly refuses. <code>shutdown</code> takes <code>now</code> or
+        <code>force</code> alone, as Dragonfly refuses them together or with <code>save</code> or <code>nosave</code>.</p>
+        <p>Some things still behave differently from Redis:</p>
+        <ul>
+          <li><code>CLUSTER</code> only works when Dragonfly runs in cluster mode, with
+          <code>--cluster_mode=emulated</code> or <code>--cluster_mode=yes</code>.</li>
+          <li><code>role</code> replies with Dragonfly&#39;s own type, which has each server&#39;s state and no
+          replication offsets.</li>
+          <li><code>SORT</code> ignores <code>BY</code>, and <code>GET</code> gives an empty value for a missing key.</li>
+          <li><code>INFO</code> with the <code>default</code> or <code>everything</code> section replies with nothing. Use
+          <code>info</code> with no section, or the <code>all</code> section.</li>
+          <li><code>ACL LOAD</code>, <code>ACL SAVE</code> and <code>CONFIG REWRITE</code> need Dragonfly to have been started
+          with those files.</li>
+          <li><code>PUBSUB SHARDCHANNELS</code> and <code>PUBSUB SHARDNUMSUB</code> need cluster mode.</li>
+          <li><code>CLIENT TRACKING</code> isn&#39;t available, because Dragonfly only allows it with protocol 3.</li>
+        </ul>
+        
+        <h2 id="commands-laserdisc-doesn-t-send" class="section"><a class="anchor-link left" href="#commands-laserdisc-doesn-t-send"><i class="icofont-laika link">&#xef71;</i></a>Commands laserdisc doesn&#39;t send</h2>
+        <p>These commands aren&#39;t available on purpose, because they&#39;re meant for servers
+        talking to each other, because they would break or stall your connection, or
+        because they have no use on a connection shared by all your calls:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Command</th>
+              <th>Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>PSYNC</code>, <code>SYNC</code>, <code>REPLCONF</code></td>
+              <td>They turn the connection into a replication link</td>
+            </tr>
+            <tr>
+              <td><code>ASKING</code></td>
+              <td>It&#39;s only for the command right after a cluster&#39;s ASK redirect, and laserdisc doesn&#39;t follow those redirects</td>
+            </tr>
+            <tr>
+              <td><code>RESTORE-ASKING</code>, <code>CLUSTER SYNCSLOTS</code>, <code>XIDMPRECORD</code></td>
+              <td>Servers send these to each other</td>
+            </tr>
+            <tr>
+              <td><code>SCRIPT DEBUG</code></td>
+              <td>It takes over the connection with an interactive debugger</td>
+            </tr>
+            <tr>
+              <td><code>UNSUBSCRIBE</code>, <code>PUNSUBSCRIBE</code>, <code>SUNSUBSCRIBE</code></td>
+              <td>Closing a <a href="subscribing.html">subscription</a> ends it</td>
+            </tr>
+            <tr>
+              <td><code>HELLO 3</code></td>
+              <td>laserdisc reads protocol 2, so <code>hello</code> only asks for that</td>
+            </tr>
+            <tr>
+              <td><code>DISCARD</code></td>
+              <td>A transaction is sent whole, so there&#39;s never an open one to cancel</td>
+            </tr>
+            <tr>
+              <td><code>RESET</code></td>
+              <td>It would log out and change the database for everyone sharing the connection</td>
+            </tr>
+            <tr>
+              <td><code>CLIENT REPLY</code></td>
+              <td>Replies are matched to requests by their order, so a missing reply breaks the connection</td>
+            </tr>
+            <tr>
+              <td>Dragonfly&#39;s <code>SHRINK</code>, <code>ADDREPLICAOF</code></td>
+              <td>They aren&#39;t documented, so what they take and reply can&#39;t be relied on</td>
+            </tr>
+            <tr>
+              <td><code>DEBUG</code>, <code>PFDEBUG</code></td>
+              <td>They can crash or stall a server, and their replies can change between versions</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <h2 id="arguments" class="section"><a class="anchor-link left" href="#arguments"><i class="icofont-laika link">&#xef71;</i></a>Arguments</h2>
+        <p>Arguments use types that only accept valid values. For example, a <code>Key</code> is a
+        non-empty string without control characters, a <code>PosInt</code> is an <code>Int</code> greater
+        than zero, and a <code>Port</code> is an <code>Int</code> between 1 and 65535.</p>
+        <p>With <code>laserdisc.auto.*</code> imported, you can pass literal values directly. They&#39;re
+        checked when your code compiles, so this doesn&#39;t compile:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">set</span><span>(</span><span class="string-literal">&quot;&quot;</span><span>, </span><span class="number-literal">23</span><span>) </span><span class="comment">// an empty key</span></code></pre>
+        <p>Values that are only known at runtime go through <code>from</code>, which returns an
+        <code>Either</code> with an error message on the left:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">keyOf</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>): </span><span class="type-name">Either</span><span>[</span><span class="type-name">String</span><span>, </span><span class="type-name">Key</span><span>] = </span><span class="type-name">Key</span><span>.</span><span class="identifier">from</span><span>(</span><span class="identifier">name</span><span>)</span></code></pre>
+        <p><code>unsafeFrom</code> returns the value directly and throws an
+        <code>IllegalArgumentException</code> if it isn&#39;t valid. To get the plain value back, use
+        <code>.value</code>.</p>
+        
+        <h2 id="replies" class="section"><a class="anchor-link left" href="#replies"><i class="icofont-laika link">&#xef71;</i></a>Replies</h2>
+        <p>Commands that return a value let you choose its type. <code>get[PosInt](&quot;a&quot;)</code> reads
+        the value at <code>a</code> as a <code>PosInt</code>; <code>get[String](&quot;a&quot;)</code> reads it as a <code>String</code>.</p>
+        <p>If the reply can&#39;t be read as that type, the result is an error rather than a
+        wrong value. If the key doesn&#39;t exist, <code>get</code> gives <code>None</code>.</p>
+        
+        <h2 id="hashes" class="section"><a class="anchor-link left" href="#hashes"><i class="icofont-laika link">&#xef71;</i></a>Hashes</h2>
+        <p>You can store a case class in a hash, one field per field of the class, and
+        read it back:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">redis_8_10</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+
+</span><span class="keyword">final</span><span> </span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">User</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>, </span><span class="identifier">age</span><span>: </span><span class="type-name">Int</span><span>, </span><span class="identifier">email</span><span>: </span><span class="type-name">Option</span><span>[</span><span class="type-name">String</span><span>])
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">save</span><span> = </span><span class="identifier">hset</span><span>(</span><span class="string-literal">&quot;user:1&quot;</span><span>, </span><span class="type-name">User</span><span>(</span><span class="string-literal">&quot;ada&quot;</span><span>, </span><span class="number-literal">36</span><span>, </span><span class="type-name">None</span><span>))
+</span><span class="keyword">val</span><span> </span><span class="identifier">load</span><span> = </span><span class="identifier">hgetall</span><span>[</span><span class="type-name">User</span><span>](</span><span class="string-literal">&quot;user:1&quot;</span><span>)</span></code></pre>
+        <p>Fields are found by name, so their order in the hash doesn&#39;t matter, and fields
+        the class doesn&#39;t have are ignored. An <code>Option</code> field that&#39;s <code>None</code> isn&#39;t
+        written, and one that&#39;s missing from the hash is read as <code>None</code>. Any other
+        missing field is an error that names it.</p>
+        <p><code>hgetall</code> also reads a hash as a <code>Map</code>, like <code>hgetall[Map[Key, String]]</code>, or as
+        a list of pairs, like <code>hgetall[Seq[(Key, Int)]]</code>.</p>
+        <p><code>hmget</code> reads the fields you name into a tuple, in the same order. Use an
+        <code>Option</code> for a field that may be missing; any other missing field is an error
+        that says which one:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">redis_8_10</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">fields</span><span>  = </span><span class="type-name">OneOrMoreKeys</span><span>.</span><span class="identifier">unsafeFrom</span><span>(</span><span class="type-name">List</span><span>(</span><span class="type-name">Key</span><span>(</span><span class="string-literal">&quot;age&quot;</span><span>), </span><span class="type-name">Key</span><span>(</span><span class="string-literal">&quot;email&quot;</span><span>)))
+</span><span class="keyword">val</span><span> </span><span class="identifier">profile</span><span> = </span><span class="identifier">hmget</span><span>[</span><span class="type-name">Int</span><span> *: </span><span class="type-name">Option</span><span>[</span><span class="type-name">String</span><span>] *: </span><span class="type-name">EmptyTuple</span><span>](</span><span class="string-literal">&quot;user:1&quot;</span><span>, </span><span class="identifier">fields</span><span>)</span></code></pre>
+        <p><code>mget</code> works the same way for keys. When you don&#39;t know how many keys you&#39;ll
+        have, it can also read them into a <code>Seq</code>, like <code>mget[Seq[Option[Int]]](keys)</code>.</p>
+        
+        <h2 id="scripts" class="section"><a class="anchor-link left" href="#scripts"><i class="icofont-laika link">&#xef71;</i></a>Scripts</h2>
+        <p>A script can return anything, so <code>eval</code>, <code>evalsha</code> and <code>fcall</code> take two types:
+        the kind of reply the script sends, and the type to read it as. The keys and the
+        arguments are the script&#39;s <code>KEYS</code> and <code>ARGV</code>:</p>
+        <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">redis_8_10</span><span>.*
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">keys</span><span> = </span><span class="type-name">OneOrMoreKeys</span><span>.</span><span class="identifier">unsafeFrom</span><span>(</span><span class="type-name">List</span><span>(</span><span class="type-name">Key</span><span>(</span><span class="string-literal">&quot;a&quot;</span><span>), </span><span class="type-name">Key</span><span>(</span><span class="string-literal">&quot;b&quot;</span><span>)))
+</span><span class="keyword">val</span><span> </span><span class="identifier">args</span><span> = </span><span class="type-name">OneOrMore</span><span>.</span><span class="identifier">unsafeFrom</span><span>(</span><span class="type-name">List</span><span>[</span><span class="type-name">Value</span><span>](</span><span class="number-literal">1</span><span>, </span><span class="string-literal">&quot;two&quot;</span><span>))
+
+</span><span class="comment">// a number
+</span><span class="keyword">val</span><span> </span><span class="identifier">count</span><span>: </span><span class="type-name">Protocol</span><span>[</span><span class="type-name">Long</span><span>] = </span><span class="identifier">eval</span><span>[</span><span class="type-name">Num</span><span>, </span><span class="type-name">Long</span><span>](</span><span class="string-literal">&quot;return #KEYS + #ARGV&quot;</span><span>, </span><span class="identifier">keys</span><span>, </span><span class="identifier">args</span><span>)
+</span><span class="comment">// a table of numbers
+</span><span class="keyword">val</span><span> </span><span class="identifier">counts</span><span>: </span><span class="type-name">Protocol</span><span>[</span><span class="type-name">Seq</span><span>[</span><span class="type-name">Long</span><span>]] = </span><span class="identifier">eval</span><span>[</span><span class="type-name">Arr</span><span>.</span><span class="type-name">Of</span><span>[</span><span class="type-name">Num</span><span>], </span><span class="type-name">Seq</span><span>[</span><span class="type-name">Long</span><span>]](</span><span class="string-literal">&quot;return {#KEYS, #ARGV}&quot;</span><span>, </span><span class="identifier">keys</span><span>, </span><span class="identifier">args</span><span>)
+</span><span class="comment">// a string, or nil
+</span><span class="keyword">val</span><span> </span><span class="identifier">value</span><span>: </span><span class="type-name">Protocol</span><span>[</span><span class="type-name">Option</span><span>[</span><span class="type-name">String</span><span>]] = </span><span class="identifier">eval</span><span>[</span><span class="type-name">OrNullBulk</span><span>[</span><span class="type-name">Bulk</span><span>], </span><span class="type-name">Option</span><span>[</span><span class="type-name">String</span><span>]](</span><span class="string-literal">&quot;return redis.call(&#39;GET&#39;, KEYS[1])&quot;</span><span>, </span><span class="identifier">keys</span><span>)
+</span><span class="comment">// always nil
+</span><span class="keyword">val</span><span> </span><span class="identifier">done</span><span>: </span><span class="type-name">Protocol</span><span>[</span><span class="type-name">Unit</span><span>] = </span><span class="identifier">evalargs</span><span>[</span><span class="type-name">NullBulk</span><span>, </span><span class="type-name">Unit</span><span>](</span><span class="string-literal">&quot;redis.log(redis.LOG_NOTICE, ARGV[1])&quot;</span><span>, </span><span class="identifier">args</span><span>)</span></code></pre>
+        <p>When the script may return nil instead of a value, say so in the reply&#39;s kind:
+        <code>OrNullBulk[Bulk]</code> for a string, <code>OrNullBulk[Num]</code> for a number, and
+        <code>OrNilArr[Arr.Of[Num]]</code> for a table. Then read it as an <code>Option</code>, which is
+        <code>None</code> for nil.</p>
+        <p>Without keys, use <code>evalargs</code>, <code>evalshaargs</code> or <code>fcallargs</code>.</p>
+        
+        <h2 id="transactions" class="section"><a class="anchor-link left" href="#transactions"><i class="icofont-laika link">&#xef71;</i></a>Transactions</h2>
+        <p><code>multi</code> runs several commands as a transaction: Redis runs them one after the
+        other, with no command from anyone else in between. You send it like any other
+        command:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="type-name">IO</span><span>
+
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">redis_8_10</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">fs2</span><span>.*
+
+</span><span class="keyword">def</span><span> </span><span class="declaration-name">setAndIncrement</span><span>(</span><span class="identifier">client</span><span>: </span><span class="type-name">RedisClient</span><span>[</span><span class="type-name">IO</span><span>]): </span><span class="type-name">IO</span><span>[</span><span class="type-name">Maybe</span><span>[</span><span class="type-name">Option</span><span>[(</span><span class="type-name">Maybe</span><span>[</span><span class="type-name">OK</span><span>], </span><span class="type-name">Maybe</span><span>[</span><span class="type-name">Long</span><span>])]]] =
+  </span><span class="identifier">client</span><span>.</span><span class="identifier">send</span><span>(</span><span class="identifier">multi</span><span>(</span><span class="identifier">set</span><span>(</span><span class="string-literal">&quot;a&quot;</span><span>, </span><span class="number-literal">1</span><span>), </span><span class="identifier">incr</span><span>[</span><span class="type-name">Long</span><span>](</span><span class="string-literal">&quot;a&quot;</span><span>)))</span></code></pre>
+        <p>The result is:</p>
+        <ul>
+          <li><code>Right(Some(...))</code> with one result per command. Redis runs every command even
+          if one of them fails, and doesn&#39;t undo the ones before it, so each result is a
+          <code>Maybe</code> of its own.</li>
+          <li><code>Right(None)</code> when nothing ran because a watched key changed (see below).</li>
+          <li><code>Left</code> when Redis refuses one of the commands, for example one it doesn&#39;t
+          know. Nothing runs, and the error says why.</li>
+        </ul>
+        <p>To make a transaction depend on values you read first, send <code>watch</code> with
+        their keys before reading them. If anyone changes one of those keys before
+        the transaction runs, nothing runs and you get <code>None</code>, so you can read the
+        values again and retry.</p>
+        <p>A watch belongs to the connection, and a client sends everything over one
+        connection. Other commands sent through the same client between your <code>watch</code>
+        and your <code>multi</code> can cancel the watch, so give code that uses <code>watch</code> a client
+        of its own.</p>
+        <p>If the connection closes between your <code>watch</code> and your <code>multi</code>, the server
+        drops the watch with it, even if you watch more keys after that. The client
+        then cancels the transaction before any of its commands are sent, and <code>multi</code>
+        fails with <code>WatchLost</code>: send <code>watch</code> again, read the values again and retry.</p>
+        
+        <h2 id="your-own-types" class="section"><a class="anchor-link left" href="#your-own-types"><i class="icofont-laika link">&#xef71;</i></a>Your own types</h2>
+        <p>To store values of your own types, give LaserDisc a <code>Show</code> to write them and a
+        <code>Read</code> to read them back:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">redis_8_10</span><span>.*
+</span><span class="keyword">import</span><span> </span><span class="identifier">laserdisc</span><span>.</span><span class="identifier">auto</span><span>.*
+
+</span><span class="keyword">final</span><span> </span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">UserId</span><span>(</span><span class="identifier">value</span><span>: </span><span class="type-name">Long</span><span>)
+
+</span><span class="keyword">implicit</span><span> </span><span class="keyword">val</span><span> </span><span class="identifier">userIdShow</span><span>: </span><span class="type-name">Show</span><span>[</span><span class="type-name">UserId</span><span>]       = </span><span class="type-name">Show</span><span>.</span><span class="identifier">instance</span><span>(</span><span class="identifier">_</span><span>.</span><span class="identifier">value</span><span>.</span><span class="identifier">toString</span><span>)
+</span><span class="keyword">implicit</span><span> </span><span class="keyword">val</span><span> </span><span class="identifier">userIdRead</span><span>: </span><span class="type-name">Read</span><span>[</span><span class="type-name">Bulk</span><span>, </span><span class="type-name">UserId</span><span>] = </span><span class="type-name">Read</span><span>[</span><span class="type-name">Bulk</span><span>, </span><span class="type-name">Long</span><span>].</span><span class="identifier">map</span><span>(</span><span class="type-name">UserId</span><span>(</span><span class="identifier">_</span><span>))
+
+</span><span class="keyword">val</span><span> </span><span class="identifier">save</span><span> = </span><span class="identifier">set</span><span>(</span><span class="string-literal">&quot;user&quot;</span><span>, </span><span class="type-name">UserId</span><span>(</span><span class="number-literal">42L</span><span>))
+</span><span class="keyword">val</span><span> </span><span class="identifier">load</span><span> = </span><span class="identifier">get</span><span>[</span><span class="type-name">UserId</span><span>](</span><span class="string-literal">&quot;user&quot;</span><span>)</span></code></pre>
+        <p><code>Read.instance</code> lets you fail with an error when a value doesn&#39;t fit, and
+        <code>Show.instance</code> turns a value into the string Redis stores.</p>
+
+        
+<hr class="footer-rule"/>
+<footer>
+  Site generated by <a href="https://typelevel.org/Laika/">Laika</a> with the Helium theme.
+</footer>
+
+
+      </main>
+
+    </div>
+
+  </body>
+
+</html>

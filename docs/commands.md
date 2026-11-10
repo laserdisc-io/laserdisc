@@ -268,6 +268,10 @@ connection. Other commands sent through the same client between your `watch`
 and your `multi` can cancel the watch, so give code that uses `watch` a client
 of its own.
 
+If you decide not to send the transaction after all, send `unwatch`.
+Otherwise the watch stays, and the next transaction sent through that client
+can get `None`, or fail with `WatchLost`, because of keys it never watched.
+
 If the connection closes between your `watch` and your `multi`, the server
 drops the watch with it, even if you watch more keys after that. The client
 then cancels the transaction before any of its commands are sent, and `multi`

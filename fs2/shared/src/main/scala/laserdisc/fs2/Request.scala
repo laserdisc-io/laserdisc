@@ -1,0 +1,49 @@
+/*
+ * Copyright (c) 2018-2026 LaserDisc
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+package laserdisc
+package fs2
+
+import cats.effect.kernel.Deferred
+
+import scala.concurrent.duration.FiniteDuration
+
+sealed trait Request[F[_]] {
+  type A
+  def protocol: Protocol[A]
+  def callback: Maybe[A] => F[Unit]
+}
+
+object Request {
+  sealed abstract case class Req[F[_], A0](protocol: Protocol[A0], callback: Maybe[A0] => F[Unit]) extends Request[F] {
+    override type A = A0
+  }
+
+  def apply[F[_], A](protocol: Protocol[A], callback: Maybe[A] => F[Unit]): Request[F] =
+    new Req[F, A](protocol, callback) {}
+}
+
+// the requests of one send, which go to the server together and in order. claim is completed by whoever comes
+// first: the connection, when it sends them, or the caller, when it stops waiting for the replies
+final case class Batch[F[_]](requests: Vector[Request[F]], claim: Deferred[F, Unit], timeout: FiniteDuration)
+
+// a request sent to the server: its reply is due by due, and it's answered once all the expected replies have arrived
+private[fs2] final case class InFlight[F[_]](request: Request[F], due: FiniteDuration, expected: Int, replies: Vector[RESP])

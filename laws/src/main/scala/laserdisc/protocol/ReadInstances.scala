@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2025 LaserDisc
+ * Copyright (c) 2018-2026 LaserDisc
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -27,16 +27,16 @@ import cats.{Contravariant, Monad}
 import scala.util.{Left, Right}
 
 private[protocol] object ReadInstances {
-  implicit def readContravariant[X]: Contravariant[* ==> X] =
-    new Contravariant[* ==> X] {
-      override def contramap[A, B](fa: A ==> X)(f: B => A): B ==> X = fa.contramap(f)
+  implicit def readContravariant[X]: Contravariant[Read[_, X]] =
+    new Contravariant[Read[_, X]] {
+      override def contramap[A, B](fa: Read[A, X])(f: B => A): Read[B, X] = fa.contramap(f)
     }
 
-  implicit def readMonad[X]: Monad[X ==> *] =
-    new Monad[X ==> *] {
-      override def pure[A](x: A): X ==> A                                    = Read.const(x)
-      override def flatMap[A, B](fa: X ==> A)(f: A => X ==> B): X ==> B      = fa.flatMap(f)
-      override def tailRecM[A, B](a: A)(f: A => X ==> Either[A, B]): X ==> B =
+  implicit def readMonad[X]: Monad[Read[X, _]] =
+    new Monad[Read[X, _]] {
+      override def pure[A](x: A): Read[X, A]                                       = Read.const(x)
+      override def flatMap[A, B](fa: Read[X, A])(f: A => Read[X, B]): Read[X, B]   = fa.flatMap(f)
+      override def tailRecM[A, B](a: A)(f: A => Read[X, Either[A, B]]): Read[X, B] =
         flatMap(f(a)) {
           case Left(a)  => tailRecM(a)(f)
           case Right(b) => pure(b)

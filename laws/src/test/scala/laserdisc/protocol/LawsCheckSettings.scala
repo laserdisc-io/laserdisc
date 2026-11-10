@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2025 LaserDisc
+ * Copyright (c) 2018-2026 LaserDisc
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -23,9 +23,10 @@ package laserdisc
 package protocol
 
 import munit.ScalaCheckSuite
+import org.scalacheck.Test
 
 private[protocol] trait LawsCheckSettings extends ScalaCheckSuite {
-  override val scalaCheckTestParameters =
+  override val scalaCheckTestParameters: Test.Parameters =
     super.scalaCheckTestParameters
       .withMinSuccessfulTests(200)
       .withMaxDiscardRatio(20)

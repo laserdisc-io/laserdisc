@@ -10,12 +10,7 @@ pull_request_rules:
   conditions:
   - author=scala-steward
   - body~=labels:.*early-semver-patch
-  - status-success=Test (ubuntu-22.04, 2.12, temurin@11, laserdiscJVM)
-  - status-success=Test (ubuntu-22.04, 2.12, temurin@11, laserdiscJS)
-  - status-success=Test (ubuntu-22.04, 2.13, temurin@11, laserdiscJVM)
-  - status-success=Test (ubuntu-22.04, 2.13, temurin@11, laserdiscJS)
-  - status-success=Test (ubuntu-22.04, 2.13, temurin@17, laserdiscJVM)
-  - status-success=Test (ubuntu-22.04, 2.13, temurin@21, laserdiscJVM)
+  - status-success=CI passed (ubuntu-22.04, 2.13, temurin@17)
   actions:
     merge:
       method: squash

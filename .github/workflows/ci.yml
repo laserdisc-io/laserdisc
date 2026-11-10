@@ -28,18 +28,26 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        scala: [2.12, 2.13]
-        java: [temurin@11, temurin@17, temurin@21]
-        project: [laserdiscJVM, laserdiscJS]
+        scala: [2.12, 2.13, 3]
+        java: [temurin@17, temurin@21, temurin@25]
+        project: [laserdiscJVM, laserdiscNative, laserdiscJS]
         exclude:
           - scala: 2.12
-            java: temurin@17
+            java: temurin@21
           - scala: 2.12
+            java: temurin@25
+          - scala: 3
+            java: temurin@21
+          - scala: 3
+            java: temurin@25
+          - project: laserdiscNative
+            java: temurin@21
+          - project: laserdiscNative
+            java: temurin@25
+          - project: laserdiscJS
             java: temurin@21
           - project: laserdiscJS
-            java: temurin@17
-          - project: laserdiscJS
-            java: temurin@21
+            java: temurin@25
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -50,19 +58,6 @@ jobs:
 
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
-
-      - name: Setup Java (temurin@11)
-        id: setup-java-temurin-11
-        if: matrix.java == 'temurin@11'
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 11
-          cache: sbt
-
-      - name: sbt update
-        if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
-        run: sbt +update
 
       - name: Setup Java (temurin@17)
         id: setup-java-temurin-17
@@ -90,21 +85,29 @@ jobs:
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
         run: sbt +update
 
-      - name: Start up Redis
-        run: 'docker run -p 6379:6379 -d redis:alpine'
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
 
-      - name: Start up KeyDb
-        run: 'docker run -p 6380:6379 -d eqalpha/keydb'
-
-      - name: Start up Valkey
-        run: 'docker run -p 6381:6379 -e ALLOW_EMPTY_PASSWORD=yes -d bitnami/valkey:latest'
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
 
       - name: Check that workflows are up to date
         run: sbt githubWorkflowCheck
 
       - name: Check headers and formatting
-        if: matrix.java == 'temurin@11' && matrix.os == 'ubuntu-22.04'
+        if: matrix.java == 'temurin@17' && matrix.os == 'ubuntu-22.04'
         run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' headerCheckAll scalafmtCheckAll 'project /' scalafmtSbtCheck
+
+      - name: nativeLink
+        if: matrix.project == 'laserdiscNative'
+        run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' Test/nativeLink
 
       - name: scalaJSLink
         if: matrix.project == 'laserdiscJS'
@@ -114,20 +117,20 @@ jobs:
         run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' test
 
       - name: Check binary compatibility
-        if: matrix.java == 'temurin@11' && matrix.os == 'ubuntu-22.04'
+        if: matrix.java == 'temurin@17' && matrix.os == 'ubuntu-22.04'
         run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' mimaReportBinaryIssues
 
       - name: Generate API documentation
-        if: matrix.java == 'temurin@11' && matrix.os == 'ubuntu-22.04'
+        if: matrix.java == 'temurin@17' && matrix.os == 'ubuntu-22.04'
         run: sbt 'project ${{ matrix.project }}' '++ ${{ matrix.scala }}' doc
 
       - name: Make target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master')
-        run: mkdir -p fs2/.jvm/target core/.js/target circe/.js/target cli/.js/target circe/.jvm/target cli/.jvm/target fs2/.js/target core/.jvm/target project/target
+        run: mkdir -p fs2/native/target fs2/jvm/target core/native/target core/js/target circe/js/target cli/.js/target circe/jvm/target cli/.native/target circe/native/target cli/.jvm/target fs2/js/target core/jvm/target project/target
 
       - name: Compress target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master')
-        run: tar cf targets.tar fs2/.jvm/target core/.js/target circe/.js/target cli/.js/target circe/.jvm/target cli/.jvm/target fs2/.js/target core/.jvm/target project/target
+        run: tar cf targets.tar fs2/native/target fs2/jvm/target core/native/target core/js/target circe/js/target cli/.js/target circe/jvm/target cli/.native/target circe/native/target cli/.jvm/target fs2/js/target core/jvm/target project/target
 
       - name: Upload target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master')
@@ -143,7 +146,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        java: [temurin@11]
+        java: [temurin@17]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
@@ -153,19 +156,6 @@ jobs:
 
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
-
-      - name: Setup Java (temurin@11)
-        id: setup-java-temurin-11
-        if: matrix.java == 'temurin@11'
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 11
-          cache: sbt
-
-      - name: sbt update
-        if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
-        run: sbt +update
 
       - name: Setup Java (temurin@17)
         id: setup-java-temurin-17
@@ -193,12 +183,35 @@ jobs:
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
         run: sbt +update
 
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
+
       - name: Download target directories (2.12, laserdiscJVM)
         uses: actions/download-artifact@v6
         with:
           name: target-${{ matrix.os }}-${{ matrix.java }}-2.12-laserdiscJVM
 
       - name: Inflate target directories (2.12, laserdiscJVM)
+        run: |
+          tar xf targets.tar
+          rm targets.tar
+
+      - name: Download target directories (2.12, laserdiscNative)
+        uses: actions/download-artifact@v6
+        with:
+          name: target-${{ matrix.os }}-${{ matrix.java }}-2.12-laserdiscNative
+
+      - name: Inflate target directories (2.12, laserdiscNative)
         run: |
           tar xf targets.tar
           rm targets.tar
@@ -223,12 +236,52 @@ jobs:
           tar xf targets.tar
           rm targets.tar
 
+      - name: Download target directories (2.13, laserdiscNative)
+        uses: actions/download-artifact@v6
+        with:
+          name: target-${{ matrix.os }}-${{ matrix.java }}-2.13-laserdiscNative
+
+      - name: Inflate target directories (2.13, laserdiscNative)
+        run: |
+          tar xf targets.tar
+          rm targets.tar
+
       - name: Download target directories (2.13, laserdiscJS)
         uses: actions/download-artifact@v6
         with:
           name: target-${{ matrix.os }}-${{ matrix.java }}-2.13-laserdiscJS
 
       - name: Inflate target directories (2.13, laserdiscJS)
+        run: |
+          tar xf targets.tar
+          rm targets.tar
+
+      - name: Download target directories (3, laserdiscJVM)
+        uses: actions/download-artifact@v6
+        with:
+          name: target-${{ matrix.os }}-${{ matrix.java }}-3-laserdiscJVM
+
+      - name: Inflate target directories (3, laserdiscJVM)
+        run: |
+          tar xf targets.tar
+          rm targets.tar
+
+      - name: Download target directories (3, laserdiscNative)
+        uses: actions/download-artifact@v6
+        with:
+          name: target-${{ matrix.os }}-${{ matrix.java }}-3-laserdiscNative
+
+      - name: Inflate target directories (3, laserdiscNative)
+        run: |
+          tar xf targets.tar
+          rm targets.tar
+
+      - name: Download target directories (3, laserdiscJS)
+        uses: actions/download-artifact@v6
+        with:
+          name: target-${{ matrix.os }}-${{ matrix.java }}-3-laserdiscJS
+
+      - name: Inflate target directories (3, laserdiscJS)
         run: |
           tar xf targets.tar
           rm targets.tar
@@ -263,7 +316,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        java: [temurin@11]
+        java: [temurin@17]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
@@ -273,19 +326,6 @@ jobs:
 
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
-
-      - name: Setup Java (temurin@11)
-        id: setup-java-temurin-11
-        if: matrix.java == 'temurin@11'
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 11
-          cache: sbt
-
-      - name: sbt update
-        if: matrix.java == 'temurin@11' && steps.setup-java-temurin-11.outputs.cache-hit == 'false'
-        run: sbt +update
 
       - name: Setup Java (temurin@17)
         id: setup-java-temurin-17
@@ -313,8 +353,348 @@ jobs:
         if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
         run: sbt +update
 
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
+
       - name: Submit Dependencies
         uses: scalacenter/sbt-dependency-submission@v2
         with:
-          modules-ignore: fs2-bench_2.12 fs2-bench_2.13 laserdiscjvm_2.12 laserdiscjvm_2.13 laserdiscnative_2.12 laserdiscnative_2.13 laserdisc-laws_2.12 laserdisc-laws_2.13 core-bench_2.12 core-bench_2.13 laserdisc-laws_sjs1_2.12 laserdisc-laws_sjs1_2.13 laserdiscjs_2.12 laserdiscjs_2.13
+          modules-ignore: laserdisc-integration_sjs1_2.12 laserdisc-integration_sjs1_2.13 laserdisc-integration_sjs1_3 fs2-bench_2.12 fs2-bench_2.13 fs2-bench_3 laserdisc-integration_2.12 laserdisc-integration_2.13 laserdisc-integration_3 laserdiscjvm_2.12 laserdiscjvm_2.13 laserdiscjvm_3 laserdiscnative_2.12 laserdiscnative_2.13 laserdiscnative_3 docs_2.12 docs_2.13 docs_3 laserdisc-laws_2.12 laserdisc-laws_2.13 laserdisc-laws_3 laserdisc-laws_native0.5_2.12 laserdisc-laws_native0.5_2.13 laserdisc-laws_native0.5_3 core-bench_2.12 core-bench_2.13 core-bench_3 laserdisc-integration_native0.5_2.12 laserdisc-integration_native0.5_2.13 laserdisc-integration_native0.5_3 laserdisc-laws_sjs1_2.12 laserdisc-laws_sjs1_2.13 laserdisc-laws_sjs1_3 laserdiscjs_2.12 laserdiscjs_2.13 laserdiscjs_3
           configs-ignore: test scala-tool scala-doc-tool test-internal
+
+  site:
+    name: Generate Site
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        java: [temurin@17]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout current branch (full)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Setup Java (temurin@17)
+        id: setup-java-temurin-17
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Generate site
+        run: sbt ++3.9.0 docs/tlSite
+
+      - name: Publish site
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        uses: peaceiris/actions-gh-pages@v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site/target/docs/site
+          keep_files: true
+
+  integration:
+    name: Integration tests
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        scala: [2.12, 2.13, 3]
+        java: [temurin@17, temurin@21, temurin@25]
+        project: [integration, integrationJS, integrationNative]
+        exclude:
+          - scala: 2.12
+            java: temurin@21
+          - scala: 3
+            java: temurin@21
+          - project: integrationJS
+            java: temurin@21
+          - project: integrationNative
+            java: temurin@21
+          - scala: 2.12
+            java: temurin@25
+          - scala: 3
+            java: temurin@25
+          - project: integrationJS
+            java: temurin@25
+          - project: integrationNative
+            java: temurin@25
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout current branch (full)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Setup Java (temurin@17)
+        id: setup-java-temurin-17
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Start up Redis
+        run: 'docker run -p 6379:6379 -d redis:alpine'
+
+      - name: Start up KeyDb
+        run: 'docker run -p 6380:6379 -d eqalpha/keydb'
+
+      - name: Start up Valkey
+        run: 'docker run -p 6381:6379 -d valkey/valkey:alpine'
+
+      - name: Start up Dragonfly
+        run: 'docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest'
+
+      - name: Start up Dragonfly in cluster mode
+        run: 'docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated'
+
+      - name: Start up a Redis cluster
+        run: 'docker run -p 7100:7100 -p 7101:7101 -p 7102:7102 -p 7103:7103 -d --entrypoint sh redis:alpine -c ''redis-server --port 7100 --cluster-enabled yes --cluster-config-file nodes-7100.conf --protected-mode no --daemonize yes; redis-server --port 7101 --cluster-enabled yes --cluster-config-file nodes-7101.conf --protected-mode no --daemonize yes; redis-server --port 7102 --cluster-enabled yes --cluster-config-file nodes-7102.conf --protected-mode no --daemonize yes; exec redis-server --port 7103 --cluster-enabled yes --cluster-config-file nodes-7103.conf --protected-mode no'''
+
+      - name: Start up a KeyDb cluster
+        run: 'docker run -p 7110:7110 -p 7111:7111 -p 7112:7112 -p 7113:7113 -d --entrypoint sh eqalpha/keydb -c ''keydb-server --port 7110 --cluster-enabled yes --cluster-config-file nodes-7110.conf --protected-mode no --daemonize yes; keydb-server --port 7111 --cluster-enabled yes --cluster-config-file nodes-7111.conf --protected-mode no --daemonize yes; keydb-server --port 7112 --cluster-enabled yes --cluster-config-file nodes-7112.conf --protected-mode no --daemonize yes; exec keydb-server --port 7113 --cluster-enabled yes --cluster-config-file nodes-7113.conf --protected-mode no'''
+
+      - name: Start up a Valkey cluster
+        run: 'docker run -p 7120:7120 -p 7121:7121 -p 7122:7122 -p 7123:7123 -d --entrypoint sh valkey/valkey:alpine -c ''valkey-server --port 7120 --cluster-enabled yes --cluster-config-file nodes-7120.conf --protected-mode no --daemonize yes; valkey-server --port 7121 --cluster-enabled yes --cluster-config-file nodes-7121.conf --protected-mode no --daemonize yes; valkey-server --port 7122 --cluster-enabled yes --cluster-config-file nodes-7122.conf --protected-mode no --daemonize yes; exec valkey-server --port 7123 --cluster-enabled yes --cluster-config-file nodes-7123.conf --protected-mode no'''
+
+      - name: Check headers and formatting, and run the tests
+        run: sbt '++ ${{ matrix.scala }}' 'project ${{ matrix.project }}' headerCheckAll scalafmtCheckAll test
+
+  server-versions:
+    name: Server versions
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04]
+        scala: [3.9.0]
+        java: [temurin@17]
+        import: [redis_6_2, redis_7_0, redis_7_2, redis_7_4, redis_8_0, redis_8_2, redis_8_4, redis_8_6, redis_8_8, redis_8_10, valkey_7_2, valkey_8_0, valkey_8_1, valkey_9_0, valkey_9_1]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout current branch (full)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Setup Java (temurin@17)
+        id: setup-java-temurin-17
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Test the import against its server
+        run: test-setup/matrix.sh ${{ matrix.import }}
+
+  coverage:
+    name: Check coverage
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        scala: [2.13.18]
+        java: [temurin@17]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout current branch (full)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Setup Java (temurin@17)
+        id: setup-java-temurin-17
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@21)
+        id: setup-java-temurin-21
+        if: matrix.java == 'temurin@21'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@21' && steps.setup-java-temurin-21.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Setup Java (temurin@25)
+        id: setup-java-temurin-25
+        if: matrix.java == 'temurin@25'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+
+      - name: sbt update
+        if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
+        run: sbt +update
+
+      - name: Start up Redis
+        run: 'docker run -p 6379:6379 -d redis:alpine'
+
+      - name: Start up KeyDb
+        run: 'docker run -p 6380:6379 -d eqalpha/keydb'
+
+      - name: Start up Valkey
+        run: 'docker run -p 6381:6379 -d valkey/valkey:alpine'
+
+      - name: Start up Dragonfly
+        run: 'docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest'
+
+      - name: Start up Dragonfly in cluster mode
+        run: 'docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated'
+
+      - name: Start up a Redis cluster
+        run: 'docker run -p 7100:7100 -p 7101:7101 -p 7102:7102 -p 7103:7103 -d --entrypoint sh redis:alpine -c ''redis-server --port 7100 --cluster-enabled yes --cluster-config-file nodes-7100.conf --protected-mode no --daemonize yes; redis-server --port 7101 --cluster-enabled yes --cluster-config-file nodes-7101.conf --protected-mode no --daemonize yes; redis-server --port 7102 --cluster-enabled yes --cluster-config-file nodes-7102.conf --protected-mode no --daemonize yes; exec redis-server --port 7103 --cluster-enabled yes --cluster-config-file nodes-7103.conf --protected-mode no'''
+
+      - name: Start up a KeyDb cluster
+        run: 'docker run -p 7110:7110 -p 7111:7111 -p 7112:7112 -p 7113:7113 -d --entrypoint sh eqalpha/keydb -c ''keydb-server --port 7110 --cluster-enabled yes --cluster-config-file nodes-7110.conf --protected-mode no --daemonize yes; keydb-server --port 7111 --cluster-enabled yes --cluster-config-file nodes-7111.conf --protected-mode no --daemonize yes; keydb-server --port 7112 --cluster-enabled yes --cluster-config-file nodes-7112.conf --protected-mode no --daemonize yes; exec keydb-server --port 7113 --cluster-enabled yes --cluster-config-file nodes-7113.conf --protected-mode no'''
+
+      - name: Start up a Valkey cluster
+        run: 'docker run -p 7120:7120 -p 7121:7121 -p 7122:7122 -p 7123:7123 -d --entrypoint sh valkey/valkey:alpine -c ''valkey-server --port 7120 --cluster-enabled yes --cluster-config-file nodes-7120.conf --protected-mode no --daemonize yes; valkey-server --port 7121 --cluster-enabled yes --cluster-config-file nodes-7121.conf --protected-mode no --daemonize yes; valkey-server --port 7122 --cluster-enabled yes --cluster-config-file nodes-7122.conf --protected-mode no --daemonize yes; exec valkey-server --port 7123 --cluster-enabled yes --cluster-config-file nodes-7123.conf --protected-mode no'''
+
+      - name: Run tests with coverage
+        run: sbt '++ ${{ matrix.scala }}' coverage core/test core/coverageReport circe/test circe/coverageReport fs2/test fs2/coverageReport cli/test cli/coverageReport laws/test integration/test laserdiscJVM/coverageAggregate
+
+  ci-passed:
+    name: CI passed
+    needs: [build, integration, server-versions, coverage, site]
+    if: always()
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        scala: [2.13]
+        java: [temurin@17]
+    runs-on: ${{ matrix.os }}
+    env:
+      RESULTS: ${{ join(needs.*.result, ' ') }}
+    steps:
+      - name: Check that every job succeeded
+        run: for result in $RESULTS; do [ "$result" = success ] || { echo "a job ended with $result"; exit 1; }; done

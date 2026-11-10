@@ -1,13 +1,34 @@
+/*
+ * Copyright (c) 2018-2026 LaserDisc
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 package laserdisc
 package fs2
 package parallel
 package testcases
 
-import cats.effect.kernel.Spawn
-import cats.effect.syntax.spawn._
-import cats.syntax.flatMap._
-import cats.syntax.functor._
-import cats.syntax.parallel._
+import cats.effect.kernel.{Outcome, Spawn}
+import cats.effect.syntax.spawn.*
+import cats.syntax.flatMap.*
+import cats.syntax.functor.*
+import cats.syntax.parallel.*
 import cats.{FlatMap, Parallel}
 import dev.profunktor.redis4cats.RedisCommands
 
@@ -19,7 +40,15 @@ private[fs2] object RedisForCatsTestCases {
 private[fs2] sealed abstract class RedisForCatsTestCases[F[_]: Spawn: Parallel](cl: RedisCommands[F, String, String])
     extends TestCommandsRedisForCats(cl) {
 
-  final def case1 =
+  private final type Out[A] = Outcome[F, Throwable, A]
+
+  final val case1: F[
+    (
+        Out[(Out[Long], Out[Unit], Out[Unit], Out[Unit], Out[List[String]], Out[Unit], Out[Long], Out[List[String]], Out[Unit], Out[Unit], Out[Long], Out[Unit], Out[Unit], Out[List[String]], Out[Unit], Out[Unit], Out[Unit], Out[Long], Out[List[String]], Out[Unit])],
+        Out[(Out[Long], Out[Unit], Out[Unit], Out[Unit], Out[List[String]], Out[Unit], Out[Long], Out[List[String]], Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Long], Out[Unit], Out[List[String]], Out[Unit], Out[Unit], Out[Long], Out[List[String]], Out[Unit])],
+        Out[(Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Unit])]
+    )
+  ] =
     for {
       r1  <- longSend1.start
       r2  <- longSend2.start
@@ -128,7 +157,13 @@ private[fs2] sealed abstract class RedisForCatsTestCases[F[_]: Spawn: Parallel](
       j3 <- jf3.join
     } yield (j1, j2, j3)
 
-  final def case2 =
+  final val case2: F[
+    (
+        Out[(Out[Long], Out[Unit], Out[Unit], Out[Unit], Out[List[String]], Out[Unit], Out[Long], Out[List[String]], Out[Unit], Out[Unit], Out[Long], Out[Unit], Out[Unit], Out[List[String]], Out[Unit], Out[Unit], Out[Unit], Out[Long], Out[List[String]], Out[Unit])],
+        Out[(Out[Long], Out[Unit], Out[Unit], Out[Unit], Out[List[String]], Out[Unit], Out[Long], Out[List[String]], Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Long], Out[Unit], Out[List[String]], Out[Unit], Out[Unit], Out[Long], Out[List[String]], Out[Unit])],
+        Out[(Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Unit])]
+    )
+  ] =
     for {
       r1  <- shortSend1.start
       r2  <- shortSend2.start
@@ -237,7 +272,7 @@ private[fs2] sealed abstract class RedisForCatsTestCases[F[_]: Spawn: Parallel](
       j3 <- jf3.join
     } yield (j1, j2, j3)
 
-  final def case3 =
+  final val case3: F[(Out[List[String]], Out[Unit], Out[Unit], Out[Unit], Out[List[String]], Out[Unit], Out[List[String]], Out[Unit], Out[Unit], Out[Unit])] =
     for {
       r1  <- longChain1.start
       r2  <- longChain2.start
@@ -252,7 +287,7 @@ private[fs2] sealed abstract class RedisForCatsTestCases[F[_]: Spawn: Parallel](
       j   <- (r1.join, r2.join, r3.join, r4.join, r5.join, r6.join, r7.join, r8.join, r9.join, r10.join).parTupled
     } yield j
 
-  final def case4 =
+  final val case4: F[(Out[List[String]], Out[Unit], Out[Unit], Out[Unit], Out[List[String]], Out[Unit], Out[List[String]], Out[Unit], Out[Unit], Out[Unit])] =
     for {
       r1  <- shortChain1.start
       r2  <- shortChain2.start
@@ -267,7 +302,7 @@ private[fs2] sealed abstract class RedisForCatsTestCases[F[_]: Spawn: Parallel](
       j   <- (r1.join, r2.join, r3.join, r4.join, r5.join, r6.join, r7.join, r8.join, r9.join, r10.join).parTupled
     } yield j
 
-  final def case5 =
+  final val case5: F[(Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Unit])] =
     for {
       r1 <- longDoubleChain1.start
       r2 <- longDoubleChain2.start
@@ -277,7 +312,7 @@ private[fs2] sealed abstract class RedisForCatsTestCases[F[_]: Spawn: Parallel](
       j  <- (r1.join, r2.join, r3.join, r4.join, r5.join).parTupled
     } yield j
 
-  final def case6 =
+  final val case6: F[(Out[Unit], Out[Unit], Out[Unit], Out[Unit], Out[Unit])] =
     for {
       r1 <- shortDoubleChain1.start
       r2 <- shortDoubleChain2.start
@@ -290,135 +325,135 @@ private[fs2] sealed abstract class RedisForCatsTestCases[F[_]: Spawn: Parallel](
 
 private[fs2] sealed abstract class TestCommandsRedisForCats[F[_]: FlatMap](cl: RedisCommands[F, String, String]) extends TestValues {
 
-  protected final def longSend1  = cl.rPush("key11", longList1: _*)
-  protected final def longSend2  = cl.set("key12", longString1)
-  protected final def longSend3  = cl.set("key13", "17")
-  protected final def longSend4  = cl.mSet(longMulti1MapStr)
-  protected final def longSend5  = cl.lRange("key11", 0L, 100L)
-  protected final def longSend6  = cl.set("key21", longString2)
-  protected final def longSend7  = cl.rPush("key22", longList2: _*)
-  protected final def longSend8  = cl.lRange("key22", 0L, 100L)
-  protected final def longSend9  = cl.set("key23", "17")
-  protected final def longSend10 = cl.mSet(longMulti2MapStr)
-  protected final def longSend11 = cl.rPush("key31", longList3: _*)
-  protected final def longSend12 = cl.set("key32", longString3)
-  protected final def longSend13 = cl.mSet(longMulti3MapStr)
-  protected final def longSend14 = cl.lRange("key31", 0L, 100L)
-  protected final def longSend15 = cl.set("key33", "17")
-  protected final def longSend16 = cl.set("key41", longString4)
-  protected final def longSend17 = cl.set("key42", "17")
-  protected final def longSend18 = cl.rPush("key43", longList4: _*)
-  protected final def longSend19 = cl.lRange("key43", 0L, 100L)
-  protected final def longSend20 = cl.mSet(longMulti4MapStr)
-  protected final def longSend21 = cl.rPush("key51", longList5: _*)
-  protected final def longSend22 = cl.set("key52", longString5)
-  protected final def longSend23 = cl.set("key53", "17")
-  protected final def longSend24 = cl.mSet(longMulti5MapStr)
-  protected final def longSend25 = cl.lRange("key51", 0L, 100L)
-  protected final def longSend26 = cl.set("key61", longString6)
-  protected final def longSend27 = cl.rPush("key62", longList6: _*)
-  protected final def longSend28 = cl.lRange("key62", 0L, 100L)
-  protected final def longSend29 = cl.set("key63", "17")
-  protected final def longSend30 = cl.mSet(longMulti6MapStr)
-  protected final def longSend31 = cl.set("key71", longString7)
-  protected final def longSend32 = cl.set("key72", "17")
-  protected final def longSend33 = cl.rPush("key73", longList7: _*)
-  protected final def longSend34 = cl.mSet(longMulti7MapStr)
-  protected final def longSend35 = cl.lRange("key73", 0L, 100L)
-  protected final def longSend36 = cl.set("key81", longString8)
-  protected final def longSend37 = cl.set("key82", "17")
-  protected final def longSend38 = cl.rPush("key83", longList8: _*)
-  protected final def longSend39 = cl.lRange("key83", 0L, 100L)
-  protected final def longSend40 = cl.mSet(longMulti8MapStr)
-  protected final def longSend41 = cl.lTrim("key11", 0L, 200L)
-  protected final def longSend42 = cl.lTrim("key22", 0L, 200L)
-  protected final def longSend43 = cl.lTrim("key31", 0L, 200L)
-  protected final def longSend44 = cl.lTrim("key43", 0L, 200L)
-  protected final def longSend45 = cl.lTrim("key51", 0L, 200L)
-  protected final def longSend46 = cl.lTrim("key62", 0L, 200L)
-  protected final def longSend47 = cl.lTrim("key73", 0L, 200L)
-  protected final def longSend48 = cl.lTrim("key83", 0L, 200L)
+  protected final val longSend1: F[Long]          = cl.rPush("key11", longList1*)
+  protected final val longSend2: F[Unit]          = cl.set("key12", longString1)
+  protected final val longSend3: F[Unit]          = cl.set("key13", "17")
+  protected final val longSend4: F[Unit]          = cl.mSet(longMulti1MapStr)
+  protected final val longSend5: F[List[String]]  = cl.lRange("key11", 0L, 100L)
+  protected final val longSend6: F[Unit]          = cl.set("key21", longString2)
+  protected final val longSend7: F[Long]          = cl.rPush("key22", longList2*)
+  protected final val longSend8: F[List[String]]  = cl.lRange("key22", 0L, 100L)
+  protected final val longSend9: F[Unit]          = cl.set("key23", "17")
+  protected final val longSend10: F[Unit]         = cl.mSet(longMulti2MapStr)
+  protected final val longSend11: F[Long]         = cl.rPush("key31", longList3*)
+  protected final val longSend12: F[Unit]         = cl.set("key32", longString3)
+  protected final val longSend13: F[Unit]         = cl.mSet(longMulti3MapStr)
+  protected final val longSend14: F[List[String]] = cl.lRange("key31", 0L, 100L)
+  protected final val longSend15: F[Unit]         = cl.set("key33", "17")
+  protected final val longSend16: F[Unit]         = cl.set("key41", longString4)
+  protected final val longSend17: F[Unit]         = cl.set("key42", "17")
+  protected final val longSend18: F[Long]         = cl.rPush("key43", longList4*)
+  protected final val longSend19: F[List[String]] = cl.lRange("key43", 0L, 100L)
+  protected final val longSend20: F[Unit]         = cl.mSet(longMulti4MapStr)
+  protected final val longSend21: F[Long]         = cl.rPush("key51", longList5*)
+  protected final val longSend22: F[Unit]         = cl.set("key52", longString5)
+  protected final val longSend23: F[Unit]         = cl.set("key53", "17")
+  protected final val longSend24: F[Unit]         = cl.mSet(longMulti5MapStr)
+  protected final val longSend25: F[List[String]] = cl.lRange("key51", 0L, 100L)
+  protected final val longSend26: F[Unit]         = cl.set("key61", longString6)
+  protected final val longSend27: F[Long]         = cl.rPush("key62", longList6*)
+  protected final val longSend28: F[List[String]] = cl.lRange("key62", 0L, 100L)
+  protected final val longSend29: F[Unit]         = cl.set("key63", "17")
+  protected final val longSend30: F[Unit]         = cl.mSet(longMulti6MapStr)
+  protected final val longSend31: F[Unit]         = cl.set("key71", longString7)
+  protected final val longSend32: F[Unit]         = cl.set("key72", "17")
+  protected final val longSend33: F[Long]         = cl.rPush("key73", longList7*)
+  protected final val longSend34: F[Unit]         = cl.mSet(longMulti7MapStr)
+  protected final val longSend35: F[List[String]] = cl.lRange("key73", 0L, 100L)
+  protected final val longSend36: F[Unit]         = cl.set("key81", longString8)
+  protected final val longSend37: F[Unit]         = cl.set("key82", "17")
+  protected final val longSend38: F[Long]         = cl.rPush("key83", longList8*)
+  protected final val longSend39: F[List[String]] = cl.lRange("key83", 0L, 100L)
+  protected final val longSend40: F[Unit]         = cl.mSet(longMulti8MapStr)
+  protected final val longSend41: F[Unit]         = cl.lTrim("key11", 0L, 200L)
+  protected final val longSend42: F[Unit]         = cl.lTrim("key22", 0L, 200L)
+  protected final val longSend43: F[Unit]         = cl.lTrim("key31", 0L, 200L)
+  protected final val longSend44: F[Unit]         = cl.lTrim("key43", 0L, 200L)
+  protected final val longSend45: F[Unit]         = cl.lTrim("key51", 0L, 200L)
+  protected final val longSend46: F[Unit]         = cl.lTrim("key62", 0L, 200L)
+  protected final val longSend47: F[Unit]         = cl.lTrim("key73", 0L, 200L)
+  protected final val longSend48: F[Unit]         = cl.lTrim("key83", 0L, 200L)
 
-  protected final def shortSend1  = cl.rPush("key11", shortList1: _*)
-  protected final def shortSend2  = cl.set("key12", shortString1)
-  protected final def shortSend3  = cl.set("key13", "17")
-  protected final def shortSend4  = cl.mSet(shortMulti1MapStr)
-  protected final def shortSend5  = cl.lRange("key11", 0L, 4L)
-  protected final def shortSend6  = cl.set("key21", shortString2)
-  protected final def shortSend7  = cl.rPush("key22", shortList2: _*)
-  protected final def shortSend8  = cl.lRange("key22", 0L, 4L)
-  protected final def shortSend9  = cl.set("key23", "17")
-  protected final def shortSend10 = cl.mSet(shortMulti2MapStr)
-  protected final def shortSend11 = cl.rPush("key31", shortList3: _*)
-  protected final def shortSend12 = cl.set("key32", shortString3)
-  protected final def shortSend13 = cl.mSet(shortMulti3MapStr)
-  protected final def shortSend14 = cl.lRange("key31", 0L, 4L)
-  protected final def shortSend15 = cl.set("key33", "17")
-  protected final def shortSend16 = cl.set("key41", shortString4)
-  protected final def shortSend17 = cl.set("key42", "17")
-  protected final def shortSend18 = cl.rPush("key43", shortList4: _*)
-  protected final def shortSend19 = cl.lRange("key43", 0L, 4L)
-  protected final def shortSend20 = cl.mSet(shortMulti4MapStr)
-  protected final def shortSend21 = cl.rPush("key51", shortList5: _*)
-  protected final def shortSend22 = cl.set("key52", shortString5)
-  protected final def shortSend23 = cl.set("key53", "17")
-  protected final def shortSend24 = cl.mSet(shortMulti5MapStr)
-  protected final def shortSend25 = cl.lRange("key51", 0L, 4L)
-  protected final def shortSend26 = cl.set("key61", shortString6)
-  protected final def shortSend27 = cl.rPush("key62", shortList6: _*)
-  protected final def shortSend28 = cl.lRange("key62", 0L, 4L)
-  protected final def shortSend29 = cl.set("key63", "17")
-  protected final def shortSend30 = cl.mSet(shortMulti6MapStr)
-  protected final def shortSend31 = cl.set("key71", shortString7)
-  protected final def shortSend32 = cl.set("key72", "17")
-  protected final def shortSend33 = cl.rPush("key73", shortList7: _*)
-  protected final def shortSend34 = cl.mSet(shortMulti7MapStr)
-  protected final def shortSend35 = cl.lRange("key73", 0L, 4L)
-  protected final def shortSend36 = cl.set("key81", shortString8)
-  protected final def shortSend37 = cl.set("key82", "17")
-  protected final def shortSend38 = cl.rPush("key83", shortList8: _*)
-  protected final def shortSend39 = cl.lRange("key83", 0L, 4L)
-  protected final def shortSend40 = cl.mSet(shortMulti8MapStr)
-  protected final def shortSend41 = cl.lTrim("key11", 0L, 5L)
-  protected final def shortSend42 = cl.lTrim("key22", 0L, 5L)
-  protected final def shortSend43 = cl.lTrim("key31", 0L, 5L)
-  protected final def shortSend44 = cl.lTrim("key43", 0L, 5L)
-  protected final def shortSend45 = cl.lTrim("key51", 0L, 5L)
-  protected final def shortSend46 = cl.lTrim("key62", 0L, 5L)
-  protected final def shortSend47 = cl.lTrim("key73", 0L, 5L)
-  protected final def shortSend48 = cl.lTrim("key83", 0L, 5L)
+  protected final val shortSend1: F[Long]          = cl.rPush("key11", shortList1*)
+  protected final val shortSend2: F[Unit]          = cl.set("key12", shortString1)
+  protected final val shortSend3: F[Unit]          = cl.set("key13", "17")
+  protected final val shortSend4: F[Unit]          = cl.mSet(shortMulti1MapStr)
+  protected final val shortSend5: F[List[String]]  = cl.lRange("key11", 0L, 4L)
+  protected final val shortSend6: F[Unit]          = cl.set("key21", shortString2)
+  protected final val shortSend7: F[Long]          = cl.rPush("key22", shortList2*)
+  protected final val shortSend8: F[List[String]]  = cl.lRange("key22", 0L, 4L)
+  protected final val shortSend9: F[Unit]          = cl.set("key23", "17")
+  protected final val shortSend10: F[Unit]         = cl.mSet(shortMulti2MapStr)
+  protected final val shortSend11: F[Long]         = cl.rPush("key31", shortList3*)
+  protected final val shortSend12: F[Unit]         = cl.set("key32", shortString3)
+  protected final val shortSend13: F[Unit]         = cl.mSet(shortMulti3MapStr)
+  protected final val shortSend14: F[List[String]] = cl.lRange("key31", 0L, 4L)
+  protected final val shortSend15: F[Unit]         = cl.set("key33", "17")
+  protected final val shortSend16: F[Unit]         = cl.set("key41", shortString4)
+  protected final val shortSend17: F[Unit]         = cl.set("key42", "17")
+  protected final val shortSend18: F[Long]         = cl.rPush("key43", shortList4*)
+  protected final val shortSend19: F[List[String]] = cl.lRange("key43", 0L, 4L)
+  protected final val shortSend20: F[Unit]         = cl.mSet(shortMulti4MapStr)
+  protected final val shortSend21: F[Long]         = cl.rPush("key51", shortList5*)
+  protected final val shortSend22: F[Unit]         = cl.set("key52", shortString5)
+  protected final val shortSend23: F[Unit]         = cl.set("key53", "17")
+  protected final val shortSend24: F[Unit]         = cl.mSet(shortMulti5MapStr)
+  protected final val shortSend25: F[List[String]] = cl.lRange("key51", 0L, 4L)
+  protected final val shortSend26: F[Unit]         = cl.set("key61", shortString6)
+  protected final val shortSend27: F[Long]         = cl.rPush("key62", shortList6*)
+  protected final val shortSend28: F[List[String]] = cl.lRange("key62", 0L, 4L)
+  protected final val shortSend29: F[Unit]         = cl.set("key63", "17")
+  protected final val shortSend30: F[Unit]         = cl.mSet(shortMulti6MapStr)
+  protected final val shortSend31: F[Unit]         = cl.set("key71", shortString7)
+  protected final val shortSend32: F[Unit]         = cl.set("key72", "17")
+  protected final val shortSend33: F[Long]         = cl.rPush("key73", shortList7*)
+  protected final val shortSend34: F[Unit]         = cl.mSet(shortMulti7MapStr)
+  protected final val shortSend35: F[List[String]] = cl.lRange("key73", 0L, 4L)
+  protected final val shortSend36: F[Unit]         = cl.set("key81", shortString8)
+  protected final val shortSend37: F[Unit]         = cl.set("key82", "17")
+  protected final val shortSend38: F[Long]         = cl.rPush("key83", shortList8*)
+  protected final val shortSend39: F[List[String]] = cl.lRange("key83", 0L, 4L)
+  protected final val shortSend40: F[Unit]         = cl.mSet(shortMulti8MapStr)
+  protected final val shortSend41: F[Unit]         = cl.lTrim("key11", 0L, 5L)
+  protected final val shortSend42: F[Unit]         = cl.lTrim("key22", 0L, 5L)
+  protected final val shortSend43: F[Unit]         = cl.lTrim("key31", 0L, 5L)
+  protected final val shortSend44: F[Unit]         = cl.lTrim("key43", 0L, 5L)
+  protected final val shortSend45: F[Unit]         = cl.lTrim("key51", 0L, 5L)
+  protected final val shortSend46: F[Unit]         = cl.lTrim("key62", 0L, 5L)
+  protected final val shortSend47: F[Unit]         = cl.lTrim("key73", 0L, 5L)
+  protected final val shortSend48: F[Unit]         = cl.lTrim("key83", 0L, 5L)
 
-  protected final def longChain1  = longSend1 >> longSend2 >> longSend3 >> longSend4 >> longSend5
-  protected final def longChain2  = longSend6 >> longSend7 >> longSend8 >> longSend9 >> longSend10
-  protected final def longChain3  = longSend11 >> longSend12 >> longSend13 >> longSend14 >> longSend15
-  protected final def longChain4  = longSend16 >> longSend17 >> longSend18 >> longSend19 >> longSend20
-  protected final def longChain5  = longSend21 >> longSend22 >> longSend23 >> longSend24 >> longSend25
-  protected final def longChain6  = longSend26 >> longSend27 >> longSend28 >> longSend29 >> longSend30
-  protected final def longChain7  = longSend31 >> longSend32 >> longSend33 >> longSend34 >> longSend25
-  protected final def longChain8  = longSend36 >> longSend37 >> longSend38 >> longSend39 >> longSend40
-  protected final def longChain9  = longSend40 >> longSend41 >> longSend42 >> longSend43 >> longSend44
-  protected final def longChain10 = longSend45 >> longSend46 >> longSend47 >> longSend48
+  protected final val longChain1: F[List[String]] = longSend1 >> longSend2 >> longSend3 >> longSend4 >> longSend5
+  protected final val longChain2: F[Unit]         = longSend6 >> longSend7 >> longSend8 >> longSend9 >> longSend10
+  protected final val longChain3: F[Unit]         = longSend11 >> longSend12 >> longSend13 >> longSend14 >> longSend15
+  protected final val longChain4: F[Unit]         = longSend16 >> longSend17 >> longSend18 >> longSend19 >> longSend20
+  protected final val longChain5: F[List[String]] = longSend21 >> longSend22 >> longSend23 >> longSend24 >> longSend25
+  protected final val longChain6: F[Unit]         = longSend26 >> longSend27 >> longSend28 >> longSend29 >> longSend30
+  protected final val longChain7: F[List[String]] = longSend31 >> longSend32 >> longSend33 >> longSend34 >> longSend25
+  protected final val longChain8: F[Unit]         = longSend36 >> longSend37 >> longSend38 >> longSend39 >> longSend40
+  protected final val longChain9: F[Unit]         = longSend40 >> longSend41 >> longSend42 >> longSend43 >> longSend44
+  protected final val longChain10: F[Unit]        = longSend45 >> longSend46 >> longSend47 >> longSend48
 
-  protected final def shortChain1  = shortSend1 >> shortSend2 >> shortSend3 >> shortSend4 >> shortSend5
-  protected final def shortChain2  = shortSend6 >> shortSend7 >> shortSend8 >> shortSend9 >> shortSend10
-  protected final def shortChain3  = shortSend11 >> shortSend12 >> shortSend13 >> shortSend14 >> shortSend15
-  protected final def shortChain4  = shortSend16 >> shortSend17 >> shortSend18 >> shortSend19 >> shortSend20
-  protected final def shortChain5  = shortSend21 >> shortSend22 >> shortSend23 >> shortSend24 >> shortSend25
-  protected final def shortChain6  = shortSend26 >> shortSend27 >> shortSend28 >> shortSend29 >> shortSend30
-  protected final def shortChain7  = shortSend31 >> shortSend32 >> shortSend33 >> shortSend34 >> shortSend25
-  protected final def shortChain8  = shortSend36 >> shortSend37 >> shortSend38 >> shortSend39 >> shortSend40
-  protected final def shortChain9  = shortSend40 >> shortSend41 >> shortSend42 >> shortSend43 >> shortSend44
-  protected final def shortChain10 = shortSend45 >> shortSend46 >> shortSend47 >> shortSend48
+  protected final val shortChain1: F[List[String]] = shortSend1 >> shortSend2 >> shortSend3 >> shortSend4 >> shortSend5
+  protected final val shortChain2: F[Unit]         = shortSend6 >> shortSend7 >> shortSend8 >> shortSend9 >> shortSend10
+  protected final val shortChain3: F[Unit]         = shortSend11 >> shortSend12 >> shortSend13 >> shortSend14 >> shortSend15
+  protected final val shortChain4: F[Unit]         = shortSend16 >> shortSend17 >> shortSend18 >> shortSend19 >> shortSend20
+  protected final val shortChain5: F[List[String]] = shortSend21 >> shortSend22 >> shortSend23 >> shortSend24 >> shortSend25
+  protected final val shortChain6: F[Unit]         = shortSend26 >> shortSend27 >> shortSend28 >> shortSend29 >> shortSend30
+  protected final val shortChain7: F[List[String]] = shortSend31 >> shortSend32 >> shortSend33 >> shortSend34 >> shortSend25
+  protected final val shortChain8: F[Unit]         = shortSend36 >> shortSend37 >> shortSend38 >> shortSend39 >> shortSend40
+  protected final val shortChain9: F[Unit]         = shortSend40 >> shortSend41 >> shortSend42 >> shortSend43 >> shortSend44
+  protected final val shortChain10: F[Unit]        = shortSend45 >> shortSend46 >> shortSend47 >> shortSend48
 
-  protected final def longDoubleChain1 = longChain1 >> longChain2
-  protected final def longDoubleChain2 = longChain3 >> longChain4
-  protected final def longDoubleChain3 = longChain5 >> longChain6
-  protected final def longDoubleChain4 = longChain7 >> longChain8
-  protected final def longDoubleChain5 = longChain9 >> longChain10
+  protected final val longDoubleChain1: F[Unit] = longChain1 >> longChain2
+  protected final val longDoubleChain2: F[Unit] = longChain3 >> longChain4
+  protected final val longDoubleChain3: F[Unit] = longChain5 >> longChain6
+  protected final val longDoubleChain4: F[Unit] = longChain7 >> longChain8
+  protected final val longDoubleChain5: F[Unit] = longChain9 >> longChain10
 
-  protected final def shortDoubleChain1 = shortChain1 >> shortChain2
-  protected final def shortDoubleChain2 = shortChain3 >> shortChain4
-  protected final def shortDoubleChain3 = shortChain5 >> shortChain6
-  protected final def shortDoubleChain4 = shortChain7 >> shortChain8
-  protected final def shortDoubleChain5 = shortChain9 >> shortChain10
+  protected final val shortDoubleChain1: F[Unit] = shortChain1 >> shortChain2
+  protected final val shortDoubleChain2: F[Unit] = shortChain3 >> shortChain4
+  protected final val shortDoubleChain3: F[Unit] = shortChain5 >> shortChain6
+  protected final val shortDoubleChain4: F[Unit] = shortChain7 >> shortChain8
+  protected final val shortDoubleChain5: F[Unit] = shortChain9 >> shortChain10
 }

@@ -1,11 +1,32 @@
+/*
+ * Copyright (c) 2018-2026 LaserDisc
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 package laserdisc
 package fs2
 package parallel
 package testcases
 
-import scredis.Redis
+import scredis.*
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 private[fs2] object TestCasesScredis {
   final def apply(cl: Redis)(implicit ec: ExecutionContext): TestCasesScredis =
@@ -14,7 +35,7 @@ private[fs2] object TestCasesScredis {
 
 private[fs2] sealed abstract class TestCasesScredis(cl: Redis)(implicit ec: ExecutionContext) extends ScredisCommands(cl) {
 
-  final def case1 =
+  final def case1: Future[((Long, Boolean, Boolean, Unit, List[String], Boolean, Long, List[String], Boolean, Unit, Long, Boolean, Unit, List[String], Boolean, Boolean, Boolean, Long, List[String], Unit), (Long, Boolean, Boolean, Unit, List[String], Boolean, Long, List[String], Boolean, Unit, Boolean, Boolean, Long, Unit, List[String], Boolean, Boolean, Long, List[String], Unit), (Unit, Unit, Unit, Unit, Unit, Unit, Unit, Unit))] =
     for {
       r1  <- longSend1
       r2  <- longSend2
@@ -70,7 +91,7 @@ private[fs2] sealed abstract class TestCasesScredis(cl: Redis)(implicit ec: Exec
       (r41, r42, r43, r44, r45, r46, r47, r48)
     )
 
-  final def case2 =
+  final def case2: Future[((Long, Boolean, Boolean, Unit, List[String], Boolean, Long, List[String], Boolean, Unit, Long, Boolean, Unit, List[String], Boolean, Boolean, Boolean, Long, List[String], Unit), (Long, Boolean, Boolean, Unit, List[String], Boolean, Long, List[String], Boolean, Unit, Boolean, Boolean, Long, Unit, List[String], Boolean, Boolean, Long, List[String], Unit), (Unit, Unit, Unit, Unit, Unit, Unit, Unit, Unit))] =
     for {
       r1  <- shortSend1
       r2  <- shortSend2
@@ -126,7 +147,7 @@ private[fs2] sealed abstract class TestCasesScredis(cl: Redis)(implicit ec: Exec
       (r41, r42, r43, r44, r45, r46, r47, r48)
     )
 
-  final def case3 =
+  final def case3: Future[(List[String], Unit, Boolean, Unit, List[String], Unit, List[String], Unit, Unit, Unit)] =
     for {
       r1  <- longChain1
       r2  <- longChain2
@@ -140,7 +161,7 @@ private[fs2] sealed abstract class TestCasesScredis(cl: Redis)(implicit ec: Exec
       r10 <- longChain10
     } yield (r1, r2, r3, r4, r5, r6, r7, r8, r9, r10)
 
-  final def case4 =
+  final def case4: Future[(List[String], Unit, Boolean, Unit, List[String], Unit, List[String], Unit, Unit, Unit)] =
     for {
       r1  <- shortChain1
       r2  <- shortChain2
@@ -154,7 +175,7 @@ private[fs2] sealed abstract class TestCasesScredis(cl: Redis)(implicit ec: Exec
       r10 <- shortChain10
     } yield (r1, r2, r3, r4, r5, r6, r7, r8, r9, r10)
 
-  final def case5 =
+  final def case5: Future[(Unit, Unit, Unit, Unit, Unit)] =
     for {
       r1 <- longDoubleChain1
       r2 <- longDoubleChain2
@@ -163,7 +184,7 @@ private[fs2] sealed abstract class TestCasesScredis(cl: Redis)(implicit ec: Exec
       r5 <- longDoubleChain5
     } yield (r1, r2, r3, r4, r5)
 
-  final def case6 =
+  final def case6: Future[(Unit, Unit, Unit, Unit, Unit)] =
     for {
       r1 <- shortDoubleChain1
       r2 <- shortDoubleChain2
@@ -175,154 +196,155 @@ private[fs2] sealed abstract class TestCasesScredis(cl: Redis)(implicit ec: Exec
 
 private[fs2] sealed abstract class ScredisCommands(cl: Redis)(implicit ec: ExecutionContext) extends TestValues {
 
-  protected final def longSend1  = cl.rPush("key11", longList1: _*)
-  protected final def longSend2  = cl.set("key12", longString1)
-  protected final def longSend3  = cl.set("key13", 17)
-  protected final def longSend4  = cl.mSet(longMulti1Map)
-  protected final def longSend5  = cl.lRange("key11", 0L, 100L)
-  protected final def longSend6  = cl.set("key21", longString2)
-  protected final def longSend7  = cl.rPush("key22", longList2: _*)
-  protected final def longSend8  = cl.lRange("key22", 0L, 100L)
-  protected final def longSend9  = cl.set("key23", 17)
-  protected final def longSend10 = cl.mSet(longMulti2Map)
-  protected final def longSend11 = cl.rPush("key31", longList3: _*)
-  protected final def longSend12 = cl.set("key32", longString3)
-  protected final def longSend13 = cl.mSet(longMulti3Map)
-  protected final def longSend14 = cl.lRange("key31", 0L, 100L)
-  protected final def longSend15 = cl.set("key33", 17)
-  protected final def longSend16 = cl.set("key41", longString4)
-  protected final def longSend17 = cl.set("key42", 17)
-  protected final def longSend18 = cl.rPush("key43", longList4: _*)
-  protected final def longSend19 = cl.lRange("key43", 0L, 100L)
-  protected final def longSend20 = cl.mSet(longMulti4Map)
-  protected final def longSend21 = cl.rPush("key51", longList5: _*)
-  protected final def longSend22 = cl.set("key52", longString5)
-  protected final def longSend23 = cl.set("key53", 17)
-  protected final def longSend24 = cl.mSet(longMulti5Map)
-  protected final def longSend25 = cl.lRange("key51", 0L, 100L)
-  protected final def longSend26 = cl.set("key61", longString6)
-  protected final def longSend27 = cl.rPush("key62", longList6: _*)
-  protected final def longSend28 = cl.lRange("key62", 0L, 100L)
-  protected final def longSend29 = cl.set("key63", 17)
-  protected final def longSend30 = cl.mSet(longMulti6Map)
-  protected final def longSend31 = cl.set("key71", longString7)
-  protected final def longSend32 = cl.set("key72", 17)
-  protected final def longSend33 = cl.rPush("key73", longList7: _*)
-  protected final def longSend34 = cl.mSet(longMulti7Map)
-  protected final def longSend35 = cl.lRange("key73", 0L, 100L)
-  protected final def longSend36 = cl.set("key81", longString8)
-  protected final def longSend37 = cl.set("key82", 17)
-  protected final def longSend38 = cl.rPush("key83", longList8: _*)
-  protected final def longSend39 = cl.lRange("key83", 0L, 100L)
-  protected final def longSend40 = cl.mSet(longMulti8Map)
-  protected final def longSend41 = cl.lTrim("key11", 0L, 200L)
-  protected final def longSend42 = cl.lTrim("key22", 0L, 200L)
-  protected final def longSend43 = cl.lTrim("key31", 0L, 200L)
-  protected final def longSend44 = cl.lTrim("key43", 0L, 200L)
-  protected final def longSend45 = cl.lTrim("key51", 0L, 200L)
-  protected final def longSend46 = cl.lTrim("key62", 0L, 200L)
-  protected final def longSend47 = cl.lTrim("key73", 0L, 200L)
-  protected final def longSend48 = cl.lTrim("key83", 0L, 200L)
+  protected final def longSend1: Future[Long]          = cl.rPush("key11", longList1*)
+  protected final def longSend2: Future[Boolean]       = cl.set("key12", longString1)
+  protected final def longSend3: Future[Boolean]       = cl.set("key13", 17)
+  protected final def longSend4: Future[Unit]          = cl.mSet(longMulti1Map)
+  protected final def longSend5: Future[List[String]]  = cl.lRange("key11", 0L, 100L)
+  protected final def longSend6: Future[Boolean]       = cl.set("key21", longString2)
+  protected final def longSend7: Future[Long]          = cl.rPush("key22", longList2*)
+  protected final def longSend8: Future[List[String]]  = cl.lRange("key22", 0L, 100L)
+  protected final def longSend9: Future[Boolean]       = cl.set("key23", 17)
+  protected final def longSend10: Future[Unit]         = cl.mSet(longMulti2Map)
+  protected final def longSend11: Future[Long]         = cl.rPush("key31", longList3*)
+  protected final def longSend12: Future[Boolean]      = cl.set("key32", longString3)
+  protected final def longSend13: Future[Unit]         = cl.mSet(longMulti3Map)
+  protected final def longSend14: Future[List[String]] = cl.lRange("key31", 0L, 100L)
+  protected final def longSend15: Future[Boolean]      = cl.set("key33", 17)
+  protected final def longSend16: Future[Boolean]      = cl.set("key41", longString4)
+  protected final def longSend17: Future[Boolean]      = cl.set("key42", 17)
+  protected final def longSend18: Future[Long]         = cl.rPush("key43", longList4*)
+  protected final def longSend19: Future[List[String]] = cl.lRange("key43", 0L, 100L)
+  protected final def longSend20: Future[Unit]         = cl.mSet(longMulti4Map)
+  protected final def longSend21: Future[Long]         = cl.rPush("key51", longList5*)
+  protected final def longSend22: Future[Boolean]      = cl.set("key52", longString5)
+  protected final def longSend23: Future[Boolean]      = cl.set("key53", 17)
+  protected final def longSend24: Future[Unit]         = cl.mSet(longMulti5Map)
+  protected final def longSend25: Future[List[String]] = cl.lRange("key51", 0L, 100L)
+  protected final def longSend26: Future[Boolean]      = cl.set("key61", longString6)
+  protected final def longSend27: Future[Long]         = cl.rPush("key62", longList6*)
+  protected final def longSend28: Future[List[String]] = cl.lRange("key62", 0L, 100L)
+  protected final def longSend29: Future[Boolean]      = cl.set("key63", 17)
+  protected final def longSend30: Future[Unit]         = cl.mSet(longMulti6Map)
+  protected final def longSend31: Future[Boolean]      = cl.set("key71", longString7)
+  protected final def longSend32: Future[Boolean]      = cl.set("key72", 17)
+  protected final def longSend33: Future[Long]         = cl.rPush("key73", longList7*)
+  protected final def longSend34: Future[Unit]         = cl.mSet(longMulti7Map)
+  protected final def longSend35: Future[List[String]] = cl.lRange("key73", 0L, 100L)
+  protected final def longSend36: Future[Boolean]      = cl.set("key81", longString8)
+  protected final def longSend37: Future[Boolean]      = cl.set("key82", 17)
+  protected final def longSend38: Future[Long]         = cl.rPush("key83", longList8*)
+  protected final def longSend39: Future[List[String]] = cl.lRange("key83", 0L, 100L)
+  protected final def longSend40: Future[Unit]         = cl.mSet(longMulti8Map)
+  protected final def longSend41: Future[Unit]         = cl.lTrim("key11", 0L, 200L)
+  protected final def longSend42: Future[Unit]         = cl.lTrim("key22", 0L, 200L)
+  protected final def longSend43: Future[Unit]         = cl.lTrim("key31", 0L, 200L)
+  protected final def longSend44: Future[Unit]         = cl.lTrim("key43", 0L, 200L)
+  protected final def longSend45: Future[Unit]         = cl.lTrim("key51", 0L, 200L)
+  protected final def longSend46: Future[Unit]         = cl.lTrim("key62", 0L, 200L)
+  protected final def longSend47: Future[Unit]         = cl.lTrim("key73", 0L, 200L)
+  protected final def longSend48: Future[Unit]         = cl.lTrim("key83", 0L, 200L)
 
-  protected final def shortSend1  = cl.rPush("key11", shortList1: _*)
-  protected final def shortSend2  = cl.set("key12", shortString1)
-  protected final def shortSend3  = cl.set("key13", 17)
-  protected final def shortSend4  = cl.mSet(shortMulti1Map)
-  protected final def shortSend5  = cl.lRange("key11", 0L, 4L)
-  protected final def shortSend6  = cl.set("key21", shortString2)
-  protected final def shortSend7  = cl.rPush("key22", shortList2: _*)
-  protected final def shortSend8  = cl.lRange("key22", 0L, 4L)
-  protected final def shortSend9  = cl.set("key23", 17)
-  protected final def shortSend10 = cl.mSet(shortMulti2Map)
-  protected final def shortSend11 = cl.rPush("key31", shortList3: _*)
-  protected final def shortSend12 = cl.set("key32", shortString3)
-  protected final def shortSend13 = cl.mSet(shortMulti3Map)
-  protected final def shortSend14 = cl.lRange("key31", 0L, 4L)
-  protected final def shortSend15 = cl.set("key33", 17)
-  protected final def shortSend16 = cl.set("key41", shortString4)
-  protected final def shortSend17 = cl.set("key42", 17)
-  protected final def shortSend18 = cl.rPush("key43", shortList4: _*)
-  protected final def shortSend19 = cl.lRange("key43", 0L, 4L)
-  protected final def shortSend20 = cl.mSet(shortMulti4Map)
-  protected final def shortSend21 = cl.rPush("key51", shortList5: _*)
-  protected final def shortSend22 = cl.set("key52", shortString5)
-  protected final def shortSend23 = cl.set("key53", 17)
-  protected final def shortSend24 = cl.mSet(shortMulti5Map)
-  protected final def shortSend25 = cl.lRange("key51", 0L, 4L)
-  protected final def shortSend26 = cl.set("key61", shortString6)
-  protected final def shortSend27 = cl.rPush("key62", shortList6: _*)
-  protected final def shortSend28 = cl.lRange("key62", 0L, 4L)
-  protected final def shortSend29 = cl.set("key63", 17)
-  protected final def shortSend30 = cl.mSet(shortMulti6Map)
-  protected final def shortSend31 = cl.set("key71", shortString7)
-  protected final def shortSend32 = cl.set("key72", 17)
-  protected final def shortSend33 = cl.rPush("key73", shortList7: _*)
-  protected final def shortSend34 = cl.mSet(shortMulti7Map)
-  protected final def shortSend35 = cl.lRange("key73", 0L, 4L)
-  protected final def shortSend36 = cl.set("key81", shortString8)
-  protected final def shortSend37 = cl.set("key82", 17)
-  protected final def shortSend38 = cl.rPush("key83", shortList8: _*)
-  protected final def shortSend39 = cl.lRange("key83", 0L, 4L)
-  protected final def shortSend40 = cl.mSet(shortMulti8Map)
-  protected final def shortSend41 = cl.lTrim("key11", 0L, 5L)
-  protected final def shortSend42 = cl.lTrim("key22", 0L, 5L)
-  protected final def shortSend43 = cl.lTrim("key31", 0L, 5L)
-  protected final def shortSend44 = cl.lTrim("key43", 0L, 5L)
-  protected final def shortSend45 = cl.lTrim("key51", 0L, 5L)
-  protected final def shortSend46 = cl.lTrim("key62", 0L, 5L)
-  protected final def shortSend47 = cl.lTrim("key73", 0L, 5L)
-  protected final def shortSend48 = cl.lTrim("key83", 0L, 5L)
+  protected final def shortSend1: Future[Long]          = cl.rPush("key11", shortList1*)
+  protected final def shortSend2: Future[Boolean]       = cl.set("key12", shortString1)
+  protected final def shortSend3: Future[Boolean]       = cl.set("key13", 17)
+  protected final def shortSend4: Future[Unit]          = cl.mSet(shortMulti1Map)
+  protected final def shortSend5: Future[List[String]]  = cl.lRange("key11", 0L, 4L)
+  protected final def shortSend6: Future[Boolean]       = cl.set("key21", shortString2)
+  protected final def shortSend7: Future[Long]          = cl.rPush("key22", shortList2*)
+  protected final def shortSend8: Future[List[String]]  = cl.lRange("key22", 0L, 4L)
+  protected final def shortSend9: Future[Boolean]       = cl.set("key23", 17)
+  protected final def shortSend10: Future[Unit]         = cl.mSet(shortMulti2Map)
+  protected final def shortSend11: Future[Long]         = cl.rPush("key31", shortList3*)
+  protected final def shortSend12: Future[Boolean]      = cl.set("key32", shortString3)
+  protected final def shortSend13: Future[Unit]         = cl.mSet(shortMulti3Map)
+  protected final def shortSend14: Future[List[String]] = cl.lRange("key31", 0L, 4L)
+  protected final def shortSend15: Future[Boolean]      = cl.set("key33", 17)
+  protected final def shortSend16: Future[Boolean]      = cl.set("key41", shortString4)
+  protected final def shortSend17: Future[Boolean]      = cl.set("key42", 17)
+  protected final def shortSend18: Future[Long]         = cl.rPush("key43", shortList4*)
+  protected final def shortSend19: Future[List[String]] = cl.lRange("key43", 0L, 4L)
+  protected final def shortSend20: Future[Unit]         = cl.mSet(shortMulti4Map)
+  protected final def shortSend21: Future[Long]         = cl.rPush("key51", shortList5*)
+  protected final def shortSend22: Future[Boolean]      = cl.set("key52", shortString5)
+  protected final def shortSend23: Future[Boolean]      = cl.set("key53", 17)
+  protected final def shortSend24: Future[Unit]         = cl.mSet(shortMulti5Map)
+  protected final def shortSend25: Future[List[String]] = cl.lRange("key51", 0L, 4L)
+  protected final def shortSend26: Future[Boolean]      = cl.set("key61", shortString6)
+  protected final def shortSend27: Future[Long]         = cl.rPush("key62", shortList6*)
+  protected final def shortSend28: Future[List[String]] = cl.lRange("key62", 0L, 4L)
+  protected final def shortSend29: Future[Boolean]      = cl.set("key63", 17)
+  protected final def shortSend30: Future[Unit]         = cl.mSet(shortMulti6Map)
+  protected final def shortSend31: Future[Boolean]      = cl.set("key71", shortString7)
+  protected final def shortSend32: Future[Boolean]      = cl.set("key72", 17)
+  protected final def shortSend33: Future[Long]         = cl.rPush("key73", shortList7*)
+  protected final def shortSend34: Future[Unit]         = cl.mSet(shortMulti7Map)
+  protected final def shortSend35: Future[List[String]] = cl.lRange("key73", 0L, 4L)
+  protected final def shortSend36: Future[Boolean]      = cl.set("key81", shortString8)
+  protected final def shortSend37: Future[Boolean]      = cl.set("key82", 17)
+  protected final def shortSend38: Future[Long]         = cl.rPush("key83", shortList8*)
+  protected final def shortSend39: Future[List[String]] = cl.lRange("key83", 0L, 4L)
+  protected final def shortSend40: Future[Unit]         = cl.mSet(shortMulti8Map)
+  protected final def shortSend41: Future[Unit]         = cl.lTrim("key11", 0L, 5L)
+  protected final def shortSend42: Future[Unit]         = cl.lTrim("key22", 0L, 5L)
+  protected final def shortSend43: Future[Unit]         = cl.lTrim("key31", 0L, 5L)
+  protected final def shortSend44: Future[Unit]         = cl.lTrim("key43", 0L, 5L)
+  protected final def shortSend45: Future[Unit]         = cl.lTrim("key51", 0L, 5L)
+  protected final def shortSend46: Future[Unit]         = cl.lTrim("key62", 0L, 5L)
+  protected final def shortSend47: Future[Unit]         = cl.lTrim("key73", 0L, 5L)
+  protected final def shortSend48: Future[Unit]         = cl.lTrim("key83", 0L, 5L)
 
-  protected final def longChain1 = longSend1.flatMap(_ => longSend2).flatMap(_ => longSend3).flatMap(_ => longSend4).flatMap(_ => longSend5)
-  protected final def longChain2 =
+  protected final def longChain1: Future[List[String]] =
+    longSend1.flatMap(_ => longSend2).flatMap(_ => longSend3).flatMap(_ => longSend4).flatMap(_ => longSend5)
+  protected final def longChain2: Future[Unit] =
     longSend6.flatMap(_ => longSend7).flatMap(_ => longSend8).flatMap(_ => longSend9).flatMap(_ => longSend10)
-  protected final def longChain3 =
+  protected final def longChain3: Future[Boolean] =
     longSend11.flatMap(_ => longSend12).flatMap(_ => longSend13).flatMap(_ => longSend14).flatMap(_ => longSend15)
-  protected final def longChain4 =
+  protected final def longChain4: Future[Unit] =
     longSend16.flatMap(_ => longSend17).flatMap(_ => longSend18).flatMap(_ => longSend19).flatMap(_ => longSend20)
-  protected final def longChain5 =
+  protected final def longChain5: Future[List[String]] =
     longSend21.flatMap(_ => longSend22).flatMap(_ => longSend23).flatMap(_ => longSend24).flatMap(_ => longSend25)
-  protected final def longChain6 =
+  protected final def longChain6: Future[Unit] =
     longSend26.flatMap(_ => longSend27).flatMap(_ => longSend28).flatMap(_ => longSend29).flatMap(_ => longSend30)
-  protected final def longChain7 =
+  protected final def longChain7: Future[List[String]] =
     longSend31.flatMap(_ => longSend32).flatMap(_ => longSend33).flatMap(_ => longSend34).flatMap(_ => longSend35)
-  protected final def longChain8 =
+  protected final def longChain8: Future[Unit] =
     longSend36.flatMap(_ => longSend37).flatMap(_ => longSend38).flatMap(_ => longSend39).flatMap(_ => longSend40)
-  protected final def longChain9 =
+  protected final def longChain9: Future[Unit] =
     longSend41.flatMap(_ => longSend42).flatMap(_ => longSend43).flatMap(_ => longSend44).flatMap(_ => longSend45)
-  protected final def longChain10 =
+  protected final def longChain10: Future[Unit] =
     longSend46.flatMap(_ => longSend47).flatMap(_ => longSend48)
 
-  protected final def shortChain1 =
+  protected final def shortChain1: Future[List[String]] =
     shortSend1.flatMap(_ => shortSend2).flatMap(_ => shortSend3).flatMap(_ => shortSend4).flatMap(_ => shortSend5)
-  protected final def shortChain2 =
+  protected final def shortChain2: Future[Unit] =
     shortSend6.flatMap(_ => shortSend7).flatMap(_ => shortSend8).flatMap(_ => shortSend9).flatMap(_ => shortSend10)
-  protected final def shortChain3 =
+  protected final def shortChain3: Future[Boolean] =
     shortSend11.flatMap(_ => shortSend12).flatMap(_ => shortSend13).flatMap(_ => shortSend14).flatMap(_ => shortSend15)
-  protected final def shortChain4 =
+  protected final def shortChain4: Future[Unit] =
     shortSend16.flatMap(_ => shortSend17).flatMap(_ => shortSend18).flatMap(_ => shortSend19).flatMap(_ => shortSend20)
-  protected final def shortChain5 =
+  protected final def shortChain5: Future[List[String]] =
     shortSend21.flatMap(_ => shortSend22).flatMap(_ => shortSend23).flatMap(_ => shortSend24).flatMap(_ => shortSend25)
-  protected final def shortChain6 =
+  protected final def shortChain6: Future[Unit] =
     shortSend26.flatMap(_ => shortSend27).flatMap(_ => shortSend28).flatMap(_ => shortSend29).flatMap(_ => shortSend30)
-  protected final def shortChain7 =
+  protected final def shortChain7: Future[List[String]] =
     shortSend31.flatMap(_ => shortSend32).flatMap(_ => shortSend33).flatMap(_ => shortSend34).flatMap(_ => shortSend35)
-  protected final def shortChain8 =
+  protected final def shortChain8: Future[Unit] =
     shortSend36.flatMap(_ => shortSend37).flatMap(_ => shortSend38).flatMap(_ => shortSend39).flatMap(_ => shortSend40)
-  protected final def shortChain9 =
+  protected final def shortChain9: Future[Unit] =
     shortSend41.flatMap(_ => shortSend42).flatMap(_ => shortSend43).flatMap(_ => shortSend44).flatMap(_ => shortSend45)
-  protected final def shortChain10 =
+  protected final def shortChain10: Future[Unit] =
     shortSend46.flatMap(_ => shortSend47).flatMap(_ => shortSend48)
 
-  protected final def longDoubleChain1 = longChain1.flatMap(_ => longChain2)
-  protected final def longDoubleChain2 = longChain3.flatMap(_ => longChain4)
-  protected final def longDoubleChain3 = longChain5.flatMap(_ => longChain6)
-  protected final def longDoubleChain4 = longChain7.flatMap(_ => longChain8)
-  protected final def longDoubleChain5 = longChain9.flatMap(_ => longChain10)
+  protected final def longDoubleChain1: Future[Unit] = longChain1.flatMap(_ => longChain2)
+  protected final def longDoubleChain2: Future[Unit] = longChain3.flatMap(_ => longChain4)
+  protected final def longDoubleChain3: Future[Unit] = longChain5.flatMap(_ => longChain6)
+  protected final def longDoubleChain4: Future[Unit] = longChain7.flatMap(_ => longChain8)
+  protected final def longDoubleChain5: Future[Unit] = longChain9.flatMap(_ => longChain10)
 
-  protected final def shortDoubleChain1 = shortChain1.flatMap(_ => shortChain2)
-  protected final def shortDoubleChain2 = shortChain3.flatMap(_ => shortChain4)
-  protected final def shortDoubleChain3 = shortChain5.flatMap(_ => shortChain6)
-  protected final def shortDoubleChain4 = shortChain7.flatMap(_ => shortChain8)
-  protected final def shortDoubleChain5 = shortChain9.flatMap(_ => shortChain10)
+  protected final def shortDoubleChain1: Future[Unit] = shortChain1.flatMap(_ => shortChain2)
+  protected final def shortDoubleChain2: Future[Unit] = shortChain3.flatMap(_ => shortChain4)
+  protected final def shortDoubleChain3: Future[Unit] = shortChain5.flatMap(_ => shortChain6)
+  protected final def shortDoubleChain4: Future[Unit] = shortChain7.flatMap(_ => shortChain8)
+  protected final def shortDoubleChain5: Future[Unit] = shortChain9.flatMap(_ => shortChain10)
 }

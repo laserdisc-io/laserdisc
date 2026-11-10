@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2025 LaserDisc
+ * Copyright (c) 2018-2026 LaserDisc
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -22,17 +22,16 @@
 package laserdisc
 package cli
 
+import java.nio.charset.StandardCharsets.UTF_8
 import _root_.fs2.{io, text}
-import cats.effect._
-import cats.syntax.all._
-import laserdisc.fs2._
-
-import scala.reflect.runtime.universe
-import scala.tools.reflect.ToolBox
+import cats.effect.*
+import cats.syntax.all.*
+import laserdisc.fs2.*
+import laserdisc.protocol.RESPRead
 
 object CLI extends IOApp { self =>
 
-  private[this] final val logo =
+  private final val logo =
     """
       |                                            ,,,,'''''',,,,
       |                                   ./oydmNmmmmmmmmmmmmmmmmmmNmdyo/-
@@ -77,32 +76,37 @@ object CLI extends IOApp { self =>
       |                                             ````....````
       |""".stripMargin
 
-  override final def run(args: List[String]): IO[ExitCode] =
-    args match {
-      case arg1 :: arg2 :: Nil =>
-        val maybeHost = Host.from(arg1).toOption
-        val maybePort = Either.catchNonFatal(arg2.toInt).flatMap(Port.from).toOption
+  private final val bufSize = 10 * 1024
 
-        (maybeHost, maybePort) match {
-          case (Some(ip), Some(port)) =>
-            IO(println(logo)) >> impl.mkStream(ip, port).compile.drain.as(ExitCode.Success)
-          case _ => IO(println("please supply valid host and port (space separated)")).as(ExitCode.Error)
-        }
+  override final def run(args: List[String]): IO[ExitCode] = impl.session(args, io.stdin[IO](bufSize), io.stdout[IO])
 
-      case _ => IO(println("please supply host and port (space separated)")).as(ExitCode.Error)
+  private[cli] object impl {
+    def session(args: List[String], in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing]): IO[ExitCode] = {
+      def write(msg: String): IO[Unit] = Stream.emit(msg).through(text.utf8.encode).through(out).compile.drain
+
+      args match {
+        case arg1 :: arg2 :: Nil =>
+          val maybeHost = Host.from(arg1).toOption
+          val maybePort = Either.catchNonFatal(arg2.toInt).flatMap(Port.from).toOption
+
+          (maybeHost, maybePort) match {
+            case (Some(ip), Some(port)) =>
+              write(s"$logo$LF") >> mkStream(ip, port, in, out).compile.drain.as(ExitCode.Success)
+            case _ => write(s"please supply valid host and port (space separated)$LF").as(ExitCode.Error)
+          }
+
+        case _ => write(s"please supply host and port (space separated)$LF").as(ExitCode.Error)
+      }
     }
 
-  private[cli] final object impl {
-    private[this] val tb = universe.runtimeMirror(self.getClass.getClassLoader).mkToolBox()
-
-    def mkStream(host: Host, port: Port): Stream[IO, ExitCode] =
+    def mkStream(host: Host, port: Port, in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing]): Stream[IO, ExitCode] =
       Stream.resource(RedisClient[IO].to(host, port)).evalMap { redisClient =>
         val promptStream: Stream[IO, String] = Stream.emit(s"$host:$port> ").repeat
 
         val emptyPrompt: IO[Unit] =
           promptStream.head
             .through(text.utf8.encode)
-            .through(io.stdout)
+            .through(out)
             .compile
             .drain
 
@@ -111,55 +115,37 @@ object CLI extends IOApp { self =>
             .emit(msg)
             .append(promptStream.head)
             .through(text.utf8.encode)
-            .through(io.stdout)
+            .through(out)
             .compile
             .drain
 
-        final object ToMillis {
-          def unapply(nanos: Long): Option[Double] = Some(nanos.toDouble / 1000000d)
-        }
-
-        val protocol: Pipe[IO, String, Protocol] = {
-          def mkProtocol(code: String): IO[Maybe[Protocol]] =
-            IO.delay {
-              tb.eval {
-                tb.parse {
-                  s"""import laserdisc._
-                        |import laserdisc.auto._
-                        |import laserdisc.all._
-                        |import laserdisc.fs2._
-                        |import shapeless._
-                        |
-                        |$code
-                        |""".stripMargin
-                }
-              }.asInstanceOf[Protocol]
-            }.attempt
-
-          _.evalMap(mkProtocol).flatMap {
-            case Left(t)  => Stream.exec(prompt(s"${t.getLocalizedMessage}$LF"))
-            case Right(p) => Stream.emit(p)
+        val protocol: Pipe[IO, String, Protocol[RESP]] =
+          _.map(CommandLine.parse).flatMap {
+            case Left(error)            => Stream.exec(prompt(s"(error) $error$LF"))
+            case Right(Nil)             => Stream.exec(emptyPrompt)
+            case Right(command :: args) => Stream.emit(Protocol(new String(command.toArray, UTF_8), args.map(Bulk(_))).using(RESPRead.raw))
           }
-        }
-
-        val bufSize = 10 * 1024
 
         emptyPrompt >>
-          io.stdin[IO](bufSize)
+          in
             .through(text.utf8.decode)
             .through(text.lines)
             .through(protocol)
             .evalMap { protocol =>
               for {
                 startTime             <- IO(System.nanoTime())
-                maybeProtocolResponse <- redisClient.send(protocol.asInstanceOf[Protocol.Aux[protocol.A]])
+                maybeProtocolResponse <- redisClient.send(protocol)
                 endTime               <- IO(System.nanoTime())
-              } yield maybeProtocolResponse.asInstanceOf[Maybe[Any]] -> (endTime - startTime)
+              } yield maybeProtocolResponse -> (endTime - startTime)
             }
-            .evalMap {
-              case (Left(e), ToMillis(ms))         => prompt(f"<<< ERROR ${e.getLocalizedMessage} - [$ms%.2fms]$LF")
-              case (Right(response), ToMillis(ms)) => prompt(f"<<< $response - [$ms%.2fms]$LF")
-              case (_, _)                          => absurd
+            .evalMap { case (reply, nanos) =>
+              val ms    = nanos.toDouble / 1000000d
+              val shown = reply match {
+                case Left(err: Err) => RESPFormat.format(err)
+                case Left(e)        => s"ERROR ${e.getLocalizedMessage}"
+                case Right(resp)    => RESPFormat.format(resp)
+              }
+              prompt(f"<<< $shown - [$ms%.2fms]$LF")
             }
             .compile
             .drain

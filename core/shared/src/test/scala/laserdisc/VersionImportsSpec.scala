@@ -1,0 +1,1562 @@
+/*
+ * Copyright (c) 2018-2026 LaserDisc
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+package laserdisc
+
+final case class NoShow(i: Int)
+
+final class VersionImportsSpec extends BaseSpec {
+  private def frame(ps: String*): Seq[RESP] = Seq(Arr(ps.map(Bulk(_)).toList))
+
+  test("redis_8_10 has every SET variant") {
+    import laserdisc.redis_8_10.*
+    import laserdisc.auto.*
+
+    assertEquals(set("a", 2).frames, frame("SET", "a", "2"))
+    assertEquals(set("a", 2, stringtypes.expiry.seconds(10L)).frames, frame("SET", "a", "2", "EX", "10"))
+    assertEquals(set("a", 2, stringtypes.expiry.keepTtl).frames, frame("SET", "a", "2", "KEEPTTL"))
+    assertEquals(set("a", 2, stringtypes.flag.nx).frames, frame("SET", "a", "2", "NX"))
+    assertEquals(set("a", 2, stringtypes.expiry.millis(5L), stringtypes.flag.xx).frames, frame("SET", "a", "2", "XX", "PX", "5"))
+    assertEquals(set("a", 2, stringtypes.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
+    assertEquals(
+      set("a", 2, stringtypes.expiry.atSeconds(99L), stringtypes.ifEq(1)).frames,
+      frame("SET", "a", "2", "IFEQ", "1", "EXAT", "99")
+    )
+    assertEquals(set("a", 2, stringtypes.compare.ifNe(1)).frames, frame("SET", "a", "2", "IFNE", "1"))
+    assertEquals(set("a", 2, stringtypes.compare.ifDeq("abc")).frames, frame("SET", "a", "2", "IFDEQ", "abc"))
+  }
+
+  test("redis_8_10 has setget, getset, getdel and getex, choosing the type of the reply") {
+    import laserdisc.redis_8_10.*
+    import laserdisc.auto.*
+
+    assertEquals(setget[Int]("a", 2).frames, frame("SET", "a", "2", "GET"))
+    assertEquals(setget[Int]("a", "two", stringtypes.expiry.seconds(10L)).frames, frame("SET", "a", "two", "GET", "EX", "10"))
+    assertEquals(setget[Int]("a", 2, stringtypes.flag.nx).frames, frame("SET", "a", "2", "NX", "GET"))
+    assertEquals(
+      setget[Int]("a", 2, stringtypes.expiry.keepTtl, stringtypes.flag.xx).frames,
+      frame("SET", "a", "2", "XX", "GET", "KEEPTTL")
+    )
+    assertEquals(setget[Int]("a", 2).decode(Bulk(1)), Some(1))
+    assertEquals(setget[Int]("a", 2).decode(NullBulk), None)
+    assertEquals(getset[Int]("a", 2).frames, frame("GETSET", "a", "2"))
+    assertEquals(getdel[Int]("a").frames, frame("GETDEL", "a"))
+    assertEquals(getex[Int]("a", stringtypes.expiry.persist).frames, frame("GETEX", "a", "PERSIST"))
+    assertEquals(getex[Int]("a", stringtypes.expiry.atMillis(7L)).decode(Bulk(1)), Some(1))
+  }
+
+  test("SET's KEEPTTL and GETEX's PERSIST only go with their own command") {
+    import laserdisc.redis_8_10.*
+    import laserdisc.auto.*
+
+    assertEquals(getex[Int]("a").frames, frame("GETEX", "a"))
+    assert(compileErrors("""getex[Int]("a", stringtypes.expiry.keepTtl)""").nonEmpty)
+    assert(compileErrors("""set("a", 2, stringtypes.expiry.persist)""").nonEmpty)
+  }
+
+  test("a value without a Show says so, for set and for setget") {
+    import laserdisc.redis_8_10.*
+    import laserdisc.auto.*
+
+    assertEquals(set("a", 2).frames, frame("SET", "a", "2"))
+    assert(compileErrors("""set("a", NoShow(1))""").contains("Show"))
+    assume(isScala3, "Scala 2 reports setget's only when the code is fully compiled, which compileErrors doesn't do")
+    assert(compileErrors("""setget[Int]("a", NoShow(1))""").contains("Show[NoShow]"))
+  }
+
+  test("redis_6_2 has setget, but not with NX or XX") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+
+    assertEquals(setget[Int]("a", 2).frames, frame("SET", "a", "2", "GET"))
+    assert(compileErrors("""setget[Int]("a", 2, stringtypes.flag.nx)""").nonEmpty)
+    // Redis 6.2 already takes XX with GET
+    assertEquals(setget[Int]("a", 2, stringtypes.flag.xx).frames, frame("SET", "a", "2", "XX", "GET"))
+    assertEquals(
+      setget[Int]("a", 2, stringtypes.expiry.seconds(10L), stringtypes.flag.xx).frames,
+      frame("SET", "a", "2", "XX", "GET", "EX", "10")
+    )
+  }
+
+  test("redis_8_2 has setget with NX, but no IFEQ or IFNE") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_2.*
+
+    assertEquals(setget[Int]("a", 2, stringtypes.flag.nx).frames, frame("SET", "a", "2", "NX", "GET"))
+    assert(compileErrors("""set("a", 2, stringtypes.ifEq(1))""").nonEmpty)
+    assert(compileErrors("""set("a", 2, stringtypes.compare.ifNe(1))""").nonEmpty)
+  }
+
+  test("redis_8_4 has IFEQ and IFNE") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_4.*
+
+    assertEquals(set("a", 2, stringtypes.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
+    assertEquals(set("a", 2, stringtypes.compare.ifNe(1)).frames, frame("SET", "a", "2", "IFNE", "1"))
+  }
+
+  test("valkey_8_1 has IFEQ, but no IFNE") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_8_1.*
+
+    assertEquals(set("a", 2, stringtypes.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
+    assert(compileErrors("""set("a", 2, stringtypes.compare.ifNe(1))""").nonEmpty)
+  }
+
+  test("a version's options can be used next to import laserdisc.*") {
+    import laserdisc.*
+    import laserdisc.valkey_8_1.*
+
+    assertEquals(set(Key("a"), 2, stringtypes.ifEq(1)).frames, frame("SET", "a", "2", "IFEQ", "1"))
+  }
+
+  test("valkey_8_0 has no IFEQ") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_8_0.*
+
+    assertEquals(set("a", 2).frames, frame("SET", "a", "2"))
+    assert(compileErrors("""set("a", 2, stringtypes.ifEq(1))""").nonEmpty)
+  }
+
+  test("redis_6_2 has ZADD with GT and LT and BZPOPMIN, but not ZINTERCARD, ZMPOP or BZMPOP") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+
+    assertEquals(zadd("a", sortedsettypes.flag.xxGt, "m", 1.5).frames, frame("ZADD", "a", "XX", "GT", "1.5", "m"))
+    assertEquals(blocking.bzpopmin[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), 1.0).frames, frame("BZPOPMIN", "a", "1"))
+    assert(compileErrors("""zintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))))""").nonEmpty)
+    assert(compileErrors("""zmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsettypes.pop.min)""").nonEmpty)
+    assert(compileErrors("""blocking.bzmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), sortedsettypes.pop.min, 1.0)""").nonEmpty)
+  }
+
+  test("redis_7_0 has ZINTERCARD, ZMPOP and BZMPOP, but not ZRANK with WITHSCORE") {
+    import laserdisc.auto.*
+    import laserdisc.redis_7_0.*
+
+    val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    assertEquals(zintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), 5).frames, frame("ZINTERCARD", "2", "a", "b", "LIMIT", "5"))
+    assertEquals(zmpop[String](a, sortedsettypes.pop.min).frames, frame("ZMPOP", "1", "a", "MIN"))
+    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.max, 2, 1.0).frames, frame("BZMPOP", "1", "1", "a", "MAX", "COUNT", "2"))
+    assertEquals(blocking.bzpopmin[String](a, 1.0).frames, frame("BZPOPMIN", "a", "1"))
+    assert(compileErrors("""zrankwithscore("a", "m")""").nonEmpty)
+  }
+
+  test("only Redis 8.8 and later have AGGREGATE COUNT") {
+    import laserdisc.auto.*
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
+
+    {
+      import laserdisc.redis_8_8.*
+      assertEquals(
+        zunionstore(ks, "c", sortedsettypes.aggregate.count).frames,
+        frame("ZUNIONSTORE", "c", "2", "a", "b", "AGGREGATE", "COUNT")
+      )
+      assertEquals(zunion[String](ks, sortedsettypes.aggregate.max).frames, frame("ZUNION", "2", "a", "b", "AGGREGATE", "MAX"))
+    }
+    {
+      import laserdisc.redis_8_6.*
+      assertEquals(zunion[String](ks, sortedsettypes.aggregate.max).frames, frame("ZUNION", "2", "a", "b", "AGGREGATE", "MAX"))
+      assert(compileErrors("""zinter[String](ks, sortedsettypes.aggregate.count)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(zunion[String](ks, sortedsettypes.aggregate.max).frames, frame("ZUNION", "2", "a", "b", "AGGREGATE", "MAX"))
+      assert(compileErrors("""zinter[String](ks, sortedsettypes.aggregate.count)""").nonEmpty)
+    }
+  }
+
+  test("only Valkey 8.0 and later have ZSCAN with NOSCORES") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.valkey_8_0.*
+      assertEquals(zscannoscores[String]("a", 0L, 10).frames, frame("ZSCAN", "a", "0", "COUNT", "10", "NOSCORES"))
+    }
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(zscan[String]("a", 0L).frames, frame("ZSCAN", "a", "0"))
+      assert(compileErrors("""zscannoscores[String]("a", 0L)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(zscan[String]("a", 0L).frames, frame("ZSCAN", "a", "0"))
+      assert(compileErrors("""zscannoscores[String]("a", 0L)""").nonEmpty)
+    }
+  }
+
+  test("redis_8_10 has every sorted set command, with the blocking ones under blocking") {
+    import laserdisc.redis_8_10.*
+    import laserdisc.auto.*
+
+    val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    assertEquals(valkey_9_1.zscannoscores[String]("a", 0L).frames, frame("ZSCAN", "a", "0", "NOSCORES"))
+    assertEquals(zrevrankwithscore("a", "m").frames, frame("ZREVRANK", "a", "m", "WITHSCORE"))
+    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.min, 0.0).frames, frame("BZMPOP", "0", "1", "a", "MIN"))
+    assertEquals(blocking.blpop[String](a, 0.0).frames, frame("BLPOP", "a", "0"))
+  }
+
+  test("redis_6_2 has LMOVE, LPOS and BLMOVE, but not LMPOP, BLMPOP or LMOVEM") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+    import listtypes.*
+
+    assertEquals(lmove[String]("a", "b", ListSide.left, ListSide.right).frames, frame("LMOVE", "a", "b", "LEFT", "RIGHT"))
+    assertEquals(lpos("a", "x", 2, ListSearch.rank(-1)).frames, frame("LPOS", "a", "x", "COUNT", "2", "RANK", "-1"))
+    assertEquals(
+      blocking.blmove[String]("a", "b", ListSide.right, ListSide.left, 1.0).frames,
+      frame("BLMOVE", "a", "b", "RIGHT", "LEFT", "1")
+    )
+    assert(compileErrors("""lmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), ListSide.left)""").nonEmpty)
+    assert(compileErrors("""blocking.blmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), ListSide.left, 1.0)""").nonEmpty)
+    assert(compileErrors("""lmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock)""").nonEmpty)
+  }
+
+  test("valkey_9_1 has LMPOP and BLMPOP, but not LMOVEM or BLMOVEM") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_9_1.*
+    import listtypes.*
+
+    val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    assertEquals(lmpop[String](a, ListSide.left, 2).frames, frame("LMPOP", "1", "a", "LEFT", "COUNT", "2"))
+    assertEquals(blocking.blmpop[String](a, ListSide.right, 3.0).frames, frame("BLMPOP", "3", "1", "a", "RIGHT"))
+    assert(compileErrors("""lmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock)""").nonEmpty)
+    assert(
+      compileErrors(
+        """blocking.blmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock, 1.0)"""
+      ).nonEmpty
+    )
+  }
+
+  test("redis_8_10 has LMOVEM and BLMOVEM") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_10.*
+    import listtypes.*
+
+    assertEquals(
+      lmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.oneByOne).frames,
+      frame("LMOVEM", "a", "b", "LEFT", "LEFT", "COUNT", "2", "OBO")
+    )
+    assertEquals(
+      blocking.blmovem[String]("a", "b", ListSide.left, ListSide.right, ListAmount.exactly(2), ListOrder.asBlock, 1.0).frames,
+      frame("BLMOVEM", "a", "b", "LEFT", "RIGHT", "1", "EXACTLY", "2", "BULK")
+    )
+  }
+
+  test("redis_6_2 has SMISMEMBER, but not SINTERCARD") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+
+    assertEquals(smismember("a", OneOrMore.unsafeFrom(List("x", "y"))).frames, frame("SMISMEMBER", "a", "x", "y"))
+    assert(compileErrors("""sintercard(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))))""").nonEmpty)
+  }
+
+  test("valkey_9_1 has SINTERCARD, but not SDIFFCARD or SUNIONCARD") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_9_1.*
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
+    assertEquals(sintercard(ks, 3).frames, frame("SINTERCARD", "2", "a", "b", "LIMIT", "3"))
+    assert(compileErrors("""sdiffcard(ks)""").nonEmpty)
+    assert(compileErrors("""sunioncard(ks, settypes.approx)""").nonEmpty)
+  }
+
+  test("redis_8_10 has SDIFFCARD and SUNIONCARD") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_10.*
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
+    assertEquals(sdiffcard(ks, 2).frames, frame("SDIFFCARD", "2", "a", "b", "LIMIT", "2"))
+    assertEquals(sunioncard(ks, settypes.approx).frames, frame("SUNIONCARD", "2", "a", "b", "APPROX"))
+  }
+
+  test("redis_6_2 has GEOSEARCH and GEOADD with NX, but not BYPOLYGON") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+    import geotypes.*
+
+    val area = GeoArea.radius(GeoCenter.member("m"), 10.5, GeoUnit.kilometers)
+    assertEquals(
+      geosearch("a", area, GeoCount.any(2)).frames,
+      frame("GEOSEARCH", "a", "FROMMEMBER", "m", "BYRADIUS", "10.5", "km", "COUNT", "2", "ANY")
+    )
+    assertEquals(
+      geosearchstore("a", "b", area, GeoStoreDistances).frames,
+      frame("GEOSEARCHSTORE", "b", "a", "FROMMEMBER", "m", "BYRADIUS", "10.5", "km", "STOREDIST")
+    )
+    assert(
+      compileErrors("""geosearch("a", GeoPolygon(GeoCoordinates(1.0, 1.0), GeoCoordinates(1.0, 2.0), GeoCoordinates(2.0, 2.0)))""").nonEmpty
+    )
+  }
+
+  test("valkey_9_0 has GEOSEARCH with BYPOLYGON") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_9_0.*
+    import geotypes.*
+
+    val triangle = GeoPolygon(GeoCoordinates(1.5, 1.5), GeoCoordinates(1.5, 2.5), GeoCoordinates(2.5, 2.5))
+    assertEquals(geosearch("a", triangle).frames, frame("GEOSEARCH", "a", "BYPOLYGON", "3", "1.5", "1.5", "2.5", "1.5", "2.5", "2.5"))
+    assertEquals(
+      geosearchstore("a", "b", triangle, Direction.asc).frames,
+      frame("GEOSEARCHSTORE", "b", "a", "BYPOLYGON", "3", "1.5", "1.5", "2.5", "1.5", "2.5", "2.5", "ASC")
+    )
+  }
+
+  test("redis_6_2 has COPY, SCAN with TYPE and SORT with GET, but not EXPIRE with a condition, EXPIRETIME, SORT_RO or WAITAOF") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+    import keytypes.*
+
+    assertEquals(copy("a", "b", KeyReplace).frames, frame("COPY", "a", "b", "REPLACE"))
+    assertEquals(scan(0L, KeyType.zset).frames, frame("SCAN", "0", "TYPE", "zset"))
+    assertEquals(sort[String]("a", KeySort.alpha, KeySortGet("#")).frames, frame("SORT", "a", "ALPHA", "GET", "#"))
+    assert(compileErrors("""expire("a", 10, KeyExpireCondition.nx)""").nonEmpty)
+    assert(compileErrors("""expiretime("a")""").nonEmpty)
+    assert(compileErrors("""sortro[String]("a", KeySort.alpha)""").nonEmpty)
+    assert(compileErrors("""waitaof(0, 1, 100L)""").nonEmpty)
+  }
+
+  test("redis_7_0 has EXPIRE with a condition, EXPIRETIME and SORT_RO, but not WAITAOF") {
+    import laserdisc.auto.*
+    import laserdisc.redis_7_0.*
+    import keytypes.*
+
+    assertEquals(pexpireat("a", 100L, KeyExpireCondition.lt).frames, frame("PEXPIREAT", "a", "100", "LT"))
+    assertEquals(expiretime("a").frames, frame("EXPIRETIME", "a"))
+    assertEquals(sortro[String]("a", KeySort.desc).frames, frame("SORT_RO", "a", "DESC"))
+    assert(compileErrors("""waitaof(0, 1, 100L)""").nonEmpty)
+  }
+
+  test("valkey_7_2 has WAITAOF") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_7_2.*
+
+    assertEquals(waitaof(0, 1, 100L).frames, frame("WAITAOF", "0", "1", "100"))
+  }
+
+  test("redis_7_2 has HRANDFIELD and HSET with several fields, but no field expiry or HSCAN with NOVALUES") {
+    import laserdisc.auto.*
+    import laserdisc.redis_7_2.*
+
+    assertEquals(hrandfields("a", 2).frames, frame("HRANDFIELD", "a", "2"))
+    assertEquals(hset("a", OneOrMore.unsafeFrom(List(Key("f") -> 1))).frames, frame("HSET", "a", "f", "1"))
+    assert(compileErrors("""httl("a", OneOrMoreKeys.unsafeFrom(List(Key("f"))))""").nonEmpty)
+    assert(compileErrors("""hscannovalues("a", 0L)""").nonEmpty)
+  }
+
+  test("redis_7_4 has field expiry and HSCAN with NOVALUES, but not HGETEX, HSETEX or HGETDEL") {
+    import laserdisc.auto.*
+    import laserdisc.redis_7_4.*
+    import hashtypes.*
+
+    val fs = OneOrMoreKeys.unsafeFrom(List(Key("f")))
+    assertEquals(hexpire("a", 10L, HashExpireCondition.nx, fs).frames, frame("HEXPIRE", "a", "10", "NX", "FIELDS", "1", "f"))
+    assertEquals(hscannovalues("a", 0L).frames, frame("HSCAN", "a", "0", "NOVALUES"))
+    assert(compileErrors("""hgetex[Int]("a", fs)""").nonEmpty)
+    assert(compileErrors("""hgetdel[Int]("a", fs)""").nonEmpty)
+  }
+
+  test("valkey_9_0 has HGETEX and HSETEX, but not HGETDEL or HSETEX with NX") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_9_0.*
+    import hashtypes.*
+
+    val fs  = OneOrMoreKeys.unsafeFrom(List(Key("f")))
+    val fvs = OneOrMore.unsafeFrom(List(Key("f") -> 1))
+    assertEquals(hgetex[Int]("a", stringtypes.expiry.persist, fs).frames, frame("HGETEX", "a", "PERSIST", "FIELDS", "1", "f"))
+    assertEquals(hsetex("a", HashFieldsCondition.fxx, fvs).frames, frame("HSETEX", "a", "FXX", "FIELDS", "1", "f", "1"))
+    assert(compileErrors("""hgetdel[Int]("a", fs)""").nonEmpty)
+    assert(compileErrors("""hsetex("a", HashKeyCondition.nx, fvs)""").nonEmpty)
+  }
+
+  test("valkey_9_1 has HGETDEL and HSETEX with NX, and redis_8_10 has HGETDEL but not HSETEX with NX") {
+    import laserdisc.auto.*
+
+    val fs  = OneOrMoreKeys.unsafeFrom(List(Key("f")))
+    val fvs = OneOrMore.unsafeFrom(List(Key("f") -> 1))
+
+    {
+      import laserdisc.valkey_9_1.*
+      import hashtypes.*
+      assertEquals(hgetdel[Int]("a", fs).frames, frame("HGETDEL", "a", "FIELDS", "1", "f"))
+      assertEquals(hsetex("a", HashKeyCondition.nx, fvs).frames, frame("HSETEX", "a", "NX", "FIELDS", "1", "f", "1"))
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(hgetdel[Int]("a", fs).frames, frame("HGETDEL", "a", "FIELDS", "1", "f"))
+      assert(compileErrors("""hsetex("a", hashtypes.HashKeyCondition.nx, fvs)""").nonEmpty)
+    }
+  }
+
+  test("only redis_6_2 has STRALGO, and every later version has LCS instead") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(
+        stralgolcslen(stringtypes.strAlgoInput.keys("a", "b")).frames,
+        frame("STRALGO", "LCS", "KEYS", "a", "b", "LEN")
+      )
+      assertEquals(
+        strings.stralgolcslen(stringtypes.strAlgoInput.keys("a", "b")).frames,
+        frame("STRALGO", "LCS", "KEYS", "a", "b", "LEN")
+      )
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(lcslen("a", "b").frames, frame("LCS", "a", "b", "LEN"))
+      assert(compileErrors("""stralgolcslen(stringtypes.strAlgoInput.keys("a", "b"))""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(lcslen("a", "b").frames, frame("LCS", "a", "b", "LEN"))
+      assert(compileErrors("""stralgolcslen(stringtypes.strAlgoInput.keys("a", "b"))""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(lcslen("a", "b").frames, frame("LCS", "a", "b", "LEN"))
+      assert(compileErrors("""stralgolcslen(stringtypes.strAlgoInput.keys("a", "b"))""").nonEmpty)
+    }
+  }
+
+  test("redis_6_2 has BITFIELD and BITFIELD_RO, but not LCS, BITCOUNT with BIT or BITOP with DIFF") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+
+    val bf = stringtypes.bitfield
+    assertEquals(bitfield("a", bf.incrBy(bf.u(8), bf.field(1L), 5L)).frames, frame("BITFIELD", "a", "INCRBY", "u8", "#1", "5"))
+    assertEquals(bitfieldro("a", OneOrMore.unsafeFrom(List(bf.i(64) -> bf.bit(0L)))).frames, frame("BITFIELD_RO", "a", "GET", "i64", "0"))
+    assert(compileErrors("""bf.u(64)""").nonEmpty)
+    assert(compileErrors("""lcs[String]("a", "b")""").nonEmpty)
+    assert(compileErrors("""bitcount("a", 0L, 7L, stringtypes.bitUnit.bit)""").nonEmpty)
+    assert(compileErrors("""bitop(stringtypes.bitwise.diff, TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), "c")""").nonEmpty)
+  }
+
+  test("valkey_9_1 has LCS and BITCOUNT with BIT, but not BITOP with DIFF") {
+    import laserdisc.auto.*
+    import laserdisc.valkey_9_1.*
+
+    assertEquals(lcslen("a", "b").frames, frame("LCS", "a", "b", "LEN"))
+    assertEquals(bitcount("a", 0L, 7L, stringtypes.bitUnit.bit).frames, frame("BITCOUNT", "a", "0", "7", "BIT"))
+    assert(compileErrors("""bitop(stringtypes.bitwise.diff, TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), "c")""").nonEmpty)
+  }
+
+  test("redis_8_2 has BITOP with DIFF, DIFF1, ANDOR and ONE") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_2.*
+
+    val ks = TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b")))
+    assertEquals(bitop(stringtypes.bitwise.andor, ks, "c").frames, frame("BITOP", "ANDOR", "c", "a", "b"))
+    assertEquals(bitop(stringtypes.bitwise.and, ks, "c").frames, frame("BITOP", "AND", "c", "a", "b"))
+  }
+
+  test("redis_8_4 has DIGEST, DELEX and MSETEX, but not INCREX or DELIFEQ") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_4.*
+
+    assertEquals(delex("a", stringtypes.compare.ifDeq("abc")).frames, frame("DELEX", "a", "IFDEQ", "abc"))
+    assertEquals(digest("a").frames, frame("DIGEST", "a"))
+    assertEquals(
+      msetex(OneOrMore.unsafeFrom(List(Key("a") -> 1)), stringtypes.expiry.keepTtl).frames,
+      frame("MSETEX", "1", "a", "1", "KEEPTTL")
+    )
+    assert(compileErrors("""increx("a")""").nonEmpty)
+    assert(compileErrors("""delifeq("a", 1)""").nonEmpty)
+  }
+
+  test("redis_8_8 has INCREX, and its expiry can't be KEEPTTL or ENX with PERSIST") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_8.*
+
+    assertEquals(
+      increx("a", 2L, stringtypes.increx.int.expiry(stringtypes.expiry.persist)).frames,
+      frame("INCREX", "a", "BYINT", "2", "PERSIST")
+    )
+    assert(compileErrors("""stringtypes.increx.int.expiry(stringtypes.expiry.keepTtl)""").nonEmpty)
+    assert(compileErrors("""stringtypes.increx.int.expiryIfNone(stringtypes.expiry.persist)""").nonEmpty)
+    assert(compileErrors("""increx("a", 2L, stringtypes.increx.float)""").nonEmpty)
+  }
+
+  test("valkey_9_0 has DELIFEQ, but not MSETEX, DELEX or DIGEST, and valkey_9_1 has MSETEX") {
+    import laserdisc.auto.*
+
+    val kvs = OneOrMore.unsafeFrom(List(Key("a") -> 1))
+
+    {
+      import laserdisc.valkey_9_0.*
+      assertEquals(delifeq("a", 1).frames, frame("DELIFEQ", "a", "1"))
+      assert(compileErrors("""msetex(kvs)""").nonEmpty)
+      assert(compileErrors("""delex("a")""").nonEmpty)
+      assert(compileErrors("""digest("a")""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(msetex(kvs, stringtypes.flag.xx).frames, frame("MSETEX", "1", "a", "1", "XX"))
+    }
+  }
+
+  test("redis_6_2 has CLIENT UNPAUSE, FAILOVER and FLUSHALL SYNC, but not CLIENT NO-EVICT, SHUTDOWN NOW or several CONFIG parameters") {
+    import laserdisc.redis_6_2.*
+
+    assertEquals(client.unpause.frames, frame("CLIENT", "UNPAUSE"))
+    assertEquals(replicafailover.frames, frame("FAILOVER"))
+    assertEquals(flushallsync.frames, frame("FLUSHALL", "SYNC"))
+    assert(compileErrors("""client.noevict(on = true)""").nonEmpty)
+    assert(compileErrors("""shutdown(servertypes.shutdownOptions.now)""").nonEmpty)
+    assert(compileErrors("""config.set(OneOrMore.unsafeFrom(List(Key("a") -> 1)))""").nonEmpty)
+    assert(compileErrors("""info(OneOrMore.unsafeFrom(List(servertypes.info.cpu)))""").nonEmpty)
+  }
+
+  test("redis_7_0 has CLIENT NO-EVICT, SHUTDOWN NOW and several CONFIG parameters, but not CLIENT NO-TOUCH") {
+    import laserdisc.redis_7_0.*
+
+    assertEquals(client.noevict(on = true).frames, frame("CLIENT", "NO-EVICT", "ON"))
+    assertEquals(shutdownabort.frames, frame("SHUTDOWN", "ABORT"))
+    assertEquals(config.set(OneOrMore.unsafeFrom(List(Key("a") -> 1))).frames, frame("CONFIG", "SET", "a", "1"))
+    assert(compileErrors("""client.notouch(on = true)""").nonEmpty)
+  }
+
+  test("only Redis 7.4 and Valkey 8.0 and later have CLIENT KILL with MAXAGE, and only Valkey 8.1 and later BGSAVE CANCEL") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(client.notouch(on = true).frames, frame("CLIENT", "NO-TOUCH", "ON"))
+      assert(compileErrors("""client.kill(servertypes.clientFilter.id(1L), 10L)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_0.*
+      assertEquals(client.kill(servertypes.clientFilter.id(1L), 10L).frames, frame("CLIENT", "KILL", "ID", "1", "MAXAGE", "10"))
+      assert(compileErrors("""bgsavecancel""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_1.*
+      assertEquals(bgsavecancel.frames, frame("BGSAVE", "CANCEL"))
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(client.kill(servertypes.clientFilter.id(1L), 10L).frames, frame("CLIENT", "KILL", "ID", "1", "MAXAGE", "10"))
+      assert(compileErrors("""bgsavecancel""").nonEmpty)
+    }
+  }
+
+  test("only Valkey 8.0 and later have the primary client type, 8.1 CLIENT LIST with filters, and 9.0 its own filters and SHUTDOWN SAFE") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(client.list(servertypes.clientType.slave).frames, frame("CLIENT", "LIST", "TYPE", "slave"))
+      assert(compileErrors("""client.primary""").nonEmpty)
+      assert(compileErrors("""servertypes.clientType.primary""").nonEmpty)
+      assert(compileErrors("""client.list(servertypes.clientFilter.user("u"))""").nonEmpty)
+      assert(compileErrors("""client.ids(OneOrMore.unsafeFrom(List(NonNegLong(1L))))""").nonEmpty)
+      assert(compileErrors("""client.kill(servertypes.valkeyClientFilter.user("u"))""").nonEmpty)
+      assert(compileErrors("""shutdown(servertypes.valkeyShutdownOptions.safe)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(client.kill(servertypes.clientFilter.skipMe(false)).frames, frame("CLIENT", "KILL", "SKIPME", "no"))
+      assert(compileErrors("""client.primary""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_0.*
+      assertEquals(client.list(client.primary).frames, frame("CLIENT", "LIST", "TYPE", "primary"))
+      assert(compileErrors("""client.list(servertypes.clientFilter.user("u"))""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_1.*
+      assertEquals(client.list(servertypes.clientFilter.user("u")).frames, frame("CLIENT", "LIST", "USER", "u"))
+      assertEquals(client.list(client.ids(OneOrMore.unsafeFrom(List[NonNegLong](1L, 2L)))).frames, frame("CLIENT", "LIST", "ID", "1", "2"))
+      assert(compileErrors("""client.list(servertypes.valkeyClientFilter.idle(1L))""").nonEmpty)
+      assert(compileErrors("""shutdown(servertypes.valkeyShutdownOptions.safe)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_0.*
+      assertEquals(client.list(servertypes.valkeyClientFilter.idle(1L)).frames, frame("CLIENT", "LIST", "IDLE", "1"))
+      assertEquals(shutdown(servertypes.valkeyShutdownOptions.safe).frames, frame("SHUTDOWN", "SAFE"))
+      assertEquals(server.shutdown(servertypes.valkeyShutdownOptions.safe).frames, frame("SHUTDOWN", "SAFE"))
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(client.kill(servertypes.valkeyClientFilter.notName("n")).frames, frame("CLIENT", "KILL", "NOT-NAME", "n"))
+    }
+  }
+
+  test("dragonfly_2_0 has what Dragonfly accepts, and not the commands it lacks") {
+    import laserdisc.auto.*
+    import laserdisc.dragonfly_2_0.*
+
+    assertEquals(prepend("a", "b").frames, frame("PREPEND", "a", "b"))
+    assertEquals(strings.digest("a").frames, frame("DIGEST", "a"))
+    assertEquals(dragonfly.stick(OneOrMoreKeys.unsafeFrom(List(Key("a")))).frames, frame("STICK", "a"))
+    assertEquals(client.kill(1L).frames, frame("CLIENT", "KILL", "ID", "1"))
+    assert(compileErrors("""lolwut""").nonEmpty)
+    assert(compileErrors("""bgrewriteaof""").nonEmpty)
+    assert(compileErrors("""replicafailover""").nonEmpty)
+    assert(compileErrors("""swapdb(1, 2)""").nonEmpty)
+    assert(compileErrors("""pfselftest""").nonEmpty)
+    assert(compileErrors("""obj.help""").nonEmpty)
+    assert(compileErrors("""copy("a", "b", 1)""").nonEmpty)
+    assert(compileErrors("""migrate("a", Host("h.example"), Port(1), 0, 0)""").nonEmpty)
+    assert(compileErrors("""lcs[String]("a", "b")""").nonEmpty)
+    assert(compileErrors("""fcall[Num, Long]("f")""").nonEmpty)
+    assert(compileErrors("""function.list""").nonEmpty)
+    assert(compileErrors("""script.kill""").nonEmpty)
+    assert(compileErrors("""latency.doctor""").nonEmpty)
+    assert(compileErrors("""command.getkeys(get[String]("a"))""").nonEmpty)
+    assert(compileErrors("""module.help""").nonEmpty)
+    assert(compileErrors("""memory.doctor""").nonEmpty)
+    assert(compileErrors("""client.unblock(1L)""").nonEmpty)
+    assert(compileErrors("""client.kill(servertypes.clientFilter.user("u"))""").nonEmpty)
+    // Dragonfly replies to CLIENT KILL with an address with a count, read by killaddress
+    assert(compileErrors("""client.kill(Host("h.example"), Port(1))""").nonEmpty)
+    assertEquals(client.killaddress(Host("h.example"), Port(1)).frames, frame("CLIENT", "KILL", "ADDR", "h.example:1"))
+    assert(compileErrors("""countkeysinslot(1)""").nonEmpty)
+    assert(compileErrors("""hpersist("a", OneOrMoreKeys.unsafeFrom(List(Key("b"))))""").nonEmpty)
+    assert(compileErrors("""shutdownabort""").nonEmpty)
+    // Dragonfly has no FAILOVER
+    assert(compileErrors("""replicafailoverabort""").nonEmpty)
+    assert(compileErrors("""replicafailoverforce(Host("h.example"), Port(1), PosLong(5L))""").nonEmpty)
+    assert(compileErrors("""server.replicafailoverabort""").nonEmpty)
+    assert(compileErrors("""server.replicafailoverforce(Host("h.example"), Port(1), PosLong(5L))""").nonEmpty)
+    // Dragonfly takes NOW or FORCE alone, and neither with SAVE or NOSAVE
+    assertEquals(shutdown(servertypes.dragonflyShutdownOption.now).frames, frame("SHUTDOWN", "NOW"))
+    assertEquals(shutdown(servertypes.dragonflyShutdownOption.force).frames, frame("SHUTDOWN", "FORCE"))
+    assert(compileErrors("""servertypes.dragonflyShutdownOption.now.force""").nonEmpty)
+    assert(compileErrors("""shutdown(servertypes.flag.save, servertypes.dragonflyShutdownOption.now)""").nonEmpty)
+    assert(compileErrors("""servertypes.shutdownOptions""").nonEmpty)
+    assert(compileErrors("""xsetid("a", streamtypes.StreamId(1L, 1L), 1L, streamtypes.StreamId(1L, 1L))""").nonEmpty)
+  }
+
+  test("every version has SUBSCRIBE, PSUBSCRIBE and MONITOR, and only Redis and Valkey 7.0 and later, and Dragonfly, SSUBSCRIBE") {
+    val channels = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(subscribe[String](channels).confirmations, Set("a"))
+      assertEquals(monitor.confirmations, Set("OK"))
+      assert(compileErrors("""ssubscribe[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))))""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(ssubscribe[String](channels).confirmations, Set("a"))
+    }
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(ssubscribe[String](channels).confirmations, Set("a"))
+    }
+    {
+      import laserdisc.dragonfly_2_0.*
+      assertEquals(ssubscribe[String](channels).confirmations, Set("a"))
+      assertEquals(server.monitor.confirmations, Set("OK"))
+    }
+  }
+
+  test("every version has HELLO and CLIENT TRACKING, except that dragonfly_2_0 has no tracking") {
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(hello.frames, frame("HELLO", "2"))
+      assertEquals(client.trackingoff.frames, frame("CLIENT", "TRACKING", "OFF"))
+      assertEquals(client.invalidations.confirmations, Set("__redis__:invalidate"))
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(client.getredir.frames, frame("CLIENT", "GETREDIR"))
+    }
+    {
+      import laserdisc.dragonfly_2_0.*
+      assertEquals(connection.hello.frames, frame("HELLO", "2"))
+      assert(compileErrors("""client.trackingoff""").nonEmpty)
+      assert(compileErrors("""client.invalidations""").nonEmpty)
+      assert(compileErrors("""client.getredir""").nonEmpty)
+    }
+  }
+
+  test("redis imports don't have Dragonfly's own commands") {
+    import laserdisc.auto.*
+    import laserdisc.redis_8_10.*
+
+    assertEquals(strlen("a").frames, frame("STRLEN", "a"))
+    assert(compileErrors("""prepend("a", "b")""").nonEmpty)
+    assert(compileErrors("""rm(0L)""").nonEmpty)
+  }
+
+  test("dragonfly_2_0's families add up to it") {
+    val v        = laserdisc.dragonfly_2_0
+    val families = List[protocol.Features](
+      v.cluster,
+      v.connection,
+      v.dragonfly,
+      v.geo,
+      v.hashmaps,
+      v.hyperloglog,
+      v.keys,
+      v.lists,
+      v.publish,
+      v.scripting,
+      v.server,
+      v.sets,
+      v.sortedsets,
+      v.streams,
+      v.strings,
+      v.transaction,
+      v.blocking
+    )
+    assertEquals(families.flatMap(_.supported).toSet, v.supported.toSet)
+  }
+
+  test("each version can ask INFO only for the sections it has") {
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(info(servertypes.info.errorstats).frames, frame("INFO", "errorstats"))
+      assert(compileErrors("""info(servertypes.info.latencystats)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_4.*
+      assertEquals(info(servertypes.info.latencystats).frames, frame("INFO", "latencystats"))
+      assert(compileErrors("""info(servertypes.info.keysizes)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_4.*
+      assertEquals(info(servertypes.info.threads).frames, frame("INFO", "threads"))
+      assert(compileErrors("""info(servertypes.info.hotkeys)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(info(servertypes.info.hotkeys).frames, frame("INFO", "hotkeys"))
+      assert(compileErrors("""info(servertypes.info.tls)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(info(servertypes.info.tls).frames, frame("INFO", "tls"))
+      assert(compileErrors("""info(servertypes.info.keysizes)""").nonEmpty)
+    }
+  }
+
+  test("redis_6_2 has SLOWLOG, MEMORY, LATENCY and COMMAND INFO, but not LATENCY HISTOGRAM, COMMAND LIST, HOTKEYS or COMMANDLOG") {
+    import laserdisc.auto.*
+    import laserdisc.redis_6_2.*
+
+    assertEquals(slowlog.len.frames, frame("SLOWLOG", "LEN"))
+    assertEquals(memory.usage("a").frames, frame("MEMORY", "USAGE", "a"))
+    assertEquals(latency.latest.frames, frame("LATENCY", "LATEST"))
+    assertEquals(command.count.frames, frame("COMMAND", "COUNT"))
+    assert(compileErrors("""latency.histogram""").nonEmpty)
+    assert(compileErrors("""command.list""").nonEmpty)
+    assert(compileErrors("""hotkeys.stop""").nonEmpty)
+    assert(compileErrors("""commandlog.len(servertypes.commandLogType.slow)""").nonEmpty)
+  }
+
+  test("redis_7_0 has LATENCY HISTOGRAM and COMMAND LIST, redis_8_6 has HOTKEYS, and valkey_8_1 has COMMANDLOG") {
+
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(latency.histogram.frames, frame("LATENCY", "HISTOGRAM"))
+      assertEquals(command.list.frames, frame("COMMAND", "LIST"))
+    }
+    {
+      import laserdisc.redis_8_6.*
+      assertEquals(hotkeys.reset.frames, frame("HOTKEYS", "RESET"))
+      assert(compileErrors("""commandlog.len(servertypes.commandLogType.slow)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_1.*
+      assertEquals(commandlog.len(servertypes.commandLogType.largeRequest).frames, frame("COMMANDLOG", "LEN", "large-request"))
+      assert(compileErrors("""hotkeys.stop""").nonEmpty)
+    }
+  }
+
+  test("each version has the cluster commands its server has") {
+
+    val ranges = OneOrMore.unsafeFrom(List(Slot(0) -> Slot(10)))
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(myid.frames, frame("CLUSTER", "MYID"))
+      assert(compileErrors("""shards""").nonEmpty)
+      assert(compileErrors("""addslotsrange(ranges)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(addslotsrange(ranges).frames, frame("CLUSTER", "ADDSLOTSRANGE", "0", "10"))
+      assert(compileErrors("""myshardid""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_2.*
+      assertEquals(myshardid.frames, frame("CLUSTER", "MYSHARDID"))
+      assertEquals(slotstats(Slot(0), Slot(1)).frames, frame("CLUSTER", "SLOT-STATS", "SLOTSRANGE", "0", "1"))
+      assert(compileErrors("""trimslots(ranges)""").nonEmpty)
+      assert(compileErrors("""slotstatsbymemory""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_4.*
+      assertEquals(slotstatsbymemory.frames, frame("CLUSTER", "SLOT-STATS", "ORDERBY", "memory-bytes"))
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(trimslots(ranges).frames, frame("TRIMSLOTS", "RANGES", "1", "0", "10"))
+      assertEquals(backup.status.frames, frame("BACKUP", "STATUS"))
+      assert(compileErrors("""replicatenoone""").nonEmpty)
+      assert(compileErrors("""flushslot(Slot(0))""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_0.*
+      assertEquals(setslot(Slot(0), NonNegLong(5L)).frames, frame("CLUSTER", "SETSLOT", "0", "STABLE", "TIMEOUT", "5"))
+      assert(compileErrors("""replicatenoone""").nonEmpty)
+      assert(compileErrors("""slotstatsbymemory""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(replicatenoone.frames, frame("CLUSTER", "REPLICATE", "NO", "ONE"))
+      assertEquals(flushslot(Slot(0)).frames, frame("CLUSTER", "FLUSHSLOT", "0"))
+      assert(compileErrors("""trimslots(ranges)""").nonEmpty)
+      assert(compileErrors("""backup.status""").nonEmpty)
+    }
+  }
+
+  test("only Valkey 9.1 and later have the ACL rules for databases") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(acl.whoami.frames, frame("ACL", "WHOAMI"))
+      assert(compileErrors("""acl.setuser("u", servertypes.aclDatabaseRules.allDatabases)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_0.*
+      assertEquals(acl.whoami.frames, frame("ACL", "WHOAMI"))
+      assert(compileErrors("""acl.setuser("u", servertypes.aclDatabaseRules.allDatabases)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(acl.setuser("u", servertypes.aclDatabaseRules.allDatabases).frames, frame("ACL", "SETUSER", "u", "alldbs"))
+    }
+  }
+
+  test("redis_6_2 has ACL, but not ACL DRYRUN or rules with selectors, which redis_7_0 has") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(acl.setuser("u", servertypes.aclRules.on).frames, frame("ACL", "SETUSER", "u", "on"))
+      assert(compileErrors("""acl.dryrun("u", ping)""").nonEmpty)
+      assert(compileErrors("""acl.setuser("u", servertypes.aclSelectorRules.on)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(acl.dryrun("u", ping).frames, frame("ACL", "DRYRUN", "u", "PING"))
+      assertEquals(acl.setuser("u", servertypes.aclSelectorRules.writeKeys("w:*")).frames, frame("ACL", "SETUSER", "u", "%W~w:*"))
+    }
+  }
+
+  test("dragonfly_2_0 has ACL SETUSER with Dragonfly's rules only, without reset or passwords given by their SHA-256") {
+    import laserdisc.auto.*
+    import laserdisc.dragonfly_2_0.*
+
+    assertEquals(acl.setuser("u", servertypes.aclDragonflyRules.on.readKeys("r:*")).frames, frame("ACL", "SETUSER", "u", "on", "%R~r:*"))
+    assert(compileErrors("""servertypes.aclDragonflyRules.reset""").nonEmpty)
+    assert(compileErrors("""servertypes.aclDragonflyRules.hashedPassword("a")""").nonEmpty)
+    assert(compileErrors("""servertypes.aclDragonflyRules.removeHashedPassword("a")""").nonEmpty)
+    assert(compileErrors("""acl.setuser("u", laserdisc.redis_6_2.servertypes.aclRules.on)""").nonEmpty)
+  }
+
+  test("redis_6_2 and redis_8_10.streams have the stream commands") {
+    import laserdisc.auto.*
+
+    val fields = OneOrMore.unsafeFrom(List(Key("a") -> 1))
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(xadd("s", fields).frames, frame("XADD", "s", "*", "a", "1"))
+      assertEquals(xlen("s").frames, frame("XLEN", "s"))
+    }
+    {
+      import laserdisc.redis_8_10.streams.*
+      import streamtypes.*
+      assertEquals(xtrim("s", StreamTrim.maxLenApprox(10L)).frames, frame("XTRIM", "s", "MAXLEN", "~", "10"))
+    }
+  }
+
+  test("redis_6_2 has consumer groups, but not ENTRIESREAD, which redis_7_0 has") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      import streamtypes.*
+      assertEquals(xgroupcreate("s", "g", StreamFrom.latest).frames, frame("XGROUP", "CREATE", "s", "g", "$"))
+      assert(compileErrors("""xgroupsetid("s", "g", StreamFrom.latest, 3L)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      import streamtypes.*
+      assertEquals(xgroupsetid("s", "g", StreamFrom.latest, 3L).frames, frame("XGROUP", "SETID", "s", "g", "$", "ENTRIESREAD", "3"))
+    }
+  }
+
+  test("redis_6_2 has XCLAIM, XAUTOCLAIM, XINFO and XSETID, but not XSETID with ENTRIESADDED, which redis_7_0 has") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      import streamtypes.*
+      assertEquals(xsetid("s", StreamId(5L, 0L)).frames, frame("XSETID", "s", "5-0"))
+      assertEquals(xinfogroups("s").frames, frame("XINFO", "GROUPS", "s"))
+      assert(compileErrors("""xsetid("s", StreamId(5L, 0L), 1L, StreamId(4L, 0L))""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      import streamtypes.*
+      assertEquals(
+        xsetid("s", StreamId(5L, 0L), 1L, StreamId(4L, 0L)).frames,
+        frame("XSETID", "s", "5-0", "ENTRIESADDED", "1", "MAXDELETEDID", "4-0")
+      )
+    }
+  }
+
+  test("XADD can leave an id's sequence to the server from Redis 7.0, on Valkey and on Dragonfly") {
+    import laserdisc.auto.*
+    val fields = OneOrMore.unsafeFrom(List(Key("a") -> 1))
+
+    {
+      import laserdisc.redis_6_2.*
+      val _ = (fields, streamtypes)
+      assert(compileErrors("""xadd("s", streamtypes.StreamIdAt(5L), fields)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(xadd("s", streamtypes.StreamIdAt(5L), fields).frames, frame("XADD", "s", "5-*", "a", "1"))
+    }
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(xadd("s", streamtypes.StreamIdAt(5L), fields).frames, frame("XADD", "s", "5-*", "a", "1"))
+    }
+    {
+      import laserdisc.dragonfly_2_0.*
+      assertEquals(xadd("s", streamtypes.StreamIdAt(5L), fields).frames, frame("XADD", "s", "5-*", "a", "1"))
+    }
+  }
+
+  test("only Redis 8.2 and later have the stream reference policies, and only Redis 8.6 and later idempotent XADD") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_8_2.*
+      import streamtypes.*
+      assertEquals(xtrim("s", StreamTrim.maxLen(1L), StreamRefPolicy.delRef).frames, frame("XTRIM", "s", "MAXLEN", "1", "DELREF"))
+      assert(compileErrors("""xcfgset("s", StreamIdmpConfig.maxSize(10L))""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      import streamtypes.*
+      assertEquals(xcfgset("s", StreamIdmpConfig.maxSize(10L)).frames, frame("XCFGSET", "s", "IDMP-MAXSIZE", "10"))
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      import streamtypes.*
+      assertEquals(xtrim("s", StreamTrim.maxLen(1L)).frames, frame("XTRIM", "s", "MAXLEN", "1"))
+      assert(compileErrors("""xtrim("s", StreamTrim.maxLen(1L), StreamRefPolicy.delRef)""").nonEmpty)
+      assert(compileErrors("""xcfgset("s", StreamIdmpConfig.maxSize(10L))""").nonEmpty)
+    }
+  }
+
+  test("only Redis 8.8 and later have XNACK") {
+    import laserdisc.auto.*
+
+    val ids = OneOrMore.unsafeFrom(List(protocol.StreamP.Id(NonNegLong(1L), NonNegLong(1L))))
+
+    {
+      import laserdisc.redis_8_8.*
+      import streamtypes.*
+      assertEquals(xnack("s", "g", StreamNackMode.fail, ids).frames, frame("XNACK", "s", "g", "FAIL", "IDS", "1", "1-1"))
+    }
+    {
+      import laserdisc.redis_8_6.*
+      import streamtypes.*
+      assertEquals(xcfgset("s", StreamIdmpConfig.maxSize(10L)).frames, frame("XCFGSET", "s", "IDMP-MAXSIZE", "10"))
+      assert(compileErrors("""xnack("s", "g", StreamNackMode.fail, ids)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      import streamtypes.*
+      assertEquals(xtrim("s", StreamTrim.maxLen(1L)).frames, frame("XTRIM", "s", "MAXLEN", "1"))
+      assert(compileErrors("""xnack("s", "g", StreamNackMode.fail, ids)""").nonEmpty)
+    }
+  }
+
+  test("only Redis 8.8 and later have arrays") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_8_8.*
+      assertEquals(arlen("a").frames, frame("ARLEN", "a"))
+      assertEquals(arrays.arcount("a").frames, frame("ARCOUNT", "a"))
+    }
+    {
+      import laserdisc.redis_8_6.*
+      assertEquals(llen("a").frames, frame("LLEN", "a"))
+      assert(compileErrors("""arlen("a")""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(llen("a").frames, frame("LLEN", "a"))
+      assert(compileErrors("""arlen("a")""").nonEmpty)
+    }
+  }
+
+  test("every version has the blocking stream reads under blocking") {
+    import laserdisc.auto.*
+
+    {
+      import laserdisc.redis_6_2.*
+      import streamtypes.*
+      assertEquals(
+        blocking.xread[Int](OneOrMore.unsafeFrom(List(Key("s") -> StreamFrom.latest)), 100L).frames,
+        frame("XREAD", "BLOCK", "100", "STREAMS", "s", "$")
+      )
+    }
+    {
+      import laserdisc.redis_8_10.streams.*
+      import streamtypes.*
+      assertEquals(
+        redis_8_10.blocking.xreadgroup[Int]("g", "c", OneOrMore.unsafeFrom(List(Key("s") -> StreamGroupFrom.newEntries)), 100L).frames,
+        frame("XREADGROUP", "GROUP", "g", "c", "BLOCK", "100", "STREAMS", "s", ">")
+      )
+    }
+  }
+
+  test("only Redis 8.4 and later have XREADGROUP with CLAIM, and only Redis 8.10 and later MAXCOUNT and MAXSIZE") {
+    import laserdisc.auto.*
+
+    val streamKeys = OneOrMoreKeys.unsafeFrom(List(Key("s")))
+
+    {
+      import laserdisc.redis_8_4.*
+      assertEquals(
+        xreadgroupclaim[Int]("g", "c", streamKeys, 50L).frames,
+        frame("XREADGROUP", "GROUP", "g", "c", "CLAIM", "50", "STREAMS", "s", ">")
+      )
+      assertEquals(
+        blocking.xreadgroupclaim[Int]("g", "c", streamKeys, 50L, 100L).frames,
+        frame("XREADGROUP", "GROUP", "g", "c", "BLOCK", "100", "CLAIM", "50", "STREAMS", "s", ">")
+      )
+      assert(
+        compileErrors(
+          """xread[Int](OneOrMore.unsafeFrom(List(Key("s") -> streamtypes.StreamFrom.latest)), streamtypes.StreamReadLimits.maxCount(1L))"""
+        ).nonEmpty
+      )
+      assert(
+        compileErrors(
+          """blocking.xread[Int](OneOrMore.unsafeFrom(List(Key("s") -> streamtypes.StreamFrom.latest)), 100L, streamtypes.StreamReadLimits.maxCount(1L))"""
+        ).nonEmpty
+      )
+    }
+    {
+      import laserdisc.redis_8_2.*
+      assertEquals(xlen("s").frames, frame("XLEN", "s"))
+      assert(compileErrors("""xreadgroupclaim[Int]("g", "c", OneOrMoreKeys.unsafeFrom(List(Key("s"))), 50L)""").nonEmpty)
+      assert(compileErrors("""blocking.xreadgroupclaim[Int]("g", "c", OneOrMoreKeys.unsafeFrom(List(Key("s"))), 50L, 100L)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_9_1.*
+      assertEquals(xlen("s").frames, frame("XLEN", "s"))
+      assert(compileErrors("""xreadgroupclaim[Int]("g", "c", OneOrMoreKeys.unsafeFrom(List(Key("s"))), 50L)""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      import streamtypes.*
+      val from = OneOrMore.unsafeFrom(List(Key("s") -> StreamFrom.latest))
+      assertEquals(xread[Int](from, StreamReadLimits.maxCount(1L)).frames, frame("XREAD", "MAXCOUNT", "1", "STREAMS", "s", "$"))
+      assertEquals(
+        blocking.xread[Int](from, 100L, StreamReadLimits.maxSize(9L)).frames,
+        frame("XREAD", "MAXSIZE", "9", "BLOCK", "100", "STREAMS", "s", "$")
+      )
+      assertEquals(streams.xread[Int](from, StreamReadLimits.maxCount(1L)).frames, frame("XREAD", "MAXCOUNT", "1", "STREAMS", "s", "$"))
+    }
+  }
+
+  test("every version has EVAL and SCRIPT, only Redis 7.0 and later have functions, and only Valkey 8.0 and later SCRIPT SHOW") {
+    import laserdisc.auto.*
+
+    val sha: Sha1 = Sha1("e0e1f9fabfc9d4800c877a703b823ac0578ff8db")
+
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(eval[Num, Long]("return 1").frames, frame("EVAL", "return 1", "0"))
+      assertEquals(script.load("return 1").frames, frame("SCRIPT", "LOAD", "return 1"))
+      assert(compileErrors("""fcall[Num, Long]("f")""").nonEmpty)
+      assert(compileErrors("""function.list""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_8_10.*
+      assertEquals(fcall[Num, Long]("f").frames, frame("FCALL", "f", "0"))
+      assertEquals(function.list.frames, frame("FUNCTION", "LIST"))
+      assert(compileErrors("""script.show(sha)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_7_2.*
+      assertEquals(fcallro[Num, Long]("f").frames, frame("FCALL_RO", "f", "0"))
+      assert(compileErrors("""script.show(sha)""").nonEmpty)
+    }
+    {
+      import laserdisc.valkey_8_0.*
+      assertEquals(script.show(sha).frames, frame("SCRIPT", "SHOW", sha.value))
+    }
+    {
+      import laserdisc.redis_8_10.scripting.*
+      assertEquals(valkey_9_1.script.show(sha).frames, frame("SCRIPT", "SHOW", sha.value))
+      assertEquals(evalro[Num, Long]("return 1").frames, frame("EVAL_RO", "return 1", "0"))
+    }
+  }
+
+  test("a family of a version brings that family's commands, and no others") {
+    import laserdisc.redis_8_10.streams.*
+    assertEquals(xlen(Key("a")).command, "XLEN")
+    assert(compileErrors("""get[String](Key("a"))""").nonEmpty)
+  }
+
+  test("a family of a version brings its options of that version") {
+    import laserdisc.redis_8_4.strings.*
+    assertEquals(set(Key("a"), 2, stringtypes.ifEq(1)).command, "SET")
+  }
+
+  test("a family of a version doesn't bring what arrived in a later version") {
+    import laserdisc.redis_8_2.strings.*
+    assertEquals(set(Key("a"), 2).command, "SET")
+    assert(compileErrors("""set(Key("a"), 2, stringtypes.ifEq(1))""").nonEmpty)
+  }
+
+  test("a family of a version reads its replies as that version does") {
+    val start                                      = protocol.StreamP.Id(NonNegLong(0L), NonNegLong(0L))
+    val older                                      = Arr(Bulk("0-0"), Arr(Nil))
+    def claim(v: protocol.StreamClaimAndInfoBaseP) = v.xautoclaim[Int](Key("s"), Key("g"), Key("c"), NonNegLong(0L), start)
+    assertEquals(claim(redis_6_2.streams).decode(older).map(_.next), start)
+    assert(claim(redis_7_0.streams).decode(older).isLeft)
+    assert(redis_7_0.server.acl.getuser(Key("u")).decode(NilArr).isLeft)
+  }
+
+  test("a family of a version has that version's command groups") {
+    assert(compileErrors("""redis_6_2.server.client.noevict(on = true)""").nonEmpty)
+    assertEquals(redis_7_0.server.client.noevict(on = true).command, "CLIENT")
+  }
+
+  test("every family with subcommands has HELP, on the version that has the family") {
+    val redis = redis_8_10
+    val help  = Seq(
+      "ACL"        -> redis.acl.help,
+      "BACKUP"     -> redis.backup.help,
+      "CLIENT"     -> redis.client.help,
+      "CLUSTER"    -> redis.clusterhelp,
+      "COMMAND"    -> redis.command.help,
+      "COMMANDLOG" -> valkey_8_1.commandlog.help,
+      "CONFIG"     -> redis.config.help,
+      "FUNCTION"   -> redis.function.help,
+      "HOTKEYS"    -> redis.hotkeys.help,
+      "LATENCY"    -> redis.latency.help,
+      "MEMORY"     -> redis.memory.help,
+      "MODULE"     -> redis.module.help,
+      "OBJECT"     -> redis.obj.help,
+      "PUBSUB"     -> redis.pubsub.help,
+      "SCRIPT"     -> redis.script.help,
+      "SLOWLOG"    -> redis.slowlog.help,
+      "XGROUP"     -> redis.xgrouphelp,
+      "XINFO"      -> redis.xinfohelp
+    )
+    help.foreach { case (command, protocol) =>
+      assertEquals(protocol.frames, frame(command, "HELP"))
+      assertEquals(protocol.decode(Arr(Str("a line"), Str("another"))), Seq("a line", "another"))
+    }
+    assertEquals(redis_6_2.slowlog.help.frames, frame("SLOWLOG", "HELP"))
+    assert(compileErrors("""redis_6_2.function.help""").nonEmpty)
+    assert(compileErrors("""redis_8_4.hotkeys.help""").nonEmpty)
+    assert(compileErrors("""redis_8_8.backup.help""").nonEmpty)
+    assert(compileErrors("""redis_8_10.commandlog.help""").nonEmpty)
+  }
+
+  test("SUBSTR, LOLWUT, PFSELFTEST and MODULE LOAD are on every version") {
+    val v = redis_6_2
+    assertEquals(v.substr[String](Key("k"), Index(0L), Index(1L)).frames, frame("SUBSTR", "k", "0", "1"))
+    assertEquals(v.lolwut.frames, frame("LOLWUT"))
+    assertEquals(v.lolwut(PosInt(8)).frames, frame("LOLWUT", "VERSION", "8"))
+    assertEquals(v.pfselftest.frames, frame("PFSELFTEST"))
+    assertEquals(v.module.load(Key("/m.so")).frames, frame("MODULE", "LOAD", "/m.so"))
+    assertEquals(
+      v.module.load(Key("/m.so"), OneOrMore.unsafeFrom(List[protocol.Value](1, "x"))).frames,
+      frame("MODULE", "LOAD", "/m.so", "1", "x")
+    )
+    assertEquals(v.module.unload(Key("m")).frames, frame("MODULE", "UNLOAD", "m"))
+    assert(compileErrors("""redis_6_2.module.loadex(Key("/m.so"))""").nonEmpty)
+    assert(compileErrors("""redis_6_2.command.docs""").nonEmpty)
+  }
+
+  test("MODULE LOADEX and COMMAND DOCS are from Redis 7.0") {
+    val module = redis_7_0.module
+    val config = OneOrMore.unsafeFrom(List[(Key, protocol.Value)](Key("a") -> 1, Key("b") -> "x"))
+    val args   = OneOrMore.unsafeFrom(List[protocol.Value](2, "y"))
+
+    assertEquals(module.loadex(Key("/m.so")).frames, frame("MODULE", "LOADEX", "/m.so"))
+    assertEquals(module.loadex(Key("/m.so"), config).frames, frame("MODULE", "LOADEX", "/m.so", "CONFIG", "a", "1", "CONFIG", "b", "x"))
+    assertEquals(module.loadexargs(Key("/m.so"), args).frames, frame("MODULE", "LOADEX", "/m.so", "ARGS", "2", "y"))
+    assertEquals(
+      module.loadex(Key("/m.so"), config, args).frames,
+      frame("MODULE", "LOADEX", "/m.so", "CONFIG", "a", "1", "CONFIG", "b", "x", "ARGS", "2", "y")
+    )
+    assertEquals(redis_7_0.command.docs.frames, frame("COMMAND", "DOCS"))
+    assertEquals(redis_7_0.command.docs(OneOrMore.unsafeFrom(List(Key("get")))).frames, frame("COMMAND", "DOCS", "get"))
+  }
+
+  test("HIMPORT is from Redis 8.10") {
+    val v      = redis_8_10
+    val fields = OneOrMoreKeys.unsafeFrom(List(Key("f1"), Key("f2")))
+
+    assertEquals(v.himportprepare(Key("n"), fields).frames, frame("HIMPORT", "PREPARE", "n", "f1", "f2"))
+    assertEquals(v.himportset(Key("k"), Key("n"), OneOrMore.unsafeFrom(List(1, 2))).frames, frame("HIMPORT", "SET", "k", "n", "1", "2"))
+    assertEquals(v.himportdiscard(Key("n")).frames, frame("HIMPORT", "DISCARD", "n"))
+    assertEquals(v.himportdiscard(Key("n")).decode(Num(1L)), true)
+    assertEquals(v.himportdiscardall.frames, frame("HIMPORT", "DISCARDALL"))
+    assertEquals(v.hashmaps.himportdiscardall.decode(Num(2L)), NonNegInt(2))
+    assert(compileErrors("""redis_8_8.himportdiscardall""").nonEmpty)
+  }
+
+  test("CLIENT CAPA is from Valkey 8.0, and CLIENT IMPORT-SOURCE from Valkey 8.1") {
+    assertEquals(valkey_8_0.client.capa(OneOrMore.unsafeFrom(List(Key("redirect")))).frames, frame("CLIENT", "CAPA", "redirect"))
+    assertEquals(valkey_8_1.client.importsource(on = true).frames, frame("CLIENT", "IMPORT-SOURCE", "ON"))
+    assertEquals(valkey_8_1.client.importsource(on = false).frames, frame("CLIENT", "IMPORT-SOURCE", "OFF"))
+    assert(compileErrors("""valkey_7_2.client.capa(OneOrMore.unsafeFrom(List(Key("redirect"))))""").nonEmpty)
+    assert(compileErrors("""redis_8_10.client.capa(OneOrMore.unsafeFrom(List(Key("redirect"))))""").nonEmpty)
+    assert(compileErrors("""valkey_8_0.client.importsource(on = true)""").nonEmpty)
+  }
+
+  test("CLUSTERSCAN is from Valkey 9.1") {
+    val v = valkey_9_1
+    import v.clustertypes.*
+
+    assertEquals(v.clusterscan(ClusterScanCursor.start).frames, frame("CLUSTERSCAN", "0"))
+    assertEquals(
+      v.clusterscan(
+        ClusterScanCursor("0-{06S}-0"),
+        ClusterScanOptions.pattern(GlobPattern("a*")).count(PosInt(5)).ofType(protocol.KeyP.Type.string).slot(Slot(7))
+      ).frames,
+      frame("CLUSTERSCAN", "0-{06S}-0", "MATCH", "a*", "COUNT", "5", "TYPE", "string", "SLOT", "7")
+    )
+
+    val step = v.clusterscan(ClusterScanCursor.start)
+    assertEquals(step.decode(Arr(Bulk("0-{06S}-0"), Arr(Nil))).map(_.finished), false)
+    val done = step.decode(Arr(Bulk("0"), Arr(Bulk("a"), Bulk("b"))))
+    assertEquals(done.map(_.finished), true)
+    assertEquals(done.map(_.keys), Seq(Key("a"), Key("b")))
+    assert(compileErrors("""valkey_9_0.clusterscan(valkey_9_1.clustertypes.ClusterScanCursor.start)""").nonEmpty)
+    assert(compileErrors("""redis_8_10.clusterscan(valkey_9_1.clustertypes.ClusterScanCursor.start)""").nonEmpty)
+  }
+
+  test("COMMAND DOCS reads a command with its history, nested arguments and subcommands, and one of a module with little of it") {
+    val argument = Arr(
+      Bulk("name"),
+      Bulk("condition"),
+      Bulk("type"),
+      Bulk("oneof"),
+      Bulk("flags"),
+      Arr(Str("optional")),
+      Bulk("arguments"),
+      Arr(Arr(Bulk("name"), Bulk("nx"), Bulk("type"), Bulk("pure-token"), Bulk("token"), Bulk("NX")))
+    )
+    val doc = Arr(
+      Bulk("summary"),
+      Bulk("Sets"),
+      Bulk("since"),
+      Bulk("1.0.0"),
+      Bulk("group"),
+      Bulk("string"),
+      Bulk("complexity"),
+      Bulk("O(1)"),
+      Bulk("doc_flags"),
+      Arr(Str("deprecated")),
+      Bulk("deprecated_since"),
+      Bulk("6.2.0"),
+      Bulk("replaced_by"),
+      Bulk("`NEW`"),
+      Bulk("history"),
+      Arr(Arr(Bulk("2.6.12"), Bulk("Added EX"))),
+      Bulk("arguments"),
+      Arr(argument),
+      Bulk("subcommands"),
+      Arr(Bulk("set|sub"), Arr(Bulk("summary"), Bulk("Sub")))
+    )
+    val docs = redis_7_0.command.docs.decode(Arr(Bulk("set"), doc, Bulk("vadd"), Arr(Bulk("module"), Bulk("vectorset"))))
+
+    assert(docs.isRight, docs)
+    val Seq(set, vadd) = docs.toOption.get: @unchecked
+    assertEquals(set.name, "set")
+    assertEquals(set.history, Seq("2.6.12" -> "Added EX"))
+    assertEquals(set.flags, Seq("deprecated"))
+    assertEquals(set.replacedBy, Some("`NEW`"))
+    assertEquals(set.arguments.map(a => (a.name, a.argumentType, a.flags)), Seq(("condition", "oneof", Seq("optional"))))
+    assertEquals(set.arguments.flatMap(_.arguments).map(a => a.name -> a.token), Seq("nx" -> Some("NX")))
+    assertEquals(set.subcommands.map(s => s.name -> s.summary), Seq("set|sub" -> Some("Sub")))
+    assertEquals(vadd.module, Some("vectorset"))
+    assertEquals((vadd.summary, vadd.history, vadd.arguments, vadd.subcommands), (None, Nil, Nil, Nil))
+  }
+
+  test("PUBSUB is on every version, and shard channels from Redis 7.0") {
+    {
+      import laserdisc.redis_6_2.*
+      assertEquals(pubsub.numpat.frames, frame("PUBSUB", "NUMPAT"))
+      assert(compileErrors("""pubsub.shardchannels""").nonEmpty)
+      assert(compileErrors("""spublish(Key("c"), "m")""").nonEmpty)
+    }
+    {
+      import laserdisc.redis_7_0.*
+      assertEquals(pubsub.shardchannels.frames, frame("PUBSUB", "SHARDCHANNELS"))
+      assertEquals(spublish(Key("c"), "m").frames, frame("SPUBLISH", "c", "m"))
+      assertEquals(laserdisc.redis_7_0.publish.spublish(Key("c"), "m").frames, frame("SPUBLISH", "c", "m"))
+    }
+  }
+
+  test("the command and the family called keys live together, and so do the ones called publish") {
+    import laserdisc.redis_6_2.*
+    assertEquals(keys(GlobPattern("a*")).command, "KEYS")
+    assertEquals(publish(Key("c"), "m").command, "PUBLISH")
+    assertEquals(redis_6_2.keys.del(Key("a")).command, "DEL")
+    assertEquals(redis_6_2.publish.publish(Key("c"), "m").command, "PUBLISH")
+  }
+
+  test("a family called keys can be imported") {
+    import laserdisc.redis_6_2.keys.*
+    assertEquals(del(Key("a")).command, "DEL")
+  }
+
+  test("blocking commands can be imported from a version") {
+    import laserdisc.redis_7_0.blocking.*
+    assertEquals(
+      blmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), protocol.ListP.Side.left, BlockingSeconds(1.0d)).command,
+      "BLMPOP"
+    )
+    assert(compileErrors("""get[String](Key("a"))""").nonEmpty)
+  }
+
+  test("the families of each version together have what the version has") {
+    val versions: List[Base6_2] = List(
+      redis_6_2,
+      redis_7_0,
+      redis_7_2,
+      redis_7_4,
+      redis_8_0,
+      redis_8_2,
+      redis_8_4,
+      redis_8_6,
+      redis_8_8,
+      redis_8_10,
+      valkey_7_2,
+      valkey_8_0,
+      valkey_8_1,
+      valkey_9_0,
+      valkey_9_1
+    )
+    versions.foreach { v =>
+      val arrays = v match {
+        case v: Redis8_8 => List[protocol.Features](v.arrays)
+        case _           => Nil
+      }
+      val families = arrays ++ List[protocol.Features](
+        v.blocking,
+        v.cluster,
+        v.connection,
+        v.geo,
+        v.hashmaps,
+        v.hyperloglog,
+        v.keys,
+        v.lists,
+        v.publish,
+        v.scripting,
+        v.server,
+        v.sets,
+        v.sortedsets,
+        v.streams,
+        v.strings,
+        v.transaction
+      )
+      assertEquals(families.flatMap(_.supported).toSet, v.supported.toSet)
+    }
+  }
+
+  test("ACL selector rules, COMMAND LIST filters and SHUTDOWN options come with the version that takes them") {
+    assert(compileErrors("""laserdisc.redis_6_2.servertypes.aclSelectorRules""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.servertypes.aclSelectorRules""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.servertypes.commandFilter""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.servertypes.commandFilter""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.servertypes.shutdownOptions""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.servertypes.shutdownOptions""").isEmpty)
+  }
+
+  test("HOTKEYS' metrics and options come with the version that takes them") {
+    assert(compileErrors("""laserdisc.redis_8_4.servertypes.hotKeysMetrics""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_6.servertypes.hotKeysMetrics""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.servertypes.hotKeysOptions""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_6.servertypes.hotKeysOptions""").isEmpty)
+  }
+
+  test("COMMANDLOG's types come with the version that takes them") {
+    assert(compileErrors("""laserdisc.valkey_8_0.servertypes.commandLogType""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_1.servertypes.commandLogType""").isEmpty)
+  }
+
+  test("Valkey's client filters and SHUTDOWN options come with the version that takes them") {
+    assert(compileErrors("""laserdisc.valkey_8_1.servertypes.valkeyClientFilter""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.servertypes.valkeyClientFilter""").isEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_1.servertypes.valkeyShutdownOptions""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.servertypes.valkeyShutdownOptions""").isEmpty)
+  }
+
+  test("ACL rules for databases come with the version that takes them") {
+    assert(compileErrors("""laserdisc.valkey_9_0.servertypes.aclDatabaseRules""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_1.servertypes.aclDatabaseRules""").isEmpty)
+  }
+
+  test("CLUSTER SLOT-STATS' metrics on Redis come with the version that takes them") {
+    assert(compileErrors("""laserdisc.redis_8_0.clustertypes.slotStatsMetric""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_2.clustertypes.slotStatsMetric""").isEmpty)
+  }
+
+  test("CLUSTER SLOT-STATS' metrics on Valkey come with the version that takes them") {
+    assert(compileErrors("""laserdisc.valkey_7_2.clustertypes.slotStatsMetric""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_0.clustertypes.slotStatsMetric""").isEmpty)
+  }
+
+  test("CLUSTER SCAN's cursor and options come with the version that takes them") {
+    assert(compileErrors("""laserdisc.valkey_9_0.clustertypes.ClusterScanCursor""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_1.clustertypes.ClusterScanCursor""").isEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.clustertypes.ClusterScanOptions""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_1.clustertypes.ClusterScanOptions""").isEmpty)
+  }
+
+  test("Dragonfly has its own ACL rules, and not the builders of the commands it lacks") {
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.aclDragonflyRules""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.servertypes.aclDragonflyRules""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.aclRules""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.clientFilter""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.trackingOptions""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.unblockMode""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.commandFilter""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.clustertypes.ClusterFailoverMode""").nonEmpty)
+  }
+
+  test("strings' builders are on the imports whose servers take them") {
+    assert(compileErrors("""laserdisc.redis_6_2.stringtypes.bitUnit""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.stringtypes.bitUnit""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_2.stringtypes.compare""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.stringtypes.compare""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_2.stringtypes.ifEq(1)""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.stringtypes.ifEq(1)""").isEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_0.stringtypes.ifEq(1)""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_1.stringtypes.ifEq(1)""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.stringtypes.increx""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_8.stringtypes.increx""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.stringtypes.strAlgoInput""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.stringtypes.strAlgoInput""").isEmpty)
+  }
+
+  test("keys' builders are on the imports whose servers take them") {
+    assert(compileErrors("""laserdisc.dragonfly_2_0.keytypes.KeyMigrateMode""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.keytypes.KeyMigrateMode""").isEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.keytypes.KeyEncoding""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.keytypes.KeyEncoding""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.keytypes.KeyExpireCondition""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.keytypes.KeyExpireCondition""").isEmpty)
+  }
+
+  test("hashes' builders are on the imports whose servers take them") {
+    assert(compileErrors("""laserdisc.redis_7_2.hashtypes.HashExpireCondition""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_4.hashtypes.HashExpireCondition""").isEmpty)
+    assert(compileErrors("""laserdisc.valkey_8_1.hashtypes.HashExpireCondition""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.hashtypes.HashExpireCondition""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_7_4.hashtypes.HashFieldsCondition""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_0.hashtypes.HashFieldsCondition""").isEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.hashtypes.HashKeyCondition""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_1.hashtypes.HashKeyCondition""").isEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.hashtypes.HashFieldPersisted""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_4.hashtypes.HashFieldPersisted""").isEmpty)
+  }
+
+  test("lists', sets' and sorted sets' builders are on the imports whose servers take them") {
+    assert(compileErrors("""laserdisc.redis_8_8.listtypes.ListAmount""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.listtypes.ListAmount""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_8.settypes.approx""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.settypes.approx""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.sortedsettypes.pop""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.sortedsettypes.pop""").isEmpty)
+  }
+
+  test("geo's builders are on the imports whose servers take them") {
+    assert(compileErrors("""laserdisc.valkey_8_1.geotypes.GeoPolygon""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.geotypes.GeoPolygon""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.geotypes.GeoPolygon""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.geotypes.GeoPolygon""").isEmpty)
+  }
+
+  test("streams' builders are on the imports whose servers take them") {
+    assert(compileErrors("""laserdisc.redis_6_2.streamtypes.StreamIdAt""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.streamtypes.StreamIdAt""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_0.streamtypes.StreamRefPolicy""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_2.streamtypes.StreamRefPolicy""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_2.streamtypes.StreamClaimedEntry""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.streamtypes.StreamClaimedEntry""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.streamtypes.StreamIdmp""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_6.streamtypes.StreamIdmp""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_6.streamtypes.StreamNackMode""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_8.streamtypes.StreamNackMode""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_8_8.streamtypes.StreamReadLimits""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.streamtypes.StreamReadLimits""").isEmpty)
+  }
+
+  test("scripting's builders are on the imports whose servers take them") {
+    assert(compileErrors("""laserdisc.redis_6_2.scriptingtypes.ScriptingRestorePolicy""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.scriptingtypes.ScriptingRestorePolicy""").isEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.scriptingtypes.ScriptingLibrary""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_7_0.scriptingtypes.ScriptingLibrary""").isEmpty)
+  }
+
+  test("the values only later versions take exist only on their imports, and older imports read what's new as other") {
+    import laserdisc.auto.*
+
+    assert(compileErrors("""laserdisc.redis_8_0.stringtypes.bitwise.diff""").nonEmpty)
+    assertEquals(laserdisc.redis_8_2.stringtypes.bitwise.diff, laserdisc.redis_8_10.stringtypes.bitwise.diff)
+    assert(compileErrors("""laserdisc.valkey_9_1.stringtypes.bitwise.one""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_6.sortedsettypes.aggregate.count""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_8.sortedsettypes.aggregate.count""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_6_2.servertypes.info.latencystats""").nonEmpty)
+    assert(compileErrors("""laserdisc.dragonfly_2_0.servertypes.info.latencystats""").isEmpty)
+    assert(compileErrors("""laserdisc.redis_7_4.servertypes.info.keysizes""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_4.servertypes.info.hotkeys""").nonEmpty)
+    assert(compileErrors("""laserdisc.valkey_9_0.servertypes.info.tls""").nonEmpty)
+    assert(compileErrors("""laserdisc.redis_8_10.servertypes.info.tls""").nonEmpty)
+
+    // an array is the type `other` names array: older imports send and read it as that, and Redis 8.8's import names it
+    assert(compileErrors("""laserdisc.redis_8_6.keytypes.KeyType.array""").nonEmpty)
+    val array = laserdisc.redis_8_8.keytypes.KeyType.array
+    assertEquals(laserdisc.redis_6_2.typeof("k").decode(Str("array")), Some(laserdisc.redis_6_2.keytypes.KeyType.other("array")))
+    assertEquals(laserdisc.redis_8_8.typeof("k").decode(Str("array")), Some(array))
+    assertEquals(laserdisc.redis_8_8.scan(0L, array).frames, frame("SCAN", "0", "TYPE", "array"))
+    laserdisc.redis_6_2.typeof("k").decode(Str("array")) match {
+      case Right(Some(laserdisc.redis_6_2.keytypes.KeyType.other(name))) => assertEquals(name, Key("array"))
+      case other                                                         => fail(s"expected other, was $other")
+    }
+  }
+}

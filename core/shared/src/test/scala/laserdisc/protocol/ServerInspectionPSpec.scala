@@ -1,0 +1,209 @@
+/*
+ * Copyright (c) 2018-2026 LaserDisc
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+package laserdisc
+package protocol
+
+final class ServerInspectionPSpec extends BaseSpec with ServerP {
+  import ServerInspection.*
+
+  private def bulks(ss: String*): Arr = Arr(ss.map(Bulk(_)).toList)
+
+  private val withoutTotal = Arr(Num(7L), Num(1793582639L), Num(36L), bulks("SET", "a", "1"), Bulk("172.17.0.1:56480"), Bulk(""))
+  private val withTotal    =
+    Arr(Num(6L), Num(1793582638L), Num(160L), bulks("CONFIG", "SET", "x", "0"), Bulk("172.17.0.1:56480"), Bulk("me"), Num(4L))
+
+  test("The Server protocol using slowlog.get reads the entries of every version, without what later versions add") {
+    val v = laserdisc.redis_6_2
+    v.slowlog.get(PosInt(2)).decode(Arr(withoutTotal, withTotal)).onRight {
+      _.collect { case v.LogEntry(id, _, micros, arguments, _, name) => (id.value, micros.value, arguments, name) } ==
+        Seq((7L, 36L, Seq("SET", "a", "1"), ""), (6L, 160L, Seq("CONFIG", "SET", "x", "0"), "me"))
+    }
+    assert(compileErrors("v.slowlog.get.decode(withTotal).map(_.map(_.totalArguments))").nonEmpty)
+  }
+
+  test("The Server protocol using slowlog.get of Redis 8.10 reads how many arguments each command had, which it always sends") {
+    val v = laserdisc.redis_8_10
+    v.slowlog.get(PosInt(1)).decode(Arr(withTotal)).onRight {
+      _.collect { case v.LogEntry(id, _, _, _, _, _, total) => id.value -> total.value } == Seq(6L -> 4L)
+    }
+    assert(v.slowlog.get.decode(Arr(withoutTotal)).isLeft)
+    assertEquals(slowlog.get(PosInt(2)).encode, bulks("SLOWLOG", "GET", "2"))
+    assertEquals(commandlog.get(servertypes.commandLogType.largeReply).encode, bulks("COMMANDLOG", "GET", "-1", "large-reply"))
+  }
+
+  test("The Server protocol using latency reads events, samples and histograms") {
+    latency.latest.decode(Arr(Arr(Bulk("command"), Num(1793582671L), Num(90L), Num(95L)))).onRight {
+      _ == Seq(LatencyEvent("command", NonNegLong(1793582671L), NonNegLong(90L), NonNegLong(95L)))
+    }
+    latency.history(Key("command")).decode(Arr(Arr(Num(1793582639L), Num(2L)), Arr(Num(1793582671L), Num(90L)))).onRight {
+      _.map(_.milliseconds.value) == Seq(2L, 90L)
+    }
+    val histogram = Arr(Bulk("set"), Arr(Bulk("calls"), Num(10L), Bulk("histogram_usec"), Arr(Num(1L), Num(4L), Num(2L), Num(10L))))
+    latency.histogram(OneOrMore.unsafeFrom(List(Key("set")))).decode(histogram).onRight {
+      _ == Map("set" -> LatencyHistogram(NonNegLong(10L), Seq(NonNegLong(1L) -> NonNegLong(4L), NonNegLong(2L) -> NonNegLong(10L))))
+    }
+    assertEquals(latency.reset(OneOrMore.unsafeFrom(List(Key("command")))).encode, bulks("LATENCY", "RESET", "command"))
+  }
+
+  test("The Server protocol using memory reads usage and stats, with the figures of each database") {
+    assertEquals(memory.usage(Key("a"), NonNegInt(0)).encode, bulks("MEMORY", "USAGE", "a", "SAMPLES", "0"))
+    assertEquals(memory.usage(Key("a")).decode(NullBulk), None)
+    val stats = Arr(
+      Bulk("peak.allocated"),
+      Num(5418656L),
+      Bulk("db.0"),
+      Arr(Bulk("overhead.hashtable.main"), Num(1896L), Bulk("overhead.hashtable.expires"), Num(328L)),
+      Bulk("dataset.percentage"),
+      Bulk("98.03681182861328")
+    )
+    memory.stats.decode(stats).onRight { case MemoryStats(values, databases) =>
+      values == Map("peak.allocated" -> "5418656", "dataset.percentage" -> "98.03681182861328") &&
+      databases == Map(0 -> Map("overhead.hashtable.main" -> "1896", "overhead.hashtable.expires" -> "328"))
+    }
+  }
+
+  test("The Server protocol using command reads the information of commands, as Redis 6.2 and Redis 7.0 send it") {
+    val redis62 = Arr(Bulk("get"), Num(2L), Arr(Str("readonly"), Str("fast")), Num(1L), Num(1L), Num(1L), Arr(Str("@read"), Str("@string")))
+    val redis70 =
+      Arr(Bulk("get"), Num(2L), Arr(Str("readonly")), Num(1L), Num(1L), Num(1L), Arr(Str("@read")), Arr(Nil), Arr(Nil), Arr(Nil))
+    val v = laserdisc.redis_6_2
+    v.command.info(OneOrMore.unsafeFrom(List(Key("get"), Key("nosuch")))).decode(Arr(redis62, NullBulk)).onRight {
+      _ == Seq(Some(CommandInfoOf6_2("get", 2, Seq("readonly", "fast"), 1, 1, 1, Seq("@read", "@string"))), None)
+    }
+    v.command.info(OneOrMore.unsafeFrom(List(Key("get")))).decode(Arr(redis70)).onRight {
+      _ == Seq(Some(CommandInfoOf6_2("get", 2, Seq("readonly"), 1, 1, 1, Seq("@read"))))
+    }
+    command.info(OneOrMore.unsafeFrom(List(Key("get")))).decode(Arr(redis70)).onRight {
+      _ == Seq(Some(CommandInfoOf7_0("get", 2, Seq("readonly"), 1, 1, 1, Seq("@read"), Nil, Nil, Nil)))
+    }
+    // from Redis 7.0 the tips, key specifications and subcommands are always sent
+    assert(command.info(OneOrMore.unsafeFrom(List(Key("get")))).decode(Arr(redis62)).isLeft)
+    assert(
+      compileErrors("v.command.info(OneOrMore.unsafeFrom(List(Key(\"get\")))).decode(Arr(redis70)).map(_.flatten.map(_.tips))").nonEmpty
+    )
+  }
+
+  test("The Server protocol using command reads tips, key specifications and subcommands") {
+    def spec(search: RESP, find: RESP, more: RESP*): RESP =
+      Arr(more.toList ++ List(Bulk("flags"), Arr(Str("RO")), Bulk("begin_search"), search, Bulk("find_keys"), find))
+    def kind(name: String, spec: RESP*): RESP = Arr(Bulk("type"), Bulk(name), Bulk("spec"), Arr(spec.toList))
+
+    val index   = kind("index", Bulk("index"), Num(1L))
+    val keyword = kind("keyword", Bulk("keyword"), Bulk("STREAMS"), Bulk("startfrom"), Num(4L))
+    val range   = kind("range", Bulk("lastkey"), Num(-1L), Bulk("keystep"), Num(1L), Bulk("limit"), Num(2L))
+    val keyNum  = kind("keynum", Bulk("keynumidx"), Num(0L), Bulk("firstkey"), Num(1L), Bulk("keystep"), Num(1L))
+    val specs   = Arr(
+      spec(index, range),
+      spec(keyword, keyNum, Bulk("notes"), Bulk("a note")),
+      spec(kind("unknown"), kind("unknown")),
+      spec(kind("newer"), kind("newer"))
+    )
+    val help  = Arr(Bulk("x|help"), Num(2L), Arr(Str("stale")), Num(0L), Num(0L), Num(0L), Arr(Str("@slow")), Arr(Nil), Arr(Nil), Arr(Nil))
+    val reply =
+      Arr(
+        Bulk("x"),
+        Num(-2L),
+        Arr(Nil),
+        Num(0L),
+        Num(0L),
+        Num(0L),
+        Arr(Str("@slow")),
+        Arr(Bulk("request_policy:all_nodes")),
+        specs,
+        Arr(help)
+      )
+    val expected = CommandInfoOf7_0(
+      "x",
+      -2,
+      Nil,
+      0,
+      0,
+      0,
+      Seq("@slow"),
+      Seq("request_policy:all_nodes"),
+      Seq(
+        KeySpecification(None, Seq("RO"), BeginSearch.Index(1), FindKeys.Range(-1, 1, 2)),
+        KeySpecification(Some("a note"), Seq("RO"), BeginSearch.Keyword("STREAMS", 4), FindKeys.KeyNum(0, 1, 1)),
+        KeySpecification(None, Seq("RO"), BeginSearch.Unknown, FindKeys.Unknown),
+        KeySpecification(None, Seq("RO"), BeginSearch.Unknown, FindKeys.Unknown)
+      ),
+      Seq(CommandInfoOf7_0("x|help", 2, Seq("stale"), 0, 0, 0, Seq("@slow"), Nil, Nil, Nil))
+    )
+    assertEquals(command.info(OneOrMore.unsafeFrom(List(Key("x")))).decode(Arr(reply)), Seq(Some(expected)))
+  }
+
+  test("The Server protocol using command.getkeys sends the command it is given") {
+    import laserdisc.auto.*
+    val lmove =
+      redis_8_10.lists.lmove[String]("a", "b", redis_8_10.lists.listtypes.ListSide.left, redis_8_10.lists.listtypes.ListSide.right)
+    assertEquals(command.getkeys(lmove).encode, bulks("COMMAND", "GETKEYS", "LMOVE", "a", "b", "LEFT", "RIGHT"))
+    command.getkeysandflags(lmove).decode(Arr(Arr(Bulk("a"), Arr(Str("RW"), Str("access"))), Arr(Bulk("b"), Arr(Str("RW"))))).onRight {
+      _ == Seq(KeyAndFlags(Key("a"), Seq("RW", "access")), KeyAndFlags(Key("b"), Seq("RW")))
+    }
+    assertEquals(
+      command.list(servertypes.commandFilter.pattern(GlobPattern("xa*"))).encode,
+      bulks("COMMAND", "LIST", "FILTERBY", "PATTERN", "xa*")
+    )
+  }
+
+  test("The Server protocol using module.list reads modules with a path from Redis 7.0, and Redis 6.2 reads them all without") {
+    val search =
+      Arr(Bulk("name"), Bulk("search"), Bulk("ver"), Num(81001L), Bulk("path"), Bulk("/modules/redisearch.so"), Bulk("args"), Arr(Nil))
+    val old = Arr(Bulk("name"), Bulk("old"), Bulk("ver"), Num(1L))
+    laserdisc.redis_6_2.module.list.decode(Arr(search, old)).onRight {
+      _ == Seq(ModuleInfoOf6_2("search", 81001L), ModuleInfoOf6_2("old", 1L))
+    }
+    module.list.decode(Arr(search)).onRight(_ == Seq(ModuleInfoOf7_0("search", 81001L, "/modules/redisearch.so", Nil)))
+    assert(module.list.decode(Arr(old)).isLeft)
+  }
+
+  test("The Server protocol using hotkeys sends the metrics and options, and reads the report or None") {
+    assertEquals(
+      hotkeys.start(servertypes.hotKeysMetrics.cpuAndNet, servertypes.hotKeysOptions.count(PosInt(5)).duration(PosInt(10))).encode,
+      bulks("HOTKEYS", "START", "METRICS", "2", "CPU", "NET", "COUNT", "5", "DURATION", "10")
+    )
+    val report = Arr(
+      Arr(
+        Bulk("tracking-active"),
+        Num(1L),
+        Bulk("selected-slots"),
+        Arr(Arr(Num(0L), Num(16383L))),
+        Bulk("by-cpu-time-us"),
+        Arr(Bulk("b"), Num(25L), Bulk("a"), Num(12L)),
+        Bulk("by-net-bytes"),
+        Arr(Bulk("a"), Num(28L))
+      )
+    )
+    hotkeys.get.decode(report).onRight {
+      _ == Some(
+        Seq(
+          HotKeys(
+            Map("tracking-active" -> "1"),
+            Seq(Key("b")          -> NonNegLong(25L), Key("a") -> NonNegLong(12L)),
+            Seq(Key("a")          -> NonNegLong(28L))
+          )
+        )
+      )
+    }
+    assertEquals(hotkeys.get.decode(NullBulk), None)
+  }
+}

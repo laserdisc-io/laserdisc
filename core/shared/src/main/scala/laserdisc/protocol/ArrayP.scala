@@ -49,14 +49,14 @@ object ArrayP {
   }
 
   /** What ARGREP looks for: a value that's exactly this, contains this, or matches a glob pattern or a regular expression */
-  sealed trait Predicate { def params: List[Bulk] }
+  sealed trait Predicate { private[protocol] def params: Seq[GenBulk] }
   object Predicate       {
-    private final class Of(override final val params: List[Bulk]) extends Predicate
+    private final class Of(override private[protocol] final val params: Seq[GenBulk]) extends Predicate
 
-    def exact[A: Show](value: A): Predicate    = new Of(List(Bulk("EXACT"), Value.bulk(value)))
-    def matching[A: Show](value: A): Predicate = new Of(List(Bulk("MATCH"), Value.bulk(value)))
-    def glob(pattern: GlobPattern): Predicate  = new Of(List(Bulk("GLOB"), Bulk(pattern.value)))
-    def re(pattern: String): Predicate         = new Of(List(Bulk("RE"), Bulk(pattern)))
+    def exact[A: Show](value: A): Predicate    = new Of(RESPParamWrite.params("EXACT" *: value *: EmptyTuple))
+    def matching[A: Show](value: A): Predicate = new Of(RESPParamWrite.params("MATCH" *: value *: EmptyTuple))
+    def glob(pattern: GlobPattern): Predicate  = new Of(RESPParamWrite.params("GLOB" *: pattern.value *: EmptyTuple))
+    def re(pattern: String): Predicate         = new Of(RESPParamWrite.params("RE" *: pattern *: EmptyTuple))
   }
 
   /** AND, OR, LIMIT and NOCASE, for ARGREP: match all the predicates or any of them, stop after some matches, and ignore case */
@@ -81,7 +81,7 @@ object ArrayP {
   object Op {
     final class Number private[ArrayP] (private[protocol] val param: String)
     final class Bits private[ArrayP] (private[protocol] val param: String)
-    final class Count private[ArrayP] (private[protocol] val params: List[Bulk])
+    final class Count private[ArrayP] (private[protocol] val params: Seq[GenBulk])
 
     final val sum: Number                  = new Number("SUM")
     final val min: Number                  = new Number("MIN")
@@ -89,8 +89,8 @@ object ArrayP {
     final val and: Bits                    = new Bits("AND")
     final val or: Bits                     = new Bits("OR")
     final val xor: Bits                    = new Bits("XOR")
-    final val used: Count                  = new Count(List(Bulk("USED")))
-    def matching[A: Show](value: A): Count = new Count(List(Bulk("MATCH"), Value.bulk(value)))
+    final val used: Count                  = new Count(RESPParamWrite.params("USED"))
+    def matching[A: Show](value: A): Count = new Count(RESPParamWrite.params("MATCH" *: value *: EmptyTuple))
   }
 
   /** ARINFO's reply: how many elements are set, the highest index plus one, the next index of ARINSERT, and how the array is stored */
@@ -209,8 +209,8 @@ trait ArrayP extends Features {
   final def argetrange[A: Read[Bulk, _]](key: Key, start: NonNegLong, end: NonNegLong): Single[Seq[Option[A]]] =
     Protocol("ARGETRANGE", key *: start *: end *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
 
-  private final def grepParams(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): List[Bulk] =
-    Bulk(key.value) :: Bulk(start.param) :: Bulk(end.param) :: predicates.value.flatMap(_.params)
+  private final def grepParams(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): Seq[GenBulk] =
+    Bulk(key.value) +: Bulk(start.param) +: Bulk(end.param) +: predicates.value.flatMap(_.params)
 
   /** The indexes of the elements from `start` to `end` that match */
   final def argrep(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): Single[Seq[NonNegLong]] =
@@ -281,8 +281,7 @@ trait ArrayP extends Features {
 
   /** Sets the values at their indexes, with how many weren't set before */
   final def armset[A: Show](key: Key, values: OneOrMore[(NonNegLong, A)]): Single[NonNegLong] =
-    Protocol("ARMSET", Bulk(key.value) :: values.value.flatMap { case (index, value) => List(Bulk(index), Value.bulk(value)) })
-      .as[Num, NonNegLong]
+    Protocol("ARMSET", key *: values.value *: EmptyTuple).as[Num, NonNegLong]
 
   /** The index the next `arinsert` will use */
   final def arnext(key: Key): Single[NonNegLong] = Protocol("ARNEXT", key).as[Num, NonNegLong]

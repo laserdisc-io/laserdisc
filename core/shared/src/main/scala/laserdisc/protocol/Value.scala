@@ -28,11 +28,10 @@ package protocol
 final class Value(val bulk: Bulk) extends AnyVal
 
 object Value extends ValueWithoutShow {
+  // a Bulk is sent as its bytes are, even where the command takes any value with a Show, as Show would make it text. Every parameter
+  // with a Show is sent this way
   implicit final def fromShow[A](a: A)(implicit A: Show[A]): Value = new Value(a match {
     case bulk: Bulk => bulk
     case _          => Bulk(A.show(a))
   })
-
-  // a value inside a list of parameters, sent as its bytes are when it's a Bulk
-  private[protocol] final def bulk[A: Show](a: A): Bulk = fromShow(a).bulk
 }

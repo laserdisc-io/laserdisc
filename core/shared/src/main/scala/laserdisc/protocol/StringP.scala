@@ -169,16 +169,17 @@ object StringP {
     }
 
   /** What STRALGO LCS compares: the values at two keys, or two values given directly */
-  sealed trait StrAlgoInput  { def params: List[Bulk] }
+  sealed trait StrAlgoInput  { private[protocol] def params: Seq[GenBulk] }
   trait StrAlgoInputBuilders {
     def keys(key1: Key, key2: Key): StrAlgoInput
     def strings[A: Show](value1: A, value2: A): StrAlgoInput
   }
   private[laserdisc] object StrAlgoInput extends StrAlgoInputBuilders {
-    private final class Of(override final val params: List[Bulk]) extends StrAlgoInput
+    private final class Of(override private[protocol] final val params: Seq[GenBulk]) extends StrAlgoInput
 
-    def keys(key1: Key, key2: Key): StrAlgoInput             = new Of(List(Bulk("KEYS"), Bulk(key1.value), Bulk(key2.value)))
-    def strings[A: Show](value1: A, value2: A): StrAlgoInput = new Of(List(Bulk("STRINGS"), Value.bulk(value1), Value.bulk(value2)))
+    def keys(key1: Key, key2: Key): StrAlgoInput             = new Of(RESPParamWrite.params("KEYS" *: key1 *: key2 *: EmptyTuple))
+    def strings[A: Show](value1: A, value2: A): StrAlgoInput =
+      new Of(RESPParamWrite.params("STRINGS" *: value1 *: value2 *: EmptyTuple))
   }
 
   /** Where a match is, in each of the two strings LCS compares */
@@ -239,23 +240,23 @@ object StringP {
   }
 
   /** IFEQ, which Valkey and Redis added separately from IFNE, IFDEQ and IFDNE */
-  final class IfEq private (val params: List[Bulk])
+  final class IfEq private (private[protocol] val params: Seq[GenBulk])
   private[laserdisc] object IfEq {
-    def apply[A: Show](a: A): IfEq = new IfEq(List(Bulk("IFEQ"), Value.bulk(a)))
+    def apply[A: Show](a: A): IfEq = new IfEq(RESPParamWrite.params("IFEQ" *: a *: EmptyTuple))
   }
 
-  sealed trait Compare  { def params: List[Bulk] }
+  sealed trait Compare  { private[protocol] def params: Seq[GenBulk] }
   trait CompareBuilders {
     def ifNe[A: Show](a: A): Compare
     def ifDeq(digest: String): Compare
     def ifDne(digest: String): Compare
   }
   private[laserdisc] object Compare extends CompareBuilders {
-    private final class Of(override final val params: List[Bulk]) extends Compare
+    private final class Of(override private[protocol] final val params: Seq[GenBulk]) extends Compare
 
-    def ifNe[A: Show](a: A): Compare   = new Of(List(Bulk("IFNE"), Value.bulk(a)))
-    def ifDeq(digest: String): Compare = new Of(List(Bulk("IFDEQ"), Bulk(digest)))
-    def ifDne(digest: String): Compare = new Of(List(Bulk("IFDNE"), Bulk(digest)))
+    def ifNe[A: Show](a: A): Compare   = new Of(RESPParamWrite.params("IFNE" *: a *: EmptyTuple))
+    def ifDeq(digest: String): Compare = new Of(RESPParamWrite.params("IFDEQ" *: digest *: EmptyTuple))
+    def ifDne(digest: String): Compare = new Of(RESPParamWrite.params("IFDNE" *: digest *: EmptyTuple))
   }
 
   // the builders each feature's commands take, and the types of their replies

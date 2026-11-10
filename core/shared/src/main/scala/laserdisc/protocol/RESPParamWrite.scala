@@ -45,15 +45,15 @@ object RESPParamWrite extends RESPParamWriteInstances {
     (_: A) => thunk
   final def instance[A](f: A => Seq[GenBulk]): RESPParamWrite[A] =
     (a: A) => f(a)
+
+  // what an option made of several values is sent as, kept in the option until a command sends it
+  private[protocol] final def params[A](a: A)(implicit A: RESPParamWrite[A]): Seq[GenBulk] = A.write(a)
 }
 
 private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteInstances1 {
-  implicit final val bulkRESPParamWrite: RESPParamWrite[Bulk] = RESPParamWrite.instance(a => Seq(a))
-  // a Bulk is sent as its bytes are, even where the command takes any value with a Show, as Show would make it text
-  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A] = RESPParamWrite.instance {
-    case bulk: Bulk => Seq(bulk)
-    case a          => Seq(Bulk(a))
-  }
+  implicit final val bulkRESPParamWrite: RESPParamWrite[Bulk]           = RESPParamWrite.instance(a => Seq(a))
+  implicit final val paramsRESPParamWrite: RESPParamWrite[Seq[GenBulk]] = RESPParamWrite.instance(identity)
+  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A]     = RESPParamWrite.instance(a => Seq(Value.fromShow(a).bulk))
   implicit final def pairRESPParamWrite[A, B](
       implicit A: RESPParamWrite[A],
       B: RESPParamWrite[B]

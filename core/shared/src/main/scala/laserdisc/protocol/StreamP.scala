@@ -757,9 +757,6 @@ object StreamP {
   private[protocol] final val consumerInfos6_2: Read[Records, Seq[ConsumerInfo6_2]] = Read[Records, Seq[ConsumerInfo6_2]]
   private[protocol] final val consumerInfos7_2: Read[Records, Seq[ConsumerInfo7_2]] = Read[Records, Seq[ConsumerInfo7_2]]
 
-  private[protocol] final def fieldsParams[A: Show](fields: OneOrMore[(Key, A)]): List[Bulk] =
-    fields.value.flatMap { case (k, v) => List(Bulk(k.value), Value.bulk(v)) }
-
   // the builders each feature's commands take, and the types of their replies
   trait StreamTypes {
     final type StreamBound          = StreamP.Bound
@@ -843,7 +840,7 @@ trait StreamBaseP extends Features {
       "XTRIM: = LIMIT MAXLEN MINID ~"
     )
 
-  import StreamP.{Bound, Entry, From, Id, NoMkStream, Trim, fieldsParams}
+  import StreamP.{Bound, Entry, From, Id, NoMkStream, Trim}
 
   /** The builders of this family's commands, and the types of their replies */
   val streamtypes: StreamP.StreamTypes = new StreamP.StreamTypes {}
@@ -852,23 +849,23 @@ trait StreamBaseP extends Features {
 
   /** Adds an entry with an id the server picks, and replies with it */
   final def xadd[A: Show](key: Key, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: trim.params *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: trim.params *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
 
   /** XADD only to an existing stream: `None` when it doesn't exist */
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: "*" *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: "*" *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: Id, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: id *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: id *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: trim.params *: "*" *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: Id, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: trim.params *: id *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
 
   /** Deletes the entries, and replies how many it deleted */
   final def xdel(key: Key, ids: OneOrMore[Id]): Single[NonNegLong] =
@@ -1197,21 +1194,21 @@ trait StreamSetIdEntriesP extends Features {
 
 /** XADD with an id whose sequence the server picks: Redis 7.0 */
 trait StreamIdAtP extends Features {
-  import StreamP.{Id, IdAt, NoMkStream, Trim, fieldsParams}
+  import StreamP.{Id, IdAt, NoMkStream, Trim}
 
   final def xadd[A: Show](key: Key, id: IdAt, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: IdAt, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: trim.params *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: IdAt, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: id *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: id *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: IdAt, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: trim.params *: id *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
 }
 
 /** KEEPREF, DELREF and ACKED for XADD and XTRIM, and XDELEX and XACKDEL: Redis 8.2 */
 trait StreamRefPolicyP extends Features {
-  import StreamP.{DeleteResult, Id, NoMkStream, RefPolicy, Trim, fieldsParams}
+  import StreamP.{DeleteResult, Id, NoMkStream, RefPolicy, Trim}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -1227,9 +1224,9 @@ trait StreamRefPolicyP extends Features {
 
   /** XADD trimming with a policy for the groups' references */
   final def xadd[A: Show](key: Key, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: policy *: trim.params *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: policy *: trim.params *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](
       key: Key,
       noMkStream: NoMkStream,
@@ -1237,7 +1234,7 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: "*" *: fields.value *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](
       key: Key,
@@ -1247,10 +1244,10 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id *: fields.value *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, id: StreamP.IdAt, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: policy *: trim.params *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](
       key: Key,
       noMkStream: NoMkStream,
@@ -1259,7 +1256,7 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id *: fields.value *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
 
   /** Acknowledges the entries for the group and deletes them, with what it did to each */
@@ -1284,24 +1281,24 @@ trait StreamRefPolicyP extends Features {
 
 /** IDMP and IDMPAUTO for XADD, and XCFGSET: Redis 8.6 */
 trait StreamIdmpP extends Features {
-  import StreamP.{Id, Idmp, IdmpConfig, NoMkStream, RefPolicy, Trim, fieldsParams}
+  import StreamP.{Id, Idmp, IdmpConfig, NoMkStream, RefPolicy, Trim}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("XADD: IDMP IDMPAUTO", "XCFGSET: IDMP-DURATION IDMP-MAXSIZE")
 
   /** XADD that adds the entry only once for the producer and idempotency id, and replies with that entry's id */
   final def xadd[A: Show](key: Key, idmp: Idmp, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: idmp.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: idmp.params *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, idmp: Idmp, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: idmp.params *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: idmp.params *: trim.params *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, idmp: Idmp, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: policy *: idmp.params *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: policy *: idmp.params *: trim.params *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
 
   /** Only to an existing stream: `None` when it doesn't exist */
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, idmp: Idmp, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: idmp.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: idmp.params *: "*" *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, idmp: Idmp, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: idmp.params *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: idmp.params *: trim.params *: "*" *: fields.value *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](
       key: Key,
@@ -1311,7 +1308,7 @@ trait StreamIdmpP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: idmp.params *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: policy *: idmp.params *: trim.params *: "*" *: fields.value *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
 
   final def xcfgset(key: Key, config: IdmpConfig): Single[OK] = Protocol("XCFGSET", key.value :: config.params).as[Str, OK]

@@ -149,8 +149,8 @@ object HashP {
   private[protocol] final def fields(fields: OneOrMoreKeys): List[String] =
     "FIELDS" :: Show[Int].show(fields.value.length) :: fields.value.map(_.value)
 
-  private[protocol] final def fieldsAndValues[A: Show](fieldValues: OneOrMore[(Key, A)]): List[Bulk] =
-    Bulk("FIELDS") :: Bulk(fieldValues.value.length) :: fieldValues.value.flatMap { case (f, v) => List(Bulk(f.value), Value.bulk(v)) }
+  private[protocol] final def fieldsAndValues[A](fieldValues: OneOrMore[(Key, A)]): String *: Int *: List[(Key, A)] *: EmptyTuple =
+    "FIELDS" *: fieldValues.value.length *: fieldValues.value *: EmptyTuple
 
   // the builders each feature's commands take, and the types of their replies
   trait HashTypes       {}

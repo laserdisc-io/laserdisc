@@ -172,16 +172,19 @@ object RedisClient {
                   }
               }
 
-              // a batch the caller gave up on while it was queued isn't sent
+              // a batch the caller gave up on while it was queued isn't sent. The finalizer covers the claim too, as the stream can be
+              // interrupted once the batch is claimed and before it's sent
               def push(address: RedisAddress, connection: Long)(batch: Batch[F]): Stream[F, RESP] =
-                Stream.eval(batch.claim.complete(())).flatMap {
-                  case true =>
-                    Stream
-                      .eval(Temporal[F].monotonic)
-                      .flatMap(now => sendAll(address, connection, now + batch.timeout, batch.requests.toList))
-                      .onFinalizeCase(unsent(address, batch))
-                  case false => Stream.empty
-                }
+                Stream
+                  .eval(batch.claim.complete(()))
+                  .flatMap {
+                    case true =>
+                      Stream
+                        .eval(Temporal[F].monotonic)
+                        .flatMap(now => sendAll(address, connection, now + batch.timeout, batch.requests.toList))
+                    case false => Stream.empty
+                  }
+                  .onFinalizeCase(unsent(address, batch))
 
               // what a WATCH that succeeded, an UNWATCH and a transaction that ran say about the watched keys, before the caller hears.
               // WATCH adds keys to those already watched, so the connection the first of them was watched on is kept: watching more

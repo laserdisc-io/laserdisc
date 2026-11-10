@@ -123,6 +123,18 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
     }
   }
 
+  test("running the stream again after the connection went fails again, instead of waiting for messages that won't come") {
+    serving(1)(confirmed).use { case (port, _) =>
+      RedisSubscriber[IO]
+        .to("127.0.0.1", port, feed)
+        .use(messages => (messages.compile.toList.attempt, messages.compile.toList.attempt.timeout(5.seconds)).tupled)
+        .map { case (first, second) =>
+          assert(first.left.exists(_.isInstanceOf[ServerTerminatedConnection]), first.toString)
+          assert(second.left.exists(_.isInstanceOf[ServerTerminatedConnection]), second.toString)
+        }
+    }
+  }
+
   test("opening fails when the server closes the connection before confirming") {
     serving(1)(confirmation("a", 1)).use { case (port, _) =>
       RedisSubscriber[IO].to("127.0.0.1", port, feed).use(_ => IO.unit).attempt.map { outcome =>

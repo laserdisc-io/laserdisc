@@ -81,13 +81,19 @@ object RedisSubscriber {
             .timeoutTo(confirmationTimeout, Async[F].raiseError[(Vector[RESP], Vector[A])](ServerNotResponding(address)))
         )
         early <- Resource.eval(Ref.of[F, Vector[A]](confirmed._2))
+        ended <- Resource.eval(Ref.of[F, Option[Throwable]](None))
         // the stream may be run more than once: what came during confirmation goes to the first run only, and each message is taken from
-        // the queue on its own, so that a run stopping early leaves the next ones there
-      } yield confirmed._1 -> (Stream.eval(early.getAndSet(Vector.empty)).flatMap(Stream.emits) ++
-        Stream.fromQueueUnterminated(replies, limit = 1).flatMap {
-          case Left(failure) => Stream.raiseError[F](failure)
-          case Right(reply)  => Stream.fromEither[F](feed.message(reply)).flatMap(Stream.fromOption[F](_))
-        })
+        // the queue on its own, so that a run stopping early leaves the next ones there. Once the connection has failed, every run fails
+        // with the same error, as nothing more will come
+      } yield confirmed._1 -> Stream.eval(ended.get).flatMap {
+        case Some(failure) => Stream.raiseError[F](failure)
+        case None          =>
+          Stream.eval(early.getAndSet(Vector.empty)).flatMap(Stream.emits) ++
+            Stream.fromQueueUnterminated(replies, limit = 1).flatMap {
+              case Left(failure) => Stream.eval(ended.set(Some(failure))) >> Stream.raiseError[F](failure)
+              case Right(reply)  => Stream.fromEither[F](feed.message(reply)).flatMap(Stream.fromOption[F](_))
+            }
+      }
 
     // what arrives while the rest is being confirmed is kept for the stream
     private def confirm[A](

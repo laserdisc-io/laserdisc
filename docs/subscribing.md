@@ -38,8 +38,8 @@ use it for debugging.
   closing it unsubscribes. To listen to more, open another and merge the streams.
 - **Each subscription uses a connection.**
 - **The stream fails if the connection drops.** Pub/sub doesn't keep messages, so
-  anything published in the meantime is lost. Whether to open a new one is up to
-  you.
+  anything published in the meantime is lost, and running the stream again fails
+  the same way. Whether to open a new one is up to you.
 - **The stream fails on a message it can't read** as the type you asked for. Ask
   for `Bulk` to get the raw bytes of any message.
 - **In a cluster**, `ssubscribe` needs a connection to the node that serves the

@@ -257,6 +257,55 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  // watches k on the first connection, and answers the next command with ending, then closes it
+  private def endingWatchWith(ending: String, seen: cats.effect.Ref[IO, List[String]]) =
+    FakeRedisServer { (n, commands) =>
+      if (n == 1) commands.take(2).map(c => if (name(c) == "WATCH") "+OK\r\n" else ending)
+      else
+        commands.evalTap(c => seen.update(_ :+ name(c))).map { c =>
+          name(c) match {
+            case "MULTI" | "DISCARD" | "UNWATCH" => "+OK\r\n"
+            case "SET"                           => "+QUEUED\r\n"
+            case "EXEC"                          => "*1\r\n+OK\r\n"
+            case _                               => bulk("w")
+          }
+        }
+    }
+
+  List(
+    ("EXEC", "*0\r\n", true),
+    ("EXEC", "-EXECABORT Transaction discarded because of previous errors.\r\n", true),
+    ("DISCARD", "+OK\r\n", true),
+    ("RESET", "+RESET\r\n", true),
+    ("EXEC", "-ERR EXEC without MULTI\r\n", false),
+    ("DISCARD", "-ERR DISCARD without MULTI\r\n", false)
+  ).foreach { case (command, reply, ends) =>
+    test(s"a $command sent as a plain command, answered ${reply.trim}, ${if (ends) "ends" else "doesn't end"} the watch") {
+      IO.ref(List.empty[String]).flatMap { seen =>
+        endingWatchWith(reply, seen).use { port =>
+          RedisClient[IO].to("127.0.0.1", port).use { client =>
+            for {
+              _ <- client.send(watch("k"), 2.seconds)
+              _ <- client.send(Protocol(command, EmptyTuple).using(laserdisc.protocol.RESPRead.raw), 2.seconds)
+              _ <- untilReplied(
+                client
+                  .send(get[String]("k"), 2.seconds)
+                  .map(_.flatMap(r => if (r.contains("w")) Right(r) else Left(new Exception(s"still $r"))))
+              )
+              _     <- seen.set(Nil)
+              ran   <- client.send(multi(set("k", 2)), 2.seconds)
+              names <- seen.get
+            } yield
+              if (ends) {
+                assert(ran.exists(_.exists(_ == Right(OK))), s"expected the multi to run, got $ran")
+                assertEquals(names, List("MULTI", "SET", "EXEC"))
+              } else assertNotRun(ran, names)
+          }
+        }
+      }
+    }
+  }
+
   test("an UNWATCH and a WATCH sent with the multi count before it's checked") {
     IO.ref(List.empty[String]).flatMap { seen =>
       droppingWatch(seen).use { port =>

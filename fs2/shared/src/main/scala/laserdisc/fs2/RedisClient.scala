@@ -220,14 +220,18 @@ object RedisClient {
 
               // what a WATCH that succeeded, an UNWATCH and a transaction that ran say about the watched keys, before the caller hears.
               // WATCH adds keys to those already watched, so the connection the first of them was watched on is kept: watching more
-              // keys on a new connection doesn't bring back the watch that went with the old one
+              // keys on a new connection doesn't bring back the watch that went with the old one. A transaction sent as plain commands,
+              // as from the CLI, ends the watch with its EXEC or DISCARD, unless the server refuses them for want of a MULTI, and so
+              // does RESET
               def watch(connection: Long, request: Request[F], replies: Vector[RESP]): F[Unit] =
                 if (isTransaction(request)) watchedOn.set(None)
                 else
-                  command(request) match {
-                    case Some("WATCH") if replies.headOption.contains(Str("OK"))   => watchedOn.update(_.orElse(Some(connection)))
-                    case Some("UNWATCH") if replies.headOption.contains(Str("OK")) => watchedOn.set(None)
-                    case _                                                         => Concurrent[F].unit
+                  (command(request), replies.headOption) match {
+                    case (Some("WATCH"), Some(Str("OK")))                              => watchedOn.update(_.orElse(Some(connection)))
+                    case (Some("UNWATCH" | "DISCARD"), Some(Str("OK")))                => watchedOn.set(None)
+                    case (Some("EXEC"), Some(Err(m))) if m.startsWith("ERR")           => Concurrent[F].unit
+                    case (Some("EXEC"), Some(_)) | (Some("RESET"), Some(Str("RESET"))) => watchedOn.set(None)
+                    case _                                                             => Concurrent[F].unit
                   }
 
               // a request is answered once it has a reply for each frame it sent

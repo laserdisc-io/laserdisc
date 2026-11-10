@@ -26,14 +26,14 @@ package channels
 
 import _root_.fs2.*
 import _root_.fs2.io.net.Network
-import cats.effect.kernel.Concurrent
+import cats.effect.Temporal
 import com.comcast.ip4s.{Host, SocketAddress}
 import laserdisc.fs2.RedisChannel.connectedSocket
 import laserdisc.fs2.parallel.adapters.RespChannelAdapter
 
 object ByteInRespOutChannel {
 
-  private[fs2] final def apply[F[_]: Network: Concurrent](
+  private[fs2] final def apply[F[_]: Network: Temporal](
       address: SocketAddress[Host],
       receiveBufferSizeBytes: Int
   ): Pipe[F, Byte, RESP] =

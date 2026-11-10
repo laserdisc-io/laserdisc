@@ -268,8 +268,8 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)
     assert(send(delex("df:d", stringtypes.ifEq("v"))))
     assertEquals(send(digest("df:d")), None)
     send(setbit("df:b", 3L, stringtypes.bit.set))
-    assertEquals(send(bitcount("df:b", 0L, 7L, stringtypes.bitUnit.bit)).value, 1)
-    assertEquals(send(bitpos("df:b", stringtypes.bit.set, 0L, 7L, stringtypes.bitUnit.bit)).map(_.value), Some(3))
+    assertEquals(send(bitcount("df:b", 0L, 7L, stringtypes.bitUnit.bit)).value, 1L)
+    assertEquals(send(bitpos("df:b", stringtypes.bit.set, 0L, 7L, stringtypes.bitUnit.bit)).map(_.value), Some(3L))
     send(del("df:b"))
   }
 

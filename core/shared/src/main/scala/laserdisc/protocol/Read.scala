@@ -67,13 +67,11 @@ object Read extends ReadInstances0 {
   @inline final def instancePF[A, B](expectation: String)(pf: PartialFunction[A, B]): Read[A, B] =
     a => if (pf.isDefinedAt(a)) Right(pf(a)) else Left(RESPDecErr(s"Read Error: expected $expectation but was $a"))
 
+  // None when the condition holds, otherwise the value read, failing if it can't be
   @inline final def lift2OptionWhen[A, B](cond: A => Boolean)(
       implicit R: Read[A, B]
   ): Read[A, Option[B]] =
-    Read.infallible {
-      case i @ R(Right(b)) if !cond(i) => Some(b)
-      case _                           => None
-    }
+    Read.instance(a => if (cond(a)) Right(None) else R.read(a).map(Some(_)))
 
   @inline final def numMinusOneIsNone[A: Read[Num, _]]: Read[Num, Option[A]] =
     lift2OptionWhen(_.value == -1L)

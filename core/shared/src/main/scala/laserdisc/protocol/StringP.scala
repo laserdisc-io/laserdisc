@@ -332,16 +332,16 @@ trait StringBaseP extends Features {
       "SUBSTR"
     )
 
-  private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
+  private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegLong])
 
   /** The builders of this family's commands, and the types of their replies */
   val stringtypes: StringP.StringTypes = new StringP.StringTypes {}
 
   final def append[A: Show](key: Key, value: A): Single[NonNegInt] = Protocol("APPEND", key *: value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def bitcount(key: Key): Single[NonNegInt]                           = Protocol("BITCOUNT", key).as[Num, NonNegInt]
-  final def bitcount(key: Key, start: Index, end: Index): Single[NonNegInt] =
-    Protocol("BITCOUNT", key *: start *: end *: EmptyTuple).as[Num, NonNegInt]
+  final def bitcount(key: Key): Single[NonNegLong]                           = Protocol("BITCOUNT", key).as[Num, NonNegLong]
+  final def bitcount(key: Key, start: Index, end: Index): Single[NonNegLong] =
+    Protocol("BITCOUNT", key *: start *: end *: EmptyTuple).as[Num, NonNegLong]
 
   final def bitfield(key: Key, steps: BitField): Single[Seq[Option[Long]]] =
     Protocol("BITFIELD", key *: steps.params *: EmptyTuple).using(RESPRead.instance(StringP.bitFieldResults))
@@ -356,10 +356,10 @@ trait StringBaseP extends Features {
   final def bitopnot(key: Key, destinationKey: Key): Single[NonNegInt] =
     Protocol("BITOP", "NOT" :: destinationKey.value :: key.value :: Nil).as[Num, NonNegInt]
 
-  final def bitpos(key: Key, bit: Bit): Single[Option[NonNegInt]] = Protocol("BITPOS", key *: bit *: EmptyTuple).using(minusOneIsNone)
-  final def bitpos(key: Key, bit: Bit, start: Index): Single[Option[NonNegInt]] =
+  final def bitpos(key: Key, bit: Bit): Single[Option[NonNegLong]] = Protocol("BITPOS", key *: bit *: EmptyTuple).using(minusOneIsNone)
+  final def bitpos(key: Key, bit: Bit, start: Index): Single[Option[NonNegLong]] =
     Protocol("BITPOS", key *: bit *: start *: EmptyTuple).using(minusOneIsNone)
-  final def bitpos(key: Key, bit: Bit, start: Index, end: Index): Single[Option[NonNegInt]] =
+  final def bitpos(key: Key, bit: Bit, start: Index, end: Index): Single[Option[NonNegLong]] =
     Protocol("BITPOS", key *: bit *: start *: end *: EmptyTuple).using(minusOneIsNone)
 
   final def decr[A: Read[Num, _]](key: Key): Single[A] = Protocol("DECR", key).as[Num, A]
@@ -494,11 +494,11 @@ trait StringBitUnitP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("BITCOUNT: BIT BYTE", "BITPOS: BIT BYTE")
 
-  final def bitcount(key: Key, start: Index, end: Index, unit: BitUnit): Single[NonNegInt] =
-    Protocol("BITCOUNT", key *: start *: end *: unit *: EmptyTuple).as[Num, NonNegInt]
+  final def bitcount(key: Key, start: Index, end: Index, unit: BitUnit): Single[NonNegLong] =
+    Protocol("BITCOUNT", key *: start *: end *: unit *: EmptyTuple).as[Num, NonNegLong]
 
-  final def bitpos(key: Key, bit: Bit, start: Index, end: Index, unit: BitUnit): Single[Option[NonNegInt]] =
-    Protocol("BITPOS", key *: bit *: start *: end *: unit *: EmptyTuple).using(RESPRead.instance(Read.numMinusOneIsNone[NonNegInt]))
+  final def bitpos(key: Key, bit: Bit, start: Index, end: Index, unit: BitUnit): Single[Option[NonNegLong]] =
+    Protocol("BITPOS", key *: bit *: start *: end *: unit *: EmptyTuple).using(RESPRead.instance(Read.numMinusOneIsNone[NonNegLong]))
 }
 
 /** STRALGO LCS: Redis 6.2 and KeyDB. Redis 7.0 replaced it with LCS */

@@ -148,9 +148,9 @@ abstract class StringClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
 
     send(setbit("s:b", 3L, stringtypes.bit.set))
     send(setbit("s:b", 9L, stringtypes.bit.set))
-    assertEquals(send(bitcount("s:b", 0L, 7L, stringtypes.bitUnit.bit)).value, 1)
-    assertEquals(send(bitcount("s:b", 0L, 0L, stringtypes.bitUnit.byte)).value, 1)
-    assertEquals(send(bitpos("s:b", stringtypes.bit.set, 4L, 15L, stringtypes.bitUnit.bit)).map(_.value), Some(9))
+    assertEquals(send(bitcount("s:b", 0L, 7L, stringtypes.bitUnit.bit)).value, 1L)
+    assertEquals(send(bitcount("s:b", 0L, 0L, stringtypes.bitUnit.byte)).value, 1L)
+    assertEquals(send(bitpos("s:b", stringtypes.bit.set, 4L, 15L, stringtypes.bitUnit.bit)).map(_.value), Some(9L))
   }
 
   test(s"a $dest client writes a value as its bytes, even ones that aren't UTF-8, and reads them back as they are") {

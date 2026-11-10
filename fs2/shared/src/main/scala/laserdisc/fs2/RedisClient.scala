@@ -140,7 +140,13 @@ object RedisClient {
                       case Right(Str("OK")) => accepted.complete(true).void
                       case Right(other)     =>
                         accepted.complete(false) >> request.callback(Left(RESPDecErr(s"Expected OK to MULTI but got: $other")))
-                      case Left(error) => accepted.complete(false) >> request.callback(Left(error))
+                      case Left(refused: Err) => accepted.complete(false) >> request.callback(Left(refused))
+                      // the connection went before MULTI was answered, so none of the transaction's commands were sent. A watch went
+                      // with this connection or an earlier one, so the caller hears it was lost, as when it's found out after MULTI's OK
+                      case Left(error) =>
+                        accepted.complete(false) >> watchedOn.getAndSet(None).flatMap { watched =>
+                          request.callback(Left(if (watched.isDefined) WatchLost(address) else error))
+                        }
                     }
                   )
                   // a DISCARD or UNWATCH the server doesn't say OK to may leave the connection inside the transaction, where what's sent

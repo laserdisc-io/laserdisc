@@ -306,6 +306,68 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  // answers like a server that runs transactions, reading k as x
+  private def running(c: RESP): String = name(c) match {
+    case "WATCH" | "MULTI" | "DISCARD" | "UNWATCH" => "+OK\r\n"
+    case "SET"                                     => "+QUEUED\r\n"
+    case "EXEC"                                    => "*1\r\n+OK\r\n"
+    case _                                         => bulk("x")
+  }
+
+  // sends watch k and a multi with it after the reconnection
+  private def watchedAgainThenRun(client: RedisClient[IO]): IO[Unit] =
+    for {
+      _ <- untilReplied(
+        client.send(get[String]("k"), 2.seconds).map(_.flatMap(r => if (r.contains("x")) Right(r) else Left(new Exception(s"still $r"))))
+      )
+      watched <- client.send(watch("k"), 2.seconds)
+      ran     <- client.send(multi(set("k", 2)), 2.seconds)
+    } yield {
+      assertEquals(watched, Right(OK))
+      assert(ran.exists(_.exists(_ == Right(OK))), s"expected the multi after watching again to run, got $ran")
+    }
+
+  test("when the connection goes before MULTI's OK, with the keys watched on an earlier one, the multi fails with WatchLost") {
+    // the first connection watches k and closes, the second closes on MULTI, and the third runs everything
+    val closingOnMulti = FakeRedisServer { (n, commands) =>
+      n match {
+        case 1 => commands.take(2).map(c => if (name(c) == "WATCH") "+OK\r\n" else bulk("v"))
+        case 2 => commands.takeWhile(c => name(c) != "MULTI").as(bulk("w"))
+        case _ => commands.map(running)
+      }
+    }
+
+    closingOnMulti.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        for {
+          _    <- watchedThenReconnected(client)
+          lost <- client.send(multi(set("k", 2)), 2.seconds)
+          _    <- watchedAgainThenRun(client)
+        } yield assert(lost.left.exists(_.isInstanceOf[WatchLost]), s"expected WatchLost, got $lost")
+      }
+    }
+  }
+
+  test("when the connection the keys were watched on goes before MULTI's OK, the multi fails with WatchLost") {
+    // the first connection watches k and closes on MULTI, and the second runs everything
+    val closingOnMulti = FakeRedisServer { (n, commands) =>
+      if (n == 1) commands.takeWhile(c => name(c) != "MULTI").as("+OK\r\n") else commands.map(running)
+    }
+
+    closingOnMulti.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        for {
+          watched <- client.send(watch("k"), 2.seconds)
+          lost    <- client.send(multi(set("k", 2)), 2.seconds)
+          _       <- watchedAgainThenRun(client)
+        } yield {
+          assertEquals(watched, Right(OK))
+          assert(lost.left.exists(_.isInstanceOf[WatchLost]), s"expected WatchLost, got $lost")
+        }
+      }
+    }
+  }
+
   test("an UNWATCH and a WATCH sent with the multi count before it's checked") {
     IO.ref(List.empty[String]).flatMap { seen =>
       droppingWatch(seen).use { port =>

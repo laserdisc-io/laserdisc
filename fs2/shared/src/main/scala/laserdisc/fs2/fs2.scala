@@ -34,7 +34,7 @@ package fs2 {
     def prepare(in: In): F[Prepared[F, LOut]]
 
     override final def apply(env: Env[F], in: In): F[LOut] = {
-      val (queue, duration) = env
+      val (offer, duration) = env
       prepare(in).flatMap {
         case (requests, replies) if requests.isEmpty => replies
         case (requests, replies)                     =>
@@ -42,7 +42,7 @@ package fs2 {
             val giveUp = claim.complete(()).void
 
             // waiting for room in the queue counts towards the timeout: a send that times out before it's queued is never sent
-            (queue.offer(Batch(requests.map(_._1), claim, duration)) >> replies)
+            (offer(Batch(requests.map(_._1), claim, duration)) >> replies)
               .timeout(duration)
               .onCancel(giveUp)
               .recoverWith { case _: TimeoutException =>
@@ -72,7 +72,8 @@ package object fs2 {
   final val Signal  = _root_.fs2.concurrent.SignallingRef
   final val Stream  = _root_.fs2.Stream
 
-  final type Env[F[_]]         = (Queue[F], FiniteDuration)
+  // how a send's batch is queued, and how long the send may take
+  final type Env[F[_]]         = (Batch[F] => F[Unit], FiniteDuration)
   final type RedisClient[F[_]] = Client[F, Env[F]]
 
   // the requests of a send, each with a check for whether its reply arrived, and the action that waits for all the replies

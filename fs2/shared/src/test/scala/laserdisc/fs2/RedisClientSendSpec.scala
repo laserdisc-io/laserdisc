@@ -113,6 +113,17 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  test("a send once the connection has ended fails with ClientTerminated at once, instead of waiting for its timeout") {
+    RedisClient.impl.connection[IO](silent, List(address(6379))).allocated.flatMap { case (connection, end) =>
+      RedisClient.impl.mkClient[IO](connection).use { client =>
+        end >> client.send(get[String]("k"), 5.seconds).attempt.timed.map { case (took, result) =>
+          assertEquals(result.flatMap(identity).left.toOption, Some(ClientTerminated: Throwable))
+          assert(took < 2.seconds, s"took $took")
+        }
+      }
+    }
+  }
+
   test("the commands of a send reach the server together, without waiting for each other's replies") {
     // replies only once it has received three commands
     val repliesInThrees =

@@ -114,10 +114,11 @@ object RedisClient {
                 Ref.of[F, Int](0),
                 Ref.of[F, Long](0L),
                 Ref.of[F, Option[Long]](None),
-                Ref.of[F, Chunk[Batch[F]]](Chunk.empty)
+                Ref.of[F, Chunk[Batch[F]]](Chunk.empty),
+                Ref.of[F, Boolean](false)
               ).tupled
             )
-            .flatMap { case (inFlight, unsentRequests, nextIndex, connections, watchedOn, retries) =>
+            .flatMap { case (inFlight, unsentRequests, nextIndex, connections, watchedOn, retries, ended) =>
               val log = logSelector.log
 
               def isTransaction(request: Request[F]): Boolean  = request.protocol.isInstanceOf[Protocol.Multi[?]]
@@ -347,6 +348,11 @@ object RedisClient {
                       }
                   }
 
+              // once the connection has ended, nothing takes from the queue, so a send queued after it fails at once, whether it came
+              // before the queue was emptied or after
+              val queueing: Batch[F] => F[Unit] =
+                batch => queue.offer(batch) >> ended.get.ifM(failQueued(ClientTerminated), Temporal[F].unit)
+
               val newConnection: Connection[F] = new Connection[F] {
                 override final def run: F[Fiber[F, Throwable, Unit]] =
                   log.debug("Starting connection") >>
@@ -358,7 +364,7 @@ object RedisClient {
                       .flatMap { r =>
                         log.info(
                           s"Connection terminated: ${r.fold(err => err.getMessage, _ => "No issues")}"
-                        ) >> failInFlight(ClientTerminated) >> failQueued(ClientTerminated)
+                        ) >> ended.set(true) >> failInFlight(ClientTerminated) >> failQueued(ClientTerminated)
                       }
                       .start
 
@@ -371,7 +377,7 @@ object RedisClient {
                     in: In,
                     timeout: FiniteDuration
                 )(implicit handler: Handler.Aux[F, Env[F], In, Out]): F[Out] =
-                  handler(queue -> timeout, in)
+                  handler(queueing -> timeout, in)
               }
 
               Resource

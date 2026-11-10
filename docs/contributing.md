@@ -12,15 +12,17 @@ These don't need a server.
 
 ## Integration tests
 
-The integration tests talk to real servers. Start Redis, KeyDB, Valkey and Dragonfly with Docker:
+The integration tests talk to real servers. Start Redis, KeyDB, Valkey and Dragonfly with Docker, at the versions CI uses:
 
 ```sh
-docker run -p 6379:6379 -d redis:alpine
-docker run -p 6380:6379 -d eqalpha/keydb
-docker run -p 6381:6379 -d valkey/valkey:alpine
-docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest
-docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated
+docker run -p 6379:6379 -d redis:8.10.3-alpine
+docker run -p 6380:6379 -d eqalpha/keydb@sha256:6537505c42355ca1f571276bddf83f5b750f760f07b2a185a676481791e388ac
+docker run -p 6381:6379 -d valkey/valkey:9.1.3-alpine
+docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:v2.0.2
+docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:v2.0.2 --cluster_mode=emulated
 ```
+
+The last KeyDB is 6.3.4, named by its digest: its version tags are for one processor type each.
 
 Some of them also need a cluster of each. The steps that start those are in
 `.github/workflows/ci.yml`, named "Start up a Redis cluster" and so on: copy

@@ -62,6 +62,13 @@ ThisBuild / coverageHighlighting       := true
 ThisBuild / coverageMinimumStmtTotal   := 90
 ThisBuild / coverageMinimumBranchTotal := 80
 
+// the servers the integration tests run against, at fixed versions, so that a new release doesn't change what CI finds without a
+// commit saying so. KeyDB has no tag for its version that covers both amd64 and arm64, so it's fixed by the digest of 6.3.4
+val redisImage     = "redis:8.10.3-alpine"
+val keydbImage     = "eqalpha/keydb@sha256:6537505c42355ca1f571276bddf83f5b750f760f07b2a185a676481791e388ac"
+val valkeyImage    = "valkey/valkey:9.1.3-alpine"
+val dragonflyImage = "docker.dragonflydb.io/dragonflydb/dragonfly:v2.0.2"
+
 // four nodes for ClusterClientSpec to make a cluster of: they're in one container so that they can reach each other on 127.0.0.1.
 // Not from port 7000, which AirPlay Receiver has on macOS
 def startUpCluster(name: String, image: String, server: String, firstPort: Int) = {
@@ -76,21 +83,20 @@ def startUpCluster(name: String, image: String, server: String, firstPort: Int) 
 }
 
 val startUpRedisServers = List(
-  WorkflowStep.Run(commands = List("docker run -p 6379:6379 -d redis:alpine"), name = Some("Start up Redis")),
-  WorkflowStep.Run(commands = List("docker run -p 6380:6379 -d eqalpha/keydb"), name = Some("Start up KeyDb")),
-  WorkflowStep.Run(commands = List("docker run -p 6381:6379 -d valkey/valkey:alpine"), name = Some("Start up Valkey")),
+  WorkflowStep.Run(commands = List(s"docker run -p 6379:6379 -d $redisImage"), name = Some("Start up Redis")),
+  WorkflowStep.Run(commands = List(s"docker run -p 6380:6379 -d $keydbImage"), name = Some("Start up KeyDb")),
+  WorkflowStep.Run(commands = List(s"docker run -p 6381:6379 -d $valkeyImage"), name = Some("Start up Valkey")),
   WorkflowStep.Run(
-    commands = List("docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest"),
+    commands = List(s"docker run -p 6382:6379 --ulimit memlock=-1 -d $dragonflyImage"),
     name = Some("Start up Dragonfly")
   ),
   WorkflowStep.Run(
-    commands =
-      List("docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated"),
+    commands = List(s"docker run -p 6383:6379 --ulimit memlock=-1 -d $dragonflyImage --cluster_mode=emulated"),
     name = Some("Start up Dragonfly in cluster mode")
   ),
-  startUpCluster("Redis", "redis:alpine", "redis-server", 7100),
-  startUpCluster("KeyDb", "eqalpha/keydb", "keydb-server", 7110),
-  startUpCluster("Valkey", "valkey/valkey:alpine", "valkey-server", 7120)
+  startUpCluster("Redis", redisImage, "redis-server", 7100),
+  startUpCluster("KeyDb", keydbImage, "keydb-server", 7110),
+  startUpCluster("Valkey", valkeyImage, "valkey-server", 7120)
 )
 
 ThisBuild / githubWorkflowAddedJobs ++= List(

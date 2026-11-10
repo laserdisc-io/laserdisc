@@ -97,6 +97,31 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
     }
   }
 
+  test("when the connection to the only address goes, the client connects to it again, instead of failing commands as unreachable") {
+    val leavingOnce = FakeRedisServer((n, requests) => if (n == 1) requests.take(1).as(bulk("first")) else requests.as(bulk("back")))
+
+    leavingOnce.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        for {
+          first <- client.send(get[String]("k"), 2.seconds)
+          _     <- IO.sleep(500.millis)
+          later <- client.send(get[String]("k"), 2.seconds)
+        } yield {
+          assertEquals(first, Right(Some("first")))
+          assertEquals(later, Right(Some("back")))
+        }
+      }
+    }
+  }
+
+  test("a server that closes each connection before answering anything isn't connected to again and again") {
+    IO.ref(0).flatMap { connections =>
+      FakeRedisServer((n, _) => Stream.exec(connections.set(n))).use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use(_ => IO.sleep(1.second)) >> connections.get.map(n => assert(n <= 2, s"$n connections"))
+      }
+    }
+  }
+
   test("commands fail while no server can be reached") {
     def untilUnavailable(client: RedisClient[IO]): IO[Throwable] =
       client.send(get[String]("k"), 1.second).attempt.flatMap {

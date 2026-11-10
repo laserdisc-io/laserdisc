@@ -90,13 +90,19 @@ object RedisClient {
     )(implicit logSelector: LogSelector[F]): Resource[F, Connection[F]] =
       Resource.eval(Deferred[F, Either[Throwable, Unit]]).flatMap { termSignal =>
         Resource.eval(Queue.bounded[F, Batch[F]](1024)).flatMap { queue =>
-          // the requests sent and waiting for their replies, the address to try next, the number of the current connection, and the number
-          // of the connection a WATCH last succeeded on, until a transaction or UNWATCH ends it
+          // the requests sent and waiting for their replies, the address to try next, the number of the current connection, the number
+          // of the connection a WATCH last succeeded on, until a transaction or UNWATCH ends it, and the batches to send again
           Resource
             .eval(
-              (Ref.of[F, Vector[InFlight[F]]](Vector.empty), Ref.of[F, Int](0), Ref.of[F, Long](0L), Ref.of[F, Option[Long]](None)).tupled
+              (
+                Ref.of[F, Vector[InFlight[F]]](Vector.empty),
+                Ref.of[F, Int](0),
+                Ref.of[F, Long](0L),
+                Ref.of[F, Option[Long]](None),
+                Ref.of[F, Chunk[Batch[F]]](Chunk.empty)
+              ).tupled
             )
-            .flatMap { case (inFlight, nextIndex, connections, watchedOn) =>
+            .flatMap { case (inFlight, nextIndex, connections, watchedOn, retries) =>
               val log = logSelector.log
 
               def isTransaction(request: Request[F]): Boolean  = request.protocol.isInstanceOf[Protocol.Multi[?]]
@@ -231,7 +237,9 @@ object RedisClient {
                 inFlight.getAndSet(Vector.empty).flatMap(_.traverse_(_.request.callback(Left(error))))
 
               def failQueued(error: Throwable): F[Unit] =
-                queue.tryTakeN(None).flatMap(_.traverse_(_.requests.traverse_(_.callback(Left(error)))))
+                (retries.getAndSet(Chunk.empty), queue.tryTakeN(None)).flatMapN { (again, queued) =>
+                  (again.toList ++ queued).traverse_(_.requests.traverse_(_.callback(Left(error))))
+                }
 
               // replies come in order, so when the oldest one is overdue the server has stopped answering
               def watchdog(address: RedisAddress): Stream[F, Unit] =
@@ -246,34 +254,44 @@ object RedisClient {
               val nextAddress: F[RedisAddress] =
                 nextIndex.getAndUpdate(i => (i + 1) % addresses.size).map(addresses(_))
 
-              def serverAvailable(address: RedisAddress, connection: Long, onConnected: F[Unit]): Stream[F, Unit] =
-                Stream
-                  .fromQueueUnterminated(queue, limit = 8 * 1024)
-                  .flatMap(push(address, connection))
+              // the batches are taken off the queue several at a time: when the connection goes, those of them it didn't get to weren't
+              // sent, so they're sent again on the next connection, before the queue and in their order. One that's claimed already was
+              // sent, or its caller gave up on it
+              def unclaimed(taken: Chunk[Batch[F]]): F[Unit] =
+                taken.filterA(_.claim.tryGet.map(_.isEmpty)).flatMap(again => retries.update(_ ++ again).whenA(again.nonEmpty))
+
+              def serverAvailable(address: RedisAddress, connection: Long, onConnected: F[Unit], answered: F[Unit]): Stream[F, Unit] = {
+                val again  = Stream.eval(retries.getAndSet(Chunk.empty)).filter(_.nonEmpty)
+                val queued = Stream.fromQueueUnterminated(queue, limit = 8 * 1024).chunks
+                (again ++ queued)
+                  .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(unclaimed(taken)))
                   .through(redisNetChannel(address, onConnected))
-                  .evalMap(receive(connection))
+                  .evalMap(resp => receive(connection)(resp) >> answered)
                   .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
+              }
 
               val serverUnavailable: Stream[F, Unit] =
                 log.errorS("Server unavailable for publishing") >>
-                  Stream
-                    .fromQueueUnterminated(queue)
+                  (Stream.eval(retries.getAndSet(Chunk.empty)).flatMap(Stream.chunk) ++ Stream.fromQueueUnterminated(queue))
                     .evalMap(_.requests.traverse_(_.callback(Left(ServerUnavailable))))
                     .drain
                     .interruptAfter(3.seconds) // FIXME magic number
 
-              // failures counts the addresses that couldn't be reached since the last connection
+              // failures counts the addresses that couldn't be reached, or that closed the connection before answering anything, since the
+              // last connection that answered. When that one goes, every address is tried again, its own last, before the client gives
+              // up: a server that answered may only have dropped the connection, and one that closes each connection at once, as when
+              // it has too many clients, isn't tried again and again
               def runner(failures: Int): Stream[F, Unit] =
                 if (failures >= addresses.size) serverUnavailable ++ runner(0)
                 else
                   Stream.eval((nextAddress, Ref.of[F, Boolean](false), connections.updateAndGet(_ + 1)).tupled).flatMap {
-                    case (address, connected, connection) =>
-                      val onConnected = connected.set(true) >> log.info(s"Connected to server $address")
+                    case (address, answered, connection) =>
+                      val onConnected = log.info(s"Connected to server $address")
 
-                      serverAvailable(address, connection, onConnected).handleErrorWith { failure =>
+                      serverAvailable(address, connection, onConnected, answered.set(true)).handleErrorWith { failure =>
                         log.errorS(s"Failure of publishing connection to $address", failure) >>
-                          Stream.eval(failInFlight(failure) >> connected.get).flatMap { wasConnected =>
-                            runner(if (wasConnected) 1 else failures + 1)
+                          Stream.eval(failInFlight(failure) >> answered.get).flatMap { hasAnswered =>
+                            runner(if (hasAnswered) 0 else failures + 1)
                           }
                       }
                   }

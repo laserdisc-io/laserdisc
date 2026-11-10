@@ -265,6 +265,59 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  // the first connection takes the queued sends together, answers the first command, and goes once it has the second
+  private def goingAfterTwo(taking: Deferred[IO, Unit], connections: cats.effect.Ref[IO, Int], next: Pipe[IO, RESP, RESP]) =
+    RedisClient.impl.connection[IO](
+      (_, onConnected) =>
+        commands =>
+          Stream.eval(connections.updateAndGet(_ + 1)).flatMap { n =>
+            if (n == 1)
+              Stream.exec(onConnected >> taking.get) ++
+                commands.take(2).zipWithIndex.collect { case (_, 0L) => Bulk("v"): RESP } ++
+                Stream.raiseError[IO](new Exception("gone"))
+            else next(commands)
+          },
+      List(address(6379))
+    )
+
+  test("when the connection goes, the sends taken off the queue with the ones it was sending, but not sent, go on the next connection") {
+    (Deferred[IO, Unit], IO.ref(0), IO.ref(Vector.empty[RESP])).tupled.flatMap { case (taking, connections, again) =>
+      val answering: Pipe[IO, RESP, RESP] = _.evalTap(c => again.update(_ :+ c)).as(Bulk("v"))
+
+      goingAfterTwo(taking, connections, answering).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+        val keys = List(Key("a"), Key("b"), Key("c"))
+        for {
+          sends    <- keys.parTraverse(k => client.send(get[String](k), 30.seconds).attempt.map(_.flatten)).start
+          _        <- IO.sleep(200.millis)
+          _        <- taking.complete(())
+          outcomes <- sends.joinWithNever.timeout(10.seconds)
+          sent     <- again.get
+        } yield {
+          // the one sent and not answered may have run, so it isn't sent again
+          assertEquals(outcomes.count(_.isLeft), 1, s"$outcomes")
+          assertEquals(outcomes.count(_ == Right(Some("v"))), 2, s"$outcomes")
+          assertEquals(sent.size, 1)
+        }
+      }
+    }
+  }
+
+  test("the sends waiting to go on the next connection fail when the client is closed") {
+    (Deferred[IO, Unit], IO.ref(0)).tupled.flatMap { case (taking, connections) =>
+      goingAfterTwo(taking, connections, _ => Stream.never[IO]).flatMap(RedisClient.impl.mkClient[IO](_)).allocated.flatMap {
+        case (client, close) =>
+          for {
+            sends    <- List(Key("a"), Key("b"), Key("c")).parTraverse(k => client.send(get[String](k), 30.seconds).attempt).start
+            _        <- IO.sleep(200.millis)
+            _        <- taking.complete(())
+            _        <- IO.sleep(200.millis)
+            _        <- close
+            outcomes <- sends.joinWithNever.timeout(2.seconds)
+          } yield assert(outcomes.exists(_.fold(_ == ClientTerminated, _.left.exists(_ == ClientTerminated))), s"$outcomes")
+      }
+    }
+  }
+
   test("a command its caller gave up on while it was queued isn't sent") {
     (Deferred[IO, Unit], IO.ref(Vector.empty[RESP])).tupled.flatMap { case (connected, sent) =>
       // takes nothing from the queue until it's told to

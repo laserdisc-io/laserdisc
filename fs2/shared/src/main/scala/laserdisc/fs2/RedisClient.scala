@@ -90,19 +90,21 @@ object RedisClient {
     )(implicit logSelector: LogSelector[F]): Resource[F, Connection[F]] =
       Resource.eval(Deferred[F, Either[Throwable, Unit]]).flatMap { termSignal =>
         Resource.eval(Queue.bounded[F, Batch[F]](1024)).flatMap { queue =>
-          // the requests sent and waiting for their replies, the address to try next, the number of the current connection, the number
-          // of the connection a WATCH last succeeded on, until a transaction or UNWATCH ends it, and the batches to send again
+          // the requests sent and waiting for their replies, those of a batch the connection went before sending, the address to try
+          // next, the number of the current connection, the number of the connection a WATCH last succeeded on, until a transaction or
+          // UNWATCH ends it, and the batches to send again
           Resource
             .eval(
               (
                 Ref.of[F, Vector[InFlight[F]]](Vector.empty),
+                Ref.of[F, Vector[Request[F]]](Vector.empty),
                 Ref.of[F, Int](0),
                 Ref.of[F, Long](0L),
                 Ref.of[F, Option[Long]](None),
                 Ref.of[F, Chunk[Batch[F]]](Chunk.empty)
               ).tupled
             )
-            .flatMap { case (inFlight, nextIndex, connections, watchedOn, retries) =>
+            .flatMap { case (inFlight, unsentRequests, nextIndex, connections, watchedOn, retries) =>
               val log = logSelector.log
 
               def isTransaction(request: Request[F]): Boolean  = request.protocol.isInstanceOf[Protocol.Multi[?]]
@@ -123,7 +125,13 @@ object RedisClient {
               // before it are in, WATCH's included, so it's then that the client checks the watch: when the keys were watched on a
               // connection that's gone, the server dropped the watch with it, so the client sends DISCARD instead of the commands, and
               // UNWATCH, as a transaction ends the watch whether it runs or not
-              def transaction(address: RedisAddress, connection: Long, due: FiniteDuration, request: Request[F]): Stream[F, RESP] =
+              def transaction(
+                  address: RedisAddress,
+                  connection: Long,
+                  due: FiniteDuration,
+                  sent: Ref[F, Int],
+                  request: Request[F]
+              ): Stream[F, RESP] =
                 Stream.eval(Deferred[F, Boolean]).flatMap { accepted =>
                   val frames = request.protocol.frames
                   val multi  = Request[F, RESP](
@@ -149,7 +157,9 @@ object RedisClient {
                       }
                     )
 
-                  Stream.evalUnChunk(inFlight.modify(in => (in :+ InFlight(multi, due, 1, Vector.empty)) -> Chunk(frames.head))) ++
+                  val sendingMulti = inFlight.modify(in => (in :+ InFlight(multi, due, 1, Vector.empty)) -> Chunk(frames.head))
+
+                  Stream.evalUnChunk((sendingMulti <* sent.update(_ + 1)).uncancelable) ++
                     Stream.eval(accepted.get).flatMap {
                       case true =>
                         Stream.eval(watchedOn.get).flatMap {
@@ -167,41 +177,46 @@ object RedisClient {
                     }
                 }
 
-              def sendAll(address: RedisAddress, connection: Long, due: FiniteDuration, requests: List[Request[F]]): Stream[F, RESP] = {
+              // sent counts the requests of the batch sent so far, a transaction once its MULTI is
+              def sendAll(
+                  address: RedisAddress,
+                  connection: Long,
+                  due: FiniteDuration,
+                  sent: Ref[F, Int],
+                  requests: List[Request[F]]
+              ): Stream[F, RESP] = {
                 val (before, rest) = requests.span(request => !isTransaction(request))
-                Stream.evalUnChunk(sending(due, before)) ++ (rest match {
-                  case request :: after => transaction(address, connection, due, request) ++ sendAll(address, connection, due, after)
-                  case Nil              => Stream.empty
+                Stream.evalUnChunk((sending(due, before) <* sent.update(_ + before.size)).uncancelable) ++ (rest match {
+                  case request :: after =>
+                    transaction(address, connection, due, sent, request) ++ sendAll(address, connection, due, sent, after)
+                  case Nil => Stream.empty
                 })
               }
 
               // when the connection goes, the requests of a batch that weren't sent yet, like those after a transaction waiting for
-              // MULTI's OK, fail with it: the ones sent are failed with the others in flight, and an answered one keeps its answer
-              def unsent(address: RedisAddress, batch: Batch[F]): Resource.ExitCase => F[Unit] = {
+              // MULTI's OK, are failed with those in flight, with the same error. They're sent in order, so they're the ones after those
+              // counted as sent
+              def unsent(batch: Batch[F], sent: Ref[F, Int]): Resource.ExitCase => F[Unit] = {
                 case Resource.ExitCase.Succeeded => Temporal[F].unit
-                case exit                        =>
-                  val error = exit match {
-                    case Resource.ExitCase.Errored(e) => e
-                    case _                            => ServerTerminatedConnection(address)
-                  }
-                  inFlight.get.flatMap { sent =>
-                    batch.requests.filterNot(request => sent.exists(_.request eq request)).traverse_(_.callback(Left(error)))
-                  }
+                case _                           =>
+                  sent.get.flatMap(n => unsentRequests.update(_ ++ batch.requests.drop(n)).whenA(n < batch.requests.size))
               }
 
               // a batch the caller gave up on while it was queued isn't sent. The finalizer covers the claim too, as the stream can be
               // interrupted once the batch is claimed and before it's sent
               def push(address: RedisAddress, connection: Long)(batch: Batch[F]): Stream[F, RESP] =
-                Stream
-                  .eval(batch.claim.complete(()))
-                  .flatMap {
-                    case true =>
-                      Stream
-                        .eval(Temporal[F].monotonic)
-                        .flatMap(now => sendAll(address, connection, now + batch.timeout, batch.requests.toList))
-                    case false => Stream.empty
-                  }
-                  .onFinalizeCase(unsent(address, batch))
+                Stream.eval(Ref.of[F, Int](0)).flatMap { sent =>
+                  Stream
+                    .eval(batch.claim.complete(()))
+                    .flatMap {
+                      case true =>
+                        Stream
+                          .eval(Temporal[F].monotonic)
+                          .flatMap(now => sendAll(address, connection, now + batch.timeout, sent, batch.requests.toList))
+                      case false => Stream.empty
+                    }
+                    .onFinalizeCase(unsent(batch, sent))
+                }
 
               // what a WATCH that succeeded, an UNWATCH and a transaction that ran say about the watched keys, before the caller hears.
               // WATCH adds keys to those already watched, so the connection the first of them was watched on is kept: watching more
@@ -232,9 +247,12 @@ object RedisClient {
                     case Left(error) => Concurrent[F].raiseError[Unit](error)
                   }
 
-              // the requests sent on a connection that's gone will never get a reply
+              // the requests sent on a connection that's gone will never get a reply, and those of its batches it didn't get to send fail
+              // with them
               def failInFlight(error: Throwable): F[Unit] =
-                inFlight.getAndSet(Vector.empty).flatMap(_.traverse_(_.request.callback(Left(error))))
+                (inFlight.getAndSet(Vector.empty), unsentRequests.getAndSet(Vector.empty)).flatMapN { (sent, unsent) =>
+                  sent.traverse_(_.request.callback(Left(error))) >> unsent.traverse_(_.callback(Left(error)))
+                }
 
               def failQueued(error: Throwable): F[Unit] =
                 (retries.getAndSet(Chunk.empty), queue.tryTakeN(None)).flatMapN { (again, queued) =>

@@ -55,6 +55,39 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  // takes what it's sent and never answers
+  private val silent: (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] =
+    (_, onConnected) => commands => Stream.exec(onConnected) ++ commands.drain ++ Stream.never[IO]
+
+  test("when the server stops answering, the commands after a transaction waiting for MULTI's OK fail with the same error as it") {
+    RedisClient.impl.connection[IO](silent, List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+      for {
+        // once it's overdue, the client sees the server has stopped answering
+        _                    <- client.send(get[String]("x"), 1.second).attempt.start
+        _                    <- IO.sleep(100.millis)
+        (transaction, after) <- client.send(multi(get[String]("a")), get[String]("b"), 30.seconds)
+      } yield {
+        assertEquals(transaction.left.toOption, Some(ServerNotResponding(address(6379)): Throwable))
+        assertEquals(after.left.toOption, Some(ServerNotResponding(address(6379)): Throwable))
+      }
+    }
+  }
+
+  test("when the client is closed, the commands after a transaction waiting for MULTI's OK fail with ClientTerminated") {
+    RedisClient.impl.connection[IO](silent, List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).allocated.flatMap {
+      case (client, close) =>
+        for {
+          sending              <- client.send(multi(get[String]("a")), get[String]("b"), 30.seconds).start
+          _                    <- IO.sleep(200.millis)
+          _                    <- close
+          (transaction, after) <- sending.joinWithNever.timeout(2.seconds)
+        } yield {
+          assertEquals(transaction.left.toOption, Some(ClientTerminated: Throwable))
+          assertEquals(after.left.toOption, Some(ClientTerminated: Throwable))
+        }
+    }
+  }
+
   test("the commands of a send reach the server together, without waiting for each other's replies") {
     // replies only once it has received three commands
     val repliesInThrees =

@@ -85,6 +85,19 @@ abstract class KeyClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
     assertEquals(local.value -> replicas.value, 0 -> 0)
   }
 
+  test(s"a $dest client sets a key to expire after 2038, as a timestamp in seconds past then is bigger than an Int") {
+    import laserdisc.redis_6_2.*
+    import keytypes.*
+
+    send(set("k:x", 1))
+    assert(send(expireat("k:x", 4102444800L)))
+    send(ttl("k:x")) match {
+      case KeyExpireAfterTTLResponse(left) => assert(left.value > Int.MaxValue.toLong - System.currentTimeMillis() / 1000L, s"$left")
+      case other                           => fail(s"expected a time left, got $other")
+    }
+    val _ = send(del("k:x"))
+  }
+
   test(s"a $dest client reads the encoding of each kind of key") {
     import laserdisc.redis_6_2.*
     import keytypes.*

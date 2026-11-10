@@ -130,9 +130,9 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using expireat roundtrips successfully given key and expire timestamp") {
-    forAll { (k: Key, nni: NonNegInt, b: Boolean) =>
-      val protocol = expireat(k, nni)
-      assertEquals(protocol.encode, Arr(Bulk("EXPIREAT"), Bulk(k), Bulk(nni)))
+    forAll { (k: Key, nnl: NonNegLong, b: Boolean) =>
+      val protocol = expireat(k, nnl)
+      assertEquals(protocol.encode, Arr(Bulk("EXPIREAT"), Bulk(k), Bulk(nnl)))
       assertEquals(protocol.decode(boolToNum(b)), b)
     }
   }

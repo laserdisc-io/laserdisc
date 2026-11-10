@@ -343,7 +343,7 @@ trait KeyBaseP extends Features {
   // TODO check if we must support deletions via timeout < 0
   final def expire(key: Key, seconds: NonNegInt): Single[Boolean] = Protocol("EXPIRE", key *: seconds *: EmptyTuple).as[Num, Boolean]
 
-  final def expireat(key: Key, seconds: NonNegInt): Single[Boolean] =
+  final def expireat(key: Key, seconds: NonNegLong): Single[Boolean] =
     Protocol("EXPIREAT", key *: seconds *: EmptyTuple).as[Num, Boolean]
 
   final def keys(pattern: GlobPattern): Single[Seq[Key]] = Protocol("KEYS", pattern *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
@@ -458,7 +458,7 @@ trait KeyExpireConditionP extends Features {
   final def expire(key: Key, seconds: NonNegInt, condition: ExpireCondition): Single[Boolean] =
     Protocol("EXPIRE", key *: seconds *: condition.params *: EmptyTuple).as[Num, Boolean]
 
-  final def expireat(key: Key, seconds: NonNegInt, condition: ExpireCondition): Single[Boolean] =
+  final def expireat(key: Key, seconds: NonNegLong, condition: ExpireCondition): Single[Boolean] =
     Protocol("EXPIREAT", key *: seconds *: condition.params *: EmptyTuple).as[Num, Boolean]
 
   final def expiretime(key: Key): Single[ExpireTimeResponse] = Protocol("EXPIRETIME", key).as[Num, ExpireTimeResponse]

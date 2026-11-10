@@ -165,25 +165,29 @@ object RedisClient {
 
                   val sendingMulti = inFlight.modify(in => (in :+ InFlight(multi, due, 1, Vector.empty)) -> Chunk(frames.head))
 
-                  Stream.evalUnChunk((sendingMulti <* sent.update(_ + 1)).uncancelable) ++
+                  // the transaction counts as sent once its commands are, or the DISCARD and UNWATCH sent instead of them, in the same
+                  // step: until then, the connection going leaves it to be failed with the batch's unsent requests. When MULTI fails,
+                  // its caller has heard already
+                  Stream.evalUnChunk(sendingMulti) ++
                     Stream.eval(accepted.get).flatMap {
                       case true =>
                         Stream.eval(watchedOn.get).flatMap {
                           case Some(watched) if watched != connection =>
                             // the caller hears once the server has ended the watch
-                            val lost = watchedOn.set(None) >> request.callback(Left(WatchLost(address)))
-                            Stream.evalUnChunk(sending(due, List(ending("DISCARD")(Concurrent[F].unit), ending("UNWATCH")(lost))))
+                            val lost    = watchedOn.set(None) >> request.callback(Left(WatchLost(address)))
+                            val cleanup = sending(due, List(ending("DISCARD")(Concurrent[F].unit), ending("UNWATCH")(lost)))
+                            Stream.evalUnChunk((cleanup <* sent.update(_ + 1)).uncancelable)
                           case _ =>
-                            Stream.evalUnChunk(
+                            val commands =
                               inFlight
                                 .modify(in => (in :+ InFlight(request, due, frames.size, Vector(Str("OK")))) -> Chunk.from(frames.tail))
-                            )
+                            Stream.evalUnChunk((commands <* sent.update(_ + 1)).uncancelable)
                         }
-                      case false => Stream.empty
+                      case false => Stream.exec(sent.update(_ + 1))
                     }
                 }
 
-              // sent counts the requests of the batch sent so far, a transaction once its MULTI is
+              // sent counts the requests of the batch sent so far
               def sendAll(
                   address: RedisAddress,
                   connection: Long,
@@ -201,19 +205,17 @@ object RedisClient {
 
               // when the connection goes, the requests of a batch that weren't sent yet, like those after a transaction waiting for
               // MULTI's OK, are failed with those in flight, with the same error. They're sent in order, so they're the ones after those
-              // counted as sent
-              def unsent(batch: Batch[F], sent: Ref[F, Int]): Resource.ExitCase => F[Unit] = {
-                case Resource.ExitCase.Succeeded => Temporal[F].unit
-                case _                           =>
-                  sent.get.flatMap(n => unsentRequests.update(_ ++ batch.requests.drop(n)).whenA(n < batch.requests.size))
-              }
+              // counted as sent, however the batch's stream ended: it can end early without an error, when what reads it stops
+              def unsent(batch: Batch[F], sent: Ref[F, Int]): F[Unit] =
+                sent.get.flatMap(n => unsentRequests.update(_ ++ batch.requests.drop(n)).whenA(n < batch.requests.size))
 
               // a batch the caller gave up on while it was queued isn't sent. The finalizer covers the claim too, as the stream can be
-              // interrupted once the batch is claimed and before it's sent
+              // interrupted once the batch is claimed and before it's sent. Until the connection claims it, the batch has nothing for
+              // the finalizer to fail: one it doesn't claim is sent again or was given up on
               def push(address: RedisAddress, connection: Long)(batch: Batch[F]): Stream[F, RESP] =
-                Stream.eval(Ref.of[F, Int](0)).flatMap { sent =>
+                Stream.eval(Ref.of[F, Int](batch.requests.size)).flatMap { sent =>
                   Stream
-                    .eval(batch.claim.complete(()))
+                    .eval(batch.claim.complete(()).flatTap(sent.set(0).whenA(_)).uncancelable)
                     .flatMap {
                       case true =>
                         Stream
@@ -221,7 +223,7 @@ object RedisClient {
                           .flatMap(now => sendAll(address, connection, now + batch.timeout, sent, batch.requests.toList))
                       case false => Stream.empty
                     }
-                    .onFinalizeCase(unsent(batch, sent))
+                    .onFinalize(unsent(batch, sent))
                 }
 
               // what a WATCH that succeeded, an UNWATCH and a transaction that ran say about the watched keys, before the caller hears.

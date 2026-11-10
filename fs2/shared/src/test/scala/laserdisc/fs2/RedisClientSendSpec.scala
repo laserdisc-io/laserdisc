@@ -73,6 +73,19 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  test("when the connection goes once MULTI's OK is in, before the transaction's commands are sent, the multi fails at once") {
+    // takes MULTI, says OK to it, and goes without taking anything else
+    val goingAfterMulti: (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] =
+      (_, onConnected) =>
+        commands => Stream.exec(onConnected) ++ commands.take(1).as(Str("OK"): RESP) ++ Stream.raiseError[IO](new Exception("gone"))
+
+    RedisClient.impl.connection[IO](goingAfterMulti, List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+      client.send(multi(get[String]("a")), 30.seconds).timeout(10.seconds).map { result =>
+        assert(result.left.exists(_.getMessage == "gone"), s"expected the connection's error, got $result")
+      }
+    }
+  }
+
   test("when the client is closed, the commands after a transaction waiting for MULTI's OK fail with ClientTerminated") {
     RedisClient.impl.connection[IO](silent, List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).allocated.flatMap {
       case (client, close) =>

@@ -64,6 +64,17 @@ object RedisClient {
   }
 
   private[laserdisc] object impl {
+    // how far a connection got, each stage after the one before: it's never set back, as a send can be taken before it connects
+    private[fs2] sealed abstract class Usage(private val stage: Int) {
+      final def max(other: Usage): Usage = if (stage >= other.stage) this else other
+    }
+    private[fs2] object Usage {
+      case object Connecting extends Usage(0)
+      case object Idle       extends Usage(1)
+      case object Used       extends Usage(2)
+      case object Answered   extends Usage(3)
+    }
+
     sealed trait Connection[F[_]] {
       def run: F[Fiber[F, Throwable, Unit]]
       def shutdown: F[Unit]
@@ -290,13 +301,15 @@ object RedisClient {
               def unclaimed(taken: Chunk[Batch[F]]): F[Unit] =
                 taken.filterA(_.claim.tryGet.map(_.isEmpty)).flatMap(again => retries.update(_ ++ again).whenA(again.nonEmpty))
 
-              def serverAvailable(address: RedisAddress, connection: Long, onConnected: F[Unit], answered: F[Unit]): Stream[F, Unit] = {
-                val again  = Stream.eval(retries.getAndSet(Chunk.empty)).filter(_.nonEmpty)
-                val queued = Stream.fromQueueUnterminated(queue, limit = 8 * 1024).chunks
+              def serverAvailable(address: RedisAddress, connection: Long, usage: Ref[F, Usage]): Stream[F, Unit] = {
+                val again       = Stream.eval(retries.getAndSet(Chunk.empty)).filter(_.nonEmpty)
+                val queued      = Stream.fromQueueUnterminated(queue, limit = 8 * 1024).chunks
+                val onConnected = log.info(s"Connected to server $address") >> usage.update(_.max(Usage.Idle))
                 (again ++ queued)
+                  .evalTap(_ => usage.update(_.max(Usage.Used)))
                   .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(unclaimed(taken)))
                   .through(redisNetChannel(address, onConnected))
-                  .evalMap(resp => receive(connection)(resp) >> answered)
+                  .evalMap(resp => receive(connection)(resp) >> usage.set(Usage.Answered))
                   .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
               }
 
@@ -307,22 +320,28 @@ object RedisClient {
                     .drain
                     .interruptAfter(3.seconds) // FIXME magic number
 
-              // failures counts the addresses that couldn't be reached, or that closed the connection before answering anything, since the
-              // last connection that answered. When that one goes, every address is tried again, its own last, before the client gives
-              // up: a server that answered may only have dropped the connection, and one that closes each connection at once, as when
-              // it has too many clients, isn't tried again and again
+              // a connection that closed with nothing sent on it, as a server closes idle clients, is opened again only once there's
+              // something to send: the send waiting for it goes first on the new connection
+              val nextSend: F[Unit] =
+                Concurrent[F].uncancelable(poll => poll(queue.take).flatMap(batch => retries.update(Chunk.singleton(batch) ++ _)))
+
+              // failures counts the addresses that couldn't be reached, or that closed the connection before answering what was sent on
+              // it, since the last connection that answered. When that one goes, every address is tried again, its own last, before the
+              // client gives up: a server that answered may only have dropped the connection, and one that closes each connection at once,
+              // as when it has too many clients, isn't tried again and again
               def runner(failures: Int): Stream[F, Unit] =
                 if (failures >= addresses.size) serverUnavailable ++ runner(0)
                 else
-                  Stream.eval((nextAddress, Ref.of[F, Boolean](false), connections.updateAndGet(_ + 1)).tupled).flatMap {
-                    case (address, answered, connection) =>
-                      val onConnected = log.info(s"Connected to server $address")
-
-                      serverAvailable(address, connection, onConnected, answered.set(true)).handleErrorWith { failure =>
-                        log.errorS(s"Failure of publishing connection to $address", failure) >>
-                          Stream.eval(failInFlight(failure) >> answered.get).flatMap { hasAnswered =>
-                            runner(if (hasAnswered) 0 else failures + 1)
-                          }
+                  Stream.eval((nextAddress, Ref.of[F, Usage](Usage.Connecting), connections.updateAndGet(_ + 1)).tupled).flatMap {
+                    case (address, usage, connection) =>
+                      serverAvailable(address, connection, usage).handleErrorWith { failure =>
+                        val idle = log.info(s"Connection to $address ended with nothing sent on it: ${failure.getMessage}") >> nextSend
+                        Stream.eval(failInFlight(failure) >> usage.get).flatMap {
+                          case Usage.Idle => Stream.exec(idle) ++ runner(failures)
+                          case reached    =>
+                            log.errorS(s"Failure of publishing connection to $address", failure) >>
+                              runner(if (reached == Usage.Answered) 0 else failures + 1)
+                        }
                       }
                   }
 

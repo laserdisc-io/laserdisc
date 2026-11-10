@@ -122,6 +122,28 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
     }
   }
 
+  test("when the server closes a connection nothing was sent on, the client connects again for the next command, which goes through") {
+    IO.ref(0).flatMap { connections =>
+      val idleClosedOnce =
+        FakeRedisServer((n, requests) => Stream.exec(connections.set(n)) ++ (if (n == 1) Stream.empty else requests.as(bulk("back"))))
+
+      idleClosedOnce.use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use { client =>
+          for {
+            _      <- IO.sleep(500.millis)
+            before <- connections.get
+            reply  <- client.send(get[String]("k"), 2.seconds)
+            after  <- connections.get
+          } yield {
+            assertEquals(before, 1)
+            assertEquals(reply, Right(Some("back")))
+            assertEquals(after, 2)
+          }
+        }
+      }
+    }
+  }
+
   test("commands fail while no server can be reached") {
     def untilUnavailable(client: RedisClient[IO]): IO[Throwable] =
       client.send(get[String]("k"), 1.second).attempt.flatMap {

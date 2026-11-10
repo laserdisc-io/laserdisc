@@ -225,6 +225,10 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   private final def crlfTerminatedCodec[A](baseCodec: Codec[A], from: Long = 0L): Codec[A] =
     filtered(baseCodec, crlfTerminatedFrom(from))
 
+  // the most bytes a bulk string, or elements an array, can declare: a reply that big can't be held in memory, and a bigger size would
+  // overflow the arithmetic that finds where the reply ends
+  private[protocol] final val MaxSize: Long = Int.MaxValue.toLong
+
   private final val crlfTerminatedStringCodec: Codec[String] = crlfTerminatedCodec(utf8Codec)
   private final val crlfTerminatedLongCodec: Codec[Long]     = {
     @inline def parseLong(s: String) =
@@ -238,11 +242,12 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   private final val bulkCodec: Codec[GenBulk] = new Codec[GenBulk] {
     private final val nullBulkBits = minusOne ++ crlf
     private final val decoder      = crlfTerminatedLongCodec.flatMap {
-      case -1                => Decoder.liftAttempt(Attempt.successful(NullBulk))
-      case size if size >= 0 => fixedSizeBytes(size + crlfBytesSize, crlfTerminatedCodec(bytes, size)).map(Bulk(_))
-      case negSize           => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
+      case -1                                   => Decoder.liftAttempt(Attempt.successful(NullBulk))
+      case size if size >= 0 && size <= MaxSize =>
+        fixedSizeBytes(size + crlfBytesSize, crlfTerminatedCodec(bytes, size)).map(Bulk(_))
+      case badSize => Decoder.liftAttempt(Attempt.failure(failDec(badSize)))
     }
-    private final def failDec(negSize: Long)            = General(s"failed to decode bulk-string of size $negSize", List("size"))
+    private final def failDec(badSize: Long)            = General(s"failed to decode bulk-string of size $badSize", List("size"))
     private final def failEnc(bulk: GenBulk, err: SErr) =
       General(s"failed to encode size of [$bulk]: ${err.messageWithContext}", List("size"))
 
@@ -262,13 +267,13 @@ sealed trait RESPCodecs extends BitVectorSyntax {
       if (v.size == expectedSize) Attempt.successful(v)
       else Attempt.failure(SErr(s"Insufficient number of elements: decoded ${v.size} instead of $expectedSize"))
     private final val decoder = crlfTerminatedLongCodec.flatMap {
-      case -1               => Decoder.liftAttempt(Attempt.successful(NilArr))
-      case 0                => Decoder.liftAttempt(Attempt.successful(Arr(List.empty)))
-      case size if size > 0 =>
+      case -1                                  => Decoder.liftAttempt(Attempt.successful(NilArr))
+      case 0                                   => Decoder.liftAttempt(Attempt.successful(Arr(List.empty)))
+      case size if size > 0 && size <= MaxSize =>
         Decoder(ScodecCompat.decodeList(respCodec, Some(size.toInt))(_)).emap(checkSize(_, size)).map(Arr.apply)
-      case negSize => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
+      case badSize => Decoder.liftAttempt(Attempt.failure(failDec(badSize)))
     }
-    private final def failDec(negSize: Long)          = General(s"failed to decode array of size $negSize", List("size"))
+    private final def failDec(badSize: Long)          = General(s"failed to decode array of size $badSize", List("size"))
     private final def failEnc(arr: GenArr, err: SErr) =
       General(s"failed to encode size of [$arr]: ${err.messageWithContext}", List("size"))
 
@@ -371,17 +376,19 @@ sealed trait RESPFunctions { this: RESPCodecs =>
       case `plusByte` | `minusByte` | `colonByte`           => Right(Finished(eol + crlfBytes.size))
       case `dollarByte`                                     =>
         sizeBetween(buffer, from + 1L, eol).flatMap {
-          case -1L          => Right(Finished(eol + crlfBytes.size))
-          case n if n < -1L => Left(s"Expected a size of at least -1 but found $n")
-          case n            =>
+          case -1L              => Right(Finished(eol + crlfBytes.size))
+          case n if n < -1L     => Left(s"Expected a size of at least -1 but found $n")
+          case n if n > MaxSize => Left(s"Expected a size of at most $MaxSize but found $n")
+          case n                =>
             val end = eol + crlfBytes.size + n + crlfBytes.size
             Right(if (end <= buffer.size) Finished(end) else Short((end - buffer.size) * BitsInByte))
         }
       case `starByte` =>
         sizeBetween(buffer, from + 1L, eol).flatMap {
-          case -1L | 0L     => Right(Finished(eol + crlfBytes.size))
-          case n if n < -1L => Left(s"Expected a size of at least -1 but found $n")
-          case n            => Right(Opened(eol + crlfBytes.size, n))
+          case -1L | 0L         => Right(Finished(eol + crlfBytes.size))
+          case n if n < -1L     => Left(s"Expected a size of at least -1 but found $n")
+          case n if n > MaxSize => Left(s"Expected a size of at most $MaxSize but found $n")
+          case n                => Right(Opened(eol + crlfBytes.size, n))
         }
       case _ =>
         val other = buffer.slice(from, from + 1L).bits

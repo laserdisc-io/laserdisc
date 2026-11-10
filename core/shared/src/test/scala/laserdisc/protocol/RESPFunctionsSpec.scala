@@ -84,4 +84,14 @@ final class RESPFunctionsSpec extends BaseSpec {
       )
     )
   }
+
+  test("A bulk string or an array declaring more than 2147483647 bytes or elements is refused, as its end can't be worked out") {
+    List("$9223372036854775784\r\n", "$2147483648\r\n", "*9223372036854775807\r\n:1\r\n", "*2147483648\r\n").foreach { reply =>
+      val bits = BitVector(reply.getBytes)
+      assert(RESP.stateOf(bits).isLeft, s"$reply: ${RESP.stateOf(bits)}")
+      assert(EmptyFrame.append(bits).isLeft, s"$reply: ${EmptyFrame.append(bits)}")
+      assert(RESP.respCodec.decode(bits).isFailure, s"$reply: ${RESP.respCodec.decode(bits)}")
+    }
+    assertEquals(RESP.stateOf(BitVector("$2147483647\r\n".getBytes)), MissingBits((2147483647L + 2L) * 8L))
+  }
 }

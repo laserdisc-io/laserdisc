@@ -53,6 +53,8 @@ object ArrayP {
   object Predicate       {
     private final class Of(override private[protocol] final val params: Seq[GenBulk]) extends Predicate
 
+    implicit final val predicateRESPParamWrite: RESPParamWrite[Predicate] = RESPParamWrite.instance(_.params)
+
     def exact[A: Show](value: A): Predicate    = new Of(RESPParamWrite.params("EXACT" *: value *: EmptyTuple))
     def matching[A: Show](value: A): Predicate = new Of(RESPParamWrite.params("MATCH" *: value *: EmptyTuple))
     def glob(pattern: GlobPattern): Predicate  = new Of(RESPParamWrite.params("GLOB" *: pattern.value *: EmptyTuple))
@@ -209,8 +211,13 @@ trait ArrayP extends Features {
   final def argetrange[A: Read[Bulk, _]](key: Key, start: NonNegLong, end: NonNegLong): Single[Seq[Option[A]]] =
     Protocol("ARGETRANGE", key *: start *: end *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
 
-  private final def grepParams(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): Seq[GenBulk] =
-    Bulk(key.value) +: Bulk(start.param) +: Bulk(end.param) +: predicates.value.flatMap(_.params)
+  private final def grepParams(
+      key: Key,
+      start: Bound,
+      end: Bound,
+      predicates: OneOrMore[Predicate]
+  ): Key *: String *: String *: List[Predicate] *: EmptyTuple =
+    key *: start.param *: end.param *: predicates.value *: EmptyTuple
 
   /** The indexes of the elements from `start` to `end` that match */
   final def argrep(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): Single[Seq[NonNegLong]] =
@@ -224,7 +231,7 @@ trait ArrayP extends Features {
       predicates: OneOrMore[Predicate],
       options: GrepOptions
   ): Single[Seq[NonNegLong]] =
-    Protocol("ARGREP", grepParams(key, start, end, predicates) ++ options.params.map(Bulk(_))).as[Arr.Of[Num], Seq[NonNegLong]]
+    Protocol("ARGREP", grepParams(key, start, end, predicates) *: options.params *: EmptyTuple).as[Arr.Of[Num], Seq[NonNegLong]]
 
   /** The indexes and values of the elements from `start` to `end` that match */
   final def argrepwithvalues[A: Read[Bulk, _]](
@@ -233,7 +240,7 @@ trait ArrayP extends Features {
       end: Bound,
       predicates: OneOrMore[Predicate]
   ): Single[Seq[(NonNegLong, A)]] =
-    Protocol("ARGREP", grepParams(key, start, end, predicates) :+ Bulk("WITHVALUES"))
+    Protocol("ARGREP", grepParams(key, start, end, predicates) *: "WITHVALUES" *: EmptyTuple)
       .as[Arr.Of[Arr.AsTuple[Num *: Bulk *: EmptyTuple]], Seq[(NonNegLong, A)]]
   final def argrepwithvalues[A: Read[Bulk, _]](
       key: Key,
@@ -250,7 +257,7 @@ trait ArrayP extends Features {
       predicates: OneOrMore[Predicate],
       options: GrepOptions
   ): Single[Seq[(NonNegLong, A)]] =
-    Protocol("ARGREP", grepParams(key, start, end, predicates) ++ options.params.map(Bulk(_)) :+ Bulk("WITHVALUES"))
+    Protocol("ARGREP", grepParams(key, start, end, predicates) *: options.params *: "WITHVALUES" *: EmptyTuple)
       .as[Arr.Of[Arr.AsTuple[Num *: Bulk *: EmptyTuple]], Seq[(NonNegLong, A)]]
 
   /** Fails with an error when the key doesn't exist */

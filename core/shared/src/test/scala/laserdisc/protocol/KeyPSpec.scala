@@ -45,7 +45,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
     KeyEncoding.other(Key("compact")) -> "compact"
   )
   private implicit final val restoreEvictionArb: Arbitrary[KeyRestoreEviction] = Arbitrary {
-    nonNegIntArb.arbitrary.flatMap(nni => Gen.oneOf(KeyIdleTimeEviction(nni), KeyFrequencyEviction(nni)))
+    Gen.oneOf(nonNegIntArb.arbitrary.map(KeyIdleTimeEviction(_)), accessFrequencyArb.arbitrary.map(KeyFrequencyEviction(_)))
   }
   private implicit final val restoreModeArb: Arbitrary[KeyRestoreMode] = Arbitrary {
     Gen.oneOf(KeyRestoreMode.replace, KeyRestoreMode.absolutettl, KeyRestoreMode.both)
@@ -316,20 +316,20 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   property("The Key protocol using restore roundtrips successfully given key, ttl, serialized value and eviction") {
     forAll { (k: Key, nnl: NonNegLong, s: String, e: KeyRestoreEviction) =>
       val protocol = restore(k, nnl, Bulk(s), e)
-      assertEquals(protocol.encode, Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk(s), Bulk(e.param), Bulk(e.seconds)))
+      assertEquals(protocol.encode, Arr(Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: e.params.map(Bulk(_))))
       assertEquals(protocol.decode(Str(OK.value)), OK)
     }
   }
 
   property("The Key protocol using restore sends IDLETIME and FREQ for the eviction") {
-    forAll { (k: Key, nnl: NonNegLong, nni: NonNegInt) =>
+    forAll { (k: Key, nnl: NonNegLong, nni: NonNegInt, af: AccessFrequency) =>
       assertEquals(
         restore(k, nnl, Bulk("v"), KeyIdleTimeEviction(nni)).encode,
         Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk("v"), Bulk("IDLETIME"), Bulk(nni))
       )
       assertEquals(
-        restore(k, nnl, Bulk("v"), KeyFrequencyEviction(nni)).encode,
-        Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk("v"), Bulk("FREQ"), Bulk(nni))
+        restore(k, nnl, Bulk("v"), KeyFrequencyEviction(af)).encode,
+        Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk("v"), Bulk("FREQ"), Bulk(af))
       )
     }
   }
@@ -340,7 +340,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
       assertEquals(
         protocol.encode,
         Arr(
-          Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)) ::: (Bulk(e.param) :: Bulk(e.seconds) :: Nil)
+          Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)) ::: e.params.map(Bulk(_))
         )
       )
       assertEquals(protocol.decode(Str(OK.value)), OK)

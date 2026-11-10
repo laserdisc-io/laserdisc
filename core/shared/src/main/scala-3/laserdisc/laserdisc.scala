@@ -88,6 +88,7 @@ final class Witness[A <: Singleton] private[laserdisc] (val value: A) {
 }
 
 // Witnesses
+final val AccessFrequencyMaxValueWit = new Witness(255)
 final val AllNICsEqWit               = new Witness("0.0.0.0")
 final val BlockingSecondsMinValueWit = new Witness(0.002d)
 final val BlockingSecondsMaxValueWit = new Witness(4294967.0d)
@@ -136,6 +137,9 @@ private final type Rfc3927Ref     = IPv4Ref & Match["^169\\.254\\..*"]
 private final type Rfc2544Ref     = IPv4Ref & (Match["^198\\.18\\..*"] | Match["^198\\.19\\..*"])
 private final type ValidDoubleRef = NonNaN
 
+/** The counter LFU eviction keeps of how often a key is used, as OBJECT FREQ reports it */
+final type AccessFrequencyRef = Interval.Closed[0, AccessFrequencyMaxValueWit.T]
+
 /** Seconds a blocking command waits, 0 to wait forever. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above what
   * Dragonfly takes
   */
@@ -174,6 +178,7 @@ final type UnsignedBitWidthRef = Interval.Closed[1, UnsignedBitWidthMaxValueWit.
 final type TwoOrMoreRef        = MinLength[2]
 
 // New types
+final type AccessFrequency       = AccessFrequency.T
 final type BlockingSeconds       = BlockingSeconds.T
 final type ConnectionName        = ConnectionName.T
 final type DbIndex               = DbIndex.T
@@ -217,6 +222,7 @@ object OneOrMore {
   def unsafeFrom[A](l: List[A]): OneOrMore[A]           = l.refineUnsafe[OneOrMoreRef]
 }
 
+object AccessFrequency       extends RefinedTypeOps[Int, AccessFrequencyRef]
 object BlockingSeconds       extends RefinedTypeOps[Double, BlockingSecondsRef]
 object ConnectionName        extends RefinedTypeOps[String, ConnectionNameRef]
 object DbIndex               extends RefinedTypeOps[Int, DbIndexRef]

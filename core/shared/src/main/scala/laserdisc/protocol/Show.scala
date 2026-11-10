@@ -69,6 +69,7 @@ private[protocol] sealed trait ShowInstances {
   implicit final val stringShow: Show[String] = Show.instance(identity)
   implicit final val symbolShow: Show[Symbol] = Show.instance(_.name)
 
+  implicit final val accessFrequencyShow: Show[AccessFrequency] = Show.unsafeFromToString
   implicit final val blockingSecondsShow: Show[BlockingSeconds] = Show.instance { s =>
     if (s.value == s.value.toLong.toDouble) s.value.toLong.toString else s.value.toString
   }

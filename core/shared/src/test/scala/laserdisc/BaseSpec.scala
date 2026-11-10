@@ -87,6 +87,7 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   private final def strOfNGen(n: Int, fs: (Int, Gen[Char])*): Gen[String]  = listOfN(n, frequency(fs*)).map(_.mkString)
   private final def strOfNSameFreqGen(n: Int, gs: Gen[Char]*): Gen[String] = strOfNGen(n, gs.map(1 -> _)*)
 
+  final val accessFrequencyIsValid: Int => Boolean                            = AccessFrequency.from(_).isRight
   final val blockingSecondsIsValid: Double => Boolean                         = BlockingSeconds.from(_).isRight
   final val connectionNameIsValid: String => Boolean                          = ConnectionName.from(_).isRight
   final val dbIndexIsValid: Int => Boolean                                    = DbIndex.from(_).isRight
@@ -116,6 +117,8 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   final val twoOrMoreWeightedKeysIsValid: List[(Key, ValidDouble)] => Boolean = TwoOrMoreWeightedKeys.from(_).isRight
   final val validDoubleIsValid: Double => Boolean                             = ValidDouble.from(_).isRight
 
+  final val accessFrequencyGen: Gen[Int] =
+    chooseNum(0, AccessFrequencyMaxValueWit.value).filter(accessFrequencyIsValid) :| "access frequency"
   final val blockingSecondsGen: Gen[Double] =
     frequency(1 -> const(0.0d), 9 -> chooseNum(BlockingSecondsMinValueWit.value, BlockingSecondsMaxValueWit.value)) :| "blocking seconds"
   final val connectionNameGen: Gen[String] =
@@ -160,6 +163,7 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
     strGen(listOf(frequency(1 -> spaceGen, 10 -> noSpaceUtf8BMPCharGen))).filterNot(connectionNameIsValid) :| "string w/ spaces"
   final val validDoubleGen: Gen[Double] = chooseNum(DMin, DMax).suchThat(_ != NaN) :| "double != NaN"
 
+  implicit final val accessFrequencyArb: Arbitrary[AccessFrequency]       = Arbitrary(accessFrequencyGen.map(AccessFrequency.unsafeFrom))
   implicit final val blockingSecondsArb: Arbitrary[BlockingSeconds]       = Arbitrary(blockingSecondsGen.map(BlockingSeconds.unsafeFrom))
   implicit final val connectionNameArb: Arbitrary[ConnectionName]         = Arbitrary(connectionNameGen.map(ConnectionName.unsafeFrom))
   implicit final val directionArb: Arbitrary[Direction]                   = Arbitrary(directionGen)

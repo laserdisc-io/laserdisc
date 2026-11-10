@@ -95,6 +95,7 @@ package object laserdisc {
   private final type NoWhitespace  = Not[Whitespace]
 
   // Witnesses
+  final val AccessFrequencyMaxValueWit = W(255)
   final val AllNICsEqWit               = W("0.0.0.0")
   final val BlockingSecondsMinValueWit = W(0.002d)
   final val BlockingSecondsMaxValueWit = W(4294967.0d)
@@ -136,6 +137,9 @@ package object laserdisc {
   final val UnsignedBitWidthMaxValueWit = W(63)
 
   // Refinements
+  /** The counter LFU eviction keeps of how often a key is used, as OBJECT FREQ reports it */
+  final type AccessFrequencyRef = Interval.Closed[W.`0`.T, AccessFrequencyMaxValueWit.T]
+
   /** Seconds a blocking command waits, 0 to wait forever. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above what
     * Dragonfly takes
     */
@@ -175,6 +179,7 @@ package object laserdisc {
   final type ValidDoubleRef      = NonNaN
 
   // New types
+  final type AccessFrequency       = Int Refined AccessFrequencyRef
   final type BlockingSeconds       = Double Refined BlockingSecondsRef
   final type ConnectionName        = String Refined ConnectionNameRef
   final type DbIndex               = Int Refined DbIndexRef
@@ -218,6 +223,7 @@ package object laserdisc {
     def unsafeFrom[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): OneOrMore[A]           = rt.unsafeRefine(l)
   }
 
+  object AccessFrequency       extends RefinedTypeOps.Numeric[AccessFrequency, Int]
   object BlockingSeconds       extends RefinedTypeOps[BlockingSeconds, Double]
   object ConnectionName        extends RefinedTypeOps[ConnectionName, String]
   object DbIndex               extends RefinedTypeOps.Numeric[DbIndex, Int]

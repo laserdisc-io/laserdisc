@@ -139,13 +139,14 @@ object KeyP {
     object both    extends MigrateMode { override final val params: List[String] = List("COPY", "REPLACE") }
   }
 
-  sealed trait RestoreEviction { def param: String; def seconds: NonNegInt }
+  /** What RESTORE sets for the eviction policy: how long the key has been idle, for LRU, or how often it's used, for LFU */
+  sealed trait RestoreEviction { private[laserdisc] def params: List[String] }
   object RestoreEviction       {
-    final case class IdleTime(override final val seconds: NonNegInt) extends RestoreEviction {
-      override final val param: String = "IDLETIME"
+    final case class IdleTime(seconds: NonNegInt) extends RestoreEviction {
+      override private[laserdisc] final def params: List[String] = List("IDLETIME", Show[NonNegInt].show(seconds))
     }
-    final case class Frequency(override final val seconds: NonNegInt) extends RestoreEviction {
-      override final val param: String = "FREQ"
+    final case class Frequency(frequency: AccessFrequency) extends RestoreEviction {
+      override private[laserdisc] final def params: List[String] = List("FREQ", Show[AccessFrequency].show(frequency))
     }
   }
 
@@ -372,7 +373,7 @@ trait KeyBaseP extends Features {
   final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, mode: KeyRestoreMode): Single[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: EmptyTuple).as[Str, OK]
   final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, eviction: KeyRestoreEviction): Single[OK] =
-    Protocol("RESTORE", key *: ttl *: serializedValue *: eviction.param *: eviction.seconds *: EmptyTuple).as[Str, OK]
+    Protocol("RESTORE", key *: ttl *: serializedValue *: eviction.params *: EmptyTuple).as[Str, OK]
   final def restore(
       key: Key,
       ttl: NonNegLong,
@@ -380,7 +381,7 @@ trait KeyBaseP extends Features {
       mode: KeyRestoreMode,
       eviction: KeyRestoreEviction
   ): Single[OK] =
-    Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: eviction.param *: eviction.seconds *: EmptyTuple).as[Str, OK]
+    Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: eviction.params *: EmptyTuple).as[Str, OK]
 
   final def scan(cursor: NonNegLong): Single[Scan[Key]]                       = Protocol("SCAN", cursor).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def scan(cursor: NonNegLong, pattern: GlobPattern): Single[Scan[Key]] =

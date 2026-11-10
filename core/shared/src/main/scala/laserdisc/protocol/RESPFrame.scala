@@ -47,12 +47,13 @@ private[laserdisc] sealed trait RESPFrame extends Product with Serializable with
     }
   }
 
+  // a frame that isn't complete, or that isn't valid, stays in the remainder, so that the complete ones before it are still read: what
+  // reads the frames finds the error when it goes on with the remainder
   @tailrec private final def consumeRemainder(current: MoreThanOneFrame): Either[Exception, MoreThanOneFrame] =
     stateOf(current.remainder) match {
       case Right(CompleteWithRemainder(c, r)) => consumeRemainder(MoreThanOneFrame(current.complete :+ CompleteFrame(c), r))
       case Right(Complete) => Right(MoreThanOneFrame(current.complete :+ CompleteFrame(current.remainder), BitVector.empty))
-      case Left(ee) => Left(UnknownBufferState(s"Err building the frame from a remainder: $ee. Content: ${current.remainder.tailToUtf8}"))
-      case _        => Right(current)
+      case _               => Right(current)
     }
 }
 

@@ -25,7 +25,7 @@ package fs2
 import _root_.fs2.{Chunk, Pull}
 import _root_.fs2.interop.scodec.{StreamDecoder, StreamEncoder}
 import _root_.fs2.io.net.Socket
-import cats.MonadThrow
+import cats.{ApplicativeThrow, MonadThrow}
 import cats.effect.syntax.all.*
 import cats.effect.{Resource, Temporal}
 import cats.syntax.all.*
@@ -107,32 +107,34 @@ object RedisChannel {
         .chunks
         .evalMap(chunks => socketWrite(Chunk.array(chunks.foldLeft(BitVector.empty)(_ ++ _).toByteArray)))
 
-    def receiveResp[F[_]: MonadThrow](implicit logSelector: LogSelector[F]): Pipe[F, Byte, RESP] = {
-      def framing: Pipe[F, Byte, CompleteFrame] = {
-        def loopScan(bytesIn: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteFrame, Unit] =
-          bytesIn.pull.uncons.flatMap {
-            case Some((chunk, rest)) =>
-              previous.append(chunk.toBitVector) match {
-                case Left(ex)                       => Pull.raiseError(ex)
-                case Right(frame: CompleteFrame)    => Pull.output1(frame) >> loopScan(rest, EmptyFrame)
-                case Right(frame: MoreThanOneFrame) =>
-                  Pull.output(Chunk.from(frame.complete)) >> {
-                    if (frame.remainder.isEmpty) loopScan(rest, EmptyFrame)
-                    else loopScan(rest, IncompleteFrame(frame.remainder, 0L)())
-                  }
-                case Right(frame: IncompleteFrame) => loopScan(rest, frame)
-              }
+    // the bytes read, cut into one frame for each reply
+    def framing[F[_]: ApplicativeThrow]: Pipe[F, Byte, CompleteFrame] = {
+      def loopScan(bytesIn: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteFrame, Unit] =
+        bytesIn.pull.uncons.flatMap {
+          case Some((chunk, rest)) => scanned(previous.append(chunk.toBitVector), rest)
+          case _                   => Pull.done
+        }
 
-            case _ => Pull.done
-          }
+      // what follows the complete frames is scanned at once, so that a frame that isn't valid fails without waiting for more bytes
+      def scanned(frame: Either[Exception, RESPFrame], rest: Stream[F, Byte]): Pull[F, CompleteFrame, Unit] =
+        frame match {
+          case Left(ex)                       => Pull.raiseError(ex)
+          case Right(frame: CompleteFrame)    => Pull.output1(frame) >> loopScan(rest, EmptyFrame)
+          case Right(frame: MoreThanOneFrame) =>
+            Pull.output(Chunk.from(frame.complete)) >> {
+              if (frame.remainder.isEmpty) loopScan(rest, EmptyFrame)
+              else scanned(EmptyFrame.append(frame.remainder), rest)
+            }
+          case Right(frame) => loopScan(rest, frame)
+        }
 
-        bytesIn => loopScan(bytesIn, EmptyFrame).stream
-      }
+      bytesIn => loopScan(bytesIn, EmptyFrame).stream
+    }
 
+    def receiveResp[F[_]: MonadThrow](implicit logSelector: LogSelector[F]): Pipe[F, Byte, RESP] =
       pipeIn =>
         streamDecoder
-          .decode(pipeIn.through(framing).map(_.bits))
+          .decode(pipeIn.through(framing[F]).map(_.bits))
           .evalTap(resp => logSelector.log.trace(s"receiving ${described(resp)}"))
-    }
   }
 }

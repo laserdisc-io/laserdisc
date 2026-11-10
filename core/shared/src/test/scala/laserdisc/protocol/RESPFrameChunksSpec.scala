@@ -91,4 +91,11 @@ final class RESPFrameChunksSpec extends BaseSpec {
   test("an unknown type is an error, in an array as well") {
     List("?\r\n", "*1\r\n?\r\n").foreach(reply => assert(EmptyFrame.append(bytes(reply).bits).isLeft, reply))
   }
+
+  test("what isn't valid after complete frames stays in the remainder, so that the complete ones are still read") {
+    assertEquals(
+      EmptyFrame.append(bytes("+a\r\n+b\r\n?\r\n").bits),
+      MoreThanOneFrame(Vector(CompleteFrame(bytes("+a\r\n").bits), CompleteFrame(bytes("+b\r\n").bits)), bytes("?\r\n").bits)
+    )
+  }
 }

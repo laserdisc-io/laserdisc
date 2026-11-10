@@ -85,6 +85,20 @@ final class RedisChannelSpec extends CatsEffectSuite {
     received("?\r\n").attempt.map(outcome => assert(outcome.isLeft, outcome.toString))
   }
 
+  test("the replies before what isn't a reply in the same chunk are read, before it fails") {
+    Stream
+      .chunk(Chunk.array("+a\r\n+b\r\n?\r\n".getBytes(UTF_8)))
+      .covary[IO]
+      .through(RedisChannel.impl.receiveResp[IO])
+      .attempt
+      .compile
+      .toList
+      .map { outcome =>
+        assertEquals(outcome.take(2), List(Right(Str("a")), Right(Str("b"))))
+        assert(outcome.drop(2).headOption.exists(_.isLeft), outcome.toString)
+      }
+  }
+
   test("connecting fails once its time is up, instead of waiting for as long as the system allows") {
     val boom = new Exception("timed out")
     RedisChannel

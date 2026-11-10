@@ -40,6 +40,11 @@ use it for debugging.
 - **The stream fails if the connection drops.** Pub/sub doesn't keep messages, so
   anything published in the meantime is lost, and running the stream again fails
   the same way. Whether to open a new one is up to you.
+- **The stream fails if the server stops answering**, even if the connection
+  stays open, as when the network between you goes down. Every 30 seconds the
+  server is sent a `PING`, and if it says nothing before the next one, the
+  stream fails with `ServerNotResponding`. `monitor` isn't checked this way, as
+  the server would report the `PING` as a command it received.
 - **The stream fails on a message it can't read** as the type you asked for. Ask
   for `Bulk` to get the raw bytes of any message.
 - **In a cluster**, `ssubscribe` needs a connection to the node that serves the

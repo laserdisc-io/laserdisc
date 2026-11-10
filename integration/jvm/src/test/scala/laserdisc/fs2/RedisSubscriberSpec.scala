@@ -125,6 +125,14 @@ abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.C
     assertEquals(run(received), List(Message(Key("sub:a"), 1), Message(Key("sub:b"), 2)))
   }
 
+  test(s"a $dest client's subscription stays open while the server answers its pings, which aren't messages") {
+    val keptAlive = new RedisSubscriber.RedisSubscriberConnector[IO](100.millis)
+    val received  = keptAlive.to("127.0.0.1", p, publisher.subscribe[String](channels("sub:k"))).use { messages =>
+      IO.sleep(500.millis) *> IO(send(publisher.publish(Key("sub:k"), "m"))) *> messages.take(1).compile.toList
+    }
+    assertEquals(run(received), List(Message(Key("sub:k"), "m")))
+  }
+
   test(s"a $dest client reads the messages of channels that match a pattern") {
     val patterns = OneOrMore.unsafeFrom(List(GlobPattern("sub:p*")))
     val received = RedisSubscriber[IO].to("127.0.0.1", p, publisher.psubscribe[String](patterns)).use { messages =>

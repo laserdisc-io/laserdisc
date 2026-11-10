@@ -33,16 +33,18 @@ import scala.concurrent.duration.*
 
 /** Opens a connection of its own for a [[protocol.Feed]], like `subscribe` or `monitor` of a version's import. Once the resource is open
   * the server has confirmed it, so what's published from then on arrives. Closing it closes the connection, and with it the subscription.
-  * The stream fails if the connection drops: messages published in the meantime are lost, so whether to open another one is up to you
+  * The stream fails if the connection drops: messages published in the meantime are lost, so whether to open another one is up to you. It
+  * also fails if the server says nothing for 30 seconds after being pinged, except for `monitor`, whose connection isn't pinged
   */
 object RedisSubscriber {
-  @inline final def apply[F[_]: Async: Network: LogSelector]: RedisSubscriberConnector[F] = new RedisSubscriberConnector[F]()
+  @inline final def apply[F[_]: Async: Network: LogSelector]: RedisSubscriberConnector[F] = new RedisSubscriberConnector[F](30.seconds)
 
   private final val receiveBufferSizeBytes = 8 * 1024 * 1024
   private final val confirmationTimeout    = 30.seconds
   private final val queueSize              = 1024
 
-  private[fs2] final class RedisSubscriberConnector[F[_]: Async: Network: LogSelector]() {
+  // keepAlive: how often a subscribed connection is pinged, and how long the server has to say something before it's taken for gone
+  private[fs2] final class RedisSubscriberConnector[F[_]: Async: Network: LogSelector](keepAlive: FiniteDuration) {
 
     final def to[A](host: Host, port: Port, feed: Feed[A]): Resource[F, Stream[F, A]] =
       open(RedisAddress(host, port), Nil, feed).map(_._2)
@@ -73,13 +75,29 @@ object RedisSubscriber {
         socketAddress <- Resource.eval(address.toSocketAddress[F])
         socket        <- RedisChannel.connectedSocket(socketAddress, receiveBufferSizeBytes)
         replies       <- Resource.eval(CatsQueue.bounded[F, Either[Throwable, RESP]](queueSize))
-        _             <- (socket.reads.through(RedisChannel.impl.receiveResp).attempt ++
-          Stream.emit(Left(ServerTerminatedConnection(address)))).evalMap(replies.offer).compile.drain.background
-        _         <- Resource.eval(Stream.emits(before :+ feed.command).through(RedisChannel.impl.send(socket.write)).compile.drain)
+        heard         <- Resource.eval(Ref.of[F, Boolean](true))
+        blocked       <- Resource.eval(Ref.of[F, Boolean](false))
+        // a full queue holds up reading, so while it's full the server isn't expected to be heard
+        _ <- (socket.reads.through(RedisChannel.impl.receiveResp).attempt ++ Stream.emit(Left(ServerTerminatedConnection(address))))
+          .evalMap {
+            case Right(reply) if feed.keptAlive && Feed.isPong(reply) => heard.set(true)
+            case reply => heard.set(true) >> (blocked.set(true) >> replies.offer(reply)).guarantee(blocked.set(false))
+          }
+          .compile
+          .drain
+          .background
+        write = (commands: List[RESP]) => Stream.emits(commands).through(RedisChannel.impl.send(socket.write)).compile.drain
+        _         <- Resource.eval(write(before :+ feed.command))
         confirmed <- Resource.eval(
           confirm(replies, before.size, feed.confirmations, feed, Vector.empty, Vector.empty)
             .timeoutTo(confirmationTimeout, Async[F].raiseError[(Vector[RESP], Vector[A])](ServerNotResponding(address)))
         )
+        // nothing heard for a whole round, with nothing holding up reading, means the server is gone, even if the connection isn't closed
+        pinging = (heard.set(false) >> write(List(Feed.ping)) >> Async[F].sleep(keepAlive) >> (heard.get, blocked.get).tupled)
+          .iterateWhile { case (wasHeard, wasBlocked) =>
+            wasHeard || wasBlocked
+          } >> replies.offer(Left(ServerNotResponding(address)))
+        _     <- (if (feed.keptAlive) pinging else Async[F].unit).background
         early <- Resource.eval(Ref.of[F, Vector[A]](confirmed._2))
         ended <- Resource.eval(Ref.of[F, Option[Throwable]](None))
         // the stream may be run more than once: what came during confirmation goes to the first run only, and each message is taken from

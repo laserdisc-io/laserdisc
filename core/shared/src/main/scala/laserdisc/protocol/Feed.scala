@@ -31,7 +31,8 @@ final class Feed[A] private[protocol] (
     private[laserdisc] val command: RESP,
     private[laserdisc] val confirmations: Set[String],
     private[laserdisc] val confirmed: RESP => Option[String],
-    private[laserdisc] val message: RESP => Maybe[Option[A]]
+    private[laserdisc] val message: RESP => Maybe[Option[A]],
+    private[laserdisc] val keptAlive: Boolean = true
 )
 
 object Feed {
@@ -58,6 +59,16 @@ object Feed {
   }
 
   private final def command(name: String, arguments: List[String]): RESP = Arr(Bulk(name) :: arguments.map(Bulk(_)))
+
+  /** Asked on a subscribed connection to check that the server is still there. MONITOR's connection isn't asked, as the server would report
+    * the PING among the commands it received, or refuse it
+    */
+  private[laserdisc] final val ping: RESP = command("PING", Nil)
+
+  private[laserdisc] final def isPong(resp: RESP): Boolean = resp match {
+    case Arr(Bulk("pong") :: Bulk("") :: Nil) => true
+    case _                                    => false
+  }
 
   private final def confirmedAs(kind: String): RESP => Option[String] = {
     case Arr(Bulk(`kind`) :: Bulk(name) :: Num(_) :: Nil) => Some(name)
@@ -208,7 +219,8 @@ object Feed {
             Right(Some(MonitorEvent(BigDecimal(time), db, client, arguments)))
           )
         case resp => unexpected(resp)
-      }
+      },
+      keptAlive = false
     )
   }
 }

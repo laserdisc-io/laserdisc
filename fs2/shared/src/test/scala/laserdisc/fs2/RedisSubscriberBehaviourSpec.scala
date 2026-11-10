@@ -135,6 +135,40 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
     }
   }
 
+  private def keptAliveEvery(interval: FiniteDuration) = new RedisSubscriber.RedisSubscriberConnector[IO](interval)
+  private val pong                                     = "*2\r\n$4\r\npong\r\n$0\r\n\r\n"
+
+  test("the stream fails when the server stops answering, even though the connection is still open") {
+    FakeRedisServer((_, in) => in.take(1).as(confirmed) ++ Stream.never[IO]).use { port =>
+      keptAliveEvery(200.millis).to("127.0.0.1", port, feed).use(_.compile.toList).attempt.timeout(5.seconds).map { outcome =>
+        assert(outcome.left.exists(_.isInstanceOf[ServerNotResponding]), outcome.toString)
+      }
+    }
+  }
+
+  test("a server that answers the pings keeps the stream going, and its answers aren't messages") {
+    val answering = FakeRedisServer { (_, in) =>
+      in.zipWithIndex.map {
+        case (_, 0L) => confirmed
+        case (_, 5L) => pong + message("a", "late")
+        case _       => pong
+      }
+    }
+    answering.use { port =>
+      keptAliveEvery(100.millis).to("127.0.0.1", port, feed).use(_.take(1).compile.toList).assertEquals(List(Message(Key("a"), "late")))
+    }
+  }
+
+  test("a stream not taking its messages for a while isn't taken for a server that's gone") {
+    val many = (1 to 2000).map(i => message("a", s"m$i")).mkString
+    FakeRedisServer((_, in) => in.take(1).as(confirmed + many) ++ Stream.never[IO]).use { port =>
+      keptAliveEvery(100.millis)
+        .to("127.0.0.1", port, feed)
+        .use(messages => IO.sleep(1.second) >> messages.take(2000).compile.toList.map(_.size))
+        .assertEquals(2000)
+    }
+  }
+
   test("opening fails when the server closes the connection before confirming") {
     serving(1)(confirmation("a", 1)).use { case (port, _) =>
       RedisSubscriber[IO].to("127.0.0.1", port, feed).use(_ => IO.unit).attempt.map { outcome =>

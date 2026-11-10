@@ -1,4 +1,5 @@
 import laika.helium.config.{HeliumIcon, IconLink}
+import org.typelevel.sbt.gha.{PermissionValue, Permissions}
 import sbtcrossproject.CrossProject
 
 val scala_212 = "2.12.21"
@@ -98,6 +99,28 @@ val startUpRedisServers = List(
   startUpCluster("KeyDb", keydbImage, "keydb-server", 7110),
   startUpCluster("Valkey", valkeyImage, "valkey-server", 7120)
 )
+
+// the jobs only read the code, except publishing the site and submitting the dependencies, which write to the repository
+val readOnly = Permissions.Specify.defaultRestrictive.withContents(PermissionValue.Read)
+ThisBuild / githubWorkflowPermissions := Some(readOnly)
+
+// artifacts only carry the build from one job to a later one in the same run, so a week leaves time to re-run a failed job
+def expiring(step: WorkflowStep): WorkflowStep = step match {
+  case use: WorkflowStep.Use if uploadsArtifact(use.ref) => use.updatedParams("retention-days", "7")
+  case other                                             => other
+}
+def uploadsArtifact(ref: UseRef): Boolean = ref match {
+  case UseRef.Public("actions", "upload-artifact", _) => true
+  case _                                              => false
+}
+
+ThisBuild / githubWorkflowGeneratedCI ~= (_.map { job =>
+  if (Set("site", "dependency-submission")(job.id)) job.withPermissions(Some(readOnly.withContents(PermissionValue.Write))) else job
+}.map(job => job.withSteps(job.steps.map(expiring))))
+
+// the Clean workflow deletes every artifact in the repository on each push, those of runs still going included, and can't be given
+// permissions of its own. Uploads expire instead
+ThisBuild / githubWorkflowIncludeClean := false
 
 ThisBuild / githubWorkflowAddedJobs ++= List(
   WorkflowJob(

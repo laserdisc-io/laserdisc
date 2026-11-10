@@ -592,7 +592,8 @@ trait KeyObjectP extends Features {
     def encoding(key: Key): Single[Option[KeyP.Encoding]] =
       Protocol("OBJECT", "ENCODING" :: key.value :: Nil).as[OrNullBulk[Bulk], Option[KeyP.Encoding]]
 
-    def freq(key: Key): Single[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
+    /** The counter LFU eviction keeps of how often the key is used, which RESTORE's FREQ takes */
+    def freq(key: Key): Single[AccessFrequency] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, AccessFrequency]
 
     def idletime(key: Key): Single[NonNegInt] = Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).as[Num, NonNegInt]
 

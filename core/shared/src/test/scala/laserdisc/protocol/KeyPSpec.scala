@@ -218,11 +218,15 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using obj.freq roundtrips successfully given key") {
-    forAll { (k: Key, nni: NonNegInt) =>
+    forAll { (k: Key, af: AccessFrequency) =>
       val protocol = obj.freq(k)
       assertEquals(protocol.encode, Arr(Bulk("OBJECT"), Bulk("FREQ"), Bulk(k)))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+      assertEquals(protocol.decode(Num(af.value.toLong)), af)
     }
+  }
+
+  test("The Key protocol using obj.freq fails on a counter above 255") {
+    assert(obj.freq(Key("k")).decode(Num(256L)).isLeft)
   }
 
   property("The Key protocol using obj.idletime roundtrips successfully given key") {

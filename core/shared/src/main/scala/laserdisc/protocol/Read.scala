@@ -165,6 +165,9 @@ trait ReadInstances1 extends ReadLabelledInstances {
     case Num(0L) => false
     case Num(1L) => true
   }
+  implicit final val num2AccessFrequencyRead: Read[Num, AccessFrequency] = instancePF("Num(AccessFrequency)") {
+    case Num(ToInt(AccessFrequency(i))) => i
+  }
   implicit final val num2IntRead: Read[Num, Int]                 = instancePF("Num(Int)") { case Num(ToInt(i)) => i }
   implicit final val num2NonNegIntRead: Read[Num, NonNegInt]     = instancePF("Num(NonNegInt)") { case Num(ToInt(NonNegInt(i))) => i }
   implicit final val num2NonNegLongRead: Read[Num, NonNegLong]   = instancePF("Num(NonNegLong)") { case Num(NonNegLong(l)) => l }

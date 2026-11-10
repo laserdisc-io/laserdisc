@@ -94,4 +94,18 @@ final class RESPFunctionsSpec extends BaseSpec {
     }
     assertEquals(RESP.stateOf(BitVector("$2147483647\r\n".getBytes)), MissingBits((2147483647L + 2L) * 8L))
   }
+
+  test("A reply nesting arrays more than 128 deep is refused, before decoding it can run out of stack") {
+    def nested(depth: Int) = BitVector(("*1\r\n" * depth + ":1\r\n").getBytes)
+    assertEquals(RESP.stateOf(nested(128)), Complete)
+    assert(RESP.respCodec.decode(nested(128)).isSuccessful)
+    List(129, 100000).foreach { depth =>
+      assert(RESP.stateOf(nested(depth)).isLeft, s"$depth")
+      assert(EmptyFrame.append(nested(depth)).isLeft, s"$depth")
+      val (first, second) = nested(depth).splitAt(nested(depth).size / 2)
+      assert(EmptyFrame.append(first).flatMap(_.append(second)).isLeft, s"$depth in two pieces")
+    }
+    val wide = BitVector(("*200\r\n" + "*1\r\n:1\r\n" * 200).getBytes)
+    assertEquals(RESP.stateOf(wide), Complete)
+  }
 }

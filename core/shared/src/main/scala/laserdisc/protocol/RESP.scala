@@ -229,6 +229,9 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   // overflow the arithmetic that finds where the reply ends
   private[protocol] final val MaxSize: Long = Int.MaxValue.toLong
 
+  // the most arrays a reply can nest: decoding goes one level deeper on the stack for each, and no reply nests more than a handful
+  private[protocol] final val MaxDepth: Int = 128
+
   private final val crlfTerminatedStringCodec: Codec[String] = crlfTerminatedCodec(utf8Codec)
   private final val crlfTerminatedLongCodec: Codec[Long]     = {
     @inline def parseLong(s: String) =
@@ -352,8 +355,10 @@ sealed trait RESPFunctions { this: RESPCodecs =>
       element(buffer, from) match {
         case Left(e)                => Left(e)
         case Right(Short(missing))  => Right(Stopped(from, open, missing))
-        case Right(Opened(next, n)) => scan(buffer, next, n :: open)
-        case Right(Finished(next))  =>
+        case Right(Opened(next, n)) =>
+          if (open.lengthCompare(MaxDepth) >= 0) Left(s"Expected arrays nested at most $MaxDepth deep")
+          else scan(buffer, next, n :: open)
+        case Right(Finished(next)) =>
           closing(open) match {
             case Nil       => Right(Scanned(next))
             case stillOpen => scan(buffer, next, stillOpen)

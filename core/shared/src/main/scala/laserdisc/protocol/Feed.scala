@@ -149,7 +149,8 @@ object Feed {
     )
   }
 
-  private final val MonitorLine = """(\d+\.\d+) \[(\d+) ([^\]]*)\] (.*)""".r
+  // the client is an address and port, with an IPv6 address in brackets, a Unix socket, or lua
+  private final val MonitorLine = """(\d+\.\d+) \[(\d+) (\[[^\]]*\]:\d+|[^\]]*)\] (.*)""".r
 
   // the command and its arguments, each in quotes, with what can't be shown as it is escaped
   private[protocol] final def monitorArguments(text: String): Option[List[String]] = {

@@ -71,6 +71,10 @@ final class FeedSpec extends BaseSpec with PublishShardP with MonitorP {
       Some(MonitorEvent(BigDecimal("1793945914.511813"), NonNegInt(0), "172.17.0.1:52012", Seq("SET", "k", "1")))
     )
     assertEquals(
+      monitor.message(Str("""1794324808.229333 [0 [::1]:35078] "SET" "k6" "v"""")),
+      Some(MonitorEvent(BigDecimal("1794324808.229333"), NonNegInt(0), "[::1]:35078", Seq("SET", "k6", "v")))
+    )
+    assertEquals(
       monitor.message(Str("""1793945915.2341746 [3 lua] "get" "k"""")),
       Some(MonitorEvent(BigDecimal("1793945915.2341746"), NonNegInt(3), "lua", Seq("get", "k")))
     )

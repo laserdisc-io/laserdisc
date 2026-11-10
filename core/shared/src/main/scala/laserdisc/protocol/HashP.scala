@@ -279,8 +279,8 @@ trait HashBaseP extends Features {
 
   final def hstrlen(key: Key, field: Key): Single[NonNegInt] = Protocol("HSTRLEN", key :: field :: Nil).as[Num, NonNegInt]
 
-  final def hvals[L <: Tuple: Read[Arr.Of[OrNullBulk[Bulk]], _]](key: Key): Single[L] =
-    Protocol("HVALS", key).as[Arr.Of[OrNullBulk[Bulk]], L]
+  /** Every value of the hash, as many as it has, in no set order */
+  final def hvals[A: Read[Bulk, _]](key: Key): Single[Seq[A]] = Protocol("HVALS", key).as[Arr.Of[Bulk], Seq[A]]
 }
 
 /** HSCAN with NOVALUES: Redis 7.4, Valkey 8.0 */

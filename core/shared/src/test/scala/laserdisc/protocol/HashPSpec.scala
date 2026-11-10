@@ -276,19 +276,11 @@ abstract class HashPSpec extends BaseSpec with HashP {
     }
   }
 
-  property("The Hash protocol using hvals roundtrips successfully given key (expecting one field)") {
-    forAll { (k: Key, i: Int) =>
-      val protocol = hvals[Int *: EmptyTuple](k)
+  property("The Hash protocol using hvals reads every value, however many the hash has") {
+    forAll { (k: Key, is: List[Int]) =>
+      val protocol = hvals[Int](k)
       assertEquals(protocol.encode, Arr(Bulk("HVALS"), Bulk(k)))
-      assertEquals(protocol.decode(Arr(Bulk(i))), i *: EmptyTuple)
-    }
-  }
-
-  property("The Hash protocol using hvals roundtrips successfully given key (expecting two fields)") {
-    forAll { (k: Key, i: Int, s: String) =>
-      val protocol = hvals[Int *: String *: EmptyTuple](k)
-      assertEquals(protocol.encode, Arr(Bulk("HVALS"), Bulk(k)))
-      assertEquals(protocol.decode(Arr(Bulk(i), Bulk(s))), i *: s *: EmptyTuple)
+      assertEquals(protocol.decode(Arr(is.map(Bulk(_)))), is)
     }
   }
 

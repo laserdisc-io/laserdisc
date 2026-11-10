@@ -115,6 +115,15 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     assertEquals(send(hrandfields("h:none", 2)), Seq.empty)
   }
 
+  test(s"a $dest client reads every value of a hash, however many it has") {
+    import laserdisc.redis_6_2.*
+
+    send(del("h:v", "h:none"))
+    send(hset("h:v", OneOrMore.unsafeFrom(List(Key("a") -> 1, Key("b") -> 2, Key("c") -> 3))))
+    assertEquals(send(hvals[Int]("h:v")).sorted, Seq(1, 2, 3))
+    assertEquals(send(hvals[Int]("h:none")), Seq.empty)
+  }
+
   test(s"a $dest client writes a case class to a hash and reads it back by field name") {
     import laserdisc.redis_6_2.*
 

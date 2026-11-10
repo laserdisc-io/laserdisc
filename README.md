@@ -35,7 +35,7 @@ With Redis running on `localhost:6379`:
 
 ```scala
 import cats.effect.{IO, IOApp}
-import log.effect.LogWriter
+import log.effect.{LogLevels, LogWriter}
 import log.effect.fs2.SyncLogWriter
 
 import laserdisc.*
@@ -44,7 +44,7 @@ import laserdisc.auto.*
 import laserdisc.fs2.*
 
 object Main extends IOApp.Simple {
-  implicit val logWriter: LogWriter[IO] = SyncLogWriter.consoleLog[IO]
+  implicit val logWriter: LogWriter[IO] = SyncLogWriter.consoleLogUpToLevel(LogLevels.Info)
 
   override val run: IO[Unit] =
     RedisClient[IO].to("localhost", 6379).use { client =>

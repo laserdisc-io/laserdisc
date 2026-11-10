@@ -24,6 +24,8 @@ package fs2
 
 import _root_.fs2.Chunk
 import cats.effect.IO
+import log.effect.{LogLevel, LogWriter}
+import log.effect.internal.Show
 import munit.CatsEffectSuite
 
 import java.nio.charset.StandardCharsets.UTF_8
@@ -53,6 +55,29 @@ final class RedisChannelSpec extends CatsEffectSuite {
 
   test("a reply over several chunks") {
     received("$5\r\nhe", "llo", "\r\n").assertEquals(List(Bulk("hello")))
+  }
+
+  test("the trace log says what's sent and received, never the values") {
+    IO.ref(Vector.empty[String]).flatMap { logged =>
+      implicit val logWriter: LogWriter[IO] = new LogWriter[IO] {
+        override def write[A: Show](level: LogLevel, a: =>A): IO[Unit] = logged.update(_ :+ implicitly[Show[A]].show(a))
+      }
+      val sending = Stream
+        .emit(Arr(Bulk("AUTH"), Bulk("secret")))
+        .covary[IO]
+        .through(RedisChannel.impl.send[IO](_ => IO.unit))
+      val receiving = Stream
+        .chunk(Chunk.array("$6\r\nsecret\r\n-ERR wrong\r\n".getBytes(UTF_8)))
+        .covary[IO]
+        .through(RedisChannel.impl.receiveResp[IO])
+
+      (sending.compile.drain >> receiving.compile.drain >> logged.get).map { lines =>
+        assertEquals(
+          lines,
+          Vector("sending AUTH with 1 argument(s)", "receiving a bulk string of 6 bytes", "receiving the error ERR wrong")
+        )
+      }
+    }
   }
 
   test("what isn't a reply fails") {

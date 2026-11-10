@@ -60,10 +60,22 @@ object RedisChannel {
     Network[F].connect(address, PlatformDependent.socketOptions(receiveBufferSizeBytes))
 
   private[fs2] object impl {
+    // what the trace log says of a command or a reply: never its values, which can be passwords or the application's data
+    def described(resp: RESP): String = resp match {
+      case Arr(Bulk(command) :: arguments) => s"$command with ${arguments.size} argument(s)"
+      case Arr(elements)                   => s"an array of ${elements.size}"
+      case bulk: Bulk                      => s"a bulk string of ${bulk.bytes.size} bytes"
+      case NullBulk                        => "a null bulk string"
+      case NilArr                          => "a null array"
+      case Num(_)                          => "an integer"
+      case Str(_)                          => "a simple string"
+      case Err(message)                    => s"the error $message"
+    }
+
     def send[F[_]: MonadThrow](socketWrite: Chunk[Byte] => F[Unit])(
         implicit logSelector: LogSelector[F]
     ): Pipe[F, RESP, Unit] =
-      _.evalTap(resp => logSelector.log.trace(s"sending $resp"))
+      _.evalTap(resp => logSelector.log.trace(s"sending ${described(resp)}"))
         .through(streamEncoder.encode[F])
         .chunks
         .evalMap(chunks => socketWrite(Chunk.array(chunks.foldLeft(BitVector.empty)(_ ++ _).toByteArray)))
@@ -93,7 +105,7 @@ object RedisChannel {
       pipeIn =>
         streamDecoder
           .decode(pipeIn.through(framing).map(_.bits))
-          .evalTap(resp => logSelector.log.trace(s"receiving $resp"))
+          .evalTap(resp => logSelector.log.trace(s"receiving ${described(resp)}"))
     }
   }
 }

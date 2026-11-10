@@ -148,4 +148,11 @@ of their own.
 
 The client logs through [log-effect](https://github.com/laserdisc-io/log-effect).
 To see its logs, put a `LogWriter` in implicit scope, for example
-`SyncLogWriter.consoleLog[IO]`. Without one, the client doesn't log.
+`SyncLogWriter.consoleLogUpToLevel(LogLevels.Info)`. Without one, the client
+doesn't log.
+
+At info and above, the client logs its connections and their failures. At
+trace, it also logs each command it sends and each reply it gets, but only the
+command's name and how many arguments it has, and the kind and size of the
+reply, or an error's message: never their values, which can be passwords or
+your data.

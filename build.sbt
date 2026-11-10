@@ -172,6 +172,10 @@ ThisBuild / githubWorkflowAddedJobs ++= List(
     )
   )
 )
+
+// publishing waits for every check, through the job that gathers them, not only for the build
+ThisBuild / githubWorkflowPublishNeeds := Seq("ci-passed")
+
 ThisBuild / tlSitePublishBranch := Some("master")
 
 ThisBuild / mergifyLabelPaths    := Map.empty

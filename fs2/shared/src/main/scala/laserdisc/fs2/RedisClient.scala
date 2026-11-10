@@ -129,8 +129,19 @@ object RedisClient {
                       case Left(error) => accepted.complete(false) >> request.callback(Left(error))
                     }
                   )
+                  // a DISCARD or UNWATCH the server doesn't say OK to may leave the connection inside the transaction, where what's sent
+                  // next would be queued instead of run, so the connection is closed, and the client connects again
                   def ending(command: String)(answered: F[Unit]): Request[F] =
-                    Request[F, RESP](Protocol(command, EmptyTuple).using(RESPRead.raw), _ => answered)
+                    Request[F, RESP](
+                      Protocol(command, EmptyTuple).using(RESPRead.raw),
+                      {
+                        case Right(Str("OK")) => answered
+                        case Right(other)     => answered >> Concurrent[F].raiseError(WatchCleanupRefused(address, command, other.toString))
+                        case Left(refused: Err) =>
+                          answered >> Concurrent[F].raiseError(WatchCleanupRefused(address, command, refused.message))
+                        case Left(_) => answered
+                      }
+                    )
 
                   Stream.evalUnChunk(inFlight.modify(in => (in :+ InFlight(multi, due, 1, Vector.empty)) -> Chunk(frames.head))) ++
                     Stream.eval(accepted.get).flatMap {

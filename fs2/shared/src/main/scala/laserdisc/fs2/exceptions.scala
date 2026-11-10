@@ -33,6 +33,13 @@ final case class WatchLost(redisAddress: RedisAddress)
       true,
       false
     )
+final case class WatchCleanupRefused(redisAddress: RedisAddress, command: String, reply: String)
+    extends RuntimeException(
+      s"Server $redisAddress didn't say OK to the $command ending a transaction whose watch was lost, but $reply, so the connection was closed",
+      null,
+      true,
+      false
+    )
 object ServerUnavailable                       extends RuntimeException("No server available", null, true, false)
 object ClientTerminated                        extends RuntimeException("Client terminated connection", null, true, false)
 final case class NoInFlightRequest(resp: RESP) extends RuntimeException(s"Got unsolicited message from server: $resp", null, true, false)

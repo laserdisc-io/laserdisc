@@ -26,6 +26,9 @@ import scala.annotation.nowarn
 import scala.compiletime.{constValueTuple, summonAll}
 import scala.deriving.Mirror
 
+// a plain tuple is a *: already, which RESPParamWriteInstances1 sends as its elements: Scala 2 needs instances of its own here
+private[protocol] trait RESPParamWriteScalaTupleInstances extends RESPParamWriteInstances2
+
 private[protocol] trait RESPParamWriteProductInstances {
   inline implicit final def productRESPParamWrite[P <: Product](
       implicit m: Mirror.ProductOf[P],

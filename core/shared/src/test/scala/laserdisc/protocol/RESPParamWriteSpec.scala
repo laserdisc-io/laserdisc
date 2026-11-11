@@ -48,4 +48,14 @@ final class RESPParamWriteSpec extends BaseSpec {
       Seq[GenBulk](Bulk("x"), Bulk("1/2"))
     )
   }
+
+  test("RESPParamWrite writes a plain tuple as its elements") {
+    assertEquals(RESPParamWrite[(String, Int, String)].write(("a", 1, "c")), Seq[GenBulk](Bulk("a"), Bulk("1"), Bulk("c")))
+  }
+
+  test("RESPParamWrite writes a plain tuple as its elements even when there's a Show for it") {
+    implicit val tupleShow: Show[(String, Int, String)] = Show.instance(_ => "one")
+    assertEquals(tupleShow.show(("a", 1, "c")), "one")
+    assertEquals(RESPParamWrite[(String, Int, String)].write(("a", 1, "c")), Seq[GenBulk](Bulk("a"), Bulk("1"), Bulk("c")))
+  }
 }

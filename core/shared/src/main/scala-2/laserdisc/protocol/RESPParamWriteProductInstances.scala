@@ -22,13 +22,23 @@
 package laserdisc
 package protocol
 
-import shapeless.{LabelledGeneric, Nat, Refute, Witness}
+import shapeless.{Generic, IsTuple, LabelledGeneric, Nat, Refute, Witness}
 import shapeless.labelled.FieldType
 import shapeless.ops.hlist.Length
 import shapeless.ops.nat.GTEq.>=
 import shapeless.nat._1
 
 import scala.annotation.nowarn
+
+// above Show, so that a plain tuple is sent as its elements even when a Show for it is in scope, as cats' is with laserdisc.fs2. On Scala 3
+// a plain tuple is a *: already
+private[protocol] trait RESPParamWriteScalaTupleInstances extends RESPParamWriteInstances2 {
+  implicit final def scalaTupleRESPParamWrite[P <: Product, L <: Tuple](
+      implicit @nowarn ev: IsTuple[P],
+      gen: Generic.Aux[P, L],
+      elements: RESPParamWrite[L]
+  ): RESPParamWrite[P] = elements.contramap(gen.to)
+}
 
 private[protocol] trait RESPParamWriteProductInstances {
   implicit final def taggedRESPParamWrite[K <: Symbol, V](
@@ -42,6 +52,7 @@ private[protocol] trait RESPParamWriteProductInstances {
       @nowarn ev1: N >= _1,
       @nowarn ev2: LUBConstraint[L, FieldType[?, ?]],
       @nowarn ev3: Refute[Show[P]],
+      @nowarn ev4: Refute[IsTuple[P]],
       rpw: RESPParamWrite[L]
   ): RESPParamWrite[P] = rpw.contramap(gen.to)
 }

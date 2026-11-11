@@ -158,9 +158,17 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)
     assert(send(acl.genpass).nonEmpty)
     assert(send(acl.genpass(32)).nonEmpty)
     assert(send(acl.help).nonEmpty)
-    assert(send(acl.log).size >= 0)
-    assert(send(acl.log(1)).size <= 1)
+    // a failed AUTH is what writes an entry to the log
+    assert(client.send(Protocol("AUTH", "ld-df-none" *: "wrong" *: EmptyTuple).as[Str, OK]).unsafeRunSync()(using runtime).isLeft)
+    // Dragonfly replies every entry whatever the count, so other tests' entries may be there too
+    send(acl.log(1)).collectFirst { case AclLogEntry(reason, denied, "ld-df-none", _, _, created) => (reason, denied, created) } match {
+      case Some((reason, denied, created)) =>
+        assertEquals((reason, denied), ("AUTH", "AUTH"))
+        assert(created > 0L)
+      case None => fail("expected the failed AUTH")
+    }
     assertEquals(send(acl.logreset), OK)
+    assertEquals(send(acl.log), Seq.empty)
     assertEquals(send(acl.dryrun("ld-df", get[String]("app:1"))), None)
     assertEquals(send(acl.setuser("ld-df", servertypes.aclDragonflyRules.readKeys("r:*").writeKeys("w:*").readWriteKeys("both:*"))), OK)
     val keys = send(acl.getuser("ld-df")).map(_.keys).getOrElse(fail("expected the user"))

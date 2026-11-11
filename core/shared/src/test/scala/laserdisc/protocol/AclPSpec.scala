@@ -162,6 +162,22 @@ final class AclPSpec extends BaseSpec with ServerP {
     assert(acl.log.decode(Arr(entry(Nil))).isLeft)
   }
 
+  test("The ACL protocol using log on Dragonfly reads its entries, in simple strings and with when they were created") {
+    def entry(reason: String, created: Long) = Arr(
+      List("reason", reason, "object", "AUTH", "username", "nobody", "age-seconds", "0.903047", "client-info", "id=1").map(Str(_)) :::
+        List(Str("timestamp-created"), Num(created))
+    )
+    assertEquals(
+      dragonfly_2_0.acl.log.decode(Arr(entry("AUTH", 17L), entry("COMMAND", 18L))),
+      Seq(
+        AclLogEntryOfDragonfly("AUTH", "AUTH", "nobody", 0.903047, "id=1", 17L),
+        AclLogEntryOfDragonfly("COMMAND", "AUTH", "nobody", 0.903047, "id=1", 18L)
+      )
+    )
+    assertEquals(dragonfly_2_0.acl.log(PosInt(1)).decode(Arr(Nil)), Seq.empty)
+    assert(dragonfly_2_0.acl.log.decode(Arr(Arr(Str("reason"), Str("AUTH")))).isLeft)
+  }
+
   test("The ACL protocol using dryrun sends the command it is given and reads OK as None and a reason as Some") {
     import laserdisc.auto.*
     val del = redis_8_10.keys.del("app:1")

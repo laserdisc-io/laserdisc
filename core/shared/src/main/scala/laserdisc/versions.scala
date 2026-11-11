@@ -647,6 +647,13 @@ trait AclLogReplies6_2 {
       Some((e.count, e.reason, e.context, e.denied, e.username, e.ageSeconds, e.clientInfo))
   }
 }
+trait AclLogRepliesDragonfly {
+  final type AclLogEntry = Acl.AclLogEntryDragonfly
+  object AclLogEntry {
+    def unapply(e: AclLogEntry): Some[(String, String, String, Double, String, Long)] =
+      Some((e.reason, e.denied, e.username, e.ageSeconds, e.clientInfo, e.createdAt))
+  }
+}
 trait AclLogReplies7_2 {
   final type AclLogEntry = Acl.AclLogEntry7_2
   object AclLogEntry {
@@ -772,7 +779,7 @@ trait RepliesDragonfly2_0
     with ConsumerInfoReplies6_2
     with StreamInfoFullReplies6_2
     with AclUserReplies6_2
-    with AclLogReplies6_2
+    with AclLogRepliesDragonfly
     with ClusterReplies6_2
     with ShardReplies7_0
     with CommandReplies6_2

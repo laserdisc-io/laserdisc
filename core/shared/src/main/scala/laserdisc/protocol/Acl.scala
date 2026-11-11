@@ -293,6 +293,18 @@ object Acl {
     def updatedAt: Long
   }
 
+  /** An entry of ACL LOG on Dragonfly: what was denied (`reason` `AUTH`, `COMMAND` or `KEY`, `object` the command), to whom, how long ago,
+    * and when it was created, in nanoseconds since the epoch
+    */
+  sealed trait AclLogEntryDragonfly {
+    def reason: String
+    def denied: String
+    def username: String
+    def ageSeconds: Double
+    def clientInfo: String
+    def createdAt: Long
+  }
+
   private[laserdisc] final case class AclLogEntryOf6_2(
       count: Long,
       reason: String,
@@ -335,13 +347,50 @@ object Acl {
     } yield AclLogEntryOf7_2(e.count, e.reason, e.context, e.denied, e.username, e.ageSeconds, e.clientInfo, entryId, createdAt, updatedAt)
   }
   private[protocol] final val logEntries6_2: Read[Records, Seq[AclLogEntry6_2]] = Read[Records, Seq[AclLogEntry6_2]]
+
+  private[laserdisc] final case class AclLogEntryOfDragonfly(
+      reason: String,
+      denied: String,
+      username: String,
+      ageSeconds: Double,
+      clientInfo: String,
+      createdAt: Long
+  ) extends AclLogEntryDragonfly
+
+  // Dragonfly replies in simple strings, without a count or a context, and with only when the entry was created
+  private[protocol] final val logEntriesDragonfly: RESPRead[Seq[AclLogEntryDragonfly]] = {
+    def entry(resp: RESP): Either[RESPDecErr, AclLogEntryDragonfly] = resp match {
+      case Arr(elements) =>
+        val fields =
+          elements.grouped(2).collect { case Seq(Str(name), value) => name -> value; case Seq(Bulk(name), value) => name -> value }.toMap
+        def missing(name: String) = RESPDecErr(s"ACL log entry: no $name, or not of its type, in $resp")
+        def text(name: String)    = fields.get(name).collect { case Str(s) => s; case Bulk(s) => s }.toRight(missing(name))
+        def number(name: String)  = text(name).flatMap(ToDouble.unapply(_).toRight(missing(name)))
+        def integer(name: String) = fields.get(name).collect { case Num(n) => n }.toRight(missing(name))
+        for {
+          reason   <- text("reason")
+          denied   <- text("object")
+          username <- text("username")
+          age      <- number("age-seconds")
+          info     <- text("client-info")
+          created  <- integer("timestamp-created")
+        } yield AclLogEntryOfDragonfly(reason, denied, username, age, info, created)
+      case other => Left(RESPDecErr(s"Unexpected ACL log entry: $other"))
+    }
+    implicit val entries: Read[Arr, Seq[AclLogEntryDragonfly]] = Read.instance { reply =>
+      reply.elements.foldRight[Either[RESPDecErr, List[AclLogEntryDragonfly]]](Right(Nil)) { (resp, rest) =>
+        rest.flatMap(found => entry(resp).map(_ :: found))
+      }
+    }
+    RESPRead[Arr, Seq[AclLogEntryDragonfly]]
+  }
   private[protocol] final val logEntries7_2: Read[Records, Seq[AclLogEntry7_2]] = Read[Records, Seq[AclLogEntry7_2]]
 }
 
 /** ACL: Redis 6.2 */
 /** ACL without SETUSER, which takes rules that differ between servers */
 trait AclCoreCommands extends Features {
-  import Acl.{AclLogEntry6_2, AclUser6_2}
+  import Acl.AclUser6_2
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -381,10 +430,6 @@ trait AclCoreCommands extends Features {
 
   val load: Single[OK] = Protocol("ACL", "LOAD").as[Str, OK]
 
-  /** The 10 most recent denials, or `count` of them */
-  val log: Single[Seq[AclLogEntry6_2]]                = Protocol("ACL", "LOG").using(RESPRead.instance(Acl.logEntries6_2))
-  def log(count: PosInt): Single[Seq[AclLogEntry6_2]] =
-    Protocol("ACL", "LOG" *: count *: EmptyTuple).using(RESPRead.instance(Acl.logEntries6_2))
   val logreset: Single[OK] = Protocol("ACL", "LOG" :: "RESET" :: Nil).as[Str, OK]
 
   val save: Single[OK] = Protocol("ACL", "SAVE").as[Str, OK]
@@ -396,6 +441,12 @@ trait AclCoreCommands extends Features {
 
 /** ACL: Redis 6.2 */
 trait AclCommands extends AclCoreCommands {
+  import Acl.AclLogEntry6_2
+
+  /** The 10 most recent denials, or `count` of them */
+  val log: Single[Seq[AclLogEntry6_2]]                = Protocol("ACL", "LOG").using(RESPRead.instance(Acl.logEntries6_2))
+  def log(count: PosInt): Single[Seq[AclLogEntry6_2]] =
+    Protocol("ACL", "LOG" *: count *: EmptyTuple).using(RESPRead.instance(Acl.logEntries6_2))
 
   /** Creates the user, or changes it, applying the rules in order */
   def setuser(user: Key, rules: Acl.AclRules): Single[OK] = Protocol("ACL", "SETUSER" :: user.value :: rules.params).as[Str, OK]
@@ -414,6 +465,11 @@ trait AclDryRunCommands extends Features {
 trait AclDragonflyCommands extends AclCoreCommands with AclDryRunCommands {
   override def getuser(user: Key): Single[Option[Acl.AclUser6_2]] =
     Protocol("ACL", "GETUSER" :: user.value :: Nil).using(Acl.maybeUserDragonfly)
+
+  /** Every denial Dragonfly keeps, oldest first. It takes `count` but doesn't apply it */
+  val log: Single[Seq[Acl.AclLogEntryDragonfly]]                = Protocol("ACL", "LOG").using(Acl.logEntriesDragonfly)
+  def log(count: PosInt): Single[Seq[Acl.AclLogEntryDragonfly]] =
+    Protocol("ACL", "LOG" *: count *: EmptyTuple).using(Acl.logEntriesDragonfly)
 
   /** Creates the user, or changes it, applying the rules in order */
   def setuser(user: Key, rules: Acl.AclDragonflyRules): Single[OK] =

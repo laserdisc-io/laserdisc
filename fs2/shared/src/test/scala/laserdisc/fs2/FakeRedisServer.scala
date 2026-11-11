@@ -29,6 +29,7 @@ import cats.syntax.all.*
 import com.comcast.ip4s
 import laserdisc.auto.*
 
+import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import scala.concurrent.duration.*
 
@@ -54,11 +55,19 @@ object FakeRedisServer {
       Resource.eval(IO.ref(0)).flatMap { connections =>
         server.accept
           .map { socket =>
-            Stream.eval(connections.updateAndGet(_ + 1)).flatMap { n =>
-              handle(n, socket.reads.through(RedisChannel.impl.receiveResp[IO]))
-                .flatMap(reply => Stream.chunk(Chunk.array(reply.getBytes(UTF_8))))
-                .through(socket.writes) ++ Stream.exec(socket.endOfOutput)
-            }
+            Stream
+              .eval(connections.updateAndGet(_ + 1))
+              .flatMap { n =>
+                handle(n, socket.reads.through(RedisChannel.impl.receiveResp[IO]))
+                  .flatMap(reply => Stream.chunk(Chunk.array(reply.getBytes(UTF_8))))
+                  .through(socket.writes) ++ Stream.exec(socket.endOfOutput)
+              }
+              // a client closing its connection with replies unread resets it, which ends only that connection, as with a real server:
+              // otherwise the error would stop the server, closing the client's other connections
+              .handleErrorWith {
+                case _: IOException => Stream.empty
+                case other          => Stream.raiseError[IO](other)
+              }
           }
           .parJoinUnbounded
           .compile

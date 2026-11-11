@@ -33,9 +33,23 @@ final class Feed[A] private[protocol] (
     private[laserdisc] val confirmed: RESP => Option[String],
     private[laserdisc] val message: RESP => Maybe[Option[A]],
     private[laserdisc] val keptAlive: Boolean = true
-)
+) {
+
+  // what a reply gives the stream: nothing, as for a confirmation, a message, or one that can't be read. Only the server's error fails it
+  private[laserdisc] final def received(resp: RESP): Maybe[Option[Either[Feed.Unreadable, A]]] =
+    message(resp) match {
+      case Left(error: Err) => Left(error)
+      case Left(error)      => Right(Some(Left(Feed.Unreadable(error, resp))))
+      case Right(read)      => Right(read.map(Right(_)))
+    }
+}
 
 object Feed {
+
+  /** A message that couldn't be read, with why, and the message as it arrived: with its channel and payload, or MONITOR's line. The stream
+    * goes on to the next one
+    */
+  final case class Unreadable(error: Throwable, message: RESP)
 
   /** A message published to a channel */
   final case class Message[A](channel: Key, value: A)

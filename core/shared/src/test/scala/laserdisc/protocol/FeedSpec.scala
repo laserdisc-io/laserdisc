@@ -43,6 +43,18 @@ final class FeedSpec extends BaseSpec with PublishShardP with MonitorP {
     assertLeftEquals(feed.message(Err("boom")), Err("boom"))
   }
 
+  test("A message that can't be read is handed over with why and as it arrived, and only the server's error is a failure") {
+    val feed       = subscribe[Int](keys)
+    val notAnInt   = bulks("message", "a", "x")
+    val noChannel  = bulks("message", "", "1")
+    val unreadable = (resp: RESP) => feed.received(resp).toOption.flatten.flatMap(_.left.toOption).map(_.message)
+    assertEquals(feed.received(bulks("message", "a", "1")), Some(Right(Message(Key("a"), 1))))
+    assertEquals(feed.received(Arr(Bulk("subscribe"), Bulk("a"), Num(1L))), None)
+    assertEquals(unreadable(notAnInt), Some(notAnInt))
+    assertEquals(unreadable(noChannel), Some(noChannel))
+    assertLeftEquals(feed.received(Err("boom")), Err("boom"))
+  }
+
   test("A subscribe feed keeps the bytes of a message") {
     val payload = Bulk(hex"f5c30301ff")
     assertEquals(subscribe[Bulk](keys).message(Arr(Bulk("message"), Bulk("a"), payload)), Some(Message(Key("a"), payload)))

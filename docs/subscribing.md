@@ -15,12 +15,19 @@ import laserdisc.redis_8_10.*
 val channels = OneOrMoreKeys.unsafeFrom(List(Key("orders")))
 
 RedisSubscriber[IO].to("localhost", 6379, subscribe[String](channels)).use { messages =>
-  messages.evalMap(message => IO.println(s"${message.channel}: ${message.value}")).compile.drain
+  messages.evalMap {
+    case Right(message)   => IO.println(s"${message.channel}: ${message.value}")
+    case Left(unreadable) => IO.println(s"couldn't read ${unreadable.message}: ${unreadable.error.getMessage}")
+  }.compile.drain
 }
 ```
 
 Once the resource is open the server has confirmed the subscription, so anything
 published from then on reaches you.
+
+Each message comes as a `Right`. One that can't be read as the type you asked
+for comes as a `Left` of `Unreadable`, with the reason and the message as it
+arrived, and the stream goes on to the next one.
 
 | Method | What you receive | Available on |
 | --- | --- | --- |
@@ -45,8 +52,11 @@ use it for debugging.
   server is sent a `PING`, and if it says nothing before the next one, the
   stream fails with `ServerNotResponding`. `monitor` isn't checked this way, as
   the server would report the `PING` as a command it received.
-- **The stream fails on a message it can't read** as the type you asked for. Ask
+- **A message that can't be read doesn't stop the stream.** Anyone who can
+  publish to your channels can send something that isn't the type you asked
+  for, or to a channel whose name isn't a valid `Key`, like the empty one. Ask
   for `Bulk` to get the raw bytes of any message.
+- **The stream fails if the server replies with an error.**
 - **In a cluster**, `ssubscribe` needs a connection to the node that serves the
   channel's slot.
 
@@ -73,8 +83,9 @@ RedisSubscriber[IO].identified("localhost", 6379, c.invalidations).use { case (i
 }
 ```
 
-Each notice is `Invalidation.Keys(keys)`, or `Invalidation.Everything` after a
-command like `FLUSHALL`.
+Each notice is `Right(Invalidation.Keys(keys))`, or `Right(Invalidation.Everything)`
+after a command like `FLUSHALL`. A notice that can't be read comes as a `Left` of
+`Unreadable`; to be safe, treat it as `Everything`.
 
 - **Tracking doesn't survive a reconnect.** `RedisClient` reconnects on its own, and
   the new connection isn't tracking anything, without any notice saying so. Don't

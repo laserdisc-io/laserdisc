@@ -52,12 +52,15 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
 
   private val confirmed = confirmation("a", 1) + confirmation("b", 2)
 
+  private def read(channel: String, value: String): Either[Feed.Unreadable, Message[String]] =
+    Right(Message(Key.unsafeFrom(channel), value))
+
   test("a message that arrives between two confirmations isn't lost") {
     serving(1)(confirmation("a", 1) + message("a", "early") + confirmation("b", 2) + message("b", "late")).use { case (port, _) =>
       RedisSubscriber[IO]
         .to("127.0.0.1", port, feed)
         .use(_.take(2).compile.toList)
-        .assertEquals(List(Message(Key("a"), "early"), Message(Key("b"), "late")))
+        .assertEquals(List(read("a", "early"), read("b", "late")))
     }
   }
 
@@ -68,7 +71,28 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
         .use { messages =>
           IO.sleep(200.millis) >> (messages.take(1).compile.toList, messages.take(1).compile.toList).tupled
         }
-        .assertEquals(List(Message(Key("a"), "first")) -> List(Message(Key("b"), "second")))
+        .assertEquals(List(read("a", "first")) -> List(read("b", "second")))
+    }
+  }
+
+  test("a message that can't be read is handed over as it arrived, and the next ones still come, also while confirming") {
+    val noChannel = message("", "lost")
+    serving(1)(confirmation("a", 1) + noChannel + confirmation("b", 2) + noChannel + message("a", "next")).use { case (port, _) =>
+      RedisSubscriber[IO]
+        .to("127.0.0.1", port, feed)
+        .use(_.take(3).compile.toList)
+        .map { received =>
+          val unreadable: RESP = Arr(Bulk("message"), Bulk(""), Bulk("lost"))
+          assertEquals(received.map(_.left.map(_.message)), List(Left(unreadable), Left(unreadable), read("a", "next")))
+        }
+    }
+  }
+
+  test("the stream fails when the server replies with an error") {
+    serving(1)(confirmed + "-ERR boom\r\n").use { case (port, _) =>
+      RedisSubscriber[IO].to("127.0.0.1", port, feed).use(_.compile.toList).attempt.map { outcome =>
+        assertEquals(outcome.left.map(_.getMessage), Left("ERR boom"))
+      }
     }
   }
 
@@ -79,7 +103,7 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
         .use { messages =>
           (messages.take(1).compile.toList, messages.take(1).compile.toList).tupled
         }
-        .assertEquals(List(Message(Key("a"), "early")) -> List(Message(Key("b"), "late")))
+        .assertEquals(List(read("a", "early")) -> List(read("b", "late")))
     }
   }
 
@@ -88,7 +112,7 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
       RedisSubscriber[IO]
         .to("127.0.0.1", port, Credentials(Key("secret")), feed)
         .use(_.take(1).compile.toList)
-        .assertEquals(List(Message(Key("a"), "m"))) >>
+        .assertEquals(List(read("a", "m"))) >>
         seen.assertEquals(List(command("AUTH", "secret"), subscribing))
     }
   }
@@ -158,7 +182,7 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
       }
     }
     answering.use { port =>
-      keptAliveEvery(100.millis).to("127.0.0.1", port, feed).use(_.take(1).compile.toList).assertEquals(List(Message(Key("a"), "late")))
+      keptAliveEvery(100.millis).to("127.0.0.1", port, feed).use(_.take(1).compile.toList).assertEquals(List(read("a", "late")))
     }
   }
 

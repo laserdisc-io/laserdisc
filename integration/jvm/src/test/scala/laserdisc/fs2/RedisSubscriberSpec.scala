@@ -64,7 +64,7 @@ abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.C
     val received = RedisSubscriber[IO].to("127.0.0.1", p, v.ssubscribe[String](channels("sub:s"))).use { messages =>
       IO(send(v.spublish(Key("sub:s"), "m"))) *> messages.take(1).compile.toList
     }
-    assertEquals(run(received), List(ShardMessage(Key("sub:s"), "m")))
+    assertEquals(run(received), List(Right(ShardMessage(Key("sub:s"), "m"))))
   }
 
   protected final def tracking(c: laserdisc.protocol.ClientCommands): Unit = {
@@ -96,16 +96,16 @@ abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.C
       }
     }
     val (id, redir, info, seen, off, next, bcast, third) = run(checked)
-    val changed                                          = Feed.Invalidation.Keys(Seq(Key("sub:t")))
+    val changed                                          = Right(Feed.Invalidation.Keys(Seq(Key("sub:t"))))
     assertEquals(redir, Some(id))
     assertEquals(info.redirect, Some(id))
     assert(info.flags.contains("on"))
-    assertEquals(seen, List[Feed.Invalidation](changed))
+    assertEquals(seen, List(changed))
     assertEquals(off, None)
-    assertEquals(next, List[Feed.Invalidation](changed))
+    assertEquals(next, List(changed))
     assertEquals(bcast.prefixes, Seq("sub:b:"))
     assert(bcast.flags.contains("bcast"))
-    assertEquals(third, List[Feed.Invalidation](Feed.Invalidation.Keys(Seq(Key("sub:b:1")))))
+    assertEquals(third, List(Right(Feed.Invalidation.Keys(Seq(Key("sub:b:1"))))))
   }
 
   protected final def wrongPassword(): Unit = {
@@ -122,7 +122,7 @@ abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.C
         IO(send(publisher.publish(Key("sub:b"), 2))) *>
         messages.take(2).compile.toList
     }
-    assertEquals(run(received), List(Message(Key("sub:a"), 1), Message(Key("sub:b"), 2)))
+    assertEquals(run(received), List(Right(Message(Key("sub:a"), 1)), Right(Message(Key("sub:b"), 2))))
   }
 
   test(s"a $dest client's subscription stays open while the server answers its pings, which aren't messages") {
@@ -130,7 +130,7 @@ abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.C
     val received  = keptAlive.to("127.0.0.1", p, publisher.subscribe[String](channels("sub:k"))).use { messages =>
       IO.sleep(500.millis) *> IO(send(publisher.publish(Key("sub:k"), "m"))) *> messages.take(1).compile.toList
     }
-    assertEquals(run(received), List(Message(Key("sub:k"), "m")))
+    assertEquals(run(received), List(Right(Message(Key("sub:k"), "m"))))
   }
 
   test(s"a $dest client reads the messages of channels that match a pattern") {
@@ -138,17 +138,19 @@ abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.C
     val received = RedisSubscriber[IO].to("127.0.0.1", p, publisher.psubscribe[String](patterns)).use { messages =>
       IO(send(publisher.publish(Key("sub:p1"), "m"))) *> messages.take(1).compile.toList
     }
-    assertEquals(run(received), List(PatternMessage(GlobPattern("sub:p*"), Key("sub:p1"), "m")))
+    assertEquals(run(received), List(Right(PatternMessage(GlobPattern("sub:p*"), Key("sub:p1"), "m"))))
   }
 
-  test(s"a $dest client's stream fails on a message it can't read as the type it asked for") {
-    val attempt = RedisSubscriber[IO]
-      .to("127.0.0.1", p, publisher.subscribe[Int](channels("sub:bad")))
-      .use { messages =>
-        IO(send(publisher.publish(Key("sub:bad"), "not a number"))) *> messages.take(1).compile.toList
-      }
-      .attempt
-    assert(run(attempt).isLeft)
+  test(s"a $dest client's stream hands over a message it can't read as the type it asked for, as it arrived, and goes on") {
+    val received = RedisSubscriber[IO].to("127.0.0.1", p, publisher.subscribe[Int](channels("sub:bad"))).use { messages =>
+      IO(send(publisher.publish(Key("sub:bad"), "not a number"))) *>
+        IO(send(publisher.publish(Key("sub:bad"), 3))) *>
+        messages.take(2).compile.toList
+    }
+    assertEquals(
+      run(received).map(_.left.map(_.message)),
+      List(Left(Arr(Bulk("message"), Bulk("sub:bad"), Bulk("not a number"))), Right(Message(Key("sub:bad"), 3)))
+    )
   }
 
   test(s"a $dest client says hello, names its connection and reads what the server says") {
@@ -185,7 +187,7 @@ abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.C
     val received = RedisSubscriber[IO].to("127.0.0.1", p, publisher.monitor).use { events =>
       events
         .concurrently(setting.repeat)
-        .collectFirst { case seen @ MonitorEvent(_, _, _, command) if command.lift(1).contains("sub:monitored") => seen }
+        .collectFirst { case Right(seen @ MonitorEvent(_, _, _, command)) if command.lift(1).contains("sub:monitored") => seen }
         .compile
         .toList
     }

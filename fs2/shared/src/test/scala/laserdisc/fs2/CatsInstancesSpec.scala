@@ -31,6 +31,10 @@ final class CatsInstancesSpec extends CatsEffectSuite {
     assertEquals(showForCats[Int].show(1), "1")
   }
 
+  test("a command sends a tuple as its elements, though cats has a Show for the tuple") {
+    assertEquals(Protocol("X", "a" *: 1L *: "c" *: EmptyTuple).as[Str, OK].encode, Arr(Bulk("X"), Bulk("a"), Bulk("1"), Bulk("c")))
+  }
+
   test("a cats Functor gives a Functor") {
     functorForCats[IO].map(IO.pure(1))(_ + 1).assertEquals(2)
   }

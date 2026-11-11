@@ -53,7 +53,6 @@ object RESPParamWrite extends RESPParamWriteInstances {
 private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteInstances1 {
   implicit final val bulkRESPParamWrite: RESPParamWrite[Bulk]           = RESPParamWrite.instance(a => Seq(a))
   implicit final val paramsRESPParamWrite: RESPParamWrite[Seq[GenBulk]] = RESPParamWrite.instance(identity)
-  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A]     = RESPParamWrite.instance(a => Seq(Value.fromShow(a).bulk))
   implicit final def pairRESPParamWrite[A, B](
       implicit A: RESPParamWrite[A],
       B: RESPParamWrite[B]
@@ -65,7 +64,7 @@ private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteIns
     RESPParamWrite.instance(_.flatMap(A.write))
 }
 
-private[protocol] sealed trait RESPParamWriteInstances1 extends RESPParamWriteProductInstances {
+private[protocol] sealed trait RESPParamWriteInstances1 extends RESPParamWriteInstances2 {
   implicit final val emptyTupleRESPParamWrite: RESPParamWrite[EmptyTuple] = RESPParamWrite.const(Seq.empty)
 
   implicit final def tupleRESPParamWrite[H, T <: Tuple](
@@ -75,4 +74,9 @@ private[protocol] sealed trait RESPParamWriteInstances1 extends RESPParamWritePr
     RESPParamWrite.instance { case h *: t =>
       H.write(h) ++: T.write(t)
     }
+}
+
+// below tuples, so a tuple is sent as its elements even when a Show for it is in scope, as cats' is with laserdisc.fs2
+private[protocol] sealed trait RESPParamWriteInstances2 extends RESPParamWriteProductInstances {
+  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A] = RESPParamWrite.instance(a => Seq(Value.fromShow(a).bulk))
 }

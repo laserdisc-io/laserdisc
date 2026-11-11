@@ -48,8 +48,6 @@ trait BListBaseP extends Features {
   final def brpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: BlockingSeconds): Single[Option[KV[A]]] =
     Protocol("BRPOP", keys.value *: seconds *: EmptyTuple).as[OrNilArr[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]], Option[KV[A]]]
 
-  final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Single[Option[A]] =
-    Protocol("BRPOPLPUSH", source *: destination *: 0 *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
   final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key, seconds: BlockingSeconds): Single[Option[A]] =
     Protocol("BRPOPLPUSH", source *: destination *: seconds *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 }

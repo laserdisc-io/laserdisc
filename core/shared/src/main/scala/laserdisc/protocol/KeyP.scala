@@ -437,7 +437,6 @@ trait KeyBaseP extends Features {
 
   final def unlink(keys: OneOrMoreKeys): Single[NonNegInt] = Protocol("UNLINK", keys.value).as[Num, NonNegInt]
 
-  final def wait(replicas: PosInt): Single[NonNegInt]                   = Protocol("WAIT", replicas *: 0 *: EmptyTuple).as[Num, NonNegInt]
   final def wait(replicas: PosInt, timeout: PosLong): Single[NonNegInt] =
     Protocol("WAIT", replicas *: timeout *: EmptyTuple).as[Num, NonNegInt]
 }
@@ -490,9 +489,9 @@ trait KeyWaitAofP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("WAITAOF")
 
   /** Waits until the writes before it are on disk locally (when `local` is 1) and on `replicas` replicas, or until `timeout` milliseconds
-    * have passed (0 waits forever). Replies with how many of each it reached
+    * have passed. Replies with how many of each it reached
     */
-  final def waitaof(local: NonNegInt, replicas: NonNegInt, timeout: NonNegLong): Single[(NonNegInt, NonNegInt)] =
+  final def waitaof(local: NonNegInt, replicas: NonNegInt, timeout: PosLong): Single[(NonNegInt, NonNegInt)] =
     Protocol("WAITAOF", local *: replicas *: timeout *: EmptyTuple).using(RESPRead.instance(KeyP.localAndReplicas))
 }
 

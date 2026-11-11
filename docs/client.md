@@ -212,9 +212,8 @@ def wholeList(key: Key): Loop[String] =
 
 Blocking commands, under `blocking`, wait on the server for something to
 happen. The client adds that wait to the `send`'s timeout, so `blpop` with 30
-seconds and the default timeout can take up to 50 seconds. A wait of 0 means for
-as long as it takes on the server, but the `send` still times out after its own
-timeout.
+seconds and the default timeout can take up to 50 seconds. The wait can't be 0,
+which would mean for as long as it takes.
 
 While one waits, it holds the client's connection: commands sent after it on the
 same client, from anywhere in your program, only get their replies once it's

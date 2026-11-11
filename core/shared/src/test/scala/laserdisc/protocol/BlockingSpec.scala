@@ -35,7 +35,7 @@ final class BlockingSpec extends BaseSpec {
   test("A blocking command's wait is read from what's sent, in seconds or milliseconds") {
     assertEquals(Blocking.waitOf(b.blpop[String](Key("k"), BlockingSeconds.unsafeFrom(1.5d))), 1500.millis)
     assertEquals(Blocking.waitOf(b.brpoplpush[String](Key("a"), Key("b"), BlockingSeconds.unsafeFrom(2d))), 2.seconds)
-    assertEquals(Blocking.waitOf(b.xread[String](OneOrMore.unsafeFrom(List(Key("x") -> StreamFrom.latest)), NonNegLong(250L))), 250.millis)
+    assertEquals(Blocking.waitOf(b.xread[String](OneOrMore.unsafeFrom(List(Key("x") -> StreamFrom.latest)), PosLong(250L))), 250.millis)
     assertEquals(Blocking.waitOf(redis_8_10.wait(PosInt(1), PosLong(300L))), 300.millis)
     assertEquals(Blocking.waitOf(typed("bzmpop", "0.002", "1", "z", "MIN")), 2.millis)
     assertEquals(Blocking.waitOf(typed("BLMOVE", "a", "b", "LEFT", "RIGHT", "3")), 3.seconds)
@@ -43,8 +43,8 @@ final class BlockingSpec extends BaseSpec {
   }
 
   test("A wait of 0, a command that doesn't block and a transaction add nothing") {
-    assertEquals(Blocking.waitOf(b.blpop[String](Key("k"))), Duration.Zero)
-    assertEquals(Blocking.waitOf(redis_8_10.wait(PosInt(1))), Duration.Zero)
+    assertEquals(Blocking.waitOf(typed("BLPOP", "k", "0")), Duration.Zero)
+    assertEquals(Blocking.waitOf(typed("WAIT", "1", "0")), Duration.Zero)
     assertEquals(Blocking.waitOf(typed("XREAD", "STREAMS", "x", "$")), Duration.Zero)
     assertEquals(Blocking.waitOf(typed("GET", "k")), Duration.Zero)
     assertEquals(Blocking.waitOf(typed("BLPOP", "k", "soon")), Duration.Zero)

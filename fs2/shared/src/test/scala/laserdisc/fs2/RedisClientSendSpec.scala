@@ -116,13 +116,10 @@ final class RedisClientSendSpec extends CatsEffectSuite {
               .concurrently(commands.evalMap(taken.offer))
           }
 
-  test("a blocking command's wait is added to its send's timeout, and with a wait of 0 the send's timeout stays") {
+  test("a blocking command's wait is added to its send's timeout") {
     IO.ref(0).flatMap { connections =>
       RedisClient.impl.connection[IO](slow(connections), List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
-        client.send(blocking.blpop[String](Key("k"), BlockingSeconds.unsafeFrom(1d)), 1.second).assertEquals(Right(None)) >>
-          client.send(blocking.blpop[String](Key("k")), 1.second).attempt.map { result =>
-            assert(result.left.exists(_.isInstanceOf[RequestTimedOut[?]]), result.toString)
-          }
+        client.send(blocking.blpop[String](Key("k"), BlockingSeconds.unsafeFrom(1d)), 1.second).assertEquals(Right(None))
       }
     }
   }

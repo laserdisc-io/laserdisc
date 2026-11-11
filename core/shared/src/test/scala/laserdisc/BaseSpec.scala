@@ -120,7 +120,7 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   final val accessFrequencyGen: Gen[Int] =
     chooseNum(0, AccessFrequencyMaxValueWit.value).filter(accessFrequencyIsValid) :| "access frequency"
   final val blockingSecondsGen: Gen[Double] =
-    frequency(1 -> const(0.0d), 9 -> chooseNum(BlockingSecondsMinValueWit.value, BlockingSecondsMaxValueWit.value)) :| "blocking seconds"
+    chooseNum(BlockingSecondsMinValueWit.value, BlockingSecondsMaxValueWit.value) :| "blocking seconds"
   final val connectionNameGen: Gen[String] =
     strGen(nonEmptyListOf(noSpaceUtf8BMPCharGen)).filter(connectionNameIsValid) :| "connection name"
   final val dbIndexGen: Gen[Int]        = chooseNum(0, DbIndexMaxValueWit.value).filter(dbIndexIsValid) :| "db index"

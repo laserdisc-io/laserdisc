@@ -210,8 +210,8 @@ final class VersionImportsSpec extends BaseSpec {
     val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
     assertEquals(valkey_9_1.zscannoscores[String]("a", 0L).frames, frame("ZSCAN", "a", "0", "NOSCORES"))
     assertEquals(zrevrankwithscore("a", "m").frames, frame("ZREVRANK", "a", "m", "WITHSCORE"))
-    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.min, 0.0).frames, frame("BZMPOP", "0", "1", "a", "MIN"))
-    assertEquals(blocking.blpop[String](a, 0.0).frames, frame("BLPOP", "a", "0"))
+    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.min, 1.0).frames, frame("BZMPOP", "1", "1", "a", "MIN"))
+    assertEquals(blocking.blpop[String](a, 1.0).frames, frame("BLPOP", "a", "1"))
   }
 
   test("redis_6_2 has LMOVE, LPOS and BLMOVE, but not LMPOP, BLMPOP or LMOVEM") {

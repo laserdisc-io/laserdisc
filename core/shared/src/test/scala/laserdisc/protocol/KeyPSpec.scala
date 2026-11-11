@@ -533,7 +533,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using waitaof reads how many it reached locally and on replicas") {
-    forAll { (l: NonNegInt, r: NonNegInt, t: NonNegLong) =>
+    forAll { (l: NonNegInt, r: NonNegInt, t: PosLong) =>
       val protocol = waitaof(l, r, t)
       assertEquals(protocol.encode, Arr(Bulk("WAITAOF"), Bulk(l), Bulk(r), Bulk(t)))
       assertEquals(protocol.decode(Arr(Num(l.value.toLong), Num(r.value.toLong))), l -> r)

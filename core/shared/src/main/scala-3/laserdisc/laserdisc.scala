@@ -140,17 +140,16 @@ private final type ValidDoubleRef = NonNaN
 /** The counter LFU eviction keeps of how often a key is used, as OBJECT FREQ reports it */
 final type AccessFrequencyRef = Interval.Closed[0, AccessFrequencyMaxValueWit.T]
 
-/** Seconds a blocking command waits, 0 to wait forever. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above what
+/** Seconds a blocking command waits, never forever, as 0 would. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above what
   * Dragonfly takes
   */
-final type BlockingSecondsRef = ValidDoubleRef &
-  (StrictEqual[0.0d] | Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T])
-final type ConnectionNameRef = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
-final type DbIndexRef        = Interval.Closed[0, DbIndexMaxValueWit.T]
-final type GeoHashRef        = Match[GeoHashRegexWit.T]
-final type GlobPatternRef    = Match[GlobPatternRegexWit.T]
-final type AclPatternRef     = Match[AclPatternRegexWit.T]
-final type HostRef           = StrictEqual[AllNICsEqWit.T] | StrictEqual[LoopbackEqWit.T] |
+final type BlockingSecondsRef = ValidDoubleRef & Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T]
+final type ConnectionNameRef  = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
+final type DbIndexRef         = Interval.Closed[0, DbIndexMaxValueWit.T]
+final type GeoHashRef         = Match[GeoHashRegexWit.T]
+final type GlobPatternRef     = Match[GlobPatternRegexWit.T]
+final type AclPatternRef      = Match[AclPatternRegexWit.T]
+final type HostRef            = StrictEqual[AllNICsEqWit.T] | StrictEqual[LoopbackEqWit.T] |
   (Not[IPv4Ref] & MaxLength[Rfc1123HostnameMaxLengthWit.T] & Match[Rfc1123HostnameRegexWit.T]) | Rfc1918Ref | Rfc5737Ref | Rfc3927Ref |
   Rfc2544Ref
 final type IndexRef            = Pure

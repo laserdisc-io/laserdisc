@@ -31,13 +31,12 @@ final class BStreamPSpec extends BaseSpec with BStreamP {
   test("The blocking Stream protocol using xread sends COUNT and BLOCK before STREAMS, and reads None when the wait ran out") {
     val streams = OneOrMore.unsafeFrom(List(Key("s") -> From.after(id), Key("t") -> From.latest))
     assertEquals(
-      xread[Int](streams, NonNegLong(5000L), PosLong(10L)).encode,
+      xread[Int](streams, PosLong(5000L), PosLong(10L)).encode,
       bulks("XREAD", "COUNT", "10", "BLOCK", "5000", "STREAMS", "s", "t", "1-1", "$")
     )
-    assertEquals(xread[Int](streams, NonNegLong(0L)).encode, bulks("XREAD", "BLOCK", "0", "STREAMS", "s", "t", "1-1", "$"))
-    assertEquals(xread[Int](streams, NonNegLong(5000L)).decode(NilArr), None)
+    assertEquals(xread[Int](streams, PosLong(5000L)).decode(NilArr), None)
     assertEquals(
-      xread[Int](streams, NonNegLong(5000L)).decode(Arr(Arr(Bulk("s"), Arr(Arr(Bulk("1-1"), bulks("a", "1")))))),
+      xread[Int](streams, PosLong(5000L)).decode(Arr(Arr(Bulk("s"), Arr(Arr(Bulk("1-1"), bulks("a", "1")))))),
       Some(Seq(KV(Key("s"), Seq(Entry(id, Seq(Key("a") -> 1))))))
     )
   }
@@ -45,26 +44,26 @@ final class BStreamPSpec extends BaseSpec with BStreamP {
   test("The blocking Stream protocol using xreadgroup sends the group, COUNT, BLOCK and NOACK before STREAMS") {
     val streams = OneOrMore.unsafeFrom(List(Key("s") -> GroupFrom.newEntries))
     assertEquals(
-      xreadgroup[Int](Key("g"), Key("c"), streams, NonNegLong(100L), PosLong(5L), NoAck).encode,
+      xreadgroup[Int](Key("g"), Key("c"), streams, PosLong(100L), PosLong(5L), NoAck).encode,
       bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "5", "BLOCK", "100", "NOACK", "STREAMS", "s", ">")
     )
-    assertEquals(xreadgroup[Int](Key("g"), Key("c"), streams, NonNegLong(100L)).decode(NilArr), None)
+    assertEquals(xreadgroup[Int](Key("g"), Key("c"), streams, PosLong(100L)).decode(NilArr), None)
   }
 
   private val keys = OneOrMoreKeys.unsafeFrom(List(Key("s")))
 
   test("The blocking Stream protocol using xreadgroupclaim sends COUNT, BLOCK, CLAIM and NOACK before STREAMS") {
     assertEquals(
-      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), NonNegLong(100L), PosLong(5L), NoAck).encode,
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), PosLong(100L), PosLong(5L), NoAck).encode,
       bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "5", "BLOCK", "100", "CLAIM", "50", "NOACK", "STREAMS", "s", ">")
     )
     assertEquals(
-      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), NonNegLong(100L)).encode,
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), PosLong(100L)).encode,
       bulks("XREADGROUP", "GROUP", "g", "c", "BLOCK", "100", "CLAIM", "50", "STREAMS", "s", ">")
     )
-    assertEquals(xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), NonNegLong(100L)).decode(NilArr), None)
+    assertEquals(xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), PosLong(100L)).decode(NilArr), None)
     assertEquals(
-      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), NonNegLong(100L))
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), PosLong(100L))
         .decode(Arr(Arr(Bulk("s"), Arr(Arr(Bulk("1-1"), bulks("a", "1"), Num(0L), Num(0L)))))),
       Some(Seq(KV(Key("s"), Seq(ClaimedEntry(id, Seq(Key("a") -> 1), NonNegLong(0L), NonNegLong(0L))))))
     )
@@ -75,19 +74,19 @@ final class BStreamPSpec extends BaseSpec with BStreamP {
     val from   = OneOrMore.unsafeFrom(List(Key("s") -> From.latest))
     val group  = OneOrMore.unsafeFrom(List(Key("s") -> GroupFrom.newEntries))
     assertEquals(
-      xread[Int](from, NonNegLong(100L), limits).encode,
+      xread[Int](from, PosLong(100L), limits).encode,
       bulks("XREAD", "MAXCOUNT", "2", "BLOCK", "100", "STREAMS", "s", "$")
     )
     assertEquals(
-      xread[Int](from, NonNegLong(100L), PosLong(1L), limits).encode,
+      xread[Int](from, PosLong(100L), PosLong(1L), limits).encode,
       bulks("XREAD", "COUNT", "1", "MAXCOUNT", "2", "BLOCK", "100", "STREAMS", "s", "$")
     )
     assertEquals(
-      xreadgroup[Int](Key("g"), Key("c"), group, NonNegLong(100L), PosLong(1L), limits, NoAck).encode,
+      xreadgroup[Int](Key("g"), Key("c"), group, PosLong(100L), PosLong(1L), limits, NoAck).encode,
       bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "1", "MAXCOUNT", "2", "BLOCK", "100", "NOACK", "STREAMS", "s", ">")
     )
     assertEquals(
-      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), NonNegLong(100L), PosLong(1L), limits, NoAck).encode,
+      xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L), PosLong(100L), PosLong(1L), limits, NoAck).encode,
       bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "1", "MAXCOUNT", "2", "BLOCK", "100", "CLAIM", "50", "NOACK", "STREAMS", "s", ">")
     )
   }

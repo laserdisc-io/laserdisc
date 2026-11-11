@@ -140,17 +140,16 @@ package object laserdisc {
   /** The counter LFU eviction keeps of how often a key is used, as OBJECT FREQ reports it */
   final type AccessFrequencyRef = Interval.Closed[W.`0`.T, AccessFrequencyMaxValueWit.T]
 
-  /** Seconds a blocking command waits, 0 to wait forever. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above what
-    * Dragonfly takes
+  /** Seconds a blocking command waits, never forever, as 0 would. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above
+    * what Dragonfly takes
     */
-  final type BlockingSecondsRef = NonNaN And
-    (Equal[W.`0.0D`.T] Or Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T])
-  final type ConnectionNameRef = OneOrMoreRef And Forall[NoWhitespace And NoControlChar]
-  final type DbIndexRef        = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
-  final type GeoHashRef        = MatchesRegex[GeoHashRegexWit.T]
-  final type GlobPatternRef    = MatchesRegex[GlobPatternRegexWit.T]
-  final type AclPatternRef     = MatchesRegex[AclPatternRegexWit.T]
-  final type HostRef           = Equal[AllNICsEqWit.T] Or Equal[LoopbackEqWit.T] Or
+  final type BlockingSecondsRef = NonNaN And Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T]
+  final type ConnectionNameRef  = OneOrMoreRef And Forall[NoWhitespace And NoControlChar]
+  final type DbIndexRef         = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
+  final type GeoHashRef         = MatchesRegex[GeoHashRegexWit.T]
+  final type GlobPatternRef     = MatchesRegex[GlobPatternRegexWit.T]
+  final type AclPatternRef      = MatchesRegex[AclPatternRegexWit.T]
+  final type HostRef            = Equal[AllNICsEqWit.T] Or Equal[LoopbackEqWit.T] Or
     (Not[IPv4] And MaxSize[Rfc1123HostnameMaxLengthWit.T] And MatchesRegex[Rfc1123HostnameRegexWit.T]) Or Rfc1918PrivateSpec Or
     Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec
   final type IndexRef            = True

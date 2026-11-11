@@ -92,7 +92,7 @@ final class LoopSpec extends BaseSpec {
     assertEquals(client.commands, List(bulks("XREVRANGE", "x", "+", "-", "COUNT", "2"), bulks("XREVRANGE", "x", "(1-2", "-", "COUNT", "2")))
   }
 
-  test("xreadFollow waits for entries, reads on after the last one of each stream, and adds its wait to each timeout") {
+  test("xreadFollow waits for entries, and reads on after the last one of each stream, each time with the loop's timeout") {
     val client = new Scripted(NilArr, Arr(Arr(Bulk("x"), Arr(entry("1-1", "1"), entry("1-2", "2")))))
     val follow =
       redis_8_10.blocking
@@ -108,7 +108,7 @@ final class LoopSpec extends BaseSpec {
         bulks("XREAD", "BLOCK", "100", "STREAMS", "x", "y", "1-2", "$")
       )
     )
-    assertEquals(client.timeouts.distinct, List(1100.millis))
+    assertEquals(client.timeouts.distinct, List(1.second))
   }
 
   test("xreadgroupFollow reads the consumer's pending entries first, then new entries") {

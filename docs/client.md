@@ -160,7 +160,7 @@ def userKeys(client: RedisClient[IO]): Stream[IO, Key] =
 
 Each command is sent once the reply to the one before it is in. A failed
 command fails the stream. Each command gets the same timeout as a `send`, or the
-one you pass after the loop, and for a blocking command its wait is added to it.
+one you pass after the loop.
 
 To make your own loop, give `Loop` where to start, the command to send from
 there, and what to do with the reply: the values it gives, and where to go next,
@@ -176,15 +176,18 @@ def wholeList(key: Key): Loop[String] =
   }
 ```
 
-For blocking commands, use `Loop.blocking` with how long each one waits.
-
 ## Blocking commands
 
 Blocking commands, under `blocking`, wait on the server for something to
-happen. While one waits, it holds the client's connection: commands sent after
-it on the same client, from anywhere in your program, only get their replies
-once it's done. Give blocking commands, and loops that follow streams, a client
-of their own.
+happen. The client adds that wait to the `send`'s timeout, so `blpop` with 30
+seconds and the default timeout can take up to 50 seconds. A wait of 0 means for
+as long as it takes on the server, but the `send` still times out after its own
+timeout.
+
+While one waits, it holds the client's connection: commands sent after it on the
+same client, from anywhere in your program, only get their replies once it's
+done, and may time out first. Give blocking commands, and loops that follow
+streams, a client of their own.
 
 ## Logging
 

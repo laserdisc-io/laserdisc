@@ -24,11 +24,9 @@ package protocol
 
 import Protocol.Single
 
-import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
-
 /** XREAD and XREADGROUP that wait, up to `blockMilliseconds` (0 for as long as it takes), for entries to read. While they wait, the
-  * connection is held: commands sent after them on the same client get their replies only once they return, and the send's timeout must be
-  * longer than the wait
+  * connection is held: commands sent after them on the same client get their replies only once they return. The client adds the wait to the
+  * send's timeout, except a wait of 0, which the send's timeout limits
   */
 trait BStreamBaseP extends Features {
   import StreamP.{Entry, From, GroupFrom, NoAck, streamsParams}
@@ -117,10 +115,10 @@ trait BStreamBaseP extends Features {
 
   private final def block(blockMilliseconds: PosLong): NonNegLong = NonNegLong.unsafeFrom(blockMilliseconds.value)
 
-  private final def follow[K, A](blockMilliseconds: PosLong, streams: OneOrMore[(Key, K)])(
+  private final def follow[K, A](streams: OneOrMore[(Key, K)])(
       read: OneOrMore[(Key, K)] => Protocol[Option[Seq[KV[Seq[Entry[A]]]]]]
   )(next: (K, Option[Seq[Entry[A]]]) => K): Loop[KV[Entry[A]]] =
-    Loop.blocking(FiniteDuration(blockMilliseconds.value, MILLISECONDS))(streams)(read) { (current, reply) =>
+    Loop(streams)(read) { (current, reply) =>
       val byKey = reply.getOrElse(Nil).map(kv => kv.key -> kv.value).toMap
       val moved = current.value.map { case (key, from) => key -> next(from, byKey.get(key)) }
       reply.getOrElse(Nil).flatMap(kv => kv.value.map(KV(kv.key, _))) -> Some(OneOrMore.unsafeFrom(moved))
@@ -130,9 +128,9 @@ trait BStreamBaseP extends Features {
     * entry read from each stream. From `From.latest`, entries added between two reads are missed until the stream's first entry comes
     */
   final def xreadFollow[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)], blockMilliseconds: PosLong): Loop[KV[Entry[A]]] =
-    follow(blockMilliseconds, streams)(xread[A](_, block(blockMilliseconds)))(after)
+    follow(streams)(xread[A](_, block(blockMilliseconds)))(after)
   final def xreadFollow[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)], blockMilliseconds: PosLong, count: PosLong): Loop[KV[Entry[A]]] =
-    follow(blockMilliseconds, streams)(xread[A](_, block(blockMilliseconds), count))(after)
+    follow(streams)(xread[A](_, block(blockMilliseconds), count))(after)
 
   private final def after[A](from: From, read: Option[Seq[Entry[A]]]): From =
     read.flatMap(_.lastOption).fold(from)(entry => From.after(entry.id))
@@ -146,7 +144,7 @@ trait BStreamBaseP extends Features {
       streams: OneOrMore[(Key, GroupFrom)],
       blockMilliseconds: PosLong
   ): Loop[KV[Entry[A]]] =
-    follow(blockMilliseconds, streams)(xreadgroup[A](group, consumer, _, block(blockMilliseconds)))(pendingThenNew)
+    follow(streams)(xreadgroup[A](group, consumer, _, block(blockMilliseconds)))(pendingThenNew)
   final def xreadgroupFollow[A: Read[Bulk, _]](
       group: Key,
       consumer: Key,
@@ -154,7 +152,7 @@ trait BStreamBaseP extends Features {
       blockMilliseconds: PosLong,
       count: PosLong
   ): Loop[KV[Entry[A]]] =
-    follow(blockMilliseconds, streams)(xreadgroup[A](group, consumer, _, block(blockMilliseconds), count))(pendingThenNew)
+    follow(streams)(xreadgroup[A](group, consumer, _, block(blockMilliseconds), count))(pendingThenNew)
   final def xreadgroupFollow[A: Read[Bulk, _]](
       group: Key,
       consumer: Key,
@@ -162,7 +160,7 @@ trait BStreamBaseP extends Features {
       blockMilliseconds: PosLong,
       noAck: NoAck
   ): Loop[KV[Entry[A]]] =
-    follow(blockMilliseconds, streams)(xreadgroup[A](group, consumer, _, block(blockMilliseconds), noAck))(pendingThenNew)
+    follow(streams)(xreadgroup[A](group, consumer, _, block(blockMilliseconds), noAck))(pendingThenNew)
   final def xreadgroupFollow[A: Read[Bulk, _]](
       group: Key,
       consumer: Key,
@@ -171,7 +169,7 @@ trait BStreamBaseP extends Features {
       count: PosLong,
       noAck: NoAck
   ): Loop[KV[Entry[A]]] =
-    follow(blockMilliseconds, streams)(xreadgroup[A](group, consumer, _, block(blockMilliseconds), count, noAck))(pendingThenNew)
+    follow(streams)(xreadgroup[A](group, consumer, _, block(blockMilliseconds), count, noAck))(pendingThenNew)
 
   // the pending entries are done when a read of them comes back empty
   private final def pendingThenNew[A](from: GroupFrom, read: Option[Seq[Entry[A]]]): GroupFrom =

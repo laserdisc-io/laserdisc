@@ -34,10 +34,12 @@ package fs2 {
     def prepare(in: In): F[Prepared[F, LOut]]
 
     override final def apply(env: Env[F], in: In): F[LOut] = {
-      val (offer, duration) = env
+      val (offer, timeout) = env
       prepare(in).flatMap {
         case (requests, replies) if requests.isEmpty => replies
         case (requests, replies)                     =>
+          // blocking commands get their wait on the server on top of the timeout
+          val duration = timeout + protocol.Blocking.waitOf(requests.map(_._1.protocol))
           Deferred[F, Unit].flatMap { claim =>
             val giveUp = claim.complete(()).void
 

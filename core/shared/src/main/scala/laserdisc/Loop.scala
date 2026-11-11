@@ -21,12 +21,10 @@
 
 package laserdisc
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
-
 /** A command sent over and over, each time from what the last reply said, like SCAN with its cursor: each reply gives some values and says
   * whether to go on. It's a description, like a [[Protocol]], which `stream` on a client runs
   */
-final class Loop[A] private (private[laserdisc] val first: Protocol[Loop.Step[A]], val waits: FiniteDuration)
+final class Loop[A] private (private[laserdisc] val first: Protocol[Loop.Step[A]])
 
 object Loop {
 
@@ -36,16 +34,12 @@ object Loop {
   /** Sends `command(start)`, then, while `step` gives a new state, `command` of that state. `step` reads each reply into values and, unless
     * it was the last, the next state
     */
-  def apply[S, R, A](start: S)(command: S => Protocol[R])(step: (S, R) => (Seq[A], Option[S])): Loop[A] =
-    blocking(Duration.Zero)(start)(command)(step)
-
-  /** A loop of blocking commands, which each wait up to `waits` on the server: it's added to the timeout of each */
-  def blocking[S, R, A](waits: FiniteDuration)(start: S)(command: S => Protocol[R])(step: (S, R) => (Seq[A], Option[S])): Loop[A] = {
+  def apply[S, R, A](start: S)(command: S => Protocol[R])(step: (S, R) => (Seq[A], Option[S])): Loop[A] = {
     def from(s: S): Protocol[Step[A]] = command(s).map { r =>
       val (values, next) = step(s, r)
       new Step(values, next.map(from))
     }
-    new Loop(from(start), waits)
+    new Loop(from(start))
   }
 
   // SCAN and the like: from cursor 0 until the server replies with cursor 0 again

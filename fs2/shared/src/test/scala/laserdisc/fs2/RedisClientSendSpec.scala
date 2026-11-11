@@ -22,7 +22,7 @@
 package laserdisc
 package fs2
 
-import cats.effect.{Deferred, IO}
+import cats.effect.{Deferred, IO, Ref}
 import cats.syntax.all.*
 import laserdisc.redis_6_2.*
 import laserdisc.auto.*
@@ -98,6 +98,54 @@ final class RedisClientSendSpec extends CatsEffectSuite {
           assertEquals(transaction.left.toOption, Some(ClientTerminated: Throwable))
           assertEquals(after.left.toOption, Some(ClientTerminated: Throwable))
         }
+    }
+  }
+
+  // takes each command as it comes, and answers them in order, BLPOP 1.5 seconds after the reply before it and anything else a second
+  // after it, counting the connections
+  private def slow(connections: Ref[IO, Int]): (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] =
+    (_, onConnected) =>
+      commands =>
+        Stream.exec(connections.update(_ + 1) >> onConnected) ++
+          Stream.eval(cats.effect.std.Queue.unbounded[IO, RESP]).flatMap { taken =>
+            Stream
+              .fromQueueUnterminated(taken)
+              .evalMap { command =>
+                if (name(command) == "BLPOP") IO.sleep(1500.millis).as(NilArr: RESP) else IO.sleep(1.second).as(Bulk("v"): RESP)
+              }
+              .concurrently(commands.evalMap(taken.offer))
+          }
+
+  test("a blocking command's wait is added to its send's timeout, and with a wait of 0 the send's timeout stays") {
+    IO.ref(0).flatMap { connections =>
+      RedisClient.impl.connection[IO](slow(connections), List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+        client.send(blocking.blpop[String](Key("k"), BlockingSeconds.unsafeFrom(1d)), 1.second).assertEquals(Right(None)) >>
+          client.send(blocking.blpop[String](Key("k")), 1.second).attempt.map { result =>
+            assert(result.left.exists(_.isInstanceOf[RequestTimedOut[?]]), result.toString)
+          }
+      }
+    }
+  }
+
+  test("a command sent behind a blocking one, which holds up its reply, isn't taken for a server that stopped answering") {
+    IO.ref(0).flatMap { connections =>
+      RedisClient.impl.connection[IO](slow(connections), List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+        for {
+          blpop <- client.send(blocking.blpop[String](Key("k"), BlockingSeconds.unsafeFrom(2d)), 1.second).start
+          _     <- IO.sleep(100.millis)
+          // its caller gives up after a second, as it's only answered a second after BLPOP is, 1.5 seconds in
+          _     <- client.send(get[String]("a"), 1.second).attempt
+          _     <- IO.sleep(1.second)
+          reply <- blpop.joinWithNever
+          // a connection the watchdog closed would be opened again for this one
+          next   <- client.send(get[String]("b"), 2.seconds)
+          opened <- connections.get
+        } yield {
+          assertEquals(reply, Right(None))
+          assertEquals(next, Right(Some("v")))
+          assertEquals(opened, 1)
+        }
+      }
     }
   }
 

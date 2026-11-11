@@ -144,12 +144,18 @@ object RedisClient {
                 name.toUpperCase
               }
 
+              // replies come in order, so a request isn't due before those sent ahead of it, like a blocking command still waiting
+              def dueAfter(in: Vector[InFlight[F]], due: FiniteDuration): FiniteDuration = in.lastOption.fold(due)(_.due max due)
+
               def sending(due: FiniteDuration, requests: List[Request[F]]): F[Chunk[RESP]] =
                 if (requests.isEmpty) Chunk.empty[RESP].pure[F]
                 else {
                   val frames = requests.map(_.protocol.frames)
-                  val sent   = requests.zip(frames).map { case (request, fs) => InFlight(request, due, fs.size, Vector.empty) }
-                  inFlight.modify(in => (in ++ sent) -> Chunk.from(frames.flatten))
+                  inFlight.modify { in =>
+                    val sent =
+                      requests.zip(frames).map { case (request, fs) => InFlight(request, dueAfter(in, due), fs.size, Vector.empty) }
+                    (in ++ sent) -> Chunk.from(frames.flatten)
+                  }
                 }
 
               // a transaction's MULTI goes alone, and the rest only once the server has said OK to it, so that nothing runs when it refuses
@@ -195,7 +201,8 @@ object RedisClient {
                       }
                     )
 
-                  val sendingMulti = inFlight.modify(in => (in :+ InFlight(multi, due, 1, Vector.empty)) -> Chunk(frames.head))
+                  val sendingMulti =
+                    inFlight.modify(in => (in :+ InFlight(multi, dueAfter(in, due), 1, Vector.empty)) -> Chunk(frames.head))
 
                   // the transaction counts as sent once its commands are, or the DISCARD and UNWATCH sent instead of them, in the same
                   // step: until then, the connection going leaves it to be failed with the batch's unsent requests. When MULTI fails,
@@ -212,7 +219,9 @@ object RedisClient {
                           case _ =>
                             val commands =
                               inFlight
-                                .modify(in => (in :+ InFlight(request, due, frames.size, Vector(Str("OK")))) -> Chunk.from(frames.tail))
+                                .modify(in =>
+                                  (in :+ InFlight(request, dueAfter(in, due), frames.size, Vector(Str("OK")))) -> Chunk.from(frames.tail)
+                                )
                             Stream.evalUnChunk((commands <* sent.update(_ + 1)).uncancelable)
                         }
                       case false => Stream.exec(sent.update(_ + 1))

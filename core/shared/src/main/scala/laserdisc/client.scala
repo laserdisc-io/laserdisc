@@ -40,14 +40,14 @@ trait ClientBase[F[_], Env] {
   ): F[Maybe[A1]] = send(protocolA1, defaultTimeout)
 
   /** Runs the loop, sending each of its commands once the previous reply is in, as a stream of the values they give. Each command has
-    * `timeout`, plus the loop's wait when its commands block
+    * `timeout`, as a `send` does
     */
   final def stream[S[_], A](loop: Loop[A], timeout: FiniteDuration)(
       implicit F: Functor[F],
       U: Unfold[F, S],
       ev: Handler.Aux[F, Env, Protocol[Loop.Step[A]] *: EmptyTuple, Maybe[Loop.Step[A]] *: EmptyTuple]
   ): S[A] =
-    U.unfold(loop.first)(command => F.map(send(command, timeout + loop.waits))(_.map(step => step.values -> step.next)))
+    U.unfold(loop.first)(command => F.map(send(command, timeout))(_.map(step => step.values -> step.next)))
   final def stream[S[_], A](loop: Loop[A])(
       implicit F: Functor[F],
       U: Unfold[F, S],

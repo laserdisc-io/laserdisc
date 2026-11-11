@@ -54,6 +54,6 @@ private[fs2] object TlsParameters {
   @js.native
   @JSImport("crypto", "X509Certificate")
   private class X509Certificate(@unused raw: Uint8Array) extends js.Object {
-    def checkIP(ip: String): js.UndefOr[String] = js.native
+    def checkIP(@unused ip: String): js.UndefOr[String] = js.native
   }
 }

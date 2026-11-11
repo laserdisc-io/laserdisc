@@ -39,7 +39,7 @@ object BitVectorInRespOutChannel {
       receiveBufferSizeBytes: Int
   ): Pipe[F, BitVector, RESP] =
     stream =>
-      Stream.resource(connectedSocket(address, receiveBufferSizeBytes)).flatMap { socket =>
+      Stream.resource(connectedSocket[F](address, receiveBufferSizeBytes)).flatMap { socket =>
         val send    = stream.through(BitVectorChannelAdapter.send(socket.write))
         val receive = socket.reads.through(RespChannelAdapter.receive)
 

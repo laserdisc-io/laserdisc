@@ -66,6 +66,38 @@ send `AUTH` or `SELECT` yourself: a new connection wouldn't have them.
 If the server refuses the password or the database, the client stops: every
 command fails with `ConnectionSetupRefused`, which says why.
 
+## Connecting with TLS
+
+To encrypt the connection, pass `tls`. `Tls.system` trusts the certificates your
+system trusts, as for a hosted Redis whose certificate a public authority
+signed:
+
+```scala mdoc:compile-only
+import cats.effect.{IO, Resource}
+
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val client: Resource[IO, RedisClient[IO]] =
+  Tls.system[IO].flatMap(tls => RedisClient[IO].to("redis.example.com", 6380, tls = Some(tls)))
+```
+
+The client checks that a certificate it trusts signed the server's, and that the
+server's certificate is for the host you connect to. So connect with the name on
+the certificate. If the server's certificate fails either check, the client
+sends nothing: your commands fail, and the client logs why and tries again.
+
+To trust a certificate authority of your own, give `Tls` an fs2 `TLSContext`
+that trusts it, such as one from `Network[IO].tlsContext.fromKeyStoreFile` on
+the JVM.
+
+If you have to connect with a name or an address that the certificate doesn't
+have, pass `Tls(context, checkServerName = false)`. The certificate still has to
+be signed by one you trust, but any server with such a certificate could then
+pose as yours.
+
+On Scala Native, TLS needs s2n-tls installed: see [Platform notes](platform-notes.md).
+
 ## Several servers
 
 `RedisClient[IO].toNodes` takes a set of addresses. The client uses one server
@@ -86,8 +118,8 @@ val client: Resource[IO, RedisClient[IO]] =
 When none of the servers can be reached, it waits 3 seconds before trying them
 all again.
 
-`toNodes` takes `credentials` and `database` too, and uses them for every
-server.
+`toNodes` takes `credentials`, `database` and `tls` too, and uses them for
+every server.
 
 This doesn't make it a Redis Cluster client: laserdisc doesn't send each key to
 the node that holds it, or follow a cluster's `MOVED` and `ASK` redirects. On a

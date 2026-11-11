@@ -40,7 +40,8 @@ object RedisClient {
   private[fs2] class RedisClientConnector[F[_]: Async: Network: LogSelector]() {
 
     /** With credentials, each connection logs in before anything else, and with a database it selects it, so a client that reconnects is
-      * logged in and in the same database. A server refusing either stops the client with [[ConnectionSetupRefused]]
+      * logged in and in the same database. A server refusing either stops the client with [[ConnectionSetupRefused]]. With [[Tls]], each
+      * connection is encrypted, and the server's certificate checked
       */
     @inline final def to(
         host: Host,
@@ -48,22 +49,26 @@ object RedisClient {
         receiveBufferSizeBytes: Int = 8 * 1024 * 1024,
         connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout,
         credentials: Option[Credentials] = None,
-        database: Option[DbIndex] = None
+        database: Option[DbIndex] = None,
+        tls: Option[Tls[F]] = None
     ): Resource[F, RedisClient[F]] =
-      toNodes(Set(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout, credentials, database)
+      toNodes(Set(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout, credentials, database, tls)
 
-    /** Like `to`, trying each address in turn, with the same credentials and database for each */
+    /** Like `to`, trying each address in turn, with the same credentials, database and TLS for each */
     @inline final def toNodes(
         addresses: Set[RedisAddress],
         receiveBufferSizeBytes: Int = 8 * 1024 * 1024,
         connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout,
         credentials: Option[Credentials] = None,
-        database: Option[DbIndex] = None
+        database: Option[DbIndex] = None,
+        tls: Option[Tls[F]] = None
     ): Resource[F, RedisClient[F]] = {
       def redisChannel(address: RedisAddress, onConnected: F[Unit]): Pipe[F, RESP, RESP] =
         stream =>
-          Stream.eval(address.toSocketAddress).flatMap { address =>
-            stream.through(RedisChannel(address, receiveBufferSizeBytes, connectTimeout, onConnected))
+          Stream.eval(address.toSocketAddress).flatMap { socketAddress =>
+            val secure = (socket: _root_.fs2.io.net.Socket[F]) =>
+              tls.fold(Resource.pure[F, _root_.fs2.io.net.Socket[F]](socket))(_.secure(socket, address.host.value))
+            stream.through(RedisChannel(socketAddress, receiveBufferSizeBytes, connectTimeout, onConnected, secure))
           }
 
       val establishedConnection: Resource[F, impl.Connection[F]] =

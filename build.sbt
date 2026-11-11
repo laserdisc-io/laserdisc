@@ -95,6 +95,15 @@ val startUpRedisServers = List(
     commands = List(s"docker run -p 6383:6379 --ulimit memlock=-1 -d $dragonflyImage --cluster_mode=emulated"),
     name = Some("Start up Dragonfly in cluster mode")
   ),
+  // only TLS, for TlsSpec, with the certificate in test-setup/tls, which is for localhost and not for 127.0.0.1
+  WorkflowStep.Run(
+    commands = List(
+      "docker run -p 6390:6379 -v \"$PWD/test-setup/tls:/tls:ro\" -d " + redisImage +
+        " --port 0 --tls-port 6379 --tls-cert-file /tls/server.crt --tls-key-file /tls/server.key --tls-ca-cert-file /tls/ca.crt" +
+        " --tls-auth-clients no"
+    ),
+    name = Some("Start up Redis with TLS")
+  ),
   startUpCluster("Redis", redisImage, "redis-server", 7100),
   startUpCluster("KeyDb", keydbImage, "keydb-server", 7110),
   startUpCluster("Valkey", valkeyImage, "valkey-server", 7120)

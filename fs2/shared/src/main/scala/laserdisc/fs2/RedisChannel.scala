@@ -45,17 +45,19 @@ object RedisChannel {
       address: SocketAddress[Host],
       receiveBufferSizeBytes: Int,
       connectTimeout: FiniteDuration,
-      onConnected: F[Unit]
+      onConnected: F[Unit],
+      secure: Socket[F] => Resource[F, Socket[F]] = (socket: Socket[F]) => Resource.pure[F, Socket[F]](socket)
   ): Pipe[F, RESP, RESP] =
     stream =>
-      Stream.resource(connectedSocket(address, receiveBufferSizeBytes, connectTimeout)).evalTap(_ => onConnected).flatMap { socket =>
-        val send    = stream.through(impl.send(socket.write))
-        val receive = socket.reads.through(impl.receiveResp)
+      Stream.resource(connectedSocket(address, receiveBufferSizeBytes, connectTimeout, secure)).evalTap(_ => onConnected).flatMap {
+        socket =>
+          val send    = stream.through(impl.send(socket.write))
+          val receive = socket.reads.through(impl.receiveResp)
 
-        send.drain
-          .covaryOutput[RESP]
-          .mergeHaltBoth(receive)
-          .onFinalizeWeak(socket.endOfOutput)
+          send.drain
+            .covaryOutput[RESP]
+            .mergeHaltBoth(receive)
+            .onFinalizeWeak(socket.endOfOutput)
       }
 
   /** How long connecting waits, unless told otherwise: an address that drops what's sent to it is otherwise waited on for as long as the
@@ -63,13 +65,15 @@ object RedisChannel {
     */
   final val DefaultConnectTimeout: FiniteDuration = 10.seconds
 
+  // secure, as with TLS, is within the time connecting has, as a server can accept the connection and then not answer
   private[fs2] final def connectedSocket[F[_]: Network: Temporal](
       address: SocketAddress[Host],
       receiveBufferSizeBytes: Int,
-      connectTimeout: FiniteDuration = DefaultConnectTimeout
+      connectTimeout: FiniteDuration = DefaultConnectTimeout,
+      secure: Socket[F] => Resource[F, Socket[F]] = (socket: Socket[F]) => Resource.pure[F, Socket[F]](socket)
   ): Resource[F, Socket[F]] =
     withTimeout(
-      Network[F].connect(address, PlatformDependent.socketOptions(receiveBufferSizeBytes)),
+      Network[F].connect(address, PlatformDependent.socketOptions(receiveBufferSizeBytes)).flatMap(secure),
       connectTimeout,
       ConnectTimedOut(address, connectTimeout)
     )

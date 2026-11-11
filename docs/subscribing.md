@@ -67,6 +67,13 @@ if there's one:
 RedisSubscriber[IO].to("localhost", 6379, Credentials("app", "secret"), subscribe[String](channels))
 ```
 
+To connect with TLS, start from `withTls`, with a `Tls` as for the
+[client](client.md):
+
+```scala
+Tls.system[IO].flatMap(tls => RedisSubscriber[IO].withTls(tls).to("redis.example.com", 6380, subscribe[String](channels)))
+```
+
 ## Knowing when keys change
 
 Client tracking tells you when a key you've read changes, which is how you keep a

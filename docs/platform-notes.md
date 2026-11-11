@@ -21,6 +21,10 @@ the JVM, Scala.js and Scala Native.
 On Scala.js, `laserdisc-fs2` and `laserdisc-cli` run on Node.js, not in browsers,
 because they need network sockets.
 
+On Scala Native, connecting with TLS needs [s2n-tls](https://github.com/aws/s2n-tls)
+installed where your program is built and where it runs, as fs2 uses it for
+TLS. Without TLS, you don't need it.
+
 On Node.js 26, the connection can stop receiving replies when several arrive
 at once. The commands waiting for those replies time out, and the client then
 reconnects on its own. Node.js 25 and earlier aren't affected.

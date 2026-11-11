@@ -22,6 +22,7 @@
 package laserdisc
 package fs2
 
+import _root_.fs2.io.net.Socket
 import cats.effect.std.Queue as CatsQueue
 import cats.effect.syntax.all.*
 import cats.effect.{Async, Ref, Resource}
@@ -47,7 +48,13 @@ object RedisSubscriber {
   private final val queueSize              = 1024
 
   // keepAlive: how often a subscribed connection is pinged, and how long the server has to say something before it's taken for gone
-  private[fs2] final class RedisSubscriberConnector[F[_]: Async: Network: LogSelector](keepAlive: FiniteDuration) {
+  private[fs2] final class RedisSubscriberConnector[F[_]: Async: Network: LogSelector](
+      keepAlive: FiniteDuration,
+      tls: Option[Tls[F]] = None
+  ) {
+
+    /** Opens each connection with TLS, checking the server's certificate */
+    final def withTls(tls: Tls[F]): RedisSubscriberConnector[F] = new RedisSubscriberConnector[F](keepAlive, Some(tls))
 
     final def to[A](host: Host, port: Port, feed: Feed[A]): Resource[F, Stream[F, Either[Unreadable, A]]] =
       open(RedisAddress(host, port), Nil, feed).map(_._2)
@@ -66,6 +73,9 @@ object RedisSubscriber {
         feed: Feed[A]
     ): Resource[F, (NonNegLong, Stream[F, Either[Unreadable, A]])] =
       withId(RedisAddress(host, port), List(auth(credentials)), feed)
+
+    private def secure(address: RedisAddress)(socket: Socket[F]): Resource[F, Socket[F]] =
+      tls.fold(Resource.pure[F, Socket[F]](socket))(_.secure(socket, address.host.value))
 
     private def auth(credentials: Credentials): RESP =
       protocol.Arr(protocol.Bulk("AUTH") :: (credentials.username.toList :+ credentials.password).map(key => protocol.Bulk(key.value)))
@@ -92,7 +102,7 @@ object RedisSubscriber {
     ): Resource[F, (Vector[RESP], Stream[F, Either[Unreadable, A]])] =
       for {
         socketAddress <- Resource.eval(address.toSocketAddress[F])
-        socket        <- RedisChannel.connectedSocket(socketAddress, receiveBufferSizeBytes)
+        socket        <- RedisChannel.connectedSocket(socketAddress, receiveBufferSizeBytes, secure = secure(address))
         replies       <- Resource.eval(CatsQueue.bounded[F, Either[Throwable, RESP]](queueSize))
         heard         <- Resource.eval(Ref.of[F, Boolean](true))
         blocked       <- Resource.eval(Ref.of[F, Boolean](false))

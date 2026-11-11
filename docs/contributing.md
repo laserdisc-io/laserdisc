@@ -24,6 +24,15 @@ docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb
 
 The last KeyDB is 6.3.4, named by its digest: its version tags are for one processor type each.
 
+The TLS tests need a Redis that takes only TLS, on port 6390, with the test
+certificates in `test-setup/tls`. From the repository's root:
+
+```sh
+docker run -p 6390:6379 -v "$PWD/test-setup/tls:/tls:ro" -d redis:8.10.3-alpine --port 0 --tls-port 6379 --tls-cert-file /tls/server.crt --tls-key-file /tls/server.key --tls-ca-cert-file /tls/ca.crt --tls-auth-clients no
+```
+
+They're skipped on Scala Native, which would need s2n-tls installed.
+
 Some of them also need a cluster of each. The steps that start those are in
 `.github/workflows/ci.yml`, named "Start up a Redis cluster" and so on: copy
 their commands. The tests connect the nodes themselves.

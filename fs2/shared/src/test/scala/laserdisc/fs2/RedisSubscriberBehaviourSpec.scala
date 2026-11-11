@@ -86,7 +86,7 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
   test("logs in before subscribing") {
     serving(2)("+OK\r\n" + confirmed + message("a", "m")).use { case (port, seen) =>
       RedisSubscriber[IO]
-        .to("127.0.0.1", port, Key("secret"), feed)
+        .to("127.0.0.1", port, Credentials(Key("secret")), feed)
         .use(_.take(1).compile.toList)
         .assertEquals(List(Message(Key("a"), "m"))) >>
         seen.assertEquals(List(command("AUTH", "secret"), subscribing))
@@ -102,8 +102,11 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
 
   test("identified logs in first") {
     serving(3)("+OK\r\n:42\r\n" + confirmed).use { case (port, seen) =>
-      RedisSubscriber[IO].identified("127.0.0.1", port, Key("secret"), feed).use { case (id, _) => IO.pure(id.value) }.assertEquals(42L) >>
-        seen.assertEquals(List(command("AUTH", "secret"), command("CLIENT", "ID"), subscribing))
+      RedisSubscriber[IO]
+        .identified("127.0.0.1", port, Credentials(Key("user"), Key("secret")), feed)
+        .use { case (id, _) => IO.pure(id.value) }
+        .assertEquals(42L) >>
+        seen.assertEquals(List(command("AUTH", "user", "secret"), command("CLIENT", "ID"), subscribing))
     }
   }
 

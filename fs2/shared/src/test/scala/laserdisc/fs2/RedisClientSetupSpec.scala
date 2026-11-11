@@ -1,0 +1,211 @@
+/*
+ * Copyright (c) 2018-2026 LaserDisc
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+package laserdisc
+package fs2
+
+import cats.effect.{Deferred, IO, Ref, Resource}
+import cats.syntax.all.*
+import laserdisc.redis_6_2.*
+import laserdisc.auto.*
+import laserdisc.fs2.FakeRedisServer.*
+import munit.CatsEffectSuite
+
+import scala.concurrent.duration.*
+
+final class RedisClientSetupSpec extends CatsEffectSuite {
+
+  override val munitIOTimeout: Duration = 60.seconds
+
+  private def words(command: RESP): List[String] =
+    command match {
+      case Arr(elements) => elements.collect { case Bulk(word) => word }
+      case other         => sys.error(s"unexpected command $other")
+    }
+
+  private def isSetup(command: List[String]): Boolean = command.headOption.exists(w => w == "AUTH" || w == "SELECT")
+
+  // a server that keeps the words of each command it gets, answering AUTH and SELECT as `setup` says and anything else with `reply`
+  private def recording(setup: String, reply: String = bulk("value")): Resource[IO, (Port, Ref[IO, Vector[List[String]]])] =
+    Resource.eval(IO.ref(Vector.empty[List[String]])).flatMap { received =>
+      FakeRedisServer { (_, requests) =>
+        requests.evalMap { command =>
+          val ws = words(command)
+          received.update(_ :+ ws).as(if (isSetup(ws)) setup else reply)
+        }
+      }.map(_ -> received)
+    }
+
+  private val loggedIn = Some(Credentials("user", "secret"))
+
+  test("a client without credentials or a database sends nothing before the first command") {
+    recording(setup = "+OK\r\n").use { case (port, received) =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        client.send(get[String]("k")).assertEquals(Right(Some("value"))) >> received.get.assertEquals(Vector(List("GET", "k")))
+      }
+    }
+  }
+
+  test("a client logs in with AUTH and selects the database before anything else") {
+    recording(setup = "+OK\r\n").use { case (port, received) =>
+      RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn, database = Some(DbIndex(2))).use { client =>
+        client.send(get[String]("k")).assertEquals(Right(Some("value"))) >>
+          received.get.assertEquals(Vector(List("AUTH", "user", "secret"), List("SELECT", "2"), List("GET", "k")))
+      }
+    }
+  }
+
+  test("given only a password, a client logs in as the default user") {
+    recording(setup = "+OK\r\n").use { case (port, received) =>
+      RedisClient[IO].to("127.0.0.1", port, credentials = Some(Credentials("secret"))).use { client =>
+        client.send(get[String]("k")) >> received.get.map(_.head).assertEquals(List("AUTH", "secret"))
+      }
+    }
+  }
+
+  test("a refused setup stops the client, failing what was sent and what's sent after with the server's reason") {
+    recording(setup = "-WRONGPASS invalid username-password pair or user is disabled.\r\n").use { case (port, _) =>
+      RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn).use { client =>
+        for {
+          first <- client.send(get[String]("k"), 10.seconds).attempt.map(_.flatMap(identity))
+          later <- client.send(get[String]("k"), 10.seconds).attempt.map(_.flatMap(identity)).timed
+        } yield {
+          List(first, later._2).foreach {
+            case Left(ConnectionSetupRefused(_, reason)) => assert(reason.getMessage.startsWith("WRONGPASS"), reason.getMessage)
+            case other                                   => fail(s"expected the setup to be refused, got $other")
+          }
+          assert(later._1 < 2.seconds, s"took ${later._1}")
+        }
+      }
+    }
+  }
+
+  test("a command isn't sent before the server has agreed to the setup, so it can't run in the wrong database") {
+    recording(setup = "-ERR DB index is out of range\r\n").use { case (port, received) =>
+      RedisClient[IO].to("127.0.0.1", port, database = Some(DbIndex(99))).use { client =>
+        client.send(set("k", "v"), 10.seconds).attempt >> received.get.assertEquals(Vector(List("SELECT", "99")))
+      }
+    }
+  }
+
+  test("commands wait for the setup's replies") {
+    Resource
+      .eval((IO.ref(Vector.empty[List[String]]), Deferred[IO, Unit]).tupled)
+      .flatMap { case (received, answer) =>
+        FakeRedisServer { (_, requests) =>
+          requests.evalMap { command =>
+            val ws = words(command)
+            received.update(_ :+ ws) >> (if (isSetup(ws)) answer.get.as("+OK\r\n") else IO.pure(bulk("value")))
+          }
+        }.map(port => (port, received, answer))
+      }
+      .use { case (port, received, answer) =>
+        RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn).use { client =>
+          for {
+            sending <- client.send(get[String]("k"), 10.seconds).start
+            _       <- IO.sleep(500.millis)
+            before  <- received.get
+            _       <- answer.complete(())
+            reply   <- sending.joinWithNever
+          } yield {
+            assertEquals(before, Vector(List("AUTH", "user", "secret")))
+            assertEquals(reply, Right(Some("value")))
+          }
+        }
+      }
+  }
+
+  test("each new connection is set up again") {
+    Resource
+      .eval(IO.ref(Vector.empty[(Int, List[String])]))
+      .flatMap { received =>
+        FakeRedisServer { (n, requests) =>
+          requests
+            .evalMap(command => received.update(_ :+ (n -> words(command))).as(words(command)))
+            .flatMap { ws =>
+              if (isSetup(ws)) Stream.emit("+OK\r\n")
+              else if (n == 1) Stream.raiseError[IO](new RuntimeException("dropped"))
+              else Stream.emit(bulk("value"))
+            }
+            .handleErrorWith(_ => Stream.empty)
+        }.map(_ -> received)
+      }
+      .use { case (port, received) =>
+        RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn, database = Some(DbIndex(2))).use { client =>
+          untilReplied(client.send(get[String]("k"), 2.seconds)).assertEquals(Some("value")) >>
+            received.get
+              .map(_.filter(_._1 == 2).map(_._2).take(3))
+              .assertEquals(
+                Vector(List("AUTH", "user", "secret"), List("SELECT", "2"), List("GET", "k"))
+              )
+        }
+      }
+  }
+
+  test("a connection closed once set up, with nothing sent on it, is opened again only for the next command") {
+    Resource
+      .eval(IO.ref(0))
+      .flatMap { connections =>
+        FakeRedisServer { (n, requests) =>
+          Stream.exec(connections.set(n)) ++ requests
+            .map(words)
+            .flatMap { ws =>
+              if (isSetup(ws) && n == 1) Stream.emit("+OK\r\n") ++ Stream.raiseError[IO](new RuntimeException("idle"))
+              else if (isSetup(ws)) Stream.emit("+OK\r\n")
+              else Stream.emit(bulk("value"))
+            }
+            .handleErrorWith(_ => Stream.empty)
+        }.map(_ -> connections)
+      }
+      .use { case (port, connections) =>
+        RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn).use { client =>
+          for {
+            _     <- IO.sleep(1.second)
+            idle  <- connections.get
+            reply <- client.send(get[String]("k"), 10.seconds)
+            after <- connections.get
+          } yield {
+            assertEquals(idle, 1)
+            assertEquals(reply, Right(Some("value")))
+            assertEquals(after, 2)
+          }
+        }
+      }
+  }
+
+  test("a server that closes each connection before answering the setup makes the client give up, instead of reconnecting forever") {
+    val closesOnSetup = FakeRedisServer((_, requests) => requests.take(1).drain)
+
+    closesOnSetup.use { port =>
+      RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn).use { client =>
+        client.send(get[String]("k"), 30.seconds).attempt.map(_.flatMap(identity)).timed.map { case (took, result) =>
+          assertEquals(result.left.toOption, Some(ServerUnavailable: Throwable))
+          assert(took < 10.seconds, s"took $took")
+        }
+      }
+    }
+  }
+
+  test("the password stays out of what the credentials show") {
+    assertEquals(Credentials("user", "secret").toString, "Credentials(user, ***)")
+    assertEquals(Credentials("secret").toString, "Credentials(default, ***)")
+  }
+}

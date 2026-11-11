@@ -41,6 +41,31 @@ import laserdisc.fs2.*
 val client: Resource[IO, RedisClient[IO]] = RedisClient[IO].to("localhost", 6379, connectTimeout = 2.seconds)
 ```
 
+## Logging in and choosing a database
+
+If the server needs a password, pass `credentials`. To use a database other than
+0, pass `database`:
+
+```scala mdoc:compile-only
+import cats.effect.{IO, Resource}
+
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val client: Resource[IO, RedisClient[IO]] =
+  RedisClient[IO].to("localhost", 6379, credentials = Some(Credentials("app", "secret")), database = Some(DbIndex(2)))
+```
+
+`Credentials("secret")`, with only a password, logs in as the default user.
+
+Each connection logs in and selects the database before it sends anything else,
+and that includes the connections the client opens when it reconnects. Don't
+send `AUTH` or `SELECT` yourself: a new connection wouldn't have them.
+
+If the server refuses the password or the database, the client stops: every
+command fails with `ConnectionSetupRefused`, which says why.
+
 ## Several servers
 
 `RedisClient[IO].toNodes` takes a set of addresses. The client uses one server
@@ -60,6 +85,9 @@ val client: Resource[IO, RedisClient[IO]] =
 
 When none of the servers can be reached, it waits 3 seconds before trying them
 all again.
+
+`toNodes` takes `credentials` and `database` too, and uses them for every
+server.
 
 This doesn't make it a Redis Cluster client: laserdisc doesn't send each key to
 the node that holds it, or follow a cluster's `MOVED` and `ASK` redirects. On a

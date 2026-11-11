@@ -16,6 +16,17 @@ sbt "++3.9.0" cliJS/fastLinkJS
 node cli/.js/target/scala-3.9.0/laserdisc-cli-fastopt/main.js localhost 6379
 ```
 
+If the server needs a password, add `-a` and the password after the port, and
+`--user` and the user if there's one. To use a database other than 0, add `-n`
+and its number:
+
+```sh
+sbt "cli/run localhost 6379 --user app -a secret -n 2"
+```
+
+Anyone on the same machine can see a password given this way in the list of
+running programs.
+
 Type a command and its arguments, separated by spaces, and press Enter:
 
 ```
@@ -41,5 +52,8 @@ commands that would break that:
 - `CLIENT REPLY OFF` and `CLIENT REPLY SKIP`, as the server would stop replying.
 - `HELLO 3`, as the prompt reads RESP2 replies only.
 - `QUIT`, as the server would close the connection.
+- `AUTH` and `SELECT`, as the prompt opens a new connection if the server
+  closes this one, and the new one wouldn't have them. Use `-a`, `--user` and
+  `-n` instead.
 
 To leave, press Ctrl-D.

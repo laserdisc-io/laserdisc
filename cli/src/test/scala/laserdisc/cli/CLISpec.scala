@@ -69,6 +69,46 @@ final class CLISpec extends CatsEffectSuite {
       session(List("localhost", "0")).assertEquals(message)
   }
 
+  test("takes a password, a user and a database after the host and port, in any order") {
+    import laserdisc.auto.*
+    val parsed = CLI.impl.options(List("localhost", "6379", "-n", "2", "--user", "me", "-a", "secret"))
+    assertEquals(parsed, Right(CLI.impl.Options("localhost", 6379, Some(Credentials("me", "secret")), Some(DbIndex(2)))))
+    assertEquals(CLI.impl.options(List("localhost", "6379", "-a", "secret")).map(_.credentials), Right(Some(Credentials("secret"))))
+  }
+
+  test("says what's wrong with the options") {
+    val wrong = List(
+      List("-a")              -> "please supply a password after -a",
+      List("-n")              -> "please supply a database number from 0 after -n",
+      List("--user", "me")    -> "please supply the password with -a as well as --user",
+      List("-n", "two")       -> "please supply a database number from 0 after -n",
+      List("-n", "-1")        -> "please supply a database number from 0 after -n",
+      List("--password", "x") -> "--password isn't an option: use -a <password>, --user <user> and -n <database>"
+    )
+    wrong.foreach { case (options, message) =>
+      assertEquals(CLI.impl.options(List("localhost", "6379") ++ options), Left(message), options)
+    }
+  }
+
+  test("logs in and selects the database before the first command, and shows the database in the prompt") {
+    IO.ref(List.empty[List[String]]).flatMap { sent =>
+      val recording = FakeRedisServer { (_, commands) =>
+        commands.evalMap {
+          case Arr(words) => sent.update(_ :+ words.collect { case Bulk(w) => w }).as("+OK\r\n")
+          case other      => IO.raiseError(new Exception(s"unexpected command $other"))
+        }
+      }
+      recording.use { port =>
+        session(List("127.0.0.1", port.value.toString, "--user", "me", "-a", "secret", "-n", "2"), "PING").flatMap { case (code, screen) =>
+          val prompt = s"127.0.0.1:${port.value}[2]> "
+          assertEquals(code, ExitCode.Success)
+          assertEquals(afterLogo(screen), s"$prompt<<< OK - []\n$prompt")
+          sent.get.assertEquals(List(List("AUTH", "me", "secret"), List("SELECT", "2"), List("PING")))
+        }
+      }
+    }
+  }
+
   test("shows the reply to each command typed, formatted, then prompts again") {
     replying.use { port =>
       session(List("127.0.0.1", port.value.toString), "PING", "GET a", "KEYS *").map { case (code, screen) =>
@@ -120,7 +160,10 @@ final class CLISpec extends CatsEffectSuite {
       "client reply off"   -> "client reply off isn't supported here, as the server would stop replying",
       "CLIENT REPLY SKIP"  -> "CLIENT REPLY SKIP isn't supported here, as the server would stop replying",
       "HELLO 3 SETNAME me" -> "HELLO 3 isn't supported here, as the prompt reads RESP2 replies only",
-      "QUIT"               -> "QUIT isn't supported here, as the server would close the connection. To leave, press Ctrl-D"
+      "QUIT"               -> "QUIT isn't supported here, as the server would close the connection. To leave, press Ctrl-D",
+      "AUTH me secret"     ->
+        "AUTH isn't supported here, as a new connection would forget it. Start the prompt with -a, and --user if there's one",
+      "select 2" -> "select isn't supported here, as a new connection would forget it. Start the prompt with -n"
     )
     val allowed = List("CLIENT REPLY ON", "HELLO 2", "HELLO", "CLIENT LIST", "PING")
 

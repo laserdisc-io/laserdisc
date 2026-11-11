@@ -50,10 +50,11 @@ use it for debugging.
 - **In a cluster**, `ssubscribe` needs a connection to the node that serves the
   channel's slot.
 
-If the server needs a password, pass it before the subscription:
+If the server needs a password, pass it before the subscription, with the user
+if there's one:
 
 ```scala
-RedisSubscriber[IO].to("localhost", 6379, Key("secret"), subscribe[String](channels))
+RedisSubscriber[IO].to("localhost", 6379, Credentials("app", "secret"), subscribe[String](channels))
 ```
 
 ## Knowing when keys change

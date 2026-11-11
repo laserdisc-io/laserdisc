@@ -39,18 +39,26 @@ object RedisClient {
 
   private[fs2] class RedisClientConnector[F[_]: Async: Network: LogSelector]() {
 
+    /** With credentials, each connection logs in before anything else, and with a database it selects it, so a client that reconnects is
+      * logged in and in the same database. A server refusing either stops the client with [[ConnectionSetupRefused]]
+      */
     @inline final def to(
         host: Host,
         port: Port,
         receiveBufferSizeBytes: Int = 8 * 1024 * 1024,
-        connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout
+        connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout,
+        credentials: Option[Credentials] = None,
+        database: Option[DbIndex] = None
     ): Resource[F, RedisClient[F]] =
-      toNodes(Set(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout)
+      toNodes(Set(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout, credentials, database)
 
+    /** Like `to`, trying each address in turn, with the same credentials and database for each */
     @inline final def toNodes(
         addresses: Set[RedisAddress],
         receiveBufferSizeBytes: Int = 8 * 1024 * 1024,
-        connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout
+        connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout,
+        credentials: Option[Credentials] = None,
+        database: Option[DbIndex] = None
     ): Resource[F, RedisClient[F]] = {
       def redisChannel(address: RedisAddress, onConnected: F[Unit]): Pipe[F, RESP, RESP] =
         stream =>
@@ -59,7 +67,7 @@ object RedisClient {
           }
 
       val establishedConnection: Resource[F, impl.Connection[F]] =
-        impl.connection(redisChannel, addresses.toSeq)
+        impl.connection(redisChannel, addresses.toSeq, impl.setup(credentials, database))
 
       establishedConnection.flatMap(conn => impl.mkClient(conn))
     }
@@ -72,9 +80,10 @@ object RedisClient {
     }
     private[fs2] object Usage {
       case object Connecting extends Usage(0)
-      case object Idle       extends Usage(1)
-      case object Used       extends Usage(2)
-      case object Answered   extends Usage(3)
+      case object SettingUp  extends Usage(1)
+      case object Idle       extends Usage(2)
+      case object Used       extends Usage(3)
+      case object Answered   extends Usage(4)
     }
 
     sealed trait Connection[F[_]] {
@@ -97,9 +106,18 @@ object RedisClient {
         }
       }
 
+    // what each connection sends before anything else: AUTH to log in, then SELECT for the database
+    def setup(credentials: Option[Credentials], database: Option[DbIndex]): List[Protocol[RESP]] =
+      credentials.toList.map { case Credentials(user, password) =>
+        Protocol("AUTH", user.map(_.value).toList :+ password.value).using(RESPRead.raw)
+      } ++ database.toList.map(index => Protocol("SELECT", index).using(RESPRead.raw))
+
+    private final val setupTimeout = 30.seconds
+
     def connection[F[_]: Temporal](
         redisNetChannel: (RedisAddress, F[Unit]) => Pipe[F, RESP, RESP],
-        addresses: Seq[RedisAddress]
+        addresses: Seq[RedisAddress],
+        setup: List[Protocol[RESP]] = Nil
     )(implicit logSelector: LogSelector[F]): Resource[F, Connection[F]] =
       Resource.eval(Deferred[F, Either[Throwable, Unit]]).flatMap { termSignal =>
         Resource.eval(Queue.bounded[F, Batch[F]](1024)).flatMap { queue =>
@@ -115,10 +133,10 @@ object RedisClient {
                 Ref.of[F, Long](0L),
                 Ref.of[F, Option[Long]](None),
                 Ref.of[F, Chunk[Batch[F]]](Chunk.empty),
-                Ref.of[F, Boolean](false)
+                Ref.of[F, Option[Throwable]](None)
               ).tupled
             )
-            .flatMap { case (inFlight, unsentRequests, nextIndex, connections, watchedOn, retries, ended) =>
+            .flatMap { case (inFlight, unsentRequests, nextIndex, connections, watchedOn, retries, stopped) =>
               val log = logSelector.log
 
               def isTransaction(request: Request[F]): Boolean  = request.protocol.isInstanceOf[Protocol.Multi[?]]
@@ -256,22 +274,24 @@ object RedisClient {
                     case _                                                             => Concurrent[F].unit
                   }
 
+              def isSetup(request: Request[F]): Boolean = setup.exists(_ eq request.protocol)
+
               // a request is answered once it has a reply for each frame it sent. Taking it off the requests in flight and answering it
-              // go together, as nothing else would answer it
-              def receive(connection: Long)(resp: RESP): F[Unit] =
+              // go together, as nothing else would answer it. Says whether the reply was to the connection's setup
+              def receive(connection: Long)(resp: RESP): F[Boolean] =
                 inFlight
-                  .modify {
+                  .modify[Either[NoInFlightRequest, (Request[F], Option[Vector[RESP]])]] {
                     case head +: rest =>
                       val received = head.replies :+ resp
-                      if (received.size < head.expected) (head.copy(replies = received) +: rest) -> Right(None)
-                      else rest                                                                  -> Right(Some(head.request -> received))
+                      if (received.size < head.expected) (head.copy(replies = received) +: rest) -> Right(head.request -> None)
+                      else rest                                                                  -> Right(head.request -> Some(received))
                     case empty => empty -> Left(NoInFlightRequest(resp))
                   }
                   .flatMap {
-                    case Right(Some((request, replies))) =>
-                      watch(connection, request, replies) >> request.callback(request.protocol.decodeReplies(replies))
-                    case Right(None) => Concurrent[F].unit
-                    case Left(error) => Concurrent[F].raiseError[Unit](error)
+                    case Right((request, Some(replies))) =>
+                      watch(connection, request, replies) >> request.callback(request.protocol.decodeReplies(replies)).as(isSetup(request))
+                    case Right((request, None)) => isSetup(request).pure[F]
+                    case Left(error)            => Concurrent[F].raiseError[Boolean](error)
                   }
                   .uncancelable
 
@@ -308,15 +328,42 @@ object RedisClient {
               def unclaimed(taken: Chunk[Batch[F]]): F[Unit] =
                 taken.filterA(_.claim.tryGet.map(_.isEmpty)).flatMap(again => retries.update(_ ++ again).whenA(again.nonEmpty))
 
+              // a server refusing to set up a connection would refuse the next ones too, so the client stops
+              def stop(error: Throwable): F[Unit] = termSignal.complete(Left(error)).void
+
+              // each connection logs in and selects the database before anything else, and sends nothing more until the server agrees, so
+              // that no command runs as another user or in another database. Until then, the connection closing counts as a failure
+              def settingUp(address: RedisAddress, usage: Ref[F, Usage]): Stream[F, RESP] =
+                if (setup.isEmpty) Stream.empty
+                else
+                  Stream.eval(Deferred[F, Unit]).flatMap { ready =>
+                    val last     = setup.size - 1
+                    val requests = setup.zipWithIndex.map { case (protocol, i) =>
+                      Request[F, RESP](
+                        protocol,
+                        {
+                          case Right(Str("OK"))   => (ready.complete(()) >> usage.update(_.max(Usage.Idle))).whenA(i == last)
+                          case Right(other)       => stop(ConnectionSetupRefused(address, RESPDecErr(s"Expected OK but got: $other")))
+                          case Left(refused: Err) => stop(ConnectionSetupRefused(address, refused))
+                          // the connection went, and the next one is set up again
+                          case Left(_) => Temporal[F].unit
+                        }
+                      )
+                    }
+                    Stream.evalUnChunk(Temporal[F].monotonic.flatMap(now => sending(now + setupTimeout, requests))) ++
+                      Stream.exec(ready.get)
+                  }
+
               def serverAvailable(address: RedisAddress, connection: Long, usage: Ref[F, Usage]): Stream[F, Unit] = {
                 val again       = Stream.eval(retries.getAndSet(Chunk.empty)).filter(_.nonEmpty)
                 val queued      = Stream.fromQueueUnterminated(queue, limit = 8 * 1024).chunks
-                val onConnected = log.info(s"Connected to server $address") >> usage.update(_.max(Usage.Idle))
-                (again ++ queued)
+                val connected   = if (setup.isEmpty) Usage.Idle else Usage.SettingUp
+                val onConnected = log.info(s"Connected to server $address") >> usage.update(_.max(connected))
+                (settingUp(address, usage) ++ (again ++ queued)
                   .evalTap(_ => usage.update(_.max(Usage.Used)))
-                  .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(unclaimed(taken)))
+                  .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(unclaimed(taken))))
                   .through(redisNetChannel(address, onConnected))
-                  .evalMap(resp => receive(connection)(resp) >> usage.set(Usage.Answered))
+                  .evalMap(resp => receive(connection)(resp).flatMap(toSetup => usage.set(Usage.Answered).unlessA(toSetup)))
                   .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
               }
 
@@ -355,9 +402,9 @@ object RedisClient {
                   }
 
               // once the connection has ended, nothing takes from the queue, so a send queued after it fails at once, whether it came
-              // before the queue was emptied or after
+              // before the queue was emptied or after, with the reason the client stopped
               val queueing: Batch[F] => F[Unit] =
-                batch => queue.offer(batch) >> ended.get.ifM(failQueued(ClientTerminated), Temporal[F].unit)
+                batch => queue.offer(batch) >> stopped.get.flatMap(_.traverse_(failQueued))
 
               val newConnection: Connection[F] = new Connection[F] {
                 override final def run: F[Fiber[F, Throwable, Unit]] =
@@ -368,9 +415,10 @@ object RedisClient {
                       .drain
                       .attempt
                       .flatMap { r =>
+                        val reason = r.fold(identity, _ => ClientTerminated)
                         log.info(
                           s"Connection terminated: ${r.fold(err => err.getMessage, _ => "No issues")}"
-                        ) >> ended.set(true) >> failInFlight(ClientTerminated) >> failQueued(ClientTerminated)
+                        ) >> stopped.set(Some(reason)) >> failInFlight(reason) >> failQueued(reason)
                       }
                       .start
 

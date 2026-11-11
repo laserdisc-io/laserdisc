@@ -50,16 +50,17 @@ object RedisSubscriber {
       open(RedisAddress(host, port), Nil, feed).map(_._2)
 
     /** Logs in first, as a new connection isn't logged in */
-    final def to[A](host: Host, port: Port, password: Key, feed: Feed[A]): Resource[F, Stream[F, A]] =
-      open(RedisAddress(host, port), List(auth(password)), feed).map(_._2)
+    final def to[A](host: Host, port: Port, credentials: Credentials, feed: Feed[A]): Resource[F, Stream[F, A]] =
+      open(RedisAddress(host, port), List(auth(credentials)), feed).map(_._2)
 
     /** Like `to`, also giving the connection's id, which CLIENT TRACKING's REDIRECT asks for */
     final def identified[A](host: Host, port: Port, feed: Feed[A]): Resource[F, (NonNegLong, Stream[F, A])] =
       withId(RedisAddress(host, port), Nil, feed)
-    final def identified[A](host: Host, port: Port, password: Key, feed: Feed[A]): Resource[F, (NonNegLong, Stream[F, A])] =
-      withId(RedisAddress(host, port), List(auth(password)), feed)
+    final def identified[A](host: Host, port: Port, credentials: Credentials, feed: Feed[A]): Resource[F, (NonNegLong, Stream[F, A])] =
+      withId(RedisAddress(host, port), List(auth(credentials)), feed)
 
-    private def auth(password: Key): RESP = protocol.Arr(protocol.Bulk("AUTH"), protocol.Bulk(password.value))
+    private def auth(credentials: Credentials): RESP =
+      protocol.Arr(protocol.Bulk("AUTH") :: (credentials.username.toList :+ credentials.password).map(key => protocol.Bulk(key.value)))
 
     private def withId[A](address: RedisAddress, before: List[RESP], feed: Feed[A]): Resource[F, (NonNegLong, Stream[F, A])] =
       open(address, before :+ protocol.Arr(protocol.Bulk("CLIENT"), protocol.Bulk("ID")), feed).evalMap { case (answers, stream) =>

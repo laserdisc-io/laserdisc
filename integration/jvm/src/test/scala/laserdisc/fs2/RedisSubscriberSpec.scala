@@ -110,7 +110,7 @@ abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.C
 
   protected final def wrongPassword(): Unit = {
     val attempt = RedisSubscriber[IO]
-      .to("127.0.0.1", p, Key("wrong"), publisher.subscribe[String](channels("sub:p")))
+      .to("127.0.0.1", p, Credentials(Key("wrong")), publisher.subscribe[String](channels("sub:p")))
       .use(_ => IO.unit)
       .attempt
     assert(run(attempt).isLeft)

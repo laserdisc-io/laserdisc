@@ -95,83 +95,122 @@ object CLI extends IOApp { self =>
         refused(s"$command ${args.take(2).mkString(" ")}", "the server would stop replying")
       else if (is("HELLO") && args.headOption.contains("3")) refused(s"$command 3", "the prompt reads RESP2 replies only")
       else if (is("QUIT")) refused(command, "the server would close the connection. To leave, press Ctrl-D")
+      else if (is("AUTH")) refused(command, "a new connection would forget it. Start the prompt with -a, and --user if there's one")
+      else if (is("SELECT")) refused(command, "a new connection would forget it. Start the prompt with -n")
       else None
+    }
+
+    // what the prompt connects to and how: each connection logs in and selects the database first, so a new one does too
+    final case class Options(host: Host, port: Port, credentials: Option[Credentials], database: Option[DbIndex])
+
+    // the host and the port, then -a for the password, --user for the user, which needs -a too, and -n for the database
+    def options(args: List[String]): Either[String, Options] = {
+      def withOptions(rest: List[String], options: Options, user: Option[Key]): Either[String, Options] = rest match {
+        case "-a" :: password :: more =>
+          Key.from(password).leftMap(_ => "please supply a password after -a").flatMap { key =>
+            withOptions(more, options.copy(credentials = Some(Credentials(None, key))), user)
+          }
+        case "--user" :: name :: more =>
+          Key.from(name).leftMap(_ => "please supply a user after --user").flatMap(key => withOptions(more, options, Some(key)))
+        case "-n" :: index :: more =>
+          Either
+            .catchNonFatal(index.toInt)
+            .leftMap(_.getMessage)
+            .flatMap(DbIndex.from)
+            .leftMap(_ => "please supply a database number from 0 after -n")
+            .flatMap(db => withOptions(more, options.copy(database = Some(db)), user))
+        case "-a" :: Nil     => Left("please supply a password after -a")
+        case "--user" :: Nil => Left("please supply a user after --user")
+        case "-n" :: Nil     => Left("please supply a database number from 0 after -n")
+        case Nil             =>
+          (user, options.credentials) match {
+            case (Some(_), None)           => Left("please supply the password with -a as well as --user")
+            case (Some(name), Some(login)) => Right(options.copy(credentials = Some(login.copy(username = Some(name)))))
+            case (None, _)                 => Right(options)
+          }
+        case other :: _ => Left(s"$other isn't an option: use -a <password>, --user <user> and -n <database>")
+      }
+
+      args match {
+        case host :: port :: rest =>
+          (Host.from(host).toOption, Either.catchNonFatal(port.toInt).flatMap(Port.from).toOption) match {
+            case (Some(h), Some(p)) => withOptions(rest, Options(h, p, None, None), None)
+            case _                  => Left("please supply valid host and port (space separated)")
+          }
+        case _ => Left("please supply host and port (space separated)")
+      }
     }
 
     def session(args: List[String], in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing]): IO[ExitCode] = {
       def write(msg: String): IO[Unit] = Stream.emit(msg).through(text.utf8.encode).through(out).compile.drain
 
-      args match {
-        case arg1 :: arg2 :: Nil =>
-          val maybeHost = Host.from(arg1).toOption
-          val maybePort = Either.catchNonFatal(arg2.toInt).flatMap(Port.from).toOption
-
-          (maybeHost, maybePort) match {
-            case (Some(ip), Some(port)) =>
-              write(s"$logo$LF") >> mkStream(ip, port, in, out).compile.drain.as(ExitCode.Success)
-            case _ => write(s"please supply valid host and port (space separated)$LF").as(ExitCode.Error)
-          }
-
-        case _ => write(s"please supply host and port (space separated)$LF").as(ExitCode.Error)
+      options(args) match {
+        case Right(chosen) => write(s"$logo$LF") >> mkStream(chosen, in, out).compile.drain.as(ExitCode.Success)
+        case Left(error)   => write(s"$error$LF").as(ExitCode.Error)
       }
     }
 
-    def mkStream(host: Host, port: Port, in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing]): Stream[IO, ExitCode] =
-      Stream.resource(RedisClient[IO].to(host, port)).evalMap { redisClient =>
-        val promptStream: Stream[IO, String] = Stream.emit(s"$host:$port> ").repeat
+    def mkStream(options: Options, in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing]): Stream[IO, ExitCode] =
+      Stream
+        .resource(
+          RedisClient[IO].to(options.host, options.port, credentials = options.credentials, database = options.database)
+        )
+        .evalMap { redisClient =>
+          val database                         = options.database.filter(_.value != 0).fold("")(db => s"[${db.value}]")
+          val promptStream: Stream[IO, String] = Stream.emit(s"${options.host}:${options.port}$database> ").repeat
 
-        val emptyPrompt: IO[Unit] =
-          promptStream.head
-            .through(text.utf8.encode)
-            .through(out)
-            .compile
-            .drain
+          val emptyPrompt: IO[Unit] =
+            promptStream.head
+              .through(text.utf8.encode)
+              .through(out)
+              .compile
+              .drain
 
-        def prompt(msg: String): IO[Unit] =
-          Stream
-            .emit(msg)
-            .append(promptStream.head)
-            .through(text.utf8.encode)
-            .through(out)
-            .compile
-            .drain
+          def prompt(msg: String): IO[Unit] =
+            Stream
+              .emit(msg)
+              .append(promptStream.head)
+              .through(text.utf8.encode)
+              .through(out)
+              .compile
+              .drain
 
-        val protocol: Pipe[IO, String, Protocol[RESP]] =
-          _.map(CommandLine.parse).flatMap {
-            case Left(error)            => Stream.exec(prompt(s"(error) $error$LF"))
-            case Right(Nil)             => Stream.exec(emptyPrompt)
-            case Right(command :: args) =>
-              val name = new String(command.toArray, UTF_8)
-              refusal(name, args.map(arg => new String(arg.toArray, UTF_8))) match {
-                case Some(reason) => Stream.exec(prompt(s"(error) $reason$LF"))
-                case None         => Stream.emit(Protocol(name, args.map(Bulk(_))).using(RESPRead.raw))
-              }
-          }
-
-        emptyPrompt >>
-          in
-            .through(text.utf8.decode)
-            .through(text.lines)
-            .through(protocol)
-            .evalMap { protocol =>
-              for {
-                startTime             <- IO(System.nanoTime())
-                maybeProtocolResponse <- redisClient.send(protocol)
-                endTime               <- IO(System.nanoTime())
-              } yield maybeProtocolResponse -> (endTime - startTime)
+          val protocol: Pipe[IO, String, Protocol[RESP]] =
+            _.map(CommandLine.parse).flatMap {
+              case Left(error)            => Stream.exec(prompt(s"(error) $error$LF"))
+              case Right(Nil)             => Stream.exec(emptyPrompt)
+              case Right(command :: args) =>
+                val name = new String(command.toArray, UTF_8)
+                refusal(name, args.map(arg => new String(arg.toArray, UTF_8))) match {
+                  case Some(reason) => Stream.exec(prompt(s"(error) $reason$LF"))
+                  case None         => Stream.emit(Protocol(name, args.map(Bulk(_))).using(RESPRead.raw))
+                }
             }
-            .evalMap { case (reply, nanos) =>
-              val ms    = nanos.toDouble / 1000000d
-              val shown = reply match {
-                case Left(err: Err) => RESPFormat.format(err)
-                case Left(e)        => s"ERROR ${e.getLocalizedMessage}"
-                case Right(resp)    => RESPFormat.format(resp)
+
+          emptyPrompt >>
+            in
+              .through(text.utf8.decode)
+              .through(text.lines)
+              .through(protocol)
+              .evalMap { protocol =>
+                for {
+                  startTime             <- IO(System.nanoTime())
+                  maybeProtocolResponse <- redisClient.send(protocol)
+                  endTime               <- IO(System.nanoTime())
+                } yield maybeProtocolResponse -> (endTime - startTime)
               }
-              prompt(f"<<< $shown - [$ms%.2fms]$LF")
-            }
-            .compile
-            .drain
-            .as(ExitCode.Success)
-      }
+              .evalMap { case (reply, nanos) =>
+                val ms    = nanos.toDouble / 1000000d
+                val shown = reply match {
+                  case Left(err: Err) => RESPFormat.format(err)
+                  case Left(e)        => s"ERROR ${e.getLocalizedMessage}"
+                  case Right(resp)    => RESPFormat.format(resp)
+                }
+                prompt(f"<<< $shown - [$ms%.2fms]$LF")
+              }
+              .compile
+              .drain
+              .as(ExitCode.Success)
+        }
   }
 }

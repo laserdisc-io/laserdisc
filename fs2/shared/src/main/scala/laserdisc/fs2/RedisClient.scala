@@ -362,8 +362,10 @@ object RedisClient {
                     case empty => empty -> Left(NoInFlightRequest(resp))
                   }
                   .flatMap {
+                    // a reader that throws, as one of the caller's own can, fails only its own request
                     case Right((request, Some(replies))) =>
-                      watch(connection, request, replies) >> request.callback(request.protocol.decodeReplies(replies)).as(isSetup(request))
+                      val decoded = Either.catchNonFatal(request.protocol.decodeReplies(replies)).flatten
+                      watch(connection, request, replies) >> request.callback(decoded).as(isSetup(request))
                     case Right((request, None)) => isSetup(request).pure[F]
                     case Left(error)            => Concurrent[F].raiseError[Boolean](error)
                   }

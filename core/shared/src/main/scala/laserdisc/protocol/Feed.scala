@@ -24,6 +24,8 @@ package protocol
 
 import java.nio.charset.StandardCharsets.UTF_8
 
+import scala.util.control.NonFatal
+
 /** What the server keeps sending on a connection of its own once asked, with no request behind each part: SUBSCRIBE, PSUBSCRIBE, SSUBSCRIBE
   * or MONITOR. `RedisSubscriber` opens the connection for one
   */
@@ -35,9 +37,11 @@ final class Feed[A] private[protocol] (
     private[laserdisc] val keptAlive: Boolean = true
 ) {
 
-  // what a reply gives the stream: nothing, as for a confirmation, a message, or one that can't be read. Only the server's error fails it
+  // what a reply gives the stream: nothing, as for a confirmation, a message, or one that can't be read, also when a reader throws. Only
+  // the server's error fails it
   private[laserdisc] final def received(resp: RESP): Maybe[Option[Either[Feed.Unreadable, A]]] =
-    message(resp) match {
+    (try message(resp)
+    catch { case NonFatal(e) => Left(e) }) match {
       case Left(error: Err) => Left(error)
       case Left(error)      => Right(Some(Left(Feed.Unreadable(error, resp))))
       case Right(read)      => Right(read.map(Right(_)))

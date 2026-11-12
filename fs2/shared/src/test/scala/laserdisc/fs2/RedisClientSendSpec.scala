@@ -183,6 +183,25 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  test("a reader that throws fails only its own command, and the commands sent with it and after it still get their replies") {
+    val thrown                                       = new IllegalStateException("thrown")
+    implicit val throwing: Read[Bulk, Throwing.type] = Read.instance(_ => throw thrown)
+    val echoing                                      = FakeRedisServer((_, commands) => commands.map(c => bulk(keyOf(c))))
+
+    echoing.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        for {
+          (failed, sentWith) <- client.send(get[Throwing.type]("a"), get[String]("b"), 2.seconds)
+          after              <- client.send(get[String]("c"), 2.seconds)
+        } yield {
+          assertEquals(failed, Left(thrown))
+          assertEquals(sentWith, Right(Some("b")))
+          assertEquals(after, Right(Some("c")))
+        }
+      }
+    }
+  }
+
   test("a multi gets the results of its commands, and the commands around it get their own replies") {
     // answers GET key with key, and keeps the keys of the GETs between MULTI and EXEC to answer EXEC with
     val transactional =
@@ -592,3 +611,5 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 }
+
+private object Throwing

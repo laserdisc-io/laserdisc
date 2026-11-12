@@ -88,6 +88,22 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
     }
   }
 
+  test("a message whose reader throws is handed over as it arrived, and the next ones still come") {
+    implicit val throwingOnBad: Read[Bulk, Checked] = Read.instance {
+      case Bulk("bad") => throw new IllegalStateException("thrown")
+      case Bulk(s)     => Right(Checked(s))
+    }
+    val checking = laserdisc.redis_6_2.subscribe[Checked](OneOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))))
+    serving(1)(confirmed + message("a", "bad") + message("a", "next")).use { case (port, _) =>
+      RedisSubscriber[IO]
+        .to("127.0.0.1", port, checking)
+        .use(_.take(2).compile.toList)
+        .map { received =>
+          assertEquals(received.map(_.left.map(_.error.getMessage)), List(Left("thrown"), Right(Message(Key("a"), Checked("next")))))
+        }
+    }
+  }
+
   test("the stream fails when the server replies with an error") {
     serving(1)(confirmed + "-ERR boom\r\n").use { case (port, _) =>
       RedisSubscriber[IO].to("127.0.0.1", port, feed).use(_.compile.toList).attempt.map { outcome =>
@@ -212,3 +228,5 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
     }
   }
 }
+
+private final case class Checked(value: String)

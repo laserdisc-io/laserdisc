@@ -64,7 +64,9 @@ and that includes the connections the client opens when it reconnects. Don't
 send `AUTH` or `SELECT` yourself: a new connection wouldn't have them.
 
 If the server refuses the password or the database, the client stops: every
-command fails with `ConnectionSetupRefused`, which says why.
+command fails with `ConnectionSetupRefused`, which says why. If it refuses only
+for now, because it's loading its data, running a script or has too many
+clients, the client connects again, as when it can't reach the server.
 
 ## Connecting with TLS
 

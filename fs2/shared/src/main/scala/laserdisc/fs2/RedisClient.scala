@@ -41,8 +41,9 @@ object RedisClient {
   private[fs2] class RedisClientConnector[F[_]: Async: Network: LogSelector]() {
 
     /** With credentials, each connection logs in before anything else, and with a database it selects it, so a client that reconnects is
-      * logged in and in the same database. A server refusing either stops the client with [[ConnectionSetupRefused]]. With [[Tls]], each
-      * connection is encrypted, and the server's certificate checked
+      * logged in and in the same database. A server refusing either stops the client with [[ConnectionSetupRefused]], unless it refuses
+      * only for now, as while it loads its data or has too many clients: then the client connects again. With [[Tls]], each connection is
+      * encrypted, and the server's certificate checked
       */
     @inline final def to(
         host: Host,
@@ -170,6 +171,12 @@ object RedisClient {
       } ++ database.toList.map(index => Protocol("SELECT", index).using(RESPRead.raw))
 
     private final val setupTimeout = 30.seconds
+
+    // a server loading its data, running a script, cut off from its master or with too many clients refuses for now only: the client
+    // connects again, as to a server it can't reach, instead of stopping
+    def refusedForNow(refused: Err): Boolean =
+      refused.message == "ERR max number of clients reached" ||
+        List("LOADING", "BUSY", "MASTERDOWN", "TRYAGAIN").exists(code => refused.message.startsWith(s"$code "))
 
     def connection[F[_]: Temporal](
         redisNetChannel: (RedisAddress, F[Unit]) => Pipe[F, RESP, RESP],
@@ -395,7 +402,7 @@ object RedisClient {
               def unclaimed(taken: Chunk[Batch[F]]): F[Unit] =
                 taken.filterA(_.claim.tryGet.map(_.isEmpty)).flatMap(again => retries.update(_ ++ again).whenA(again.nonEmpty))
 
-              // a server refusing to set up a connection would refuse the next ones too, so the client stops
+              // a server refusing to set up a connection would refuse the next ones too, so the client stops, unless it refuses for now
               def stop(error: Throwable): F[Unit] = termSignal.complete(Left(error)).void
 
               // each connection logs in and selects the database before anything else, and sends nothing more until the server agrees, so
@@ -409,8 +416,10 @@ object RedisClient {
                       Request[F, RESP](
                         protocol,
                         {
-                          case Right(Str("OK"))   => (ready.complete(()) >> usage.update(_.max(Usage.Idle))).whenA(i == last)
-                          case Right(other)       => stop(ConnectionSetupRefused(address, RESPDecErr(s"Expected OK but got: $other")))
+                          case Right(Str("OK")) => (ready.complete(()) >> usage.update(_.max(Usage.Idle))).whenA(i == last)
+                          case Right(other)     => stop(ConnectionSetupRefused(address, RESPDecErr(s"Expected OK but got: $other")))
+                          case Left(refused: Err) if refusedForNow(refused) =>
+                            Temporal[F].raiseError(ConnectionSetupRefused(address, refused))
                           case Left(refused: Err) => stop(ConnectionSetupRefused(address, refused))
                           // the connection went, and the next one is set up again
                           case Left(_) => Temporal[F].unit

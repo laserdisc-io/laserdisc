@@ -98,6 +98,26 @@ final class RedisClientSetupSpec extends CatsEffectSuite {
     }
   }
 
+  test("a setup refused only for now, as by a server loading its data or with too many clients, is tried again on a new connection") {
+    val forNow = List(
+      "-ERR max number of clients reached\r\n",
+      "-LOADING Redis is loading the dataset in memory\r\n",
+      "-BUSY Redis is busy running a script. You can only call SCRIPT KILL or SHUTDOWN NOSCRIPT.\r\n",
+      "-MASTERDOWN Link with MASTER is down and replica-serve-stale-data is set to 'no'.\r\n",
+      "-TRYAGAIN Multiple keys request during rehashing of slot\r\n"
+    )
+    forNow.parTraverse_ { refusal =>
+      val refusingFirst = FakeRedisServer { (n, requests) =>
+        requests.map(command => if (!isSetup(words(command))) bulk("value") else if (n == 1) refusal else "+OK\r\n")
+      }
+      refusingFirst.use { port =>
+        RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn).use { client =>
+          untilReplied(client.send(get[String]("k"), 2.seconds)).assertEquals(Some("value"), refusal)
+        }
+      }
+    }
+  }
+
   test("a command isn't sent before the server has agreed to the setup, so it can't run in the wrong database") {
     recording(setup = "-ERR DB index is out of range\r\n").use { case (port, received) =>
       RedisClient[IO].to("127.0.0.1", port, database = Some(DbIndex(99))).use { client =>

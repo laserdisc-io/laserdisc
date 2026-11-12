@@ -246,6 +246,44 @@ final class VersionImportsSpec extends BaseSpec {
     )
   }
 
+  test("blocking.forever has the commands that wait for as long as it takes from the version that has them") {
+    import laserdisc.auto.*
+
+    val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    assertEquals(redis_6_2.blocking.forever.blpop[String](a).protocol.frames, frame("BLPOP", "a", "0"))
+    assertEquals(redis_6_2.blocking.forever.waitreplicas(1).protocol.frames, frame("WAIT", "1", "0"))
+    assert(
+      compileErrors(
+        """redis_6_2.blocking.forever.blmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), redis_6_2.listtypes.ListSide.left)"""
+      ).nonEmpty
+    )
+    assert(compileErrors("redis_7_0.blocking.forever.waitaof(0, 1)").nonEmpty)
+    assertEquals(redis_7_2.blocking.forever.waitaof(0, 1).protocol.frames, frame("WAITAOF", "0", "1", "0"))
+    assertEquals(valkey_9_1.blocking.forever.waitaof(0, 1).protocol.frames, frame("WAITAOF", "0", "1", "0"))
+    assert(compileErrors("dragonfly_2_0.blocking.forever.waitaof(0, 1)").nonEmpty)
+    assert(
+      compileErrors("""redis_8_2.blocking.forever.xreadgroupclaim[Int]("g", "c", OneOrMoreKeys.unsafeFrom(List(Key("a"))), 0L)""").nonEmpty
+    )
+    assert(
+      compileErrors(
+        """redis_8_8.blocking.forever.blmovem[String]("a", "b", redis_8_8.listtypes.ListSide.left, redis_8_8.listtypes.ListSide.left)"""
+      ).nonEmpty
+    )
+    assertEquals(
+      redis_8_10.blocking.forever
+        .blmovem[String]("a", "b", redis_8_10.listtypes.ListSide.left, redis_8_10.listtypes.ListSide.left)
+        .protocol
+        .frames,
+      frame("BLMOVEM", "a", "b", "LEFT", "LEFT", "0")
+    )
+  }
+
+  test("blocking.forever can be imported from") {
+    import laserdisc.redis_8_10.blocking.forever.*
+
+    assertEquals(bzpopmin[String](OneOrMoreKeys.unsafeFrom(List(Key("z")))).protocol.frames, frame("BZPOPMIN", "z", "0"))
+  }
+
   test("redis_8_10 has LMOVEM and BLMOVEM") {
     import laserdisc.auto.*
     import laserdisc.redis_8_10.*

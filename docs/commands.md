@@ -38,6 +38,7 @@ To import a single family instead, add its name:
 | Server | `laserdisc.redis_8_10.server.*` |
 | Cluster | `laserdisc.redis_8_10.cluster.*` |
 | Blocking commands of lists, sorted sets and streams | `laserdisc.redis_8_10.blocking.*` |
+| Blocking commands that wait for as long as it takes, and `WAIT` and `WAITAOF` without a timeout | `laserdisc.redis_8_10.blocking.forever.*` |
 
 ## The version of your server
 

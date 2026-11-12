@@ -241,11 +241,29 @@ trait AclValkey9_1 extends Acl7_2 with AclDatabaseCommands
 /** The SCRIPT commands, under `script` */
 trait ScriptValkey8_0 extends ScriptCommands with ScriptShowCommands
 
-/** The blocking commands, under `blocking` */
-trait Blocking6_2  extends BListBaseP with BListExtP with BSortedSetBaseP with BStreamBaseP
-trait Blocking7_0  extends Blocking6_2 with BListMPopP with BSortedSetMPopP
-trait Blocking8_4  extends Blocking7_0 with BStreamReadGroupClaimP
-trait Blocking8_10 extends Blocking8_4 with BListMoveManyP with BStreamReadLimitsP
+/** The blocking commands that wait for as long as it takes, under `blocking.forever`: only a dedicated client sends them */
+trait Forever6_2  extends BListForeverBaseP with BListForeverExtP with BSortedSetForeverBaseP with BStreamForeverBaseP with KeyWaitForeverP
+trait Forever7_0  extends Forever6_2 with BListMPopForeverP with BSortedSetMPopForeverP
+trait Forever7_2  extends Forever7_0 with KeyWaitAofForeverP
+trait Forever8_4  extends Forever7_2 with BStreamReadGroupClaimForeverP
+trait Forever8_10 extends Forever8_4 with BListMoveManyForeverP with BStreamReadLimitsForeverP
+
+/** The blocking commands, under `blocking`, and those that wait for as long as it takes, under `blocking.forever` */
+trait Blocking6_2 extends BListBaseP with BListExtP with BSortedSetBaseP with BStreamBaseP {
+  val forever: Forever6_2 = new Forever6_2 {}
+}
+trait Blocking7_0 extends Blocking6_2 with BListMPopP with BSortedSetMPopP {
+  override val forever: Forever7_0 = new Forever7_0 {}
+}
+trait Blocking7_2 extends Blocking7_0 {
+  override val forever: Forever7_2 = new Forever7_2 {}
+}
+trait Blocking8_4 extends Blocking7_2 with BStreamReadGroupClaimP {
+  override val forever: Forever8_4 = new Forever8_4 {}
+}
+trait Blocking8_10 extends Blocking8_4 with BListMoveManyP with BStreamReadLimitsP {
+  override val forever: Forever8_10 = new Forever8_10 {}
+}
 
 trait Server6_2 extends ServerBaseP
 trait Server7_0 extends Server6_2 with ServerShutdownAndInfoP {
@@ -377,6 +395,7 @@ trait Redis7_0
   override val strings: Strings7_0       = new Strings7_0 {}
 }
 trait Redis7_2 extends Redis7_0 with Cluster7_2 with Keys7_2 with Server7_2 with SortedSets7_2 with Streams7_2 {
+  override val blocking: Blocking7_2     = new Blocking7_2 {}
   override val streams: Streams7_2       = new Streams7_2 {}
   override val cluster: Cluster7_2       = new Cluster7_2 {}
   override val keys: Keys7_2             = new Keys7_2 {}

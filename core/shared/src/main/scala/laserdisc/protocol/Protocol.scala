@@ -57,6 +57,14 @@ object Protocol {
         override def decode(resp: RESP): Maybe[B] = self.decode(resp).map(f(_))
       }
 
+    // the same command, with the parameter at index set to value
+    private[protocol] final def withParameter(index: Int, value: String): Single[A] =
+      new Single[A] {
+        override val command: String              = self.command
+        override val parameters: Seq[GenBulk]     = self.parameters.updated(index, Bulk(value))
+        override def decode(resp: RESP): Maybe[A] = self.decode(resp)
+      }
+
     override final def toString: String = s"Protocol($command)"
   }
 

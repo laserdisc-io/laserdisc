@@ -39,19 +39,37 @@ private[laserdisc] object Blocking {
     protocol.frames match {
       case Seq(Arr(Bulk(command) :: arguments)) =>
         val words = arguments.collect { case Bulk(word) => word }
-        command.toUpperCase match {
-          case "BLPOP" | "BRPOP" | "BRPOPLPUSH" | "BLMOVE" | "BZPOPMIN" | "BZPOPMAX" => seconds(words.lastOption)
-          case "BLMPOP" | "BZMPOP"                                                   => seconds(words.headOption)
-          // after the source, destination and both sides, before the amount and order
-          case "BLMOVEM"          => seconds(words.lift(4))
-          case "WAIT" | "WAITAOF" => milliseconds(words.lastOption)
-          // the options come before STREAMS, after XREADGROUP's group and consumer, whose names could be BLOCK
-          case read @ ("XREAD" | "XREADGROUP") =>
-            val options = (if (read == "XREADGROUP") words.drop(3) else words).takeWhile(!_.equalsIgnoreCase("STREAMS"))
-            milliseconds(options.dropWhile(!_.equalsIgnoreCase("BLOCK")).drop(1).headOption)
-          case _ => Duration.Zero
+        waitAt(command, words).fold(Duration.Zero: FiniteDuration) {
+          case (index, true)  => seconds(words.lift(index))
+          case (index, false) => milliseconds(words.lift(index))
         }
       case _ => Duration.Zero
+    }
+
+  // the same command, waiting for as long as it takes: its wait, which only stands in for that, is set to 0
+  def forever[A](timed: Protocol.Single[A]): Protocol.Single[A] = {
+    val words = timed.parameters.collect { case Bulk(word) => word }
+    waitAt(timed.command, words) match {
+      case Some((index, _)) => timed.withParameter(index, "0")
+      case None             => throw new IllegalArgumentException(s"${timed.command} doesn't wait")
+    }
+  }
+
+  // where a command's wait is among its parameters, and whether it's in seconds rather than milliseconds
+  private def waitAt(command: String, words: Seq[String]): Option[(Int, Boolean)] =
+    command.toUpperCase match {
+      case "BLPOP" | "BRPOP" | "BRPOPLPUSH" | "BLMOVE" | "BZPOPMIN" | "BZPOPMAX" if words.nonEmpty => Some(words.size - 1 -> true)
+      case "BLMPOP" | "BZMPOP" if words.nonEmpty                                                   => Some(0 -> true)
+      // after the source, destination and both sides, before the amount and order
+      case "BLMOVEM" if words.size > 4          => Some(4 -> true)
+      case "WAIT" | "WAITAOF" if words.nonEmpty => Some(words.size - 1 -> false)
+      // the options come before STREAMS, after XREADGROUP's group and consumer, whose names could be BLOCK
+      case read @ ("XREAD" | "XREADGROUP") =>
+        val skipped = if (read == "XREADGROUP") 3 else 0
+        val options = words.drop(skipped).takeWhile(!_.equalsIgnoreCase("STREAMS"))
+        val block   = options.indexWhere(_.equalsIgnoreCase("BLOCK"))
+        if (block >= 0 && block + 1 < options.size) Some(skipped + block + 1 -> false) else None
+      case _ => None
     }
 
   private def seconds(word: Option[String]): FiniteDuration =

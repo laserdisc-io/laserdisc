@@ -33,7 +33,7 @@ import scala.util.NotGiven
 final type Maybe[+A] = Either[Throwable, A]
 
 // Export all protocol
-export protocol.{Arr, Bulk, Err, NilArr, NullBulk, Num, OneOf, Protocol, RESP, RESPDecErr, Read, Show, Str, Value}
+export protocol.{Arr, Bulk, Err, Forever, NilArr, NullBulk, Num, OneOf, Protocol, RESP, RESPDecErr, Read, Show, Str, Value}
 final type NilArr   = protocol.NilArr.type
 final type NullBulk = protocol.NullBulk.type
 

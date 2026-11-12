@@ -60,6 +60,7 @@ package object laserdisc {
   final type Arr               = protocol.Arr
   final type Bulk              = protocol.Bulk
   final type Err               = protocol.Err
+  final type Forever[+A]       = protocol.Forever[A]
   final type NilArr            = protocol.NilArr.type
   final type NullBulk          = protocol.NullBulk.type
   final type Num               = protocol.Num

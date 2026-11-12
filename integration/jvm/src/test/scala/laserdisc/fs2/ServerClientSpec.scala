@@ -152,6 +152,15 @@ abstract class ServerClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assertEquals(send(v.client.unpause), OK)
   }
 
+  test(s"a $dest client reads its name when it has an = in it") {
+    val v = laserdisc.redis_6_2
+
+    assertEquals(send(v.client.setname("a=b")), OK)
+    assertEquals(send(v.client.info).parameters.get[String]("name"), Right("a=b"))
+    assertEquals(send(v.client.list(OneOrMore.unsafeFrom(List(send(v.client.id))))).clients.map(_.get[String]("name")), Seq(Right("a=b")))
+    assertEquals(send(v.client.unsetname), OK)
+  }
+
   test(s"a $dest client reads the server's time") {
     import laserdisc.redis_6_2.*
 

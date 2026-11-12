@@ -219,7 +219,8 @@ object ServerP {
 
   final case class ConnectedClients(clients: Seq[Parameters])
   object ConnectedClients {
-    private val KVPair = "(.*)=(.*)".r
+    // the key ends at the first =, so values may have one, as a client name can
+    private val KVPair = "([^=]*)=(.*)".r
 
     implicit val connectedClientsRead: Read[Bulk, ConnectedClients] = Read.instance { case Bulk(s) =>
       Right(

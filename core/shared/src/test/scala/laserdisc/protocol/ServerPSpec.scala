@@ -112,6 +112,12 @@ final class ServerPSpec extends BaseSpec with ServerP {
     }
   }
 
+  test("The Server protocol using client.info reads a value with an = in it, as a client name can have") {
+    client.info.decode(Bulk("id=3 name=a=b db=0\n")).onRight { case ClientInfo(parameters) =>
+      parameters.get[String]("name") == Right("a=b") && parameters.get[String]("db") == Right("0")
+    }
+  }
+
   property("The Server protocol using config with several parameters sends each of them") {
     forAll { (ps: OneOrMore[(Key, Int)]) =>
       assertEquals(config.set(ps).encode, Arr(Bulk("CONFIG") :: Bulk("SET") :: ps.value.flatMap { case (k, v) => List(Bulk(k), Bulk(v)) }))

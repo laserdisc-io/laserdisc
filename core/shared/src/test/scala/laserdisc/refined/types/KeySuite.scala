@@ -24,14 +24,11 @@ package refined.types
 
 final class KeySuite extends BaseSpec {
   test("Key fails to compile given an empty String") {
-    assertCompileErrors(
-      compileErrors("""Key("")"""),
-      """|error: Left predicate of (!isEmpty() && ()) failed: Predicate isEmpty() did not fail.
-         |Key("")
-         |   ^
-         |""".stripMargin,
-      "Message: Should have a minimum length of 1 & For each element: (!(isControl))"
-    )
+    assertCompileErrorsContain(compileErrors("""Key("")"""), "Predicate isEmpty() did not fail.", "Should have a minimum length of 1")
+  }
+
+  test("Key takes control characters, as the server does in a name") {
+    assertEquals(Key.from("a\u0001\nb").map(_.value), "a\u0001\nb")
   }
 
   test("Key compiles given a non empty String") {

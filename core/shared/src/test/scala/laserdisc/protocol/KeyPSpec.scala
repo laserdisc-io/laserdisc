@@ -145,6 +145,12 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
     }
   }
 
+  test("The Key protocol reads a name with control characters as it is, which can be sent back") {
+    val odd = Key.unsafeFrom("a\u0001\nb")
+    assertEquals(keys(GlobPattern("*")).decode(Arr(Bulk(odd))), Seq(odd))
+    assertEquals(del(odd).encode, Arr(Bulk("DEL"), Bulk("a\u0001\nb")))
+  }
+
   property("The Key protocol using migrate roundtrips successfully given key, host, port, db index and timeout") {
     forAll { (k: Key, h: Host, p: Port, dbi: DbIndex, nni: NonNegInt, nkOrOk: Either[NOKEY, OK]) =>
       val protocol = migrate(k, h, p, dbi, nni)

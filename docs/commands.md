@@ -131,8 +131,8 @@ because they have no use on a connection shared by all your calls:
 ## Arguments
 
 Arguments use types that only accept valid values. For example, a `Key` is a
-non-empty string without control characters, a `PosInt` is an `Int` greater
-than zero, and a `Port` is an `Int` between 1 and 65535.
+non-empty string, a `PosInt` is an `Int` greater than zero, and a `Port` is an
+`Int` between 1 and 65535.
 
 With `laserdisc.auto.*` imported, you can pass literal values directly. They're
 checked when your code compiles, so this doesn't compile:

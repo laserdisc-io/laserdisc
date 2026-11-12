@@ -154,7 +154,7 @@ package object laserdisc {
     (Not[IPv4] And MaxSize[Rfc1123HostnameMaxLengthWit.T] And MatchesRegex[Rfc1123HostnameRegexWit.T]) Or Rfc1918PrivateSpec Or
     Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec
   final type IndexRef            = True
-  final type KeyRef              = OneOrMoreRef And Forall[NoControlChar]
+  final type KeyRef              = OneOrMoreRef
   final type LatitudeRef         = NonNaN And Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
   final type LongitudeRef        = NonNaN And Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
   final type NodeIdRef           = MatchesRegex[NodeIdRegexWit.T]

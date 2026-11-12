@@ -153,7 +153,7 @@ final type HostRef            = StrictEqual[AllNICsEqWit.T] | StrictEqual[Loopba
   (Not[IPv4Ref] & MaxLength[Rfc1123HostnameMaxLengthWit.T] & Match[Rfc1123HostnameRegexWit.T]) | Rfc1918Ref | Rfc5737Ref | Rfc3927Ref |
   Rfc2544Ref
 final type IndexRef            = Pure
-final type KeyRef              = MinLength[1] & ForAll[NoControlChar]
+final type KeyRef              = MinLength[1]
 final type LatitudeRef         = Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
 final type LongitudeRef        = Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
 final type NodeIdRef           = Match[NodeIdRegexWit.T]

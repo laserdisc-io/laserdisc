@@ -24,6 +24,7 @@ package fs2
 
 import _root_.fs2.io.net.Socket
 import _root_.fs2.io.net.tls.TLSContext
+import cats.Applicative
 import cats.effect.Resource
 
 /** Connecting with TLS, trusting the certificates `context` trusts. The server's certificate also has to be for the host connected to,
@@ -31,9 +32,15 @@ import cats.effect.Resource
   */
 final case class Tls[F[_]](context: TLSContext[F], checkServerName: Boolean = true) {
 
-  // the host is sent as the server name, which servers that have a certificate for each name choose by
-  private[fs2] def secure(socket: Socket[F], host: String): Resource[F, Socket[F]] =
-    context.clientBuilder(socket).withParameters(TlsParameters(host, checkServerName)).build.map(tls => tls: Socket[F])
+  // the host is sent as the server name, which servers that have a certificate for each name choose by. The handshake is done here, so
+  // that it's within the time connecting has
+  private[fs2] def secure(socket: Socket[F], host: String)(implicit A: Applicative[F]): Resource[F, Socket[F]] =
+    context
+      .clientBuilder(socket)
+      .withParameters(TlsParameters(host, checkServerName))
+      .build
+      .evalTap(TlsHandshake(_))
+      .map(tls => tls: Socket[F])
 }
 
 object Tls {

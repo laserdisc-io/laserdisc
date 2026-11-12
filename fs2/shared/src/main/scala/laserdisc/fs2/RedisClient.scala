@@ -25,6 +25,7 @@ package fs2
 import _root_.fs2.Chunk
 import cats.effect.kernel.{Deferred, Ref, Temporal}
 import cats.effect.syntax.all.*
+import cats.effect.std.Mutex
 import cats.effect.{Async, Concurrent, Fiber, Resource}
 import cats.syntax.all.*
 import laserdisc.protocol.RESPRead
@@ -62,7 +63,33 @@ object RedisClient {
         credentials: Option[Credentials] = None,
         database: Option[DbIndex] = None,
         tls: Option[Tls[F]] = None
-    ): Resource[F, RedisClient[F]] = {
+    ): Resource[F, RedisClient[F]] =
+      connection(addresses.toSeq, receiveBufferSizeBytes, connectTimeout, credentials, database, tls).flatMap(impl.mkClient(_))
+
+    /** A client of its own, for one caller at a time: it sends one command at a time, each once the one before it has returned, so it can
+      * also send the commands under `blocking.forever`, which wait for as long as it takes. Cancelling one of those once it's sent closes
+      * the connection, as the server is still waiting on it, and the next command connects again. Otherwise like `to`
+      */
+    @inline final def dedicated(
+        host: Host,
+        port: Port,
+        receiveBufferSizeBytes: Int = 8 * 1024 * 1024,
+        connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout,
+        credentials: Option[Credentials] = None,
+        database: Option[DbIndex] = None,
+        tls: Option[Tls[F]] = None
+    ): Resource[F, DedicatedClient[F]] =
+      connection(Seq(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout, credentials, database, tls)
+        .flatMap(impl.mkDedicated(_))
+
+    private def connection(
+        addresses: Seq[RedisAddress],
+        receiveBufferSizeBytes: Int,
+        connectTimeout: FiniteDuration,
+        credentials: Option[Credentials],
+        database: Option[DbIndex],
+        tls: Option[Tls[F]]
+    ): Resource[F, impl.Connection[F]] = {
       def redisChannel(address: RedisAddress, onConnected: F[Unit]): Pipe[F, RESP, RESP] =
         stream =>
           Stream.eval(address.toSocketAddress).flatMap { socketAddress =>
@@ -71,10 +98,7 @@ object RedisClient {
             stream.through(RedisChannel(socketAddress, receiveBufferSizeBytes, connectTimeout, onConnected, secure))
           }
 
-      val establishedConnection: Resource[F, impl.Connection[F]] =
-        impl.connection(redisChannel, addresses.toSeq, impl.setup(credentials, database))
-
-      establishedConnection.flatMap(conn => impl.mkClient(conn))
+      impl.connection(redisChannel, addresses, impl.setup(credentials, database))
     }
   }
 
@@ -91,9 +115,20 @@ object RedisClient {
       case object Answered   extends Usage(4)
     }
 
+    // how long a request that waits for as long as it takes is given: the watchdog never finds it overdue
+    private[fs2] final val never: FiniteDuration = FiniteDuration(Long.MaxValue, NANOSECONDS)
+
+    private[fs2] def dueBy(now: FiniteDuration, timeout: FiniteDuration): FiniteDuration = if (timeout == never) never else now + timeout
+
+    // what ends a connection closed to stop a command waiting on the server, which isn't a failure of the connection
+    private[fs2] object ConnectionReset
+        extends RuntimeException("Connection closed to stop a command waiting on the server", null, true, false)
+
     sealed trait Connection[F[_]] {
       def run: F[Fiber[F, Throwable, Unit]]
       def shutdown: F[Unit]
+      // sends a command that waits for as long as it takes: with no timeout, and closing the connection when cancelled once sent
+      def sendForever[A](protocol: Protocol[A]): F[Maybe[A]]
       def send[In <: Tuple, Out <: Tuple](
           in: In,
           timeout: FiniteDuration
@@ -108,6 +143,23 @@ object RedisClient {
               implicit handler: Handler.Aux[F, Env[F], In, Out]
           ): F[Out] =
             released.get.ifM(Concurrent[F].raiseError(ClientTerminated), establishedConn.send(in, timeout))
+        }
+      }
+
+    // a dedicated client takes one command at a time, so a command waiting on the server holds up only its own caller's next one
+    def mkDedicated[F[_]: Concurrent](establishedConn: Connection[F]): Resource[F, DedicatedClient[F]] =
+      Resource.eval(Mutex[F]).flatMap { mutex =>
+        Resource.make(Ref.of[F, Boolean](false))(_.set(true)).map { released =>
+          new DedicatedClient[F] {
+            override final def send[In <: Tuple, Out <: Tuple](in: In, timeout: FiniteDuration)(
+                implicit handler: Handler.Aux[F, Env[F], In, Out]
+            ): F[Out] =
+              released.get.ifM(Concurrent[F].raiseError(ClientTerminated), mutex.lock.surround(establishedConn.send(in, timeout)))
+
+            override final def send[A](forever: Forever[A]): F[Maybe[A]] =
+              released.get
+                .ifM(Concurrent[F].raiseError(ClientTerminated), mutex.lock.surround(establishedConn.sendForever(forever.protocol)))
+          }
         }
       }
 
@@ -138,10 +190,11 @@ object RedisClient {
                 Ref.of[F, Long](0L),
                 Ref.of[F, Option[Long]](None),
                 Ref.of[F, Chunk[Batch[F]]](Chunk.empty),
-                Ref.of[F, Option[Throwable]](None)
+                Ref.of[F, Option[Throwable]](None),
+                Ref.of[F, Option[(Deferred[F, Unit], Deferred[F, Unit])]](None)
               ).tupled
             )
-            .flatMap { case (inFlight, unsentRequests, nextIndex, connections, watchedOn, retries, stopped) =>
+            .flatMap { case (inFlight, unsentRequests, nextIndex, connections, watchedOn, retries, stopped, resetting) =>
               val log = logSelector.log
 
               def isTransaction(request: Request[F]): Boolean  = request.protocol.isInstanceOf[Protocol.Multi[?]]
@@ -266,7 +319,7 @@ object RedisClient {
                       case true =>
                         Stream
                           .eval(Temporal[F].monotonic)
-                          .flatMap(now => sendAll(address, connection, now + batch.timeout, sent, batch.requests.toList))
+                          .flatMap(now => sendAll(address, connection, dueBy(now, batch.timeout), sent, batch.requests.toList))
                       case false => Stream.empty
                     }
                     .onFinalize(unsent(batch, sent))
@@ -402,18 +455,37 @@ object RedisClient {
               def runner(failures: Int): Stream[F, Unit] =
                 if (failures >= addresses.size) serverUnavailable ++ runner(0)
                 else
-                  Stream.eval((nextAddress, Ref.of[F, Usage](Usage.Connecting), connections.updateAndGet(_ + 1)).tupled).flatMap {
-                    case (address, usage, connection) =>
-                      serverAvailable(address, connection, usage).handleErrorWith { failure =>
+                  Stream
+                    .eval(
+                      (
+                        nextAddress,
+                        Ref.of[F, Usage](Usage.Connecting),
+                        connections.updateAndGet(_ + 1),
+                        Deferred[F, Unit],
+                        Deferred[F, Unit]
+                      ).tupled
+                    )
+                    .flatMap { case (address, usage, connection, reset, ended) =>
+                      // a connection closed to stop a command waiting on the server isn't a failure: the next send connects again. ended
+                      // is completed once what was sent on the connection has failed, so that nothing more is sent on it
+                      val resettable = Stream.exec(resetting.set(Some(reset -> ended))) ++
+                        serverAvailable(address, connection, usage).concurrently(
+                          Stream.exec(reset.get) ++ Stream.raiseError[F](ConnectionReset)
+                        )
+                      resettable.handleErrorWith { failure =>
                         val idle = log.info(s"Connection to $address ended with nothing sent on it: ${failure.getMessage}") >> nextSend
-                        Stream.eval(failInFlight(failure) >> usage.get).flatMap {
+                        Stream.eval(failInFlight(failure) >> ended.complete(()) >> usage.get).flatMap {
+                          case _ if failure == ConnectionReset =>
+                            Stream.exec(log.info(s"Connection to $address closed to stop a command waiting on it") >> nextSend) ++ runner(
+                              failures
+                            )
                           case Usage.Idle => Stream.exec(idle) ++ runner(failures)
                           case reached    =>
                             log.errorS(s"Failure of publishing connection to $address", failure) >>
                               runner(if (reached == Usage.Answered) 0 else failures + 1)
                         }
                       }
-                  }
+                    }
 
               // once the connection has ended, nothing takes from the queue, so a send queued after it fails at once, whether it came
               // before the queue was emptied or after, with the reason the client stopped
@@ -446,6 +518,23 @@ object RedisClient {
                     timeout: FiniteDuration
                 )(implicit handler: Handler.Aux[F, Env[F], In, Out]): F[Out] =
                   handler(queueing -> timeout, in)
+
+                // cancelled once the connection has sent it, the command is still waiting on the server, holding the connection, so the
+                // connection is closed, unless the reply came in the meantime. Cancelling ends once it's closed, so that the next command
+                // doesn't go on it
+                override final def sendForever[A](protocol: Protocol[A]): F[Maybe[A]] =
+                  (Deferred[F, Maybe[A]], Deferred[F, Unit]).flatMapN { (reply, claim) =>
+                    val request = Request[F, A](protocol, reply.complete(_).void)
+                    (queueing(Batch(Vector(request), claim, never)) >> reply.get).onCancel {
+                      claim.complete(()).flatMap { unsent =>
+                        (reply.tryGet, resetting.get)
+                          .flatMapN { (replied, current) =>
+                            current.traverse_ { case (reset, ended) => reset.complete(()) >> ended.get }.whenA(replied.isEmpty)
+                          }
+                          .unlessA(unsent)
+                      }
+                    }
+                  }
               }
 
               Resource

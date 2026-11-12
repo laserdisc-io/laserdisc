@@ -220,6 +220,33 @@ same client, from anywhere in your program, only get their replies once it's
 done, and may time out first. Give blocking commands, and loops that follow
 streams, a client of their own.
 
+### Waiting for as long as it takes
+
+To wait with no limit, use a dedicated client and the commands under
+`blocking.forever`. A dedicated client sends one command at a time, each once
+the one before it has returned, so it's meant for one caller. Besides those
+commands, it sends any other:
+
+```scala mdoc:compile-only
+import cats.effect.IO
+
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+import laserdisc.redis_8_10.*
+
+val jobs = OneOrMoreKeys.unsafeFrom(List(Key("jobs")))
+
+RedisClient[IO].dedicated("localhost", 6379).use { client =>
+  client.send(blocking.forever.blpop[String](jobs)).flatMap(job => IO.println(job))
+}
+```
+
+A command that waits for as long as it takes has no timeout. Cancel it to stop
+waiting: as the server is still waiting on it, the client closes the connection,
+and the next command connects again. The shared client from `to` doesn't take
+these commands.
+
 ## Logging
 
 The client logs through [log-effect](https://github.com/laserdisc-io/log-effect).

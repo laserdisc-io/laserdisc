@@ -252,6 +252,22 @@ abstract class GeoPSpec extends BaseSpec with GeoP {
     }
   }
 
+  test("The Geo protocol reads a geohash sent as a number or, as Dragonfly does, as a string") {
+    val (k, p)  = (Key("g"), Key("p"))
+    val (at, r) = (GeoCoordinates(Latitude(38.0), Longitude(13.0)), NonNegDouble(1.0))
+    val h       = NonNegLong(3479099956230698L)
+    assertEquals(
+      georadius(k, at, r, GeoUnit.kilometers, GeoRadiusMode.hash).decode(Arr(Arr(Bulk(p), Num(h.value)))),
+      Seq(GeoKeyAndHash(p, h))
+    )
+    assertEquals(georadius(k, at, r, GeoUnit.kilometers, GeoRadiusMode.hash).decode(Arr(Arr(Bulk(p), Bulk(h)))), Seq(GeoKeyAndHash(p, h)))
+    assertEquals(
+      georadius(k, at, r, GeoUnit.kilometers, GeoRadiusMode.all)
+        .decode(Arr(Arr(Bulk(p), Bulk("1.5"), Bulk(h), Arr(Bulk("13.0"), Bulk("38.0"))))),
+      Seq(GeoKeyCoordDistAndHash(p, at, NonNegDouble(1.5), h))
+    )
+  }
+
   property("The Geo protocol using georadius roundtrips successfully given key, coordinates, radius, unit and radius mode") {
     forAll { (k: Key, c: GeoCoordinates, r: NonNegDouble, u: GeoUnit, rmAndRes: (GeoRadiusMode, List[?])) =>
       val (rm, res)   = rmAndRes

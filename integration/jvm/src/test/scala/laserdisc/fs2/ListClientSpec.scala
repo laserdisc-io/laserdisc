@@ -95,6 +95,18 @@ abstract class ListClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     assertEquals(send(lpushx("l:y", OneOrMore.unsafeFrom(List("b", "c")))).map(_.value), Some(4))
   }
 
+  test(s"a $dest client inserts before or after a value, and reads the reply when there's no such value or no list") {
+    import laserdisc.redis_6_2.*
+    import listtypes.*
+
+    send(del("l:i", "l:none"))
+    send(rpush("l:i", OneOrMore.unsafeFrom(List("a", "c"))))
+    assertEquals(send(linsert("l:i", ListPosition.after, "a", "b")).map(_.value), Some(3))
+    assertEquals(send(linsert("l:i", ListPosition.before, "zz", "b")), None)
+    assertEquals(send(linsert("l:none", ListPosition.before, "a", "b")).map(_.value), Some(0))
+    assertEquals(send(lrange[String]("l:i", 0L, -1L)), Seq("a", "b", "c"))
+  }
+
   test(s"a $dest client pops from the first list that has an element with blpop") {
     import laserdisc.redis_6_2.*
 

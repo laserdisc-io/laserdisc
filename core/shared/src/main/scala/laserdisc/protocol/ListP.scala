@@ -145,13 +145,14 @@ trait ListBaseP extends Features {
 
   import ListP.internal.*
 
-  private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[PosInt])
+  private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
   private final val zeroIsNone     = RESPRead.instance(Read.numZeroIsNone[PosInt])
 
   final def lindex[A: Read[Bulk, _]](key: Key, index: Index): Single[Option[A]] =
     Protocol("LINDEX", key *: index *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
 
-  final def linsert[A: Show](key: Key, position: ListPosition, pivot: A, value: A): Single[Option[PosInt]] =
+  /** The length of the list after the insert, 0 if there's no list, or None if the pivot isn't in it */
+  final def linsert[A: Show](key: Key, position: ListPosition, pivot: A, value: A): Single[Option[NonNegInt]] =
     Protocol("LINSERT", key *: position *: pivot *: value *: EmptyTuple).using(minusOneIsNone)
 
   final def llen(key: Key): Single[NonNegInt] = Protocol("LLEN", key).as[Num, NonNegInt]

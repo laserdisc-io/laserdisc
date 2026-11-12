@@ -42,7 +42,9 @@ private[laserdisc] object Blocking {
         command.toUpperCase match {
           case "BLPOP" | "BRPOP" | "BRPOPLPUSH" | "BLMOVE" | "BZPOPMIN" | "BZPOPMAX" => seconds(words.lastOption)
           case "BLMPOP" | "BZMPOP"                                                   => seconds(words.headOption)
-          case "WAIT" | "WAITAOF"                                                    => milliseconds(words.lastOption)
+          // after the source, destination and both sides, before the amount and order
+          case "BLMOVEM"          => seconds(words.lift(4))
+          case "WAIT" | "WAITAOF" => milliseconds(words.lastOption)
           // the options come before STREAMS, after XREADGROUP's group and consumer, whose names could be BLOCK
           case read @ ("XREAD" | "XREADGROUP") =>
             val options = (if (read == "XREADGROUP") words.drop(3) else words).takeWhile(!_.equalsIgnoreCase("STREAMS"))

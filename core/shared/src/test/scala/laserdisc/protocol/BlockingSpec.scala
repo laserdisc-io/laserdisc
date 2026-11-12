@@ -39,6 +39,23 @@ final class BlockingSpec extends BaseSpec {
     assertEquals(Blocking.waitOf(redis_8_10.wait(PosInt(1), PosLong(300L))), 300.millis)
     assertEquals(Blocking.waitOf(typed("bzmpop", "0.002", "1", "z", "MIN")), 2.millis)
     assertEquals(Blocking.waitOf(typed("BLMOVE", "a", "b", "LEFT", "RIGHT", "3")), 3.seconds)
+    assertEquals(Blocking.waitOf(typed("BLMOVEM", "a", "b", "LEFT", "RIGHT", "4", "COUNT", "2", "OBO")), 4.seconds)
+    val left = ListP.Side.left
+    assertEquals(Blocking.waitOf(b.blmovem[String](Key("a"), Key("b"), left, left, BlockingSeconds.unsafeFrom(2.5d))), 2500.millis)
+    assertEquals(
+      Blocking.waitOf(
+        b.blmovem[String](
+          Key("a"),
+          Key("b"),
+          left,
+          left,
+          ListP.Amount.upTo(PosInt(2)),
+          ListP.Order.oneByOne,
+          BlockingSeconds.unsafeFrom(6d)
+        )
+      ),
+      6.seconds
+    )
     assertEquals(Blocking.waitOf(typed("waitaof", "0", "1", "40")), 40.millis)
   }
 

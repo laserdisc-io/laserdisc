@@ -39,7 +39,7 @@ package object protocol extends protocol.EitherSyntax {
   // the key ends at the first colon, so values may have colons
   private[protocol] final val KVPairRegex = "([^:]*):(.*)".r
 
-  private[protocol] val KVP: Read[String, (String, String)] = {
+  private[protocol] val KVP: Read[String, (String, String)] = Read.instance {
     case KVPairRegex(k, v) => Right(k -> v)
     case other => Left(RESPDecErr(s"Read[String, (String, String)], error decoding key -> value pair. Expected [key:value] but was $other"))
   }

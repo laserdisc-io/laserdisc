@@ -35,7 +35,7 @@ implicit final val myRead: Read[${A}, ${B}] = Read.instance { (a: ${A}) =>
 
 You may also be able to build it from an existing Read with map, contramap or flatMap.
 """
-) trait Read[A, B] { self =>
+) sealed trait Read[A, B] { self =>
 
   def read(a: A): Either[RESPDecErr, B]
 
@@ -58,14 +58,19 @@ object Read extends ReadInstances0 {
 
   @inline final def apply[A, B](implicit instance: Read[A, B]): Read[A, B] = instance
 
-  @inline final def instance[A, B](f: A => Either[RESPDecErr, B]): Read[A, B] = (a: A) => f(a)
+  // the only Read there is: every one is built with the functions below
+  private final class Of[A, B](f: A => Either[RESPDecErr, B]) extends Read[A, B] {
+    override final def read(a: A): Either[RESPDecErr, B] = f(a)
+  }
 
-  @inline final def infallible[A, B](f: A => B): Read[A, B] = (a: A) => Right(f(a))
+  @inline final def instance[A, B](f: A => Either[RESPDecErr, B]): Read[A, B] = new Of(f)
+
+  @inline final def infallible[A, B](f: A => B): Read[A, B] = new Of(a => Right(f(a)))
 
   @inline final def const[A, B](b: B): Read[A, B] = Read.infallible(_ => b)
 
   @inline final def instancePF[A, B](expectation: String)(pf: PartialFunction[A, B]): Read[A, B] =
-    a => if (pf.isDefinedAt(a)) Right(pf(a)) else Left(RESPDecErr(s"Read Error: expected $expectation but was $a"))
+    new Of(a => if (pf.isDefinedAt(a)) Right(pf(a)) else Left(RESPDecErr(s"Read Error: expected $expectation but was $a")))
 
   // None when the condition holds, otherwise the value read, failing if it can't be
   @inline final def lift2OptionWhen[A, B](cond: A => Boolean)(

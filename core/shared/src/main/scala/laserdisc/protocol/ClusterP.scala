@@ -167,7 +167,7 @@ object ClusterP {
     }
     private final val ND: Read[String, Node7_0] = {
       val errorS = "Read[String, Node], Error decoding a cluster Node. Error was: "
-      _.split(SPACE_CH).toList match {
+      Read.instance(_.split(SPACE_CH).toList match {
         case NodeId(id) :: A(Right(a)) :: Fs(Right(fs)) :: MM(Right(mm)) :: ToLong(NonNegLong(ps)) :: ToLong(NonNegLong(pr)) ::
             ToInt(NonNegInt(ce)) :: L(Right(l)) :: Ss(Right(ss)) =>
           Right(NodeOf7_0(id, a, fs, mm, ps, pr, ce, l, ss))
@@ -182,7 +182,7 @@ object ClusterP {
               s"Unexpected encoding for a cluster node. Expected [node id, address, [flags], master id, pings, pongs, epoch, link status, slots] but was $other"
             )
           )
-      }
+      })
     }
 
     private final def nodesOf(lines: Seq[String]): Either[RESPDecErr, Nodes7_0] =

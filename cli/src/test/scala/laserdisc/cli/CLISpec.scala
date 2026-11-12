@@ -220,6 +220,18 @@ final class CLISpec extends CatsEffectSuite {
     }
   }
 
+  test("shows an error when a command times out, and prompts again") {
+    val silent = FakeRedisServer((_, commands) => commands.evalMap(_ => IO.never[String]))
+
+    silent.use { port =>
+      sessionWithin(500.millis, List("127.0.0.1", port.value.toString), "GET a").map { case (code, screen) =>
+        val prompt = s"127.0.0.1:${port.value}> "
+        assertEquals(code, ExitCode.Success)
+        assertEquals(afterLogo(screen), s"$prompt<<< ERROR The request Protocol(GET) timed-out - []\n$prompt")
+      }
+    }
+  }
+
   test("shows an error when no server can be reached") {
     unusedPort.use { port =>
       session(List("127.0.0.1", port.value.toString), "PING").map { case (code, screen) =>

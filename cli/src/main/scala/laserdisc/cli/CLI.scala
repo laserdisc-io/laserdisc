@@ -199,9 +199,11 @@ object CLI extends IOApp { self =>
               .through(text.lines)
               .through(protocol)
               .evalMap { protocol =>
+                // a send that fails, as when it times out, shows the error like a reply would, and the prompt carries on
+                val sending = Forever.from(protocol).fold(redisClient.send(protocol, timeout))(redisClient.send(_)).attempt.map(_.flatten)
                 for {
                   startTime             <- IO(System.nanoTime())
-                  maybeProtocolResponse <- Forever.from(protocol).fold(redisClient.send(protocol, timeout))(redisClient.send(_))
+                  maybeProtocolResponse <- sending
                   endTime               <- IO(System.nanoTime())
                 } yield maybeProtocolResponse -> (endTime - startTime)
               }

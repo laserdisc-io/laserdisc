@@ -26,5 +26,8 @@ import cats.Applicative
 
 // on Scala Native, the handshake is done once the socket is built
 private[fs2] object TlsHandshake {
-  final def apply[F[_]: Applicative](socket: TLSSocket[F]): F[Unit] = { val _ = socket; Applicative[F].unit }
+  final def apply[F[_]: Applicative](socket: TLSSocket[F], host: String, checkServerName: Boolean): F[Unit] = {
+    val _ = (socket, host, checkServerName)
+    Applicative[F].unit
+  }
 }

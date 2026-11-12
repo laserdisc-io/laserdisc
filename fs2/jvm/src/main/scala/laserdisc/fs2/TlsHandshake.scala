@@ -23,8 +23,19 @@ package laserdisc.fs2
 
 import _root_.fs2.Chunk
 import _root_.fs2.io.net.tls.TLSSocket
+import cats.effect.Sync
+import cats.syntax.all.*
+import com.comcast.ip4s.IpAddress
 
-// on the JVM, the handshake happens on the first read or write, so writing nothing makes it happen while connecting, within its time
+// on the JVM, the handshake happens on the first read or write, so writing nothing makes it happen while connecting, within its time.
+// The certificate of a server connected to by its address is checked then, as the JVM doesn't check it
 private[fs2] object TlsHandshake {
-  final def apply[F[_]](socket: TLSSocket[F]): F[Unit] = socket.write(Chunk.empty)
+  final def apply[F[_]: Sync](socket: TLSSocket[F], host: String, checkServerName: Boolean): F[Unit] =
+    socket.write(Chunk.empty) >> (IpAddress.fromString(host) match {
+      case Some(address) if checkServerName =>
+        socket.session.flatMap(session => Sync[F].delay(session.getPeerCertificates)).flatMap { certificates =>
+          Sync[F].fromEither(TlsParameters.checkAddress(address, certificates))
+        }
+      case _ => Sync[F].unit
+    })
 }

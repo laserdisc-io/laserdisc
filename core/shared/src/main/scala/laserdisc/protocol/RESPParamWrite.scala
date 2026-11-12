@@ -32,7 +32,7 @@ Normally you would not need to define one manually, as one will be derived for y
 - ${A} is a List whose LUB has a RESPParamWrite instance defined
 - ${A} is a Tuple whose elements all have a RESPParamWrite instance defined
 """
-) trait RESPParamWrite[A] {
+) sealed trait RESPParamWrite[A] {
   def write(a: A): Seq[GenBulk]
 
   final def contramap[B](f: B => A): RESPParamWrite[B] = RESPParamWrite.instance(b => write(f(b)))
@@ -41,10 +41,13 @@ Normally you would not need to define one manually, as one will be derived for y
 object RESPParamWrite extends RESPParamWriteInstances {
   @inline final def apply[A](implicit instance: RESPParamWrite[A]): RESPParamWrite[A] = instance
 
-  final def const[A](thunk: =>Seq[GenBulk]): RESPParamWrite[A] =
-    (_: A) => thunk
-  final def instance[A](f: A => Seq[GenBulk]): RESPParamWrite[A] =
-    (a: A) => f(a)
+  // the only RESPParamWrite there is: every one is built with the functions below
+  private final class Of[A](f: A => Seq[GenBulk]) extends RESPParamWrite[A] {
+    override final def write(a: A): Seq[GenBulk] = f(a)
+  }
+
+  final def const[A](thunk: =>Seq[GenBulk]): RESPParamWrite[A]   = new Of(_ => thunk)
+  final def instance[A](f: A => Seq[GenBulk]): RESPParamWrite[A] = new Of(f)
 
   // what an option made of several values is sent as, kept in the option until a command sends it
   private[protocol] final def params[A](a: A)(implicit A: RESPParamWrite[A]): Seq[GenBulk] = A.write(a)

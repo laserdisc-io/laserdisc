@@ -29,11 +29,13 @@ import scala.annotation.implicitNotFound
 
 Try writing your own, for example:
 
-implicit final val myShow: Show[${A}] = new Show[${A}] {
-  override final def show(a: ${A}): String = ???
+implicit final val myShow: Show[${A}] = Show.instance { (a: ${A}) =>
+  ??? // the text a is sent as
 }
+
+You may also be able to build it from an existing Show with contramap.
 """
-) trait Show[A] {
+) sealed trait Show[A] {
   def show(a: A): String
 
   final def contramap[B](f: B => A): Show[B] = Show.instance(b => show(f(b)))
@@ -42,18 +44,14 @@ implicit final val myShow: Show[${A}] = new Show[${A}] {
 object Show extends ShowInstances {
   @inline final def apply[A](implicit instance: Show[A]): Show[A] = instance
 
-  final def const[A](s: =>String): Show[A] =
-    new Show[A] {
-      override def show(a: A): String = s
-    }
-  final def unsafeFromToString[A]: Show[A] =
-    new Show[A] {
-      override def show(a: A): String = a.toString
-    }
-  final def instance[A](f: A => String): Show[A] =
-    new Show[A] {
-      override def show(a: A): String = f(a)
-    }
+  // the only Show there is: every one is built with the functions below
+  private final class Of[A](f: A => String) extends Show[A] {
+    override final def show(a: A): String = f(a)
+  }
+
+  final def const[A](s: =>String): Show[A]       = new Of(_ => s)
+  final def unsafeFromToString[A]: Show[A]       = new Of(_.toString)
+  final def instance[A](f: A => String): Show[A] = new Of(f)
 }
 
 private[protocol] sealed trait ShowInstances {

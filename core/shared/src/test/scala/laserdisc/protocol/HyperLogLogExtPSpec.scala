@@ -49,17 +49,17 @@ final class HyperLogLogExtPSpec extends HyperLogLogPSpec with ExtPArguments {
     }
   }
   property("The HyperLogLog extended protocol using pfcount roundtrips successfully given key1") {
-    forAll { (k1: Key, nni: NonNegInt) =>
+    forAll { (k1: Key, nnl: NonNegLong) =>
       val protocol = pfcount(k1)
       assertEquals(protocol.encode, Arr(Bulk("PFCOUNT"), Bulk(k1)))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+      assertEquals(protocol.decode(Num(nnl.value)), nnl)
     }
   }
   property("The HyperLogLog extended protocol using pfcount roundtrips successfully given key1, key2") {
-    forAll { (k1: Key, k2: Key, nni: NonNegInt) =>
+    forAll { (k1: Key, k2: Key, nnl: NonNegLong) =>
       val protocol = pfcount(k1, k2)
       assertEquals(protocol.encode, Arr(Bulk("PFCOUNT"), Bulk(k1), Bulk(k2)))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+      assertEquals(protocol.decode(Num(nnl.value)), nnl)
     }
   }
   property("The HyperLogLog extended protocol using pfmerge roundtrips successfully given sourcekey1, sourcekey2 and destinationkey") {

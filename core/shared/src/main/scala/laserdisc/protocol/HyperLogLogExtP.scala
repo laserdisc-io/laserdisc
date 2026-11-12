@@ -32,7 +32,7 @@ trait HyperLogLogExtP { this: HyperLogLogBaseP =>
     pfadd(key, OneOrMoreKeys.unsafeFrom(element :: elements.toList))
 
   //PFCOUNT
-  final def pfcount(key: Key, keys: Key*): Single[NonNegInt] =
+  final def pfcount(key: Key, keys: Key*): Single[NonNegLong] =
     pfcount(OneOrMoreKeys.unsafeFrom(key :: keys.toList))
 
   //PFMERGE

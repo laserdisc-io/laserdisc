@@ -203,11 +203,11 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   protected final val colon: BitVector    = hex"3a".bits
   protected final val dollar: BitVector   = hex"24".bits
   protected final val star: BitVector     = hex"2a".bits
-  protected final val crlf: BitVector     = hex"0d0a".bits
+  protected final val crlf: BitVector     = ByteVector(CR_CH.toByte, LF_CH.toByte).bits
   protected final val minusOne: BitVector = hex"2d31".bits
   protected final val zero: BitVector     = hex"30".bits
   private final val crlfSize              = crlf.size
-  protected final val crlfBytes           = crlf.bytes
+  private[protocol] final val crlfBytes   = crlf.bytes
   private final val crlfBytesSize         = crlfBytes.size
 
   private final def crlfTerminatedFrom(from: Long) =

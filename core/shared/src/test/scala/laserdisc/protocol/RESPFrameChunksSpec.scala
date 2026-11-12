@@ -98,4 +98,15 @@ final class RESPFrameChunksSpec extends BaseSpec {
       MoreThanOneFrame(Vector(CompleteFrame(bytes("+a\r\n").bits), CompleteFrame(bytes("+b\r\n").bits)), bytes("?\r\n").bits)
     )
   }
+
+  test("a line longer than the limit without its end is an error, whether it arrives at once or a chunk at a time") {
+    def startingWith(s: String, inLine: Boolean) = IncompleteFrame(bytes(s).bits, 0L)(new FrameProgress(bytes(s).bits, Nil, inLine, 4L))
+    val tooLong                                  = "Expected a line of at most 4 bytes, but it hasn't ended"
+
+    assertEquals(startingWith("", inLine = false).append(bytes("+abcd").bits).left.toOption.map(_.getMessage), Some(tooLong))
+    val growing = startingWith("+a", inLine = true).append(bytes("bc").bits)
+    assertEquals(growing.map(_.isInstanceOf[IncompleteFrame]), true)
+    assertEquals(growing.flatMap(_.append(bytes("d").bits)).left.toOption.map(_.getMessage), Some(tooLong))
+    assertEquals(growing.flatMap(_.append(bytes("\r\n").bits)), CompleteFrame(bytes("+abc\r\n").bits))
+  }
 }

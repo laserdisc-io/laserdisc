@@ -262,10 +262,11 @@ final val PONG: PONG         = io.github.iltotore.iron.autoRefine[String, PONGRe
 private[laserdisc] final val NodeIdRegex: String = NodeIdRegexWit.value
 
 private[laserdisc] final val COMMA_CH = ','
+private[laserdisc] final val CR_CH    = '\r'
 private[laserdisc] final val LF_CH    = '\n'
 private[laserdisc] final val SPACE_CH = ' '
 private[laserdisc] final val COMMA    = s"$COMMA_CH"
-private[laserdisc] final val CRLF     = s"\r$LF_CH"
+private[laserdisc] final val CRLF     = s"$CR_CH$LF_CH"
 private[laserdisc] final val LF       = s"$LF_CH"
 private[laserdisc] final val SPACE    = s"$SPACE_CH"
 

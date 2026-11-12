@@ -55,6 +55,15 @@ private[laserdisc] object Blocking {
     }
   }
 
+  // whether a command waits for as long as it takes, with a wait of 0, as typed at the CLI
+  def waitsForever(protocol: Protocol.Single[?]): Boolean = {
+    val words = protocol.parameters.collect { case Bulk(word) => word }
+    waitAt(protocol.command, words).exists {
+      case (index, true)  => words.lift(index).flatMap(w => Try(w.toDouble).toOption).contains(0d)
+      case (index, false) => words.lift(index).flatMap(w => Try(w.toLong).toOption).contains(0L)
+    }
+  }
+
   // where a command's wait is among its parameters, and whether it's in seconds rather than milliseconds
   private def waitAt(command: String, words: Seq[String]): Option[(Int, Boolean)] =
     command.toUpperCase match {

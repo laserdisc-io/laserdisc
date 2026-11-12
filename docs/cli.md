@@ -41,6 +41,15 @@ Each reply is shown the way `redis-cli` shows it, followed by how long it took.
 Arguments with spaces go in quotes. Double quotes understand escapes such as
 `\n`, `\t` and `\x41`. Single quotes take everything literally, except `\'`.
 
+Commands that block, such as `BLPOP`, wait on the server for as long as you
+give them. With a wait of 0, they wait for as long as it takes:
+
+```
+localhost:6379> BLPOP jobs 0
+```
+
+To stop waiting, press Ctrl-C. This also leaves the prompt.
+
 Each command gets one reply on the same connection, so the prompt refuses the
 commands that would break that:
 

@@ -36,12 +36,15 @@ final class CLISpec extends CatsEffectSuite {
   override val munitIOTimeout: Duration = 60.seconds
 
   // what's on the screen after typing these lines, without the logo and with the timings blanked
-  private def session(args: List[String], lines: String*): IO[(ExitCode, String)] =
+  private def session(args: List[String], lines: String*): IO[(ExitCode, String)] = sessionWithin(20.seconds, args, lines*)
+
+  // the same, with each command given this long, on top of its wait
+  private def sessionWithin(timeout: FiniteDuration, args: List[String], lines: String*): IO[(ExitCode, String)] =
     IO.ref(Vector.empty[Byte]).flatMap { screen =>
       val typed = Stream.chunk(Chunk.array(lines.mkString("\n").getBytes(UTF_8))).covary[IO]
       val shown = (bytes: Stream[IO, Byte]) => bytes.chunks.foreach(chunk => screen.update(_ ++ chunk.toList))
 
-      CLI.impl.session(args, typed, shown).flatMap { code =>
+      CLI.impl.session(args, typed, shown, timeout).flatMap { code =>
         screen.get.map(bytes => code -> new String(bytes.toArray, UTF_8).replaceAll("\\[[0-9.,]+ms\\]", "[]"))
       }
     }
@@ -184,6 +187,34 @@ final class CLISpec extends CatsEffectSuite {
               allowed.map(line => s"$prompt<<< ${line.split(' ').head} - []\n").mkString + prompt
           )
           sent.get.assertEquals(allowed.map(_.split(' ').head))
+        }
+      }
+    }
+  }
+
+  test("a command typed with a wait of 0 waits for as long as it takes, and one with a wait gets its wait on top of the timeout") {
+    IO.ref(List.empty[List[String]]).flatMap { sent =>
+      val slow = FakeRedisServer { (_, commands) =>
+        commands.evalMap {
+          case Arr(words) =>
+            val typed = words.collect { case Bulk(w) => w }
+            sent.update(_ :+ typed) >> IO.sleep(1500.millis).as(s"*2\r\n${bulk(typed(1))}${bulk("v")}")
+          case other => IO.raiseError(new Exception(s"unexpected command $other"))
+        }
+      }
+      slow.use { port =>
+        sessionWithin(500.millis, List("127.0.0.1", port.value.toString), "BLPOP a 0", "BLPOP b 2").flatMap { case (code, screen) =>
+          val prompt = s"127.0.0.1:${port.value}> "
+          assertEquals(code, ExitCode.Success)
+          assertEquals(
+            afterLogo(screen),
+            s"""$prompt<<< 1) "a"
+               |2) "v" - []
+               |$prompt<<< 1) "b"
+               |2) "v" - []
+               |$prompt""".stripMargin
+          )
+          sent.get.assertEquals(List(List("BLPOP", "a", "0"), List("BLPOP", "b", "2")))
         }
       }
     }

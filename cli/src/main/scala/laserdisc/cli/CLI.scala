@@ -27,7 +27,9 @@ import _root_.fs2.{io, text}
 import cats.effect.*
 import cats.syntax.all.*
 import laserdisc.fs2.*
-import laserdisc.protocol.RESPRead
+import laserdisc.protocol.{Forever, RESPRead}
+
+import scala.concurrent.duration.*
 
 object CLI extends IOApp { self =>
 
@@ -78,7 +80,10 @@ object CLI extends IOApp { self =>
 
   private final val bufSize = 10 * 1024
 
-  override final def run(args: List[String]): IO[ExitCode] = impl.session(args, io.stdin[IO](bufSize), io.stdout[IO])
+  // how long a command may take, on top of the wait it's given
+  private final val timeout = 20.seconds
+
+  override final def run(args: List[String]): IO[ExitCode] = impl.session(args, io.stdin[IO](bufSize), io.stdout[IO], timeout)
 
   private[cli] object impl {
     // what's typed is sent on a connection the prompt shares with the next commands, each taking the next reply: these would leave it
@@ -141,19 +146,20 @@ object CLI extends IOApp { self =>
       }
     }
 
-    def session(args: List[String], in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing]): IO[ExitCode] = {
+    def session(args: List[String], in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing], timeout: FiniteDuration): IO[ExitCode] = {
       def write(msg: String): IO[Unit] = Stream.emit(msg).through(text.utf8.encode).through(out).compile.drain
 
       options(args) match {
-        case Right(chosen) => write(s"$logo$LF") >> mkStream(chosen, in, out).compile.drain.as(ExitCode.Success)
+        case Right(chosen) => write(s"$logo$LF") >> mkStream(chosen, in, out, timeout).compile.drain.as(ExitCode.Success)
         case Left(error)   => write(s"$error$LF").as(ExitCode.Error)
       }
     }
 
-    def mkStream(options: Options, in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing]): Stream[IO, ExitCode] =
+    // one command at a time, on a client of its own, so that a command typed with a wait of 0 can wait for as long as it takes
+    def mkStream(options: Options, in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing], timeout: FiniteDuration): Stream[IO, ExitCode] =
       Stream
         .resource(
-          RedisClient[IO].to(options.host, options.port, credentials = options.credentials, database = options.database)
+          RedisClient[IO].dedicated(options.host, options.port, credentials = options.credentials, database = options.database)
         )
         .evalMap { redisClient =>
           val database                         = options.database.filter(_.value != 0).fold("")(db => s"[${db.value}]")
@@ -175,7 +181,7 @@ object CLI extends IOApp { self =>
               .compile
               .drain
 
-          val protocol: Pipe[IO, String, Protocol[RESP]] =
+          val protocol: Pipe[IO, String, Protocol.Single[RESP]] =
             _.map(CommandLine.parse).flatMap {
               case Left(error)            => Stream.exec(prompt(s"(error) $error$LF"))
               case Right(Nil)             => Stream.exec(emptyPrompt)
@@ -195,7 +201,7 @@ object CLI extends IOApp { self =>
               .evalMap { protocol =>
                 for {
                   startTime             <- IO(System.nanoTime())
-                  maybeProtocolResponse <- redisClient.send(protocol)
+                  maybeProtocolResponse <- Forever.from(protocol).fold(redisClient.send(protocol, timeout))(redisClient.send(_))
                   endTime               <- IO(System.nanoTime())
                 } yield maybeProtocolResponse -> (endTime - startTime)
               }

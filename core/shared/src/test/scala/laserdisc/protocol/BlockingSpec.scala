@@ -30,7 +30,7 @@ final class BlockingSpec extends BaseSpec {
   private val b = redis_8_10.blocking
 
   // as typed at the CLI
-  private def typed(words: String*): Protocol[RESP] = Protocol(words.head, words.tail.toList).using(RESPRead.raw)
+  private def typed(words: String*): Protocol.Single[RESP] = Protocol(words.head, words.tail.toList).using(RESPRead.raw)
 
   test("A blocking command's wait is read from what's sent, in seconds or milliseconds") {
     assertEquals(Blocking.waitOf(b.blpop[String](Key("k"), BlockingSeconds.unsafeFrom(1.5d))), 1500.millis)
@@ -66,6 +66,36 @@ final class BlockingSpec extends BaseSpec {
     assertEquals(Blocking.waitOf(typed("GET", "k")), Duration.Zero)
     assertEquals(Blocking.waitOf(typed("BLPOP", "k", "soon")), Duration.Zero)
     assertEquals(Blocking.waitOf(redis_8_10.multi(b.blpop[String](Key("k"), BlockingSeconds.unsafeFrom(5d)))), Duration.Zero)
+  }
+
+  test("A command typed with a wait of 0 waits for as long as it takes, and is sent as typed") {
+    val forever = List(
+      typed("BLPOP", "a", "b", "0"),
+      typed("brpop", "k", "0.0"),
+      typed("BZMPOP", "0", "1", "z", "MIN"),
+      typed("BLMOVEM", "a", "b", "LEFT", "RIGHT", "0", "COUNT", "2", "OBO"),
+      typed("WAIT", "1", "0"),
+      typed("WAITAOF", "0", "1", "0"),
+      typed("XREAD", "BLOCK", "0", "STREAMS", "x", "$"),
+      typed("XREADGROUP", "GROUP", "g", "c", "BLOCK", "0", "STREAMS", "x", ">")
+    )
+    forever.foreach { protocol =>
+      assert(Blocking.waitsForever(protocol), protocol.encode)
+      assertEquals(Forever.from(protocol).map(_.protocol.encode), Some(protocol.encode))
+    }
+    val not = List(
+      typed("BLPOP", "k", "1"),
+      typed("BLPOP", "k", "soon"),
+      typed("BLPOP"),
+      typed("WAIT", "1", "5"),
+      typed("XREAD", "STREAMS", "x", "$"),
+      typed("XREAD", "STREAMS", "BLOCK", "0", "$", "$"),
+      typed("GET", "0")
+    )
+    not.foreach { protocol =>
+      assert(!Blocking.waitsForever(protocol), protocol.encode)
+      assertEquals(Forever.from(protocol), None)
+    }
   }
 
   test("XREAD and XREADGROUP's BLOCK is only an option before STREAMS, not a group, consumer or stream named BLOCK") {

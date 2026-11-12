@@ -32,4 +32,8 @@ final class Forever[+A] private (private[laserdisc] val protocol: Protocol.Singl
 object Forever {
   // from the same command with a wait, which only stands in for waiting forever
   private[protocol] def apply[A](timed: Protocol.Single[A]): Forever[A] = new Forever(Blocking.forever(timed))
+
+  // a command already sent with a wait of 0, as typed at the CLI, if it is one
+  private[laserdisc] def from[A](protocol: Protocol.Single[A]): Option[Forever[A]] =
+    if (Blocking.waitsForever(protocol)) Some(new Forever(protocol)) else None
 }

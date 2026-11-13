@@ -142,12 +142,10 @@ final class FeedSpec extends BaseSpec with PublishShardP with MonitorP {
     )
   }
 
-  test("HELLO asks for protocol 2, logging in and naming the connection, and reads what each server sends") {
+  test("HELLO asks for protocol 2, naming the connection, and reads what each server sends") {
     val h = redis_6_2
     assertEquals(h.hello.encode, bulks("HELLO", "2"))
-    assertEquals(h.hello(Key("u"), Key("p")).encode, bulks("HELLO", "2", "AUTH", "u", "p"))
     assertEquals(h.hello(ConnectionName("n")).encode, bulks("HELLO", "2", "SETNAME", "n"))
-    assertEquals(h.hello(Key("u"), Key("p"), ConnectionName("n")).encode, bulks("HELLO", "2", "AUTH", "u", "p", "SETNAME", "n"))
     def fields(extra: RESP*) =
       Arr(
         List[RESP](Bulk("server"), Bulk("redis"), Bulk("version"), Bulk("7.4.0"), Bulk("proto"), Num(2L), Bulk("id"), Num(1L)) ++

@@ -27,12 +27,9 @@ import Protocol.Single
 trait ConnectionBaseP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
-      "AUTH",
       "ECHO",
-      "HELLO: AUTH SETNAME",
-      "PING",
-      "QUIT",
-      "SELECT"
+      "HELLO: SETNAME",
+      "PING"
     )
 
   private implicit final val pongRead: Read[Str, PONG] = Read.instance {
@@ -40,19 +37,13 @@ trait ConnectionBaseP extends Features {
     case Str(other)                      => Left(RESPDecErr(s"Wrong PONG encoding: was $other"))
   }
 
-  final def auth(password: Key): Single[OK] = Protocol("AUTH", password).as[Str, OK]
-
   final def echo[A: Show: Read[Bulk, _]](message: A): Single[A] = Protocol("ECHO", message).as[Bulk, A]
 
-  /** What the server says about itself and this connection, optionally logging in and naming the connection first. It always asks for
-    * protocol 2, the one laserdisc reads
+  /** What the server says about itself and this connection, optionally naming the connection first. It always asks for protocol 2, the one
+    * laserdisc reads
     */
-  val hello: Single[ServerInspection.HelloCore]                               = helloWith(Nil, helloCore)
-  def hello(username: Key, password: Key): Single[ServerInspection.HelloCore] =
-    helloWith(List("AUTH", username.value, password.value), helloCore)
+  val hello: Single[ServerInspection.HelloCore]                       = helloWith(Nil, helloCore)
   def hello(name: ConnectionName): Single[ServerInspection.HelloCore] = helloWith(List("SETNAME", name.value), helloCore)
-  def hello(username: Key, password: Key, name: ConnectionName): Single[ServerInspection.HelloCore] =
-    helloWith(List("AUTH", username.value, password.value, "SETNAME", name.value), helloCore)
 
   private final lazy val helloCore = RESPRead.instance(ServerInspection.helloCore)
 
@@ -60,10 +51,6 @@ trait ConnectionBaseP extends Features {
 
   final val ping: Single[PONG]                                  = Protocol("PING", EmptyTuple).as[Str, PONG]
   final def ping[A: Show: Read[Bulk, _]](message: A): Single[A] = Protocol("PING", message).as[Bulk, A]
-
-  final val quit: Single[OK] = Protocol("QUIT", EmptyTuple).as[Str, OK]
-
-  final def select(index: DbIndex): Single[OK] = Protocol("SELECT", index).as[Str, OK]
 }
 
 trait ConnectionSwapDbP extends Features {
@@ -78,12 +65,8 @@ trait ConnectionHello6_2P extends ConnectionBaseP {
 
   private final lazy val read6_2 = RESPRead.instance(ServerInspection.hello6_2)
 
-  override val hello: Single[Hello6_2]                               = helloWith(Nil, read6_2)
-  override def hello(username: Key, password: Key): Single[Hello6_2] =
-    helloWith(List("AUTH", username.value, password.value), read6_2)
-  override def hello(name: ConnectionName): Single[Hello6_2]                               = helloWith(List("SETNAME", name.value), read6_2)
-  override def hello(username: Key, password: Key, name: ConnectionName): Single[Hello6_2] =
-    helloWith(List("AUTH", username.value, password.value, "SETNAME", name.value), read6_2)
+  override val hello: Single[Hello6_2]                       = helloWith(Nil, read6_2)
+  override def hello(name: ConnectionName): Single[Hello6_2] = helloWith(List("SETNAME", name.value), read6_2)
 }
 
 /** HELLO with each module's path and arguments: Redis 7.0 */
@@ -92,12 +75,8 @@ trait ConnectionHello7_0P extends ConnectionHello6_2P {
 
   private final lazy val read7_0 = RESPRead.instance(ServerInspection.hello7_0)
 
-  override val hello: Single[Hello7_0]                               = helloWith(Nil, read7_0)
-  override def hello(username: Key, password: Key): Single[Hello7_0] =
-    helloWith(List("AUTH", username.value, password.value), read7_0)
-  override def hello(name: ConnectionName): Single[Hello7_0]                               = helloWith(List("SETNAME", name.value), read7_0)
-  override def hello(username: Key, password: Key, name: ConnectionName): Single[Hello7_0] =
-    helloWith(List("AUTH", username.value, password.value, "SETNAME", name.value), read7_0)
+  override val hello: Single[Hello7_0]                       = helloWith(Nil, read7_0)
+  override def hello(name: ConnectionName): Single[Hello7_0] = helloWith(List("SETNAME", name.value), read7_0)
 }
 
 trait ConnectionP extends ConnectionBaseP with ConnectionSwapDbP with ConnectionHello7_0P

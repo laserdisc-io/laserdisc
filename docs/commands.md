@@ -122,6 +122,8 @@ because they have no use on a connection shared by all your calls:
 | `SCRIPT DEBUG` | It takes over the connection with an interactive debugger |
 | `UNSUBSCRIBE`, `PUNSUBSCRIBE`, `SUNSUBSCRIBE` | Closing a [subscription](subscribing.md) ends it |
 | `HELLO 3` | laserdisc reads protocol 2, so `hello` only asks for that |
+| `AUTH`, `SELECT`, `HELLO` with `AUTH` | A connection the client opens again wouldn't have them: pass `credentials` and `database` when you [connect](client.md) |
+| `QUIT` | Closing the client closes its connections |
 | `DISCARD` | A transaction is sent whole, so there's never an open one to cancel |
 | `RESET` | It would log out and change the database for everyone sharing the connection |
 | `CLIENT REPLY` | Replies are matched to requests by their order, so a missing reply breaks the connection |

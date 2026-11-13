@@ -25,14 +25,6 @@ package protocol
 import org.scalacheck.Prop.forAll
 
 final class ConnectionPSpec extends BaseSpec with ConnectionP {
-  property("The Connection protocol using auth roundtrips successfully given non empty password") {
-    forAll { (key: Key) =>
-      val protocol = auth(key)
-      assertEquals(protocol.encode, Arr(Bulk("AUTH"), Bulk(key.value)))
-      assertEquals(protocol.decode(Str(OK.value)), OK)
-    }
-  }
-
   property("The Connection protocol using echo roundtrips successfully given any String message") {
     forAll { (s: String) =>
       val protocol = echo(s)
@@ -71,18 +63,12 @@ final class ConnectionPSpec extends BaseSpec with ConnectionP {
     assertEquals(protocol.decode(Str(PONG.value)), PONG)
   }
 
-  property("The Connection protocol using quit roundtrips successfully") {
-    val protocol = quit
-    assertEquals(protocol.encode, Arr(Bulk("QUIT")))
-    assertEquals(protocol.decode(Str(OK.value)), OK)
-  }
-
-  property("The Connection protocol using select roundtrips successfully given valid DbIndexes") {
-    forAll { (dbi: DbIndex) =>
-      val protocol = select(dbi)
-      assertEquals(protocol.encode, Arr(Bulk("SELECT"), Bulk(dbi)))
-      assertEquals(protocol.decode(Str(OK.value)), OK)
-    }
+  test("The Connection protocol has no auth, select, quit or hello logging in, as a connection the client opens again wouldn't have them") {
+    assert(compileErrors("auth(Key(\"secret\"))").nonEmpty)
+    assert(compileErrors("select(DbIndex(1))").nonEmpty)
+    assert(compileErrors("quit").nonEmpty)
+    assert(compileErrors("hello(Key(\"user\"), Key(\"secret\"))").nonEmpty)
+    assert(compileErrors("hello(Key(\"user\"), Key(\"secret\"), ConnectionName(\"name\"))").nonEmpty)
   }
 
   property("The Connection protocol using swapdb roundtrips successfully given valid DbIndexes") {

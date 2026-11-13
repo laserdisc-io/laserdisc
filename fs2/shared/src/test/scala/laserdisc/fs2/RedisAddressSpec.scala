@@ -24,6 +24,7 @@ package fs2
 
 import cats.effect.IO
 import cats.syntax.eq.*
+import cats.syntax.traverse.*
 import laserdisc.auto.*
 import munit.CatsEffectSuite
 
@@ -34,10 +35,26 @@ final class RedisAddressSpec extends CatsEffectSuite {
     address.toSocketAddress[IO].map(_.toString).assertEquals("localhost:6379")
   }
 
-  test("a host valid for Redis but too long for a socket address fails") {
-    val tooLong = Host.unsafeFrom(List.fill(4)("a" * 63).mkString("."))
-    RedisAddress(tooLong, 6379).toSocketAddress[IO].attempt.map { outcome =>
-      assertEquals(outcome.left.map(_.getClass.getSimpleName), Left("InvalidSocketAddress"))
+  test("a hostname ending with a dot gives the socket address of the name without it") {
+    RedisAddress("localhost.", 6379).toSocketAddress[IO].map(_.toString).assertEquals("localhost:6379")
+  }
+
+  test("every kind of host gives a socket address") {
+    val hosts = List(
+      "1.1.1.1",
+      "::",
+      "::1",
+      "1:2:3:4:5:6:7:8",
+      "1:2:3:4:5:6:7::",
+      "::ffff:192.0.2.1",
+      "1:2:3:4:5:6:192.0.2.1",
+      "fe80::1%eth0",
+      "redis.example.com",
+      "redis.example.com.",
+      List.fill(3)("a" * 63).mkString(".") + "." + "a" * 61
+    )
+    hosts.traverse(h => RedisAddress(Host.unsafeFrom(h), 6379).toSocketAddress[IO].attempt.map(h -> _)).map { outcomes =>
+      assertEquals(outcomes.collect { case (h, Left(_)) => h }, Nil)
     }
   }
 

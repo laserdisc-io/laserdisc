@@ -114,13 +114,12 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       s"$nid ${h.fold(_.value, _.value)}:$p@$cp ${fs.mkString(COMMA)} $mnid $ps $pr $ce $l${ss.mkString(SPACE, SPACE, "")}"
   }
   private val nodesIsValid: RawNodes => Boolean = {
-    val nid    = NodeIdRegexWit.value
-    val ip     = IPv4RegexWit.value
-    val domain = Rfc1123HostnameRegexWit.value
-    val flags  = raw"noflags|([a-z?]+)(,([a-z?]+))*"
-    val link   = raw"(connected|disconnected)"
-    val slots  = raw"(\d+|(\d+-\d+)|\[\d+-[><]-$nid\])?(\s(\d+|(\d+-\d+)|\[\d+-[><]-$nid\]))*"
-    val R      = raw"^$nid\s($ip|$domain)?:(\d+)(@\d+)?\s($flags)\s(-|$nid)\s\d+\s\d+\s\d+\s$link\s$slots$$".r
+    val nid   = NodeIdRegexWit.value
+    val host  = raw"[A-Za-z0-9\-\.]*"
+    val flags = raw"noflags|([a-z?]+)(,([a-z?]+))*"
+    val link  = raw"(connected|disconnected)"
+    val slots = raw"(\d+|(\d+-\d+)|\[\d+-[><]-$nid\])?(\s(\d+|(\d+-\d+)|\[\d+-[><]-$nid\]))*"
+    val R     = raw"^$nid\s($host):(\d+)(@\d+)?\s($flags)\s(-|$nid)\s\d+\s\d+\s\d+\s$link\s$slots$$".r
 
     _.map(rawNodeToString).forall { case R(_*) => true; case _ => false }
   }

@@ -66,18 +66,11 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
     val classBody = nonEmptyListOf(frequency(1 -> const("-"), 1 -> escaped, 4 -> plain)).map(_.mkString)
     frequency(3 -> basicGlob.map(_.mkString), 1 -> classBody.map(c => s"[$c]"), 1 -> classBody.map(c => s"[^$c]"))
   }
-  private final val allNICsGen: Gen[String] = const(AllNICsEqWit.value)
-  private final val lbGen: Gen[String]      = const(LoopbackEqWit.value)
   private final val rfc1123Gen: Gen[String] = {
     def dashAtBeginOrEnd(s: String) = s.startsWith(dashString) || s.endsWith(dashString)
     val piece                       = chooseNum(1, 62).flatMap(strOfNGen(_, 1 -> dashGen, 99 -> alphaNumChar))
-    choose(1, 5).flatMap(listOfN(_, piece.retryUntil(!dashAtBeginOrEnd(_))).map(_.mkString(dotString)).retryUntil(_.size <= 255))
+    choose(1, 5).flatMap(listOfN(_, piece.retryUntil(!dashAtBeginOrEnd(_))).map(_.mkString(dotString)).retryUntil(_.size <= 253))
   }
-  private final val rfc1918Gen: Gen[String] = Gen.oneOf(ipv4Gen(10), chooseNum(16, 31).flatMap(ipv4Gen(172, _)), ipv4Gen(192, 168))
-  private final val rfc5737Gen: Gen[String] = Gen.oneOf(ipv4Gen(192, 0, 2), ipv4Gen(198, 51, 100), ipv4Gen(203, 0, 113))
-  private final val rfc3927Gen: Gen[String] = ipv4Gen(169, 254)
-  private final val rfc2544Gen: Gen[String] = chooseNum(18, 19).flatMap(ipv4Gen(198, _))
-
   private final def ipv4Gen(hs: Int*): Gen[String]           = listOfN(4 - hs.size, byteRange).map(ts => (hs ++: ts).mkString(dotString))
   private final def twoOrMore[A](ga: =>Gen[A]): Gen[List[A]] = nonEmptyListOf(ga).suchThat(_.size > 1)
   private final def zip[A, B](arbA: =>Arbitrary[A], arbB: =>Arbitrary[B]): Gen[(A, B)] =
@@ -133,7 +126,7 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
     Gen.resize(20, nonEmptyListOf(globGen)).map(_.mkString).filter(globPatternIsValid) :| "glob pattern"
   final val hostGen: Gen[Host] = {
     val hosts = 7 -> Gen
-      .oneOf(allNICsGen, lbGen, rfc1123Gen, rfc1918Gen, rfc5737Gen, rfc3927Gen, rfc2544Gen)
+      .oneOf(ipv4Gen(), rfc1123Gen)
       .filter(hostIsValid)
       .map(hs => Host.unsafeFrom(hs))
     val loopbackHost = 1 -> Gen.const(LoopbackHost)

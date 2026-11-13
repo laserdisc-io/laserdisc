@@ -23,13 +23,12 @@ import java.lang as j
 
 import eu.timepit.refined.W
 import eu.timepit.refined.api.*
-import eu.timepit.refined.boolean.{And, Not, Or, True}
+import eu.timepit.refined.boolean.{And, Not, True}
 import eu.timepit.refined.char.Whitespace
-import eu.timepit.refined.collection.{Forall, MaxSize, MinSize, NonEmpty}
+import eu.timepit.refined.collection.{Forall, MinSize, NonEmpty}
 import eu.timepit.refined.generic.Equal
 import eu.timepit.refined.numeric.{Interval, NonNaN, NonNegative, Positive}
-import eu.timepit.refined.string.{IPv4, MatchesRegex}
-import eu.timepit.refined.types.net.PrivateNetworks.*
+import eu.timepit.refined.string.MatchesRegex
 
 import scala.annotation.{implicitNotFound, nowarn}
 
@@ -114,7 +113,6 @@ package object laserdisc {
   final val AclPatternRegexWit = W(
     """[^ \x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
   )
-  final val IPv4RegexWit                = W("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
   final val LatitudeMinValueWit         = W(-85.05112878d)
   final val LatitudeMaxValueWit         = W(85.05112878d)
   final val LongitudeMinValueWit        = W(-180.0d)
@@ -127,10 +125,6 @@ package object laserdisc {
   final val PortMinValueWit             = W(1)
   final val PortMaxValueWit             = W(65535)
   final val RangeOffsetMaxValueWit      = W(536870911)
-  final val Rfc1123HostnameMaxLengthWit = W(255)
-  final val Rfc1123HostnameRegexWit     = W(
-    "(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*"
-  )
   final val Sha1RegexWit                = W("[a-f0-9]{40}")
   final val SignedBitWidthMaxValueWit   = W(64)
   final val SlotMaxValueWit             = W(16383)
@@ -144,15 +138,13 @@ package object laserdisc {
   /** Seconds a blocking command waits, never forever, as 0 would. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above
     * what Dragonfly takes
     */
-  final type BlockingSecondsRef = NonNaN And Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T]
-  final type ConnectionNameRef  = OneOrMoreRef And Forall[NoWhitespace And NoControlChar]
-  final type DbIndexRef         = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
-  final type GeoHashRef         = MatchesRegex[GeoHashRegexWit.T]
-  final type GlobPatternRef     = MatchesRegex[GlobPatternRegexWit.T]
-  final type AclPatternRef      = MatchesRegex[AclPatternRegexWit.T]
-  final type HostRef            = Equal[AllNICsEqWit.T] Or Equal[LoopbackEqWit.T] Or
-    (Not[IPv4] And MaxSize[Rfc1123HostnameMaxLengthWit.T] And MatchesRegex[Rfc1123HostnameRegexWit.T]) Or Rfc1918PrivateSpec Or
-    Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec
+  final type BlockingSecondsRef  = NonNaN And Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T]
+  final type ConnectionNameRef   = OneOrMoreRef And Forall[NoWhitespace And NoControlChar]
+  final type DbIndexRef          = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
+  final type GeoHashRef          = MatchesRegex[GeoHashRegexWit.T]
+  final type GlobPatternRef      = MatchesRegex[GlobPatternRegexWit.T]
+  final type AclPatternRef       = MatchesRegex[AclPatternRegexWit.T]
+  final type HostRef             = ValidHost
   final type IndexRef            = True
   final type KeyRef              = OneOrMoreRef
   final type LatitudeRef         = NonNaN And Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]

@@ -106,7 +106,6 @@ final val GlobPatternRegexWit = new Witness(
 final val AclPatternRegexWit = new Witness(
   """[^ \x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
 )
-final val IPv4RegexWit                = new Witness("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
 final val LatitudeMinValueWit         = new Witness(-85.05112878d)
 final val LatitudeMaxValueWit         = new Witness(85.05112878d)
 final val LongitudeMinValueWit        = new Witness(-180.0d)
@@ -119,9 +118,6 @@ final val PONGEqWit                   = new Witness("PONG")
 final val PortMinValueWit             = new Witness(1)
 final val PortMaxValueWit             = new Witness(65535)
 final val RangeOffsetMaxValueWit      = new Witness(536870911)
-final val Rfc1123HostnameMaxLengthWit = new Witness(255)
-final val Rfc1123HostnameRegexWit     =
-  new Witness("(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*")
 final val Sha1RegexWit                = new Witness("[a-f0-9]{40}")
 final val SignedBitWidthMaxValueWit   = new Witness(64)
 final val SlotMaxValueWit             = new Witness(16383)
@@ -129,12 +125,6 @@ final val StringLengthMaxValueWit     = new Witness(4294967295L)
 final val UnsignedBitWidthMaxValueWit = new Witness(63)
 
 // Refinements
-private final type IPv4Ref    = Match["^(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)){3}$"]
-private final type Rfc1918Ref = IPv4Ref &
-  (Match["^10\\..*"] | Match["^172\\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31)\\..+"] | Match["^192\\.168\\..*"])
-private final type Rfc5737Ref     = IPv4Ref & (Match["^192\\.0\\.2\\..*"] | Match["^198\\.51\\.100\\..*"] | Match["^203\\.0\\.113\\..*"])
-private final type Rfc3927Ref     = IPv4Ref & Match["^169\\.254\\..*"]
-private final type Rfc2544Ref     = IPv4Ref & (Match["^198\\.18\\..*"] | Match["^198\\.19\\..*"])
 private final type ValidDoubleRef = NonNaN
 
 /** The counter LFU eviction keeps of how often a key is used, as OBJECT FREQ reports it */
@@ -143,15 +133,13 @@ final type AccessFrequencyRef = Interval.Closed[0, AccessFrequencyMaxValueWit.T]
 /** Seconds a blocking command waits, never forever, as 0 would. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above what
   * Dragonfly takes
   */
-final type BlockingSecondsRef = ValidDoubleRef & Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T]
-final type ConnectionNameRef  = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
-final type DbIndexRef         = Interval.Closed[0, DbIndexMaxValueWit.T]
-final type GeoHashRef         = Match[GeoHashRegexWit.T]
-final type GlobPatternRef     = Match[GlobPatternRegexWit.T]
-final type AclPatternRef      = Match[AclPatternRegexWit.T]
-final type HostRef            = StrictEqual[AllNICsEqWit.T] | StrictEqual[LoopbackEqWit.T] |
-  (Not[IPv4Ref] & MaxLength[Rfc1123HostnameMaxLengthWit.T] & Match[Rfc1123HostnameRegexWit.T]) | Rfc1918Ref | Rfc5737Ref | Rfc3927Ref |
-  Rfc2544Ref
+final type BlockingSecondsRef  = ValidDoubleRef & Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T]
+final type ConnectionNameRef   = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
+final type DbIndexRef          = Interval.Closed[0, DbIndexMaxValueWit.T]
+final type GeoHashRef          = Match[GeoHashRegexWit.T]
+final type GlobPatternRef      = Match[GlobPatternRegexWit.T]
+final type AclPatternRef       = Match[AclPatternRegexWit.T]
+final type HostRef             = ValidHost
 final type IndexRef            = Pure
 final type KeyRef              = MinLength[1]
 final type LatitudeRef         = Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]

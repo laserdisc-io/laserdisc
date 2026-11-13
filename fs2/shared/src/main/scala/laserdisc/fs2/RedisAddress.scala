@@ -28,9 +28,10 @@ import com.comcast.ip4s
 import com.comcast.ip4s.SocketAddress
 
 final case class RedisAddress(host: Host, port: Port) {
+  // a hostname ending with a dot is resolved without it, as ip4s takes no such name
   def toSocketAddress[F[_]](implicit F: ApplicativeError[F, Throwable]): F[SocketAddress[ip4s.Host]] =
     (for {
-      h <- ip4s.Host.fromString(host.value)
+      h <- ip4s.Host.fromString(host.value.stripSuffix("."))
       p <- ip4s.Port.fromInt(port.value)
     } yield new SocketAddress(h, p)) match {
       case None    => F.raiseError(InvalidSocketAddress(host, port))

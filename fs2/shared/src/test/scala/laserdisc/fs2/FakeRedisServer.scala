@@ -22,7 +22,8 @@
 package laserdisc
 package fs2
 
-import _root_.fs2.Chunk
+import _root_.fs2.io.net.Network
+import _root_.fs2.{Chunk, Stream}
 import _root_.fs2.io.net.ServerSocket
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*

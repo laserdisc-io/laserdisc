@@ -22,6 +22,7 @@
 package laserdisc
 package fs2
 
+import _root_.fs2.Stream
 import cats.effect.IO
 import laserdisc.auto.*
 import laserdisc.protocol.Feed.{Message, MonitorEvent, PatternMessage, ShardMessage}

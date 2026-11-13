@@ -22,7 +22,7 @@
 package laserdisc
 package fs2
 
-import _root_.fs2.io.net.Socket
+import _root_.fs2.io.net.{Network, Socket}
 import _root_.fs2.io.net.tls.TLSContext
 import cats.effect.{Resource, Sync}
 

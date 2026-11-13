@@ -22,7 +22,8 @@
 package laserdisc
 package fs2
 
-import _root_.fs2.io.net.Socket
+import _root_.fs2.Stream
+import _root_.fs2.io.net.{Network, Socket}
 import cats.effect.std.Queue as CatsQueue
 import cats.effect.syntax.all.*
 import cats.effect.{Async, Ref, Resource}

@@ -22,9 +22,9 @@
 package laserdisc
 package fs2
 
-import _root_.fs2.{Chunk, Pull}
+import _root_.fs2.{Chunk, Pipe, Pull, Stream}
 import _root_.fs2.interop.scodec.{StreamDecoder, StreamEncoder}
-import _root_.fs2.io.net.Socket
+import _root_.fs2.io.net.{Network, Socket}
 import cats.{ApplicativeThrow, MonadThrow}
 import cats.effect.syntax.all.*
 import cats.effect.{Resource, Temporal}

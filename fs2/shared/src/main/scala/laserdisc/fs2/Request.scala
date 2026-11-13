@@ -37,13 +37,18 @@ object Request {
     override type A = A0
   }
 
-  def apply[F[_], A](protocol: Protocol[A], callback: Maybe[A] => F[Unit]): Request[F] =
+  private[fs2] def apply[F[_], A](protocol: Protocol[A], callback: Maybe[A] => F[Unit]): Request[F] =
     new Req[F, A](protocol, callback) {}
 }
 
 // the requests of one send, which go to the server together and in order. claim is completed by whoever comes
 // first: the connection, when it sends them, or the caller, when it stops waiting for the replies
-final case class Batch[F[_]](requests: Vector[Request[F]], claim: Deferred[F, Unit], timeout: FiniteDuration)
+sealed abstract case class Batch[F[_]](requests: Vector[Request[F]], claim: Deferred[F, Unit], timeout: FiniteDuration)
+
+object Batch {
+  private[fs2] def apply[F[_]](requests: Vector[Request[F]], claim: Deferred[F, Unit], timeout: FiniteDuration): Batch[F] =
+    new Batch[F](requests, claim, timeout) {}
+}
 
 // a request sent to the server: its reply is due by due, and it's answered once all the expected replies have arrived
 private[fs2] final case class InFlight[F[_]](request: Request[F], due: FiniteDuration, expected: Int, replies: Vector[RESP])

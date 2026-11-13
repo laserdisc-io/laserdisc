@@ -22,10 +22,11 @@
 package laserdisc
 package fs2
 
-import _root_.fs2.Chunk
+import _root_.fs2.{Chunk, Pipe, Stream}
+import _root_.fs2.io.net.Network
 import cats.effect.kernel.{Deferred, Ref, Temporal}
 import cats.effect.syntax.all.*
-import cats.effect.std.Mutex
+import cats.effect.std.{Mutex, Queue}
 import cats.effect.{Async, Concurrent, Fiber, Resource}
 import cats.syntax.all.*
 import laserdisc.protocol.RESPRead

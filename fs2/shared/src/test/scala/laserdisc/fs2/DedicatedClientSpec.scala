@@ -22,6 +22,7 @@
 package laserdisc
 package fs2
 
+import _root_.fs2.{Pipe, Stream}
 import cats.effect.{Deferred, IO, Ref}
 import cats.syntax.all.*
 import laserdisc.auto.*

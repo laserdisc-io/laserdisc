@@ -182,6 +182,7 @@ you its values as a `Stream`:
 
 ```scala mdoc:compile-only
 import cats.effect.IO
+import fs2.Stream
 
 import laserdisc.*
 import laserdisc.redis_8_10.*

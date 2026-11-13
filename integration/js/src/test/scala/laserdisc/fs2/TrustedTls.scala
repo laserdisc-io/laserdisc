@@ -21,6 +21,7 @@
 
 package laserdisc.fs2
 
+import _root_.fs2.io.net.Network
 import _root_.fs2.io.net.tls.SecureContext
 import cats.effect.{IO, Resource}
 

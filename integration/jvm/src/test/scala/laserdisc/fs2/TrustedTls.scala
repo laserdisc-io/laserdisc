@@ -21,6 +21,7 @@
 
 package laserdisc.fs2
 
+import _root_.fs2.io.net.Network
 import cats.effect.{IO, Resource}
 
 import java.io.ByteArrayInputStream

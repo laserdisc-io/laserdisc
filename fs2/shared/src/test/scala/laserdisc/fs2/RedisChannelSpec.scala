@@ -22,7 +22,7 @@
 package laserdisc
 package fs2
 
-import _root_.fs2.Chunk
+import _root_.fs2.{Chunk, Stream}
 import cats.effect.IO
 import log.effect.{LogLevel, LogWriter}
 import log.effect.internal.Show

@@ -22,7 +22,8 @@
 package laserdisc
 package fs2
 
-import _root_.fs2.Chunk
+import _root_.fs2.io.net.Network
+import _root_.fs2.{Chunk, Stream}
 import cats.effect.IO
 import com.comcast.ip4s
 import munit.CatsEffectSuite

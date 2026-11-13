@@ -23,7 +23,7 @@ package laserdisc
 package cli
 
 import java.nio.charset.StandardCharsets.UTF_8
-import _root_.fs2.{io, text}
+import _root_.fs2.{Pipe, Stream, io, text}
 import cats.effect.*
 import cats.syntax.all.*
 import laserdisc.fs2.*

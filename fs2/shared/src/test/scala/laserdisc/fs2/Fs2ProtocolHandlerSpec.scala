@@ -22,6 +22,7 @@
 package laserdisc
 package fs2
 
+import cats.effect.std.Queue
 import cats.effect.IO
 import cats.syntax.foldable.*
 import munit.CatsEffectSuite

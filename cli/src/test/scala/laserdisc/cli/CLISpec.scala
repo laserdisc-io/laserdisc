@@ -22,7 +22,7 @@
 package laserdisc
 package cli
 
-import _root_.fs2.Chunk
+import _root_.fs2.{Chunk, Stream}
 import cats.effect.{ExitCode, IO}
 import laserdisc.fs2.*
 import laserdisc.fs2.FakeRedisServer.*

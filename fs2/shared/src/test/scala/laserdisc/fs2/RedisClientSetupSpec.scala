@@ -218,7 +218,10 @@ final class RedisClientSetupSpec extends CatsEffectSuite {
     closesOnSetup.use { port =>
       RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn).use { client =>
         client.send(get[String]("k"), 30.seconds).attempt.map(_.flatMap(identity)).timed.map { case (took, result) =>
-          assertEquals(result.left.toOption, Some(ServerUnavailable: Throwable))
+          assertEquals(
+            result.left.toOption.collect { case ServerUnavailable(cause) => cause.getClass },
+            Some(classOf[ServerTerminatedConnection])
+          )
           assert(took < 10.seconds, s"took $took")
         }
       }

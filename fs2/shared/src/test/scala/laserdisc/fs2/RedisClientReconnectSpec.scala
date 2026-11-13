@@ -145,15 +145,19 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
     }
   }
 
-  test("commands fail while no server can be reached") {
-    def untilUnavailable(client: RedisClient[IO]): IO[Throwable] =
+  test("commands fail while no server can be reached, with why the last connection failed") {
+    def untilUnavailable(client: RedisClient[IO]): IO[ServerUnavailable] =
       client.send(get[String]("k"), 1.second).attempt.flatMap {
-        case Right(Left(failure)) if failure == ServerUnavailable => IO.pure(failure)
-        case _                                                    => IO.sleep(200.millis) >> untilUnavailable(client)
+        case Right(Left(failure: ServerUnavailable)) => IO.pure(failure)
+        case _                                       => IO.sleep(200.millis) >> untilUnavailable(client)
       }
 
     unusedPort.use { port =>
-      RedisClient[IO].to("127.0.0.1", port).use(untilUnavailable).assertEquals(ServerUnavailable: Throwable)
+      RedisClient[IO].to("127.0.0.1", port).use(untilUnavailable).map { unavailable =>
+        assert(unavailable.getCause eq unavailable.cause)
+        assert(!unavailable.cause.isInstanceOf[ServerUnavailable], unavailable.cause.toString)
+        assertEquals(unavailable.getMessage, s"No server available: ${unavailable.cause.getMessage}")
+      }
     }
   }
 

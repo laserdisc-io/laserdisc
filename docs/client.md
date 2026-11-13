@@ -21,7 +21,8 @@ val client: Resource[IO, RedisClient[IO]] = RedisClient[IO].to("localhost", 6379
 If the connection drops, commands still waiting for a reply get a `Left` right
 away, and the client reconnects. While it can't reach the server, it tries again
 every 3 seconds, and commands sent in the meantime fail with
-`ServerUnavailable`.
+`ServerUnavailable`. Its `cause` says why the last attempt failed, such as the
+connection being refused or the TLS handshake failing.
 
 The client also reconnects when the server stops replying: once a reply is late
 by more than its `send`'s timeout, the client drops the connection and opens a

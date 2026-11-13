@@ -607,7 +607,9 @@ final class RedisClientSendSpec extends CatsEffectSuite {
         val slow = Request[IO, Option[String]](get[String]("a"), _ => IO.sleep(4.seconds))
         val next = Request[IO, Option[String]](get[String]("b"), answer.complete(_).void)
         connection.send(slow *: next *: EmptyTuple, 30.seconds) >>
-          answer.get.timeout(10.seconds).map(reply => assertEquals(reply.left.toOption, Some(ServerUnavailable: Throwable)))
+          answer.get.timeout(10.seconds).map { reply =>
+            assertEquals(reply.left.toOption.collect { case ServerUnavailable(cause) => cause.getMessage }, Some("unreachable"))
+          }
       }
     }
   }

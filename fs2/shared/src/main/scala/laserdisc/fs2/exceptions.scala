@@ -48,7 +48,10 @@ final case class WatchCleanupRefused(redisAddress: RedisAddress, command: String
     )
 final case class ConnectionSetupRefused(redisAddress: RedisAddress, reason: Throwable)
     extends RuntimeException(s"Server $redisAddress refused to set up the connection: ${reason.getMessage}", reason, true, false)
-object ServerUnavailable                       extends RuntimeException("No server available", null, true, false)
+
+/** No server could be reached, or each closed the connection before answering: `cause` is why the last attempt failed */
+final case class ServerUnavailable(cause: Throwable)
+    extends RuntimeException(s"No server available: ${cause.getMessage}", cause, true, false)
 object ClientTerminated                        extends RuntimeException("Client terminated connection", null, true, false)
 final case class NoInFlightRequest(resp: RESP) extends RuntimeException(s"Got unsolicited message from server: $resp", null, true, false)
 final case class InvalidSocketAddress(host: Host, port: Port)

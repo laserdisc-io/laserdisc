@@ -448,10 +448,11 @@ object RedisClient {
               }
 
               // the batches are taken one at a time, each failed in the same step, so that stopping after 3 seconds leaves the next ones
-              // queued
-              val serverUnavailable: Stream[F, Unit] = {
-                val again  = retries.getAndSet(Chunk.empty).flatMap(_.traverse_(failBatch(ServerUnavailable))).uncancelable
-                val queued = Concurrent[F].uncancelable(poll => poll(queue.take).flatMap(failBatch(ServerUnavailable)))
+              // queued. Each fails with why the last connection failed
+              def serverUnavailable(cause: Throwable): Stream[F, Unit] = {
+                val unavailable = ServerUnavailable(cause)
+                val again       = retries.getAndSet(Chunk.empty).flatMap(_.traverse_(failBatch(unavailable))).uncancelable
+                val queued      = Concurrent[F].uncancelable(poll => poll(queue.take).flatMap(failBatch(unavailable)))
                 log.errorS("Server unavailable for publishing") >>
                   (Stream.exec(again) ++ Stream.repeatEval(queued).drain).interruptAfter(3.seconds) // FIXME magic number
               }
@@ -464,9 +465,10 @@ object RedisClient {
               // failures counts the addresses that couldn't be reached, or that closed the connection before answering what was sent on
               // it, since the last connection that answered. When that one goes, every address is tried again, its own last, before the
               // client gives up: a server that answered may only have dropped the connection, and one that closes each connection at once,
-              // as when it has too many clients, isn't tried again and again
-              def runner(failures: Int): Stream[F, Unit] =
-                if (failures >= addresses.size) serverUnavailable ++ runner(0)
+              // as when it has too many clients, isn't tried again and again. last is why the last connection failed
+              def runner(failures: Int, last: Option[Throwable]): Stream[F, Unit] =
+                if (failures >= addresses.size)
+                  serverUnavailable(last.getOrElse(new NoSuchElementException("No address to connect to"))) ++ runner(0, last)
                 else
                   Stream
                     .eval(
@@ -490,12 +492,13 @@ object RedisClient {
                         Stream.eval(failInFlight(failure) >> ended.complete(()) >> usage.get).flatMap {
                           case _ if failure == ConnectionReset =>
                             Stream.exec(log.info(s"Connection to $address closed to stop a command waiting on it") >> nextSend) ++ runner(
-                              failures
+                              failures,
+                              last
                             )
-                          case Usage.Idle => Stream.exec(idle) ++ runner(failures)
+                          case Usage.Idle => Stream.exec(idle) ++ runner(failures, last)
                           case reached    =>
                             log.errorS(s"Failure of publishing connection to $address", failure) >>
-                              runner(if (reached == Usage.Answered) 0 else failures + 1)
+                              runner(if (reached == Usage.Answered) 0 else failures + 1, Some(failure))
                         }
                       }
                     }
@@ -508,7 +511,7 @@ object RedisClient {
               val newConnection: Connection[F] = new Connection[F] {
                 override final def run: F[Fiber[F, Throwable, Unit]] =
                   log.debug("Starting connection") >>
-                    runner(0)
+                    runner(0, None)
                       .interruptWhen(termSignal)
                       .compile
                       .drain

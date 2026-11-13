@@ -25,7 +25,20 @@ sbt "cli/run localhost 6379 --user app -a secret -n 2"
 ```
 
 Anyone on the same machine can see a password given this way in the list of
-running programs.
+running programs. To keep it out of that list, set it in the `REDISCLI_AUTH`
+environment variable instead, as with `redis-cli`:
+
+```sh
+export REDISCLI_AUTH=secret
+sbt "cli/run localhost 6379 --user app -n 2"
+```
+
+A password given with `-a` is used instead of `REDISCLI_AUTH`. A password or a
+user can't start with `-` after `-a` or `--user`, so that a forgotten value
+isn't taken from the next option; use `REDISCLI_AUTH` for a password that does.
+
+If the server refuses the password or the database, the prompt shows why and
+stops.
 
 Type a command and its arguments, separated by spaces, and press Enter:
 
@@ -60,9 +73,10 @@ commands that would break that:
 - `SYNC`, `PSYNC` and `REPLCONF`, which are for replicas.
 - `CLIENT REPLY OFF` and `CLIENT REPLY SKIP`, as the server would stop replying.
 - `HELLO 3`, as the prompt reads RESP2 replies only.
+- `RESET`, as it would log out and go back to database 0.
 - `QUIT`, as the server would close the connection.
-- `AUTH` and `SELECT`, as the prompt opens a new connection if the server
-  closes this one, and the new one wouldn't have them. Use `-a`, `--user` and
-  `-n` instead.
+- `AUTH`, `HELLO` with `AUTH`, and `SELECT`, as the prompt opens a new
+  connection if the server closes this one, and the new one wouldn't have them.
+  Use `-a`, `--user` and `-n` instead.
 
 To leave, press Ctrl-D.

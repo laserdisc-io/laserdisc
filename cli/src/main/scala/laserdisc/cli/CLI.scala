@@ -83,7 +83,9 @@ object CLI extends IOApp { self =>
   // how long a command may take, on top of the wait it's given
   private final val timeout = 20.seconds
 
-  override final def run(args: List[String]): IO[ExitCode] = impl.session(args, io.stdin[IO](bufSize), io.stdout[IO], timeout)
+  // a password can also come from REDISCLI_AUTH, as with redis-cli, so that it isn't shown in the list of running programs
+  override final def run(args: List[String]): IO[ExitCode] =
+    std.Env[IO].get("REDISCLI_AUTH").flatMap(password => impl.session(args, password, io.stdin[IO](bufSize), io.stdout[IO], timeout))
 
   private[cli] object impl {
     // what's typed is sent on a connection the prompt shares with the next commands, each taking the next reply: these would leave it
@@ -99,6 +101,9 @@ object CLI extends IOApp { self =>
       else if (is("CLIENT") && args.size >= 2 && args.head.equalsIgnoreCase("REPLY") && !args(1).equalsIgnoreCase("ON"))
         refused(s"$command ${args.take(2).mkString(" ")}", "the server would stop replying")
       else if (is("HELLO") && args.headOption.contains("3")) refused(s"$command 3", "the prompt reads RESP2 replies only")
+      else if (is("HELLO") && args.exists(_.equalsIgnoreCase("AUTH")))
+        refused(s"$command AUTH", "a new connection would forget it. Start the prompt with -a, and --user if there's one")
+      else if (is("RESET")) refused(command, "it would log out and go back to database 0. Start the prompt again to change them")
       else if (is("QUIT")) refused(command, "the server would close the connection. To leave, press Ctrl-D")
       else if (is("AUTH")) refused(command, "a new connection would forget it. Start the prompt with -a, and --user if there's one")
       else if (is("SELECT")) refused(command, "a new connection would forget it. Start the prompt with -n")
@@ -108,14 +113,15 @@ object CLI extends IOApp { self =>
     // what the prompt connects to and how: each connection logs in and selects the database first, so a new one does too
     final case class Options(host: Host, port: Port, credentials: Option[Credentials], database: Option[DbIndex])
 
-    // the host and the port, then -a for the password, --user for the user, which needs -a too, and -n for the database
-    def options(args: List[String]): Either[String, Options] = {
+    // the host and the port, then -a for the password, or else the one given, --user for the user, which needs a password too, and -n
+    // for the database. What comes after -a or --user can't start with -, as it's more likely the next option than a password or a user
+    def options(args: List[String], password: Option[String] = None): Either[String, Options] = {
       def withOptions(rest: List[String], options: Options, user: Option[Key]): Either[String, Options] = rest match {
-        case "-a" :: password :: more =>
+        case "-a" :: password :: more if !password.startsWith("-") =>
           Key.from(password).leftMap(_ => "please supply a password after -a").flatMap { key =>
             withOptions(more, options.copy(credentials = Some(Credentials(None, key))), user)
           }
-        case "--user" :: name :: more =>
+        case "--user" :: name :: more if !name.startsWith("-") =>
           Key.from(name).leftMap(_ => "please supply a user after --user").flatMap(key => withOptions(more, options, Some(key)))
         case "-n" :: index :: more =>
           Either
@@ -124,12 +130,12 @@ object CLI extends IOApp { self =>
             .flatMap(DbIndex.from)
             .leftMap(_ => "please supply a database number from 0 after -n")
             .flatMap(db => withOptions(more, options.copy(database = Some(db)), user))
-        case "-a" :: Nil     => Left("please supply a password after -a")
-        case "--user" :: Nil => Left("please supply a user after --user")
-        case "-n" :: Nil     => Left("please supply a database number from 0 after -n")
-        case Nil             =>
+        case "-a" :: _     => Left("please supply a password after -a")
+        case "--user" :: _ => Left("please supply a user after --user")
+        case "-n" :: Nil   => Left("please supply a database number from 0 after -n")
+        case Nil           =>
           (user, options.credentials) match {
-            case (Some(_), None)           => Left("please supply the password with -a as well as --user")
+            case (Some(_), None)           => Left("please supply the password with -a or REDISCLI_AUTH as well as --user")
             case (Some(name), Some(login)) => Right(options.copy(credentials = Some(login.copy(username = Some(name)))))
             case (None, _)                 => Right(options)
           }
@@ -139,18 +145,26 @@ object CLI extends IOApp { self =>
       args match {
         case host :: port :: rest =>
           (Host.from(host).toOption, Either.catchNonFatal(port.toInt).flatMap(Port.from).toOption) match {
-            case (Some(h), Some(p)) => withOptions(rest, Options(h, p, None, None), None)
-            case _                  => Left("please supply valid host and port (space separated)")
+            case (Some(h), Some(p)) =>
+              val fromEnvironment = password.flatMap(Key.from(_).toOption).map(Credentials(None, _))
+              withOptions(rest, Options(h, p, fromEnvironment, None), None)
+            case _ => Left("please supply valid host and port (space separated)")
           }
         case _ => Left("please supply host and port (space separated)")
       }
     }
 
-    def session(args: List[String], in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing], timeout: FiniteDuration): IO[ExitCode] = {
+    def session(
+        args: List[String],
+        password: Option[String],
+        in: Stream[IO, Byte],
+        out: Pipe[IO, Byte, Nothing],
+        timeout: FiniteDuration
+    ): IO[ExitCode] = {
       def write(msg: String): IO[Unit] = Stream.emit(msg).through(text.utf8.encode).through(out).compile.drain
 
-      options(args) match {
-        case Right(chosen) => write(s"$logo$LF") >> mkStream(chosen, in, out, timeout).compile.drain.as(ExitCode.Success)
+      options(args, password) match {
+        case Right(chosen) => write(s"$logo$LF") >> mkStream(chosen, in, out, timeout).compile.lastOrError
         case Left(error)   => write(s"$error$LF").as(ExitCode.Error)
       }
     }
@@ -207,18 +221,23 @@ object CLI extends IOApp { self =>
                   endTime               <- IO(System.nanoTime())
                 } yield maybeProtocolResponse -> (endTime - startTime)
               }
-              .evalMap { case (reply, nanos) =>
-                val ms    = nanos.toDouble / 1000000d
-                val shown = reply match {
-                  case Left(err: Err) => RESPFormat.format(err)
-                  case Left(e)        => s"ERROR ${e.getLocalizedMessage}"
-                  case Right(resp)    => RESPFormat.format(resp)
-                }
-                prompt(f"<<< $shown - [$ms%.2fms]$LF")
+              .evalMap {
+                // the server refusing the password or the database would refuse every command, so the prompt stops
+                case (Left(refused: ConnectionSetupRefused), _) =>
+                  Stream.emit(s"ERROR ${refused.getLocalizedMessage}$LF").through(text.utf8.encode).through(out).compile.drain.as(true)
+                case (reply, nanos) =>
+                  val ms    = nanos.toDouble / 1000000d
+                  val shown = reply match {
+                    case Left(err: Err) => RESPFormat.format(err)
+                    case Left(e)        => s"ERROR ${e.getLocalizedMessage}"
+                    case Right(resp)    => RESPFormat.format(resp)
+                  }
+                  prompt(f"<<< $shown - [$ms%.2fms]$LF").as(false)
               }
+              .exists(identity)
               .compile
-              .drain
-              .as(ExitCode.Success)
+              .lastOrError
+              .map(refused => if (refused) ExitCode.Error else ExitCode.Success)
         }
   }
 }

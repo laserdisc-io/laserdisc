@@ -44,7 +44,7 @@ final class CLISpec extends CatsEffectSuite {
       val typed = Stream.chunk(Chunk.array(lines.mkString("\n").getBytes(UTF_8))).covary[IO]
       val shown = (bytes: Stream[IO, Byte]) => bytes.chunks.foreach(chunk => screen.update(_ ++ chunk.toList))
 
-      CLI.impl.session(args, typed, shown, timeout).flatMap { code =>
+      CLI.impl.session(args, None, typed, shown, timeout).flatMap { code =>
         screen.get.map(bytes => code -> new String(bytes.toArray, UTF_8).replaceAll("\\[[0-9.,]+ms\\]", "[]"))
       }
     }
@@ -79,14 +79,25 @@ final class CLISpec extends CatsEffectSuite {
     assertEquals(CLI.impl.options(List("localhost", "6379", "-a", "secret")).map(_.credentials), Right(Some(Credentials("secret"))))
   }
 
+  test("takes the password from REDISCLI_AUTH, unless it's given with -a") {
+    import laserdisc.auto.*
+    def credentials(options: String*) = CLI.impl.options(List("localhost", "6379") ++ options, Some("fromenv")).map(_.credentials)
+    assertEquals(credentials(), Right(Some(Credentials("fromenv"))))
+    assertEquals(credentials("--user", "me"), Right(Some(Credentials("me", "fromenv"))))
+    assertEquals(credentials("-a", "secret"), Right(Some(Credentials("secret"))))
+    assertEquals(CLI.impl.options(List("localhost", "6379"), Some("")).map(_.credentials), Right(None))
+  }
+
   test("says what's wrong with the options") {
     val wrong = List(
-      List("-a")              -> "please supply a password after -a",
-      List("-n")              -> "please supply a database number from 0 after -n",
-      List("--user", "me")    -> "please supply the password with -a as well as --user",
-      List("-n", "two")       -> "please supply a database number from 0 after -n",
-      List("-n", "-1")        -> "please supply a database number from 0 after -n",
-      List("--password", "x") -> "--password isn't an option: use -a <password>, --user <user> and -n <database>"
+      List("-a")                 -> "please supply a password after -a",
+      List("-n")                 -> "please supply a database number from 0 after -n",
+      List("--user", "me")       -> "please supply the password with -a or REDISCLI_AUTH as well as --user",
+      List("-a", "--user", "me") -> "please supply a password after -a",
+      List("--user", "-a", "x")  -> "please supply a user after --user",
+      List("-n", "two")          -> "please supply a database number from 0 after -n",
+      List("-n", "-1")           -> "please supply a database number from 0 after -n",
+      List("--password", "x")    -> "--password isn't an option: use -a <password>, --user <user> and -n <database>"
     )
     wrong.foreach { case (options, message) =>
       assertEquals(CLI.impl.options(List("localhost", "6379") ++ options), Left(message), options)
@@ -107,6 +118,26 @@ final class CLISpec extends CatsEffectSuite {
           assertEquals(code, ExitCode.Success)
           assertEquals(afterLogo(screen), s"$prompt<<< OK - []\n$prompt")
           sent.get.assertEquals(List(List("AUTH", "me", "secret"), List("SELECT", "2"), List("PING")))
+        }
+      }
+    }
+  }
+
+  test("stops with an error when the server refuses the password, without sending what's typed next") {
+    IO.ref(List.empty[String]).flatMap { sent =>
+      val refusing = FakeRedisServer { (_, commands) =>
+        commands.evalMap {
+          case Arr(Bulk(name) :: _) =>
+            sent.update(_ :+ name).as(if (name == "AUTH") "-WRONGPASS invalid username-password pair\r\n" else s"+$name\r\n")
+          case other => IO.raiseError(new Exception(s"unexpected command $other"))
+        }
+      }
+      refusing.use { port =>
+        session(List("127.0.0.1", port.value.toString, "-a", "wrong"), "PING", "GET a").flatMap { case (code, screen) =>
+          assertEquals(code, ExitCode.Error)
+          assert(afterLogo(screen).contains("ERROR Server 127.0.0.1"), screen)
+          assert(screen.endsWith("refused to set up the connection: WRONGPASS invalid username-password pair\n"), screen)
+          sent.get.map(names => assert(!names.contains("PING") && !names.contains("GET"), names))
         }
       }
     }
@@ -166,9 +197,12 @@ final class CLISpec extends CatsEffectSuite {
       "QUIT"               -> "QUIT isn't supported here, as the server would close the connection. To leave, press Ctrl-D",
       "AUTH me secret"     ->
         "AUTH isn't supported here, as a new connection would forget it. Start the prompt with -a, and --user if there's one",
-      "select 2" -> "select isn't supported here, as a new connection would forget it. Start the prompt with -n"
+      "select 2"               -> "select isn't supported here, as a new connection would forget it. Start the prompt with -n",
+      "hello 2 auth me secret" ->
+        "hello AUTH isn't supported here, as a new connection would forget it. Start the prompt with -a, and --user if there's one",
+      "RESET" -> "RESET isn't supported here, as it would log out and go back to database 0. Start the prompt again to change them"
     )
-    val allowed = List("CLIENT REPLY ON", "HELLO 2", "HELLO", "CLIENT LIST", "PING")
+    val allowed = List("CLIENT REPLY ON", "HELLO 2", "HELLO", "HELLO 2 SETNAME me", "CLIENT LIST", "PING")
 
     IO.ref(List.empty[String]).flatMap { sent =>
       val recording = FakeRedisServer { (_, commands) =>

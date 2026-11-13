@@ -119,6 +119,37 @@ final class RedisClientSetupSpec extends CatsEffectSuite {
     }
   }
 
+  test("a command isn't sent when the server refused to log in but agreed to select the database") {
+    IO.ref(Vector.empty[(Int, List[String])]).flatMap { received =>
+      // the first connection's login is refused, for good or for now, and its SELECT agreed to; the next connections set up fine
+      def refusingLogin(refusal: String) = FakeRedisServer { (n, requests) =>
+        requests.evalMap { command =>
+          val ws = words(command)
+          received
+            .update(_ :+ (n -> ws))
+            .as(ws.headOption match {
+              case Some("AUTH") if n == 1 => refusal
+              case _ if isSetup(ws)       => "+OK\r\n"
+              case _                      => bulk("value")
+            })
+        }
+      }
+      def sentOnFirst = received.getAndSet(Vector.empty).map(_.collect { case (1, ws) if !isSetup(ws) => ws })
+      val forGood     = "-WRONGPASS invalid username-password pair or user is disabled.\r\n"
+      val forNow      = "-LOADING Redis is loading the dataset in memory\r\n"
+
+      refusingLogin(forGood).use { port =>
+        RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn, database = Some(DbIndex(2))).use { client =>
+          client.send(get[String]("k"), 5.seconds).attempt >> sentOnFirst.assertEquals(Vector.empty)
+        }
+      } >> refusingLogin(forNow).use { port =>
+        RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn, database = Some(DbIndex(2))).use { client =>
+          untilReplied(client.send(get[String]("k"), 2.seconds)).assertEquals(Some("value")) >> sentOnFirst.assertEquals(Vector.empty)
+        }
+      }
+    }
+  }
+
   test("a command isn't sent before the server has agreed to the setup, so it can't run in the wrong database") {
     recording(setup = "-ERR DB index is out of range\r\n").use { case (port, received) =>
       RedisClient[IO].to("127.0.0.1", port, database = Some(DbIndex(99))).use { client =>

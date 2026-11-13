@@ -409,19 +409,22 @@ object RedisClient {
               // a server refusing to set up a connection would refuse the next ones too, so the client stops, unless it refuses for now
               def stop(error: Throwable): F[Unit] = termSignal.complete(Left(error)).void
 
-              // each connection logs in and selects the database before anything else, and sends nothing more until the server agrees, so
-              // that no command runs as another user or in another database. Until then, the connection closing counts as a failure
+              // each connection logs in and selects the database before anything else, and sends nothing more until the server has agreed
+              // to all of it, so that no command runs as another user or in another database. Until then, the connection closing counts as
+              // a failure
               def settingUp(address: RedisAddress, usage: Ref[F, Usage]): Stream[F, RESP] =
                 if (setup.isEmpty) Stream.empty
                 else
-                  Stream.eval(Deferred[F, Unit]).flatMap { ready =>
-                    val last     = setup.size - 1
-                    val requests = setup.zipWithIndex.map { case (protocol, i) =>
+                  Stream.eval((Deferred[F, Unit], Ref.of[F, Int](0)).tupled).flatMap { case (ready, agreed) =>
+                    val requests = setup.map { protocol =>
                       Request[F, RESP](
                         protocol,
                         {
-                          case Right(Str("OK")) => (ready.complete(()) >> usage.update(_.max(Usage.Idle))).whenA(i == last)
-                          case Right(other)     => stop(ConnectionSetupRefused(address, RESPDecErr(s"Expected OK but got: $other")))
+                          case Right(Str("OK")) =>
+                            agreed.updateAndGet(_ + 1).flatMap { n =>
+                              (ready.complete(()) >> usage.update(_.max(Usage.Idle))).whenA(n == setup.size)
+                            }
+                          case Right(other) => stop(ConnectionSetupRefused(address, RESPDecErr(s"Expected OK but got: $other")))
                           case Left(refused: Err) if refusedForNow(refused) =>
                             Temporal[F].raiseError(ConnectionSetupRefused(address, refused))
                           case Left(refused: Err) => stop(ConnectionSetupRefused(address, refused))

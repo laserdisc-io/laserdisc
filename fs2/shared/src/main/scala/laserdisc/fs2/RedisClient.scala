@@ -38,7 +38,8 @@ object RedisClient {
   @inline final def apply[F[_]: Async: Network: LogSelector]: RedisClientConnector[F] =
     new RedisClientConnector[F]()
 
-  private[fs2] class RedisClientConnector[F[_]: Async: Network: LogSelector]() {
+  /** What `RedisClient[F]` gives, to open a client with `to`, `toNodes` or `dedicated` */
+  final class RedisClientConnector[F[_]: Async: Network: LogSelector] private[fs2] () {
 
     /** With credentials, each connection logs in before anything else, and with a database it selects it, so a client that reconnects is
       * logged in and in the same database. A server refusing either stops the client with [[ConnectionSetupRefused]], unless it refuses

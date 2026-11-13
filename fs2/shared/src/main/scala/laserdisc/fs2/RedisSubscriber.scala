@@ -47,8 +47,9 @@ object RedisSubscriber {
   private final val confirmationTimeout    = 30.seconds
   private final val queueSize              = 1024
 
+  /** What `RedisSubscriber[F]` gives, to open a subscription with `to` or `identified` */
   // keepAlive: how often a subscribed connection is pinged, and how long the server has to say something before it's taken for gone
-  private[fs2] final class RedisSubscriberConnector[F[_]: Async: Network: LogSelector](
+  final class RedisSubscriberConnector[F[_]: Async: Network: LogSelector] private[fs2] (
       keepAlive: FiniteDuration,
       tls: Option[Tls[F]] = None
   ) {

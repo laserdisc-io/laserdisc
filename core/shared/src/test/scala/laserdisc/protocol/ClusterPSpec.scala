@@ -332,6 +332,21 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     assert(address("127.0.0.1:6379@16379,not_a_host").isLeft)
   }
 
+  test("The Cluster protocol using nodes reads an IPv6 address, which Redis sends without brackets") {
+    val id                 = "0ca04a0a36e401b77e45584f8c44d7543eb9cc68"
+    def address(a: String) = nodes.decode(Bulk(s"$id $a myself,master - 0 0 1 connected")).map(_.nodes.map(_.address))
+
+    val (port, bus) = (Port(6379), Port(16379))
+    val (ip, local) = (Host("2001:db8::1"), Host("::1"))
+    assertEquals(address("2001:db8::1:6379@16379"), Seq(Some(ClusterAddress(Some(ip), port, bus, None))))
+    assertEquals(
+      address("::1:6379@16379,my.host.example"),
+      Seq(Some(ClusterAddress(Some(local), port, bus, Some(Host("my.host.example")))))
+    )
+    assertEquals(address("2001:db8::1:6379"), Seq(Some(ClusterAddress(Some(ip), port, port, None))))
+    assert(address("2001:db8::1::6379@16379").isLeft)
+  }
+
   test("The Cluster protocol using nodes reads a node with no known address as no address, and no other port of 0") {
     val id                 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     def address(a: String) = nodes.decode(Bulk(s"$id $a noflags - 1793860727551 0 0 disconnected")).map(_.nodes.map(_.address))

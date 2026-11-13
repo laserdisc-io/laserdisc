@@ -106,9 +106,10 @@ object ClusterP {
       )
 
     private final val A: Read[String, Option[Address7_0]] = {
-      // the hostname, from Redis 7.0, then any other fields, which are left out
-      val HPCP = raw"([A-Za-z0-9\-\.]*):(\d+)@(\d+)(?:,|$$)([A-Za-z0-9\-\.]*)(?:,.*)?".r
-      val HP   = raw"([A-Za-z0-9\-\.]*):(\d+)".r
+      // the host up to the last : before the port, as an IPv6 address comes without brackets, then the hostname, from Redis 7.0, then any
+      // other fields, which are left out
+      val HPCP = raw"([^@,]*):(\d+)@(\d+)(?:,|$$)([^,]*)(?:,.*)?".r
+      val HP   = raw"([^@,]*):(\d+)".r
       object MaybeHost {
         def unapply(s: String): Option[Option[Host]] = s match {
           case ""      => Some(None)

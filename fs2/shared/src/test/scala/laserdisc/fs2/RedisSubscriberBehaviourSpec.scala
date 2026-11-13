@@ -134,6 +134,18 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
     }
   }
 
+  test("a refused login fails opening with ConnectionSetupRefused, as with the client") {
+    serving(1)("-WRONGPASS invalid username-password pair\r\n").use { case (port, seen) =>
+      RedisSubscriber[IO].to("127.0.0.1", port, Credentials(Key("wrong")), feed).use(_ => IO.unit).attempt.flatMap { outcome =>
+        val refused = outcome.left.toOption.collect { case ConnectionSetupRefused(address, reason) =>
+          address.port.value -> reason.getMessage
+        }
+        assertEquals(refused, Some(port.value -> "WRONGPASS invalid username-password pair"))
+        seen.map(commands => assertEquals(commands.take(1), List(command("AUTH", "wrong"))))
+      }
+    }
+  }
+
   test("identified gives the connection's id, asked for before subscribing") {
     serving(2)(":42\r\n" + confirmed).use { case (port, seen) =>
       RedisSubscriber[IO].identified("127.0.0.1", port, feed).use { case (id, _) => IO.pure(id.value) }.assertEquals(42L) >>
@@ -221,7 +233,7 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
     }
   }
 
-  test("opening fails when the server refuses") {
+  test("opening fails with the server's error when it refuses the subscription itself") {
     serving(1)("-NOAUTH Authentication required.\r\n").use { case (port, _) =>
       RedisSubscriber[IO].to("127.0.0.1", port, feed).use(_ => IO.unit).attempt.map { outcome =>
         assert(outcome.left.exists(_.getMessage.startsWith("NOAUTH")), outcome.toString)

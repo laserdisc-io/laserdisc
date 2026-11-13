@@ -114,7 +114,7 @@ abstract class RedisSubscriberSpec(p: Port, dest: String, connection: protocol.C
       .to("127.0.0.1", p, Credentials(Key("wrong")), publisher.subscribe[String](channels("sub:p")))
       .use(_ => IO.unit)
       .attempt
-    assert(run(attempt).isLeft)
+    assert(run(attempt).left.exists(_.isInstanceOf[ConnectionSetupRefused]), "expected ConnectionSetupRefused")
   }
 
   test(s"a $dest client reads the messages of channels, as the type it asked for, with the server having confirmed them all") {

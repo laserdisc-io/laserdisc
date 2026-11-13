@@ -120,7 +120,7 @@ object RedisSubscriber {
         write = (commands: List[RESP]) => Stream.emits(commands).through(RedisChannel.impl.send(socket.write)).compile.drain
         _         <- Resource.eval(write(before :+ feed.command))
         confirmed <- Resource.eval(
-          confirm(replies, before.size, feed.confirmations, feed, Vector.empty, Vector.empty)
+          confirm(address, replies, before.size, feed.confirmations, feed, Vector.empty, Vector.empty)
             .timeoutTo(
               confirmationTimeout,
               Async[F].raiseError[(Vector[RESP], Vector[Either[Unreadable, A]])](ServerNotResponding(address))
@@ -147,8 +147,10 @@ object RedisSubscriber {
             }
       }
 
-    // what arrives while the rest is being confirmed is kept for the stream
+    // what arrives while the rest is being confirmed is kept for the stream. An error to what's sent before the feed's command, as to
+    // AUTH, means the server refused to set up the connection
     private def confirm[A](
+        address: RedisAddress,
         replies: CatsQueue[F, Either[Throwable, RESP]],
         before: Int,
         pending: Set[String],
@@ -159,14 +161,18 @@ object RedisSubscriber {
       if (before == 0 && pending.isEmpty) (answers -> early).pure[F]
       else
         replies.take.flatMap {
-          case Left(failure)              => Async[F].raiseError[(Vector[RESP], Vector[Either[Unreadable, A]])](failure)
+          case Left(failure)                   => Async[F].raiseError[(Vector[RESP], Vector[Either[Unreadable, A]])](failure)
+          case Right(error: Err) if before > 0 =>
+            Async[F].raiseError[(Vector[RESP], Vector[Either[Unreadable, A]])](ConnectionSetupRefused(address, error))
           case Right(error: Err)          => Async[F].raiseError[(Vector[RESP], Vector[Either[Unreadable, A]])](error)
-          case Right(reply) if before > 0 => confirm(replies, before - 1, pending, feed, answers :+ reply, early)
+          case Right(reply) if before > 0 => confirm(address, replies, before - 1, pending, feed, answers :+ reply, early)
           case Right(reply)               =>
             feed.confirmed(reply) match {
-              case Some(name) => confirm(replies, before, pending - name, feed, answers, early)
+              case Some(name) => confirm(address, replies, before, pending - name, feed, answers, early)
               case None       =>
-                Async[F].fromEither(feed.received(reply)).flatMap(a => confirm(replies, before, pending, feed, answers, early ++ a))
+                Async[F]
+                  .fromEither(feed.received(reply))
+                  .flatMap(a => confirm(address, replies, before, pending, feed, answers, early ++ a))
             }
         }
   }

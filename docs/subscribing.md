@@ -67,6 +67,9 @@ if there's one:
 RedisSubscriber[IO].to("localhost", 6379, Credentials("app", "secret"), subscribe[String](channels))
 ```
 
+If the server refuses them, opening fails with `ConnectionSetupRefused`, which
+says why, as with the client.
+
 To connect with TLS, start from `withTls`, with a `Tls` as for the
 [client](client.md):
 

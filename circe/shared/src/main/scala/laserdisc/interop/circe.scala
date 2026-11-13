@@ -27,10 +27,23 @@ import cats.syntax.either.*
 import cats.syntax.show.*
 import io.circe.syntax.*
 
+/** JSON with circe: an `io.circe.Json`, as made by `asJson`, is written as compact JSON and read back. Other values, such as a `String`,
+  * are written and read as they are. A type with an `Encoder` and a `Decoder` can also be written and read as JSON with [[showAsJson]] and
+  * [[readAsJson]]
+  */
 object circe {
-  implicit final def encoderShow[A: Encoder]: Show[A]       = Show.instance(_.asJson.noSpaces)
-  implicit final def decoderRead[A: Decoder]: Read[Bulk, A] =
+  implicit final val circeJsonShow: Show[Json]       = Show.instance(_.noSpaces)
+  implicit final val circeJsonRead: Read[Bulk, Json] =
     Read.instance { case Bulk(s) =>
-      parser.decode(s).leftMap(err => RESPDecErr(err.show))
+      parser.parse(s).leftMap(err => RESPDecErr(err.show))
+    }
+
+  /** A `Show` writing `A` as JSON, for a type chosen to be written that way */
+  final def showAsJson[A: Encoder]: Show[A] = circeJsonShow.contramap(_.asJson)
+
+  /** A `Read` reading `A` from JSON, for a type chosen to be read that way */
+  final def readAsJson[A: Decoder]: Read[Bulk, A] =
+    Read.instance { case Bulk(s) =>
+      parser.decode[A](s).leftMap(err => RESPDecErr(err.show))
     }
 }

@@ -64,6 +64,12 @@ final class RedisAddressSpec extends CatsEffectSuite {
     assert(address =!= RedisAddress("127.0.0.1", 6379))
   }
 
+  test("addresses are ordered by host, then port") {
+    val ordered =
+      List(RedisAddress("b", 1), RedisAddress("a", 2), RedisAddress("a", 1)).sorted(using RedisAddress.redisAddressOrder.toOrdering)
+    assertEquals(ordered, List(RedisAddress("a", 1), RedisAddress("a", 2), RedisAddress("b", 1)))
+  }
+
   test("an address shows as host:port") {
     assertEquals(address.toString, "localhost:6379")
   }

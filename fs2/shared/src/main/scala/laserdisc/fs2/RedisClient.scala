@@ -24,6 +24,7 @@ package fs2
 
 import _root_.fs2.{Chunk, Pipe, Stream}
 import _root_.fs2.io.net.Network
+import cats.data.NonEmptySet
 import cats.effect.kernel.{Deferred, Ref, Temporal}
 import cats.effect.syntax.all.*
 import cats.effect.std.{Mutex, Queue}
@@ -56,18 +57,18 @@ object RedisClient {
         database: Option[DbIndex] = None,
         tls: Option[Tls[F]] = None
     ): Resource[F, RedisClient[F]] =
-      toNodes(Set(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout, credentials, database, tls)
+      toNodes(NonEmptySet.one(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout, credentials, database, tls)
 
-    /** Like `to`, trying each address in turn, with the same credentials, database and TLS for each */
+    /** Like `to`, trying each address in turn, in the set's order, with the same credentials, database and TLS for each */
     @inline final def toNodes(
-        addresses: Set[RedisAddress],
+        addresses: NonEmptySet[RedisAddress],
         receiveBufferSizeBytes: Int = 8 * 1024 * 1024,
         connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout,
         credentials: Option[Credentials] = None,
         database: Option[DbIndex] = None,
         tls: Option[Tls[F]] = None
     ): Resource[F, RedisClient[F]] =
-      connection(addresses.toSeq, receiveBufferSizeBytes, connectTimeout, credentials, database, tls).flatMap(impl.mkClient(_))
+      connection(addresses.toSortedSet.toList, receiveBufferSizeBytes, connectTimeout, credentials, database, tls).flatMap(impl.mkClient(_))
 
     /** A client of its own, for one caller at a time: it sends one command at a time, each once the one before it has returned, so it can
       * also send the commands under `blocking.forever`, which wait for as long as it takes. Cancelling one of those once it's sent closes

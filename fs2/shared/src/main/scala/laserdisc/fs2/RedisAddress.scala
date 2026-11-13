@@ -22,8 +22,7 @@
 package laserdisc
 package fs2
 
-import cats.syntax.eq.*
-import cats.{ApplicativeError, Eq}
+import cats.{ApplicativeError, Order}
 import com.comcast.ip4s
 import com.comcast.ip4s.SocketAddress
 
@@ -42,7 +41,7 @@ final case class RedisAddress(host: Host, port: Port) {
 }
 
 object RedisAddress {
-  implicit final val redisAddressEq: Eq[RedisAddress] = Eq.instance { (a1, a2) =>
-    a1.host.value === a2.host.value && a1.port.value === a2.port.value
-  }
+
+  /** By host, then port: the order in which `toNodes` tries a `NonEmptySet` of addresses built with it */
+  implicit final val redisAddressOrder: Order[RedisAddress] = Order.by(address => (address.host.value, address.port.value))
 }

@@ -103,11 +103,12 @@ On Scala Native, TLS needs s2n-tls installed: see [Platform notes](platform-note
 
 ## Several servers
 
-`RedisClient[IO].toNodes` takes a set of addresses. The client uses one server
-at a time. If it can't reach that server, or the connection drops, it moves on
-to the next one:
+`RedisClient[IO].toNodes` takes a non-empty set of addresses. The client uses
+one server at a time, starting with the first. If it can't reach that server, or
+the connection drops, it moves on to the next one:
 
 ```scala mdoc:compile-only
+import cats.data.NonEmptySet
 import cats.effect.{IO, Resource}
 
 import laserdisc.*
@@ -115,8 +116,11 @@ import laserdisc.auto.*
 import laserdisc.fs2.*
 
 val client: Resource[IO, RedisClient[IO]] =
-  RedisClient[IO].toNodes(Set(RedisAddress("redis-1", 6379), RedisAddress("redis-2", 6379)))
+  RedisClient[IO].toNodes(NonEmptySet.of(RedisAddress("redis-1", 6379), RedisAddress("redis-2", 6379)))
 ```
+
+The addresses are tried in the set's order: by host, then port, unless you
+build the set with an `Order` of your own.
 
 When none of the servers can be reached, it waits 3 seconds before trying them
 all again.

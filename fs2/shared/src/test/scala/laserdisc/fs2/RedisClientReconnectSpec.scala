@@ -23,6 +23,8 @@ package laserdisc
 package fs2
 
 import _root_.fs2.Stream
+import cats.Order
+import cats.data.NonEmptySet
 import cats.effect.IO
 import cats.syntax.all.*
 import laserdisc.redis_6_2.*
@@ -38,10 +40,27 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
 
   test("toNodes connects to the next address when one is unreachable") {
     (FakeRedisServer((_, requests) => requests.as(bulk("alive"))), unusedPort).tupled.use { case (alive, dead) =>
-      RedisClient[IO].toNodes(Set(address(alive), address(dead))).use { client =>
+      RedisClient[IO].toNodes(NonEmptySet.of(address(alive), address(dead))).use { client =>
         untilReplied(client.send(get[String]("k"), 2.seconds)).assertEquals(Some("alive"))
       }
     }
+  }
+
+  test("toNodes tries the addresses in the order of their set") {
+    def answering(name: String) = FakeRedisServer((_, requests) => requests.as(bulk(name)))
+
+    (answering("a"), answering("b")).tupled.use { case (a, b) =>
+      val (low, high)                                      = if (a.value < b.value) ("a", "b") else ("b", "a")
+      def firstReply(addresses: NonEmptySet[RedisAddress]) =
+        RedisClient[IO].toNodes(addresses).use(client => untilReplied(client.send(get[String]("k"), 2.seconds)))
+      val byPort           = NonEmptySet.of(address(a), address(b))
+      val byPortDescending = NonEmptySet.of(address(a), address(b))(using Order.reverse(RedisAddress.redisAddressOrder))
+      firstReply(byPort).assertEquals(Some(low)) >> firstReply(byPortDescending).assertEquals(Some(high))
+    }
+  }
+
+  test("toNodes takes at least one address") {
+    assert(compileErrors("RedisClient[IO].toNodes(Set.empty[RedisAddress])").nonEmpty)
   }
 
   test("toNodes connects to the next address when the connected one goes away") {
@@ -49,13 +68,15 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
     val remaining = FakeRedisServer((_, requests) => requests.as(bulk("second")))
 
     (leaving, remaining).tupled.use { case (first, second) =>
-      RedisClient[IO].toNodes(Set(address(first), address(second))).use { client =>
+      // the server that goes away first, whatever its port
+      val leavingFirst = NonEmptySet.of(address(first), address(second))(using Order.by(_.port.value != first.value))
+      RedisClient[IO].toNodes(leavingFirst).use { client =>
         for {
           r1 <- untilReplied(client.send(get[String]("k"), 2.seconds))
           r2 <- untilReplied(
             client.send(get[String]("k"), 2.seconds).map(_.flatMap(r => if (r == r1) Left(new Exception(s"still $r")) else Right(r)))
           )
-        } yield assertEquals(Set(r1, r2), Set(Option("first"), Option("second")))
+        } yield assertEquals(List(r1, r2), List(Option("first"), Option("second")))
       }
     }
   }

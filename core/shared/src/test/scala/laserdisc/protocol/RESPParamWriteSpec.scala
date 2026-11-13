@@ -29,6 +29,11 @@ object RESPParamWriteSpec {
   }
 
   final case class WithoutShow(a: Int, b: Int)
+
+  final case class WithShowField(a: Int, b: WithShow, c: Option[WithShow])
+  final case class WithCaseClassField(a: Int, b: WithoutShow)
+  final case class WithOptionalCaseClassField(a: Int, b: Option[WithoutShow])
+  final case class WithTupleField(a: Int, b: (Int, Int))
 }
 
 final class RESPParamWriteSpec extends BaseSpec {
@@ -40,6 +45,19 @@ final class RESPParamWriteSpec extends BaseSpec {
 
   test("RESPParamWrite writes a case class without a Show field by field") {
     assertEquals(RESPParamWrite[WithoutShow].write(WithoutShow(1, 2)), Seq[GenBulk](Bulk("a"), Bulk("1"), Bulk("b"), Bulk("2")))
+  }
+
+  test("RESPParamWrite writes each field of a case class as one parameter, with its Show") {
+    assertEquals(
+      RESPParamWrite[WithShowField].write(WithShowField(1, WithShow(2, 3), Some(WithShow(4, 5)))),
+      Seq[GenBulk](Bulk("a"), Bulk("1"), Bulk("b"), Bulk("2/3"), Bulk("c"), Bulk("4/5"))
+    )
+  }
+
+  test("RESPParamWrite doesn't write a case class with a field without a Show, which would be written as several parameters") {
+    assert(compileErrors("RESPParamWrite[RESPParamWriteSpec.WithCaseClassField]").nonEmpty)
+    assert(compileErrors("RESPParamWrite[RESPParamWriteSpec.WithOptionalCaseClassField]").nonEmpty)
+    assert(compileErrors("RESPParamWrite[RESPParamWriteSpec.WithTupleField]").nonEmpty)
   }
 
   test("RESPParamWrite writes a case class with a Show in a tuple as one parameter") {

@@ -183,6 +183,9 @@ the class doesn't have are ignored. An `Option` field that's `None` isn't
 written, and one that's missing from the hash is read as `None`. Any other
 missing field is an error that names it.
 
+Each field is written as one value, so its type needs a `Show`. A field that is
+itself a case class or a tuple needs a `Show` written for it.
+
 `hgetall` also reads a hash as a `Map`, like `hgetall[Map[Key, String]]`, or as
 a list of pairs, like `hgetall[Seq[(Key, Int)]]`.
 

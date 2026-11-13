@@ -48,20 +48,25 @@ sealed trait FieldReadLowPriority {
   }
 }
 
-/** How a case class field is written: its name, then its value, or nothing at all for an `Option` field that's `None` */
+/** How a case class field is written: its name, then its value as one parameter, or nothing at all for an `Option` field that's `None`. A
+  * field needs a `Show`, so that a case class or a tuple in a field isn't written as several parameters, which would be read as other
+  * fields
+  */
 sealed trait FieldWrite[A] {
   def write(name: String, a: A): Seq[GenBulk]
 }
 
 object FieldWrite extends FieldWriteLowPriority {
-  implicit final def optionFieldWrite[A](implicit W: RESPParamWrite[A]): FieldWrite[Option[A]] = new FieldWrite[Option[A]] {
-    override final def write(name: String, a: Option[A]): Seq[GenBulk] = a.fold(Seq.empty[GenBulk])(Bulk(name) +: W.write(_))
+  implicit final def optionFieldWrite[A: Show]: FieldWrite[Option[A]] = new FieldWrite[Option[A]] {
+    override final def write(name: String, a: Option[A]): Seq[GenBulk] = a.fold(Seq.empty[GenBulk])(FieldWrite.write(name, _))
   }
+
+  private[protocol] final def write[A: Show](name: String, a: A): Seq[GenBulk] = Seq(Bulk(name), Value.fromShow(a).bulk)
 }
 
 sealed trait FieldWriteLowPriority {
-  implicit final def fieldWrite[A](implicit W: RESPParamWrite[A]): FieldWrite[A] = new FieldWrite[A] {
-    override final def write(name: String, a: A): Seq[GenBulk] = Bulk(name) +: W.write(a)
+  implicit final def fieldWrite[A: Show]: FieldWrite[A] = new FieldWrite[A] {
+    override final def write(name: String, a: A): Seq[GenBulk] = FieldWrite.write(name, a)
   }
 }
 

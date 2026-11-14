@@ -16,9 +16,9 @@ sbt "++3.9.0" cliJS/fastLinkJS
 node cli/.js/target/scala-3.9.0/laserdisc-cli-fastopt/main.js localhost 6379
 ```
 
-If the server needs a password, add `-a` and the password after the port, and
-`--user` and the user if there's one. To use a database other than 0, add `-n`
-and its number:
+If the server needs a password, add `-a` (or `--password`) and the password
+after the port, and `--user` and the user if there's one. To use a database
+other than 0, add `-n` (or `--database`) and its number:
 
 ```sh
 sbt "cli/run localhost 6379 --user app -a secret -n 2"
@@ -39,6 +39,9 @@ isn't taken from the next option; use `REDISCLI_AUTH` for a password that does.
 
 If the server refuses the password or the database, the prompt shows why and
 stops.
+
+`--help` lists the options. A mistake in them shows what's wrong, followed by
+the same list.
 
 Type a command and its arguments, separated by spaces, and press Enter:
 

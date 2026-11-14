@@ -44,7 +44,7 @@ final class CLISpec extends CatsEffectSuite {
       val typed = Stream.chunk(Chunk.array(lines.mkString("\n").getBytes(UTF_8))).covary[IO]
       val shown = (bytes: Stream[IO, Byte]) => bytes.chunks.foreach(chunk => screen.update(_ ++ chunk.toList))
 
-      CLI.impl.session(args, None, typed, shown, timeout).flatMap { code =>
+      CLI.impl.session(args, Map.empty, typed, shown, timeout).flatMap { code =>
         screen.get.map(bytes => code -> new String(bytes.toArray, UTF_8).replaceAll("\\[[0-9.,]+ms\\]", "[]"))
       }
     }
@@ -61,46 +61,70 @@ final class CLISpec extends CatsEffectSuite {
 
   private def afterLogo(screen: String): String = screen.substring(screen.indexOf("127.0.0.1:"))
 
-  test("without a host and a port it says so") {
-    session(Nil).assertEquals(ExitCode.Error -> "please supply host and port (space separated)\n")
+  // what's wrong with the options given after the host and the port, or instead of them
+  private def errors(args: List[String]): List[String] = CLI.impl.options(args).left.toOption.toList.flatMap(_.errors)
+
+  test("without a host and a port, or with an invalid one, it says so, with what to type, and exits with an error") {
+    session(Nil).map { case (code, screen) =>
+      assertEquals(code, ExitCode.Error)
+      assert(screen.contains("Usage: laserdisc-cli"), screen)
+    } >>
+      IO {
+        assertEquals(errors(Nil), List("Missing expected positional argument!"))
+        assertEquals(errors(List("not a host", "6379")), List("not a host isn't a host"))
+        assertEquals(errors(List("localhost", "not a port")), List("Invalid integer: not a port"))
+        assertEquals(errors(List("localhost", "0")), List("0 isn't a port from 1 to 65535"))
+      }
   }
 
-  test("with an invalid host or port it says so") {
-    val message = ExitCode.Error -> "please supply valid host and port (space separated)\n"
-    session(List("not a host", "6379")).assertEquals(message) >>
-      session(List("localhost", "not a port")).assertEquals(message) >>
-      session(List("localhost", "0")).assertEquals(message)
+  test("--help shows what to type, and exits without an error") {
+    session(List("--help")).map { case (code, screen) =>
+      assertEquals(code, ExitCode.Success)
+      List(
+        "Usage: laserdisc-cli",
+        "--password <password>, -a <password>",
+        "--user <user>",
+        "--database <number>, -n <number>",
+        "REDISCLI_AUTH"
+      )
+        .foreach(expected => assert(screen.contains(expected), screen))
+    }
   }
 
   test("takes a password, a user and a database after the host and port, in any order") {
     import laserdisc.auto.*
     val parsed = CLI.impl.options(List("localhost", "6379", "-n", "2", "--user", "me", "-a", "secret"))
     assertEquals(parsed, Right(CLI.impl.Options("localhost", 6379, Some(Credentials("me", "secret")), Some(DbIndex(2)))))
+    assertEquals(CLI.impl.options(List("localhost", "6379", "--password=secret")).map(_.credentials), Right(Some(Credentials("secret"))))
     assertEquals(CLI.impl.options(List("localhost", "6379", "-a", "secret")).map(_.credentials), Right(Some(Credentials("secret"))))
   }
 
   test("takes the password from REDISCLI_AUTH, unless it's given with -a") {
     import laserdisc.auto.*
-    def credentials(options: String*) = CLI.impl.options(List("localhost", "6379") ++ options, Some("fromenv")).map(_.credentials)
-    assertEquals(credentials(), Right(Some(Credentials("fromenv"))))
-    assertEquals(credentials("--user", "me"), Right(Some(Credentials("me", "fromenv"))))
-    assertEquals(credentials("-a", "secret"), Right(Some(Credentials("secret"))))
-    assertEquals(CLI.impl.options(List("localhost", "6379"), Some("")).map(_.credentials), Right(None))
+    def credentials(env: Map[String, String], options: String*) =
+      CLI.impl.options(List("localhost", "6379") ++ options, env).map(_.credentials)
+    val fromEnv = Map("REDISCLI_AUTH" -> "fromenv")
+    assertEquals(credentials(fromEnv), Right(Some(Credentials("fromenv"))))
+    assertEquals(credentials(fromEnv, "--user", "me"), Right(Some(Credentials("me", "fromenv"))))
+    assertEquals(credentials(fromEnv, "-a", "secret"), Right(Some(Credentials("secret"))))
+    assertEquals(credentials(Map("REDISCLI_AUTH" -> "-starts-with-a-dash")), Right(Some(Credentials("-starts-with-a-dash"))))
+    assertEquals(credentials(Map.empty), Right(None))
   }
 
   test("says what's wrong with the options") {
     val wrong = List(
-      List("-a")                 -> "please supply a password after -a",
-      List("-n")                 -> "please supply a database number from 0 after -n",
+      List("-a")                 -> "Missing value for option: -a",
+      List("-n")                 -> "Missing value for option: -n",
       List("--user", "me")       -> "please supply the password with -a or REDISCLI_AUTH as well as --user",
-      List("-a", "--user", "me") -> "please supply a password after -a",
-      List("--user", "-a", "x")  -> "please supply a user after --user",
-      List("-n", "two")          -> "please supply a database number from 0 after -n",
-      List("-n", "-1")           -> "please supply a database number from 0 after -n",
-      List("--password", "x")    -> "--password isn't an option: use -a <password>, --user <user> and -n <database>"
+      List("-a", "--user", "me") -> "Unexpected argument: me",
+      List("-a", "-x")           -> "please supply a password after -a, not -x",
+      List("--user", "-a", "x")  -> "Unexpected argument: x",
+      List("-n", "two")          -> "Invalid integer: two",
+      List("-n", "-1")           -> "-1 isn't a database number from 0",
+      List("--bogus", "x")       -> "Unexpected option: --bogus"
     )
     wrong.foreach { case (options, message) =>
-      assertEquals(CLI.impl.options(List("localhost", "6379") ++ options), Left(message), options)
+      assertEquals(errors(List("localhost", "6379") ++ options), List(message), options)
     }
   }
 

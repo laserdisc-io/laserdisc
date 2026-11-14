@@ -11,6 +11,7 @@ val V = new {
   val `cats-effect`          = "3.7.1"
   val `cats-discipline`      = "1.7.0"
   val `collection-compat`    = "2.14.0"
+  val decline                = "2.6.2"
   val `discipline-munit`     = "2.0.0"
   val circe                  = "0.14.17"
   val fs2                    = "3.14.0"
@@ -334,6 +335,7 @@ lazy val cli = laserdiscCrossModule("cli")
   .dependsOn(fs2 % "compile->compile;test->test")
   .settings(
     libraryDependencies ++= Seq(
+      "com.monovore"  %%% "decline"           % V.decline,
       "co.fs2"        %%% "fs2-io"            % V.fs2,
       "org.typelevel" %%% "cats-core"         % V.cats,
       "org.typelevel" %%% "cats-effect"       % V.`cats-effect`,

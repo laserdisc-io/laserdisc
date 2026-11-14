@@ -64,7 +64,7 @@ final class StringPSpec extends BaseSpec with StringP {
     val correct = redis_8_10.strings.set("a", 23)
     assertLeftEquals(
       correct.decode(Str("wrong")).leftMap(_.getMessage),
-      "RESP type(s) of Str(wrong) matched but failed to deserialize correctly with error Read Error: expected Str(OK) but was Str(wrong)"
+      "RESP type(s) matched but failed to deserialize correctly with error Read Error: expected Str(OK) but was Str(wrong), reading Str(wrong)"
     )
   }
 

@@ -322,6 +322,16 @@ sealed trait RESPCodecs extends BitVectorSyntax {
 
 final case class RESPDecErr(message: String) extends RuntimeException(message, null, true, false)
 
+object RESPDecErr {
+  private[laserdisc] final val MaxLength = 1000
+
+  /** A reply in a message can be as long as the reply itself: what's past 1000 characters is cut, saying how much was left out */
+  private[laserdisc] final def capped(message: String): String =
+    if (message.length <= MaxLength) message else s"${message.take(MaxLength)}… (${message.length - MaxLength} more characters)"
+
+  def apply(message: String): RESPDecErr = new RESPDecErr(capped(message))
+}
+
 sealed trait RESPFunctions { this: RESPCodecs =>
 
   import BitVectorDecoding.*

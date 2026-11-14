@@ -30,4 +30,25 @@ final class ReadSpec extends BaseSpec {
       "Cannot extend sealed trait Read in a different source file"
     )
   }
+
+  test("An error message is cut after 1000 characters, saying how much was left out") {
+    val long = RESPDecErr("x" * 1500)
+    assertEquals(long.message, ("x" * 1000) + "… (500 more characters)")
+    assertEquals(long.getMessage, long.message)
+    assertEquals(RESPDecErr("short").message, "short")
+  }
+
+  test("Failing to read a long reply says why before the reply, which is cut") {
+    val failure = Protocol("GET", "k" *: EmptyTuple).as[Bulk, Int].decode(Bulk("a" * 5000))
+    failure match {
+      case Left(RESPDecErr(message)) =>
+        assert(
+          message.startsWith("RESP type(s) matched but failed to deserialize correctly with error Read Error: expected Bulk(Int)"),
+          message
+        )
+        assert(message.endsWith(" more characters)"), message)
+        assert(message.length < 1100, message.length.toString)
+      case other => fail(s"expected a read error, got $other")
+    }
+  }
 }

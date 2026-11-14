@@ -129,10 +129,10 @@ abstract class HashPSpec extends BaseSpec with HashP {
 
   test("The Hash protocol using hgetall names the case class field that's missing or doesn't read") {
     val protocol = hgetall[HashPSpecUser](Key("u"))
-    assertLeftEquals(protocol.decode(Arr(Bulk("name"), Bulk("ada"))).leftMap(_.getMessage.endsWith("missing field age")), true)
+    assertLeftEquals(protocol.decode(Arr(Bulk("name"), Bulk("ada"))).leftMap(_.getMessage.contains("missing field age, reading ")), true)
     assertLeftEquals(
       protocol.decode(Arr(Bulk("name"), Bulk("ada"), Bulk("age"), Bulk("x"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(name),Bulk(ada),Bulk(age),Bulk(x)) matched but failed to deserialize correctly with error field age: Read Error: expected Bulk(Int) but was Bulk(x)"
+      "RESP type(s) matched but failed to deserialize correctly with error field age: Read Error: expected Bulk(Int) but was Bulk(x), reading Arr(Bulk(name),Bulk(ada),Bulk(age),Bulk(x))"
     )
   }
 

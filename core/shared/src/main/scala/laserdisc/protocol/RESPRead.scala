@@ -100,7 +100,7 @@ object RESPRead {
   private final def readMatched[A, B](R: Read[A, B], resp: RESP, a: A): Maybe[B] = R.read(a) match {
     case Right(b)            => Right(b)
     case Left(RESPDecErr(m)) =>
-      Left(RESPDecErr(s"RESP type(s) of $resp matched but failed to deserialize correctly with error $m")).widenLeft[Throwable]
+      Left(RESPDecErr(s"RESP type(s) matched but failed to deserialize correctly with error $m, reading $resp")).widenLeft[Throwable]
   }
 
   final def instance[A, B](R: Read[A, B])(implicit S: RESPSub[A]): RESPRead.Aux[A, B] =

@@ -41,7 +41,8 @@ final case class WatchLost(redisAddress: RedisAddress)
     )
 final case class WatchCleanupRefused(redisAddress: RedisAddress, command: String, reply: String)
     extends RuntimeException(
-      s"Server $redisAddress didn't say OK to the $command ending a transaction whose watch was lost, but $reply, so the connection was closed",
+      s"Server $redisAddress didn't say OK to the $command ending a transaction whose watch was lost, so the connection was closed. It said: ${protocol.RESPDecErr
+          .capped(reply)}",
       null,
       true,
       false
@@ -52,8 +53,9 @@ final case class ConnectionSetupRefused(redisAddress: RedisAddress, reason: Thro
 /** No server could be reached, or each closed the connection before answering: `cause` is why the last attempt failed */
 final case class ServerUnavailable(cause: Throwable)
     extends RuntimeException(s"No server available: ${cause.getMessage}", cause, true, false)
-object ClientTerminated                        extends RuntimeException("Client terminated connection", null, true, false)
-final case class NoInFlightRequest(resp: RESP) extends RuntimeException(s"Got unsolicited message from server: $resp", null, true, false)
+object ClientTerminated extends RuntimeException("Client terminated connection", null, true, false)
+final case class NoInFlightRequest(resp: RESP)
+    extends RuntimeException(protocol.RESPDecErr.capped(s"Got unsolicited message from server: $resp"), null, true, false)
 final case class InvalidSocketAddress(host: Host, port: Port)
     extends RuntimeException(s"SocketAddress creation failed. Invalid Host or Port: ${host.value}, ${port.value}", null, true, false)
 final case class RequestTimedOut[A](protocol: Protocol[A]) extends RuntimeException(s"The request $protocol timed-out", null, true, false)

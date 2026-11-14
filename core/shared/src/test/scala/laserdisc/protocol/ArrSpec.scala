@@ -29,7 +29,7 @@ final class ArrSpec extends BaseSpec {
 
     assertLeftEquals(
       protocol(request).decode(Arr(Bulk("1"), Num(2L), Bulk("x"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(1),Num(2),Bulk(x)) matched but failed to deserialize correctly with error Read[Arr.Of, Seq] error at element 2: Unexpected element. Was Num(2)"
+      "RESP type(s) matched but failed to deserialize correctly with error Read[Arr.Of, Seq] error at element 2: Unexpected element. Was Num(2), reading Arr(Bulk(1),Num(2),Bulk(x))"
     )
     assertLeftEquals(protocol(request).decode(Arr(Bulk("1"), Bulk("x"))).leftMap(_.getMessage.contains("element 2")), true)
   }
@@ -41,7 +41,7 @@ final class ArrSpec extends BaseSpec {
     assertEquals(protocol(request).decode(Arr(Bulk("1"), NullBulk)), Seq(Some(1L), None))
     assertLeftEquals(
       protocol(request).decode(Arr(Bulk("1"), NullBulk, Num(3L), NullBulk)).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(1),NullBulk,Num(3),NullBulk) matched but failed to deserialize correctly with error Read[Arr.Of, Seq] error at element 3: Unexpected element. Was Num(3)"
+      "RESP type(s) matched but failed to deserialize correctly with error Read[Arr.Of, Seq] error at element 3: Unexpected element. Was Num(3), reading Arr(Bulk(1),NullBulk,Num(3),NullBulk)"
     )
   }
 
@@ -59,15 +59,15 @@ final class ArrSpec extends BaseSpec {
 
     assertLeftEquals(
       protocol(request).decode(Arr(Bulk("a"), Bulk("1"), Bulk("b"), Bulk("x"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(a),Bulk(1),Bulk(b),Bulk(x)) matched but failed to deserialize correctly with error Read[Arr.OfPairs, Seq] error in the second element of pair 2: Read Error: expected Bulk(Long) but was Bulk(x)"
+      "RESP type(s) matched but failed to deserialize correctly with error Read[Arr.OfPairs, Seq] error in the second element of pair 2: Read Error: expected Bulk(Long) but was Bulk(x), reading Arr(Bulk(a),Bulk(1),Bulk(b),Bulk(x))"
     )
     assertLeftEquals(
       protocol(request).decode(Arr(Num(1L), Bulk("1"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Num(1),Bulk(1)) matched but failed to deserialize correctly with error Read[Arr.OfPairs, Seq] error in the first element of pair 1: Unexpected element. Was Num(1)"
+      "RESP type(s) matched but failed to deserialize correctly with error Read[Arr.OfPairs, Seq] error in the first element of pair 1: Unexpected element. Was Num(1), reading Arr(Num(1),Bulk(1))"
     )
     assertLeftEquals(
       protocol(request).decode(Arr(Bulk("a"), Bulk("1"), Bulk("b"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(a),Bulk(1),Bulk(b)) matched but failed to deserialize correctly with error Read[Arr.OfPairs, Seq] error: odd number of elements, the last being Bulk(b)"
+      "RESP type(s) matched but failed to deserialize correctly with error Read[Arr.OfPairs, Seq] error: odd number of elements, the last being Bulk(b), reading Arr(Bulk(a),Bulk(1),Bulk(b))"
     )
   }
 
@@ -109,7 +109,7 @@ final class ArrSpec extends BaseSpec {
     assertEquals(protocol(request).decode(Arr(Arr(Bulk("a"), Num(1L)), Arr(Bulk("a"), Num(2L)))), Seq(1L, 2L))
     assertLeftEquals(
       protocol(request).decode(Arr(Arr(Bulk("a"), Num(1L)), Arr(Bulk("a"), Bulk("x")))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Arr(Bulk(a),Num(1)),Arr(Bulk(a),Bulk(x))) matched but failed to deserialize correctly with error Read[Arr.Of, Seq] error at element 2: thing: field a: Unexpected value. Was Bulk(x)"
+      "RESP type(s) matched but failed to deserialize correctly with error Read[Arr.Of, Seq] error at element 2: thing: field a: Unexpected value. Was Bulk(x), reading Arr(Arr(Bulk(a),Num(1)),Arr(Bulk(a),Bulk(x)))"
     )
   }
 
@@ -137,16 +137,16 @@ final class ArrSpec extends BaseSpec {
 
     assertLeftEquals(
       protocol(request).decode(Arr(Bulk("a"), Bulk("1"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(a),Bulk(1)) matched but failed to deserialize correctly with error Read[Arr.AsTuple] error at element 2: Unexpected element. Was Bulk(1)"
+      "RESP type(s) matched but failed to deserialize correctly with error Read[Arr.AsTuple] error at element 2: Unexpected element. Was Bulk(1), reading Arr(Bulk(a),Bulk(1))"
     )
     assertLeftEquals(
       protocol(request).decode(Arr(Bulk("a"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(a)) matched but failed to deserialize correctly with error Read[Arr.AsTuple] error: expected 2 elements, got 1"
+      "RESP type(s) matched but failed to deserialize correctly with error Read[Arr.AsTuple] error: expected 2 elements, got 1, reading Arr(Bulk(a))"
     )
     assertLeftEquals(
       protocol(request)
         .decode(Arr(Bulk("a"), NullBulk))
-        .leftMap(_.getMessage.endsWith("error at element 2: Unexpected element. Was NullBulk")),
+        .leftMap(_.getMessage.contains("error at element 2: Unexpected element. Was NullBulk, reading ")),
       true
     )
   }
@@ -161,13 +161,13 @@ final class ArrSpec extends BaseSpec {
     assertLeftEquals(
       protocol(request)
         .decode(Arr(Bulk("a")))
-        .leftMap(_.getMessage.endsWith("Read[Arr.AsTupleThen] error: expected at least 2 elements, got 1")),
+        .leftMap(_.getMessage.contains("Read[Arr.AsTupleThen] error: expected at least 2 elements, got 1, reading ")),
       true
     )
     assertLeftEquals(
       protocol(request)
         .decode(Arr(Bulk("a"), Bulk("1"), Num(2L)))
-        .leftMap(_.getMessage.endsWith("Read[Arr.AsTupleThen] error at element 2: Unexpected element. Was Bulk(1)")),
+        .leftMap(_.getMessage.contains("Read[Arr.AsTupleThen] error at element 2: Unexpected element. Was Bulk(1), reading ")),
       true
     )
   }
@@ -189,7 +189,7 @@ final class ArrSpec extends BaseSpec {
     assertLeftEquals(
       protocol(request)
         .decode(Arr(Bulk("a")))
-        .leftMap(_.getMessage.endsWith("Read[Arr.AsTupleThen] error: expected at least 2 elements, got 1")),
+        .leftMap(_.getMessage.contains("Read[Arr.AsTupleThen] error: expected at least 2 elements, got 1, reading ")),
       true
     )
     assertLeftEquals(
@@ -197,8 +197,8 @@ final class ArrSpec extends BaseSpec {
         .decode(Arr(Bulk("a"), Num(1L), Num(2L), Bulk("x")))
         .leftMap(
           _.getMessage
-            .endsWith(
-              "Read[Arr.AsTupleThen] after the first 2 elements: Read[Arr.Of, Seq] error at element 2: Unexpected element. Was Bulk(x)"
+            .contains(
+              "Read[Arr.AsTupleThen] after the first 2 elements: Read[Arr.Of, Seq] error at element 2: Unexpected element. Was Bulk(x), reading "
             )
         ),
       true
@@ -224,16 +224,18 @@ final class ArrSpec extends BaseSpec {
     assertEquals(lenient(request).decode(Arr(Bulk("36"), Bulk("ada"))), 36 *: Option("ada") *: EmptyTuple)
     assertLeftEquals(
       strict(request).decode(Arr(Bulk("36"), NullBulk)).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(36),NullBulk) matched but failed to deserialize correctly with error Read[Arr.Of] error at element 2: Read[OneOf] error: missing value"
+      "RESP type(s) matched but failed to deserialize correctly with error Read[Arr.Of] error at element 2: Read[OneOf] error: missing value, reading Arr(Bulk(36),NullBulk)"
     )
     assertLeftEquals(
       strict(request)
         .decode(Arr(Bulk("x"), Bulk("ada")))
-        .leftMap(_.getMessage.endsWith("error at element 1: Read[OneOf] error: Read Error: expected Bulk(Int) but was Bulk(x)")),
+        .leftMap(_.getMessage.contains("error at element 1: Read[OneOf] error: Read Error: expected Bulk(Int) but was Bulk(x), reading ")),
       true
     )
     assertLeftEquals(
-      strict(request).decode(Arr(Bulk("36"), Bulk("ada"), Bulk("extra"))).leftMap(_.getMessage.endsWith("expected 2 elements, got 3")),
+      strict(request)
+        .decode(Arr(Bulk("36"), Bulk("ada"), Bulk("extra")))
+        .leftMap(_.getMessage.contains("expected 2 elements, got 3, reading ")),
       true
     )
   }

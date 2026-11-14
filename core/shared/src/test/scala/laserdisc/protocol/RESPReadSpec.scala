@@ -44,7 +44,7 @@ final class RESPReadSpec extends BaseSpec {
     assertLeftEquals(
       optBulk.read(Bulk("nope")),
       RESPDecErr(
-        "RESP type(s) of Bulk(nope) matched but failed to deserialize correctly with error Read[OneOf] error: Read Error: expected Bulk(Int) but was Bulk(nope)"
+        "RESP type(s) matched but failed to deserialize correctly with error Read[OneOf] error: Read Error: expected Bulk(Int) but was Bulk(nope), reading Bulk(nope)"
       )
     )
   }

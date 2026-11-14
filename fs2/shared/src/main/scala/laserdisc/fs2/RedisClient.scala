@@ -517,11 +517,12 @@ object RedisClient {
                     )
                     .flatMap { case (address, usage, connection, reset, ended, current) =>
                       // a connection closed to stop a command waiting on the server isn't a failure: the next send connects again. ended
-                      // is completed once what was sent on the connection has failed, so that nothing more is sent on it
-                      val resettable = Stream.exec(resetting.set(Some(reset -> ended))) ++
+                      // is completed once what was sent on the connection has failed, so that nothing more is sent on it. What it took and
+                      // didn't send is given back however it ends, also when the client is closed, which interrupts it without an error
+                      val resettable = (Stream.exec(resetting.set(Some(reset -> ended))) ++
                         serverAvailable(address, connection, usage, current).concurrently(
                           Stream.exec(reset.get) ++ Stream.raiseError[F](ConnectionReset)
-                        )
+                        )).onFinalize(giveBack(current))
                       resettable.handleErrorWith { failure =>
                         val idle = log.info(s"Connection to $address ended with nothing sent on it: ${failure.getMessage}") >> nextSend
                         Stream.eval(giveBack(current) >> failInFlight(failure) >> ended.complete(()) >> usage.get).flatMap {
@@ -553,10 +554,12 @@ object RedisClient {
                       .drain
                       .attempt
                       .flatMap { r =>
-                        val reason = r.fold(identity, _ => ClientTerminated)
+                        // what the last connection had in flight has failed, so a command cancelled while waiting on it can stop
+                        val endLast = resetting.get.flatMap(_.traverse_ { case (_, ended) => ended.complete(()).void })
+                        val reason  = r.fold(identity, _ => ClientTerminated)
                         log.info(
                           s"Connection terminated: ${r.fold(err => err.getMessage, _ => "No issues")}"
-                        ) >> stopped.set(Some(reason)) >> failInFlight(reason) >> failQueued(reason)
+                        ) >> stopped.set(Some(reason)) >> failInFlight(reason) >> endLast >> failQueued(reason)
                       }
                       .start
 

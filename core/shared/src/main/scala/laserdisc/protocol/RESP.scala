@@ -127,11 +127,11 @@ final class Bulk private (val bytes: ByteVector, text: =>String) extends GenBulk
 object Bulk {
   final def apply(bytes: ByteVector): Bulk            = new Bulk(bytes, new String(bytes.toArray, UTF_8))
   final def apply(value: String): Bulk                = new Bulk(ByteVector.view(value.getBytes(UTF_8)), value)
-  final def apply[A](a: A)(implicit A: Show[A]): Bulk = apply(A.show(a))
+  final def apply[A](a: A)(implicit A: Show[A]): Bulk = A.bulk(a)
 
   final def unapply(bulk: Bulk): Some[String] = Some(bulk.value)
 
-  implicit final val bulkShow: Show[Bulk] = Show.instance(_.value)
+  implicit final val bulkShow: Show[Bulk] = Show.bulkShow
 }
 
 /** RESP [[https://redis.io/topics/protocol#resp-arrays Arrays]]

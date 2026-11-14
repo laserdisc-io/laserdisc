@@ -67,4 +67,15 @@ final class ShowSpec extends BaseSpec {
       assertEquals(Numbers.toDouble(Show[Double].show(d)).map(r => r.equals(d) || (r == 0d && d == 0d)), Some(true), d.toString)
     }
   }
+
+  test("A Show built from Show[Bulk] sends a value's bytes as they are, not as text") {
+    final case class Blob(bytes: scodec.bits.ByteVector)
+    implicit val blobShow: Show[Blob] = Show[Bulk].contramap(blob => Bulk(blob.bytes))
+
+    val bytes = scodec.bits.ByteVector(0x00, 0xff, 0xc3, 0x28, 0x80)
+    assertEquals(Value.fromShow(Blob(bytes)).bulk.bytes, bytes)
+    assertEquals(Bulk(Blob(bytes)).bytes, bytes)
+    assertEquals(Bulk(Bulk(bytes)).bytes, bytes)
+    assertEquals(RESPParamWrite[Blob].write(Blob(bytes)).collect { case b: Bulk => b.bytes }, Seq(bytes))
+  }
 }

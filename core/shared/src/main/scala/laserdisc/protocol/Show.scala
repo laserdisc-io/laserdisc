@@ -38,7 +38,10 @@ You may also be able to build it from an existing Show with contramap.
 ) sealed trait Show[A] {
   def show(a: A): String
 
-  final def contramap[B](f: B => A): Show[B] = Show.instance(b => show(f(b)))
+  // what's sent for a: its text, except for a Bulk, and what's shown with a Show built from Show[Bulk], which are sent as their bytes
+  private[protocol] def bulk(a: A): Bulk = Bulk(show(a))
+
+  final def contramap[B](f: B => A): Show[B] = new Show.Contramapped(this, f)
 }
 
 object Show extends ShowInstances {
@@ -48,6 +51,16 @@ object Show extends ShowInstances {
   private final class Of[A](f: A => String) extends Show[A] {
     override final def show(a: A): String = f(a)
   }
+  private final class Contramapped[A, B](S: Show[A], f: B => A) extends Show[B] {
+    override final def show(b: B): String                 = S.show(f(b))
+    override private[protocol] final def bulk(b: B): Bulk = S.bulk(f(b))
+  }
+  private final class OfBulk extends Show[Bulk] {
+    override final def show(b: Bulk): String                 = b.value
+    override private[protocol] final def bulk(b: Bulk): Bulk = b
+  }
+
+  private[protocol] final val bulkShow: Show[Bulk] = new OfBulk
 
   final def const[A](s: =>String): Show[A]       = new Of(_ => s)
   final def unsafeFromToString[A]: Show[A]       = new Of(_.toString)

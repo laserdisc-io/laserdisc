@@ -102,22 +102,11 @@ package object laserdisc {
   final val DbIndexMaxValueWit         = W(2147483647)
   final val GeoHashRegexWit            = W("[a-z0-9]{11}")
 
-  /** A Redis glob: `*`, `?`, `[abc]`, `[a-z]`, `[^abc]`, `\x` for the character x itself, or any other character but a control character. A
-    * `]` outside of a class, and a `^` first in a class, are written `\]` and `\^`
-    */
-  final val GlobPatternRegexWit = W(
-    """[^\x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
-  )
-
   /** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand. A name starting with `@` is
     * a category, which has rules of its own
     */
   final val AclCommandRegexWit = W("""[^@\x00-\x20\x7F][^\x00-\x20\x7F]*""")
 
-  /** A glob for the keys and channels of ACL rules: a [[GlobPattern]] without spaces, which ACL SETUSER refuses */
-  final val AclPatternRegexWit = W(
-    """[^ \x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
-  )
   final val LatitudeMinValueWit         = W(-85.05112878d)
   final val LatitudeMaxValueWit         = W(85.05112878d)
   final val LongitudeMinValueWit        = W(-180.0d)
@@ -147,9 +136,9 @@ package object laserdisc {
   final type ConnectionNameRef   = OneOrMoreRef And Forall[NoWhitespace And NoControlChar]
   final type DbIndexRef          = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
   final type GeoHashRef          = MatchesRegex[GeoHashRegexWit.T]
-  final type GlobPatternRef      = MatchesRegex[GlobPatternRegexWit.T]
+  final type GlobPatternRef      = ValidGlobPattern
   final type AclCommandRef       = MatchesRegex[AclCommandRegexWit.T]
-  final type AclPatternRef       = MatchesRegex[AclPatternRegexWit.T]
+  final type AclPatternRef       = ValidAclPattern
   final type HostRef             = ValidHost
   final type IndexRef            = True
   final type KeyRef              = OneOrMoreRef

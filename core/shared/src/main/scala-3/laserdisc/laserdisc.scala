@@ -95,22 +95,11 @@ final val BlockingSecondsMaxValueWit = new Witness(4294967.0d)
 final val DbIndexMaxValueWit         = new Witness(2147483647)
 final val GeoHashRegexWit            = new Witness("[a-z0-9]{11}")
 
-/** A Redis glob: `*`, `?`, `[abc]`, `[a-z]`, `[^abc]`, `\x` for the character x itself, or any other character but a control character. A
-  * `]` outside of a class, and a `^` first in a class, are written `\]` and `\^`
-  */
-final val GlobPatternRegexWit = new Witness(
-  """[^\x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
-)
-
 /** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand. A name starting with `@` is a
   * category, which has rules of its own
   */
 final val AclCommandRegexWit = new Witness("""[^@\x00-\x20\x7F][^\x00-\x20\x7F]*""")
 
-/** A glob for the keys and channels of ACL rules: a [[GlobPattern]] without spaces, which ACL SETUSER refuses */
-final val AclPatternRegexWit = new Witness(
-  """[^ \x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
-)
 final val LatitudeMinValueWit         = new Witness(-85.05112878d)
 final val LatitudeMaxValueWit         = new Witness(85.05112878d)
 final val LongitudeMinValueWit        = new Witness(-180.0d)
@@ -142,9 +131,9 @@ final type BlockingSecondsRef  = ValidDoubleRef & Interval.Closed[BlockingSecond
 final type ConnectionNameRef   = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
 final type DbIndexRef          = Interval.Closed[0, DbIndexMaxValueWit.T]
 final type GeoHashRef          = Match[GeoHashRegexWit.T]
-final type GlobPatternRef      = Match[GlobPatternRegexWit.T]
+final type GlobPatternRef      = ValidGlobPattern
 final type AclCommandRef       = Match[AclCommandRegexWit.T]
-final type AclPatternRef       = Match[AclPatternRegexWit.T]
+final type AclPatternRef       = ValidAclPattern
 final type HostRef             = ValidHost
 final type IndexRef            = Pure
 final type KeyRef              = MinLength[1]

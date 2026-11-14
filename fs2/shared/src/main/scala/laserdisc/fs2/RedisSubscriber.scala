@@ -134,6 +134,9 @@ object RedisSubscriber {
         _     <- (if (feed.keptAlive) pinging else Async[F].unit).background
         early <- Resource.eval(Ref.of[F, Vector[Either[Unreadable, A]]](confirmed._2))
         ended <- Resource.eval(Ref.of[F, Option[Throwable]](None))
+        // closing the subscriber fails the runs after it, and the one waiting for a message, which would otherwise wait forever. It comes
+        // first among what's closed, so a run sees it before the connection's end
+        _ <- Resource.onFinalize(ended.set(Some(ClientTerminated)) >> replies.tryOffer(Left(ClientTerminated)).void)
         // the stream may be run more than once: what came during confirmation goes to the first run only, and each message is taken from
         // the queue on its own, so that a run stopping early leaves the next ones there. Once the connection has failed, every run fails
         // with the same error, as nothing more will come
@@ -142,7 +145,7 @@ object RedisSubscriber {
         case None          =>
           Stream.eval(early.getAndSet(Vector.empty)).flatMap(Stream.emits) ++
             Stream.fromQueueUnterminated(replies, limit = 1).flatMap {
-              case Left(failure) => Stream.eval(ended.set(Some(failure))) >> Stream.raiseError[F](failure)
+              case Left(failure) => Stream.eval(ended.update(_.orElse(Some(failure)))) >> Stream.raiseError[F](failure)
               case Right(reply)  => Stream.fromEither[F](feed.received(reply)).flatMap(Stream.fromOption[F](_))
             }
       }

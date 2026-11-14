@@ -43,6 +43,8 @@ use it for debugging.
 
 - **The subscription is fixed.** You choose the channels when you open it, and
   closing it unsubscribes. To listen to more, open another and merge the streams.
+- **Use the stream while the subscription is open.** Once it's closed, the
+  stream fails with `ClientTerminated`, whether it was running or is run after.
 - **Each subscription uses a connection.**
 - **The stream fails if the connection drops.** Pub/sub doesn't keep messages, so
   anything published in the meantime is lost, and running the stream again fails

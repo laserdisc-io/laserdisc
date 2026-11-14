@@ -124,6 +124,28 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
     }
   }
 
+  test("running the stream after the subscriber is closed fails with ClientTerminated, instead of waiting for messages that won't come") {
+    serving(1)(confirmed).use { case (port, _) =>
+      RedisSubscriber[IO].to("127.0.0.1", port, feed).use(IO.pure).flatMap { messages =>
+        messages.compile.toList.attempt.timeout(5.seconds).map(outcome => assertEquals(outcome, Left(ClientTerminated)))
+      }
+    }
+  }
+
+  test("a stream running when the subscriber is closed fails with ClientTerminated") {
+    // a server that confirms, then keeps the connection open with nothing more to say
+    val staying = FakeRedisServer((_, in) => in.take(1).drain ++ Stream.emit(confirmed) ++ Stream.never[IO])
+    staying.use { port =>
+      RedisSubscriber[IO].to("127.0.0.1", port, feed).allocated.flatMap { case (messages, close) =>
+        messages.compile.toList.attempt.start.flatMap { running =>
+          IO.sleep(200.millis) >> close >> running.joinWithNever
+            .timeout(5.seconds)
+            .map(outcome => assertEquals(outcome, Left(ClientTerminated)))
+        }
+      }
+    }
+  }
+
   test("logs in before subscribing") {
     serving(2)("+OK\r\n" + confirmed + message("a", "m")).use { case (port, seen) =>
       RedisSubscriber[IO]

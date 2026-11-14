@@ -407,6 +407,8 @@ object RedisClient {
               def unclaimed(taken: Chunk[Batch[F]]): F[Unit] =
                 taken.filterA(_.claim.tryGet.map(_.isEmpty)).flatMap(again => retries.update(_ ++ again).whenA(again.nonEmpty))
 
+              def giveBack(current: Ref[F, Chunk[Batch[F]]]): F[Unit] = current.getAndSet(Chunk.empty).flatMap(unclaimed).uncancelable
+
               // a server refusing to set up a connection would refuse the next ones too, so the client stops, unless it refuses for now
               def stop(error: Throwable): F[Unit] = termSignal.complete(Left(error)).void
 
@@ -438,14 +440,27 @@ object RedisClient {
                       Stream.exec(ready.get)
                   }
 
-              def serverAvailable(address: RedisAddress, connection: Long, usage: Ref[F, Usage]): Stream[F, Unit] = {
-                val again       = Stream.eval(retries.getAndSet(Chunk.empty)).filter(_.nonEmpty)
-                val queued      = Stream.fromQueueUnterminated(queue, limit = 8 * 1024).chunks
+              // the batches are taken all at once, as many as are queued, which the queue's size bounds. They're kept in current from the
+              // moment they're taken, in the same step, so that a connection that goes while they're on their way to being sent leaves them
+              // to be sent again: the chunk's finalizer gives them back, or if the connection went before there was one, the end of the
+              // connection does. Whichever comes first takes them
+              def serverAvailable(
+                  address: RedisAddress,
+                  connection: Long,
+                  usage: Ref[F, Usage],
+                  current: Ref[F, Chunk[Batch[F]]]
+              ): Stream[F, Unit] = {
+                val again  = Stream.eval(retries.getAndSet(Chunk.empty).flatTap(current.set).uncancelable).filter(_.nonEmpty)
+                val queued = Stream.repeatEval(Concurrent[F].uncancelable { poll =>
+                  poll(queue.take)
+                    .flatMap(first => queue.tryTakeN(None).map(rest => Chunk.from(first :: rest)))
+                    .flatTap(current.set)
+                })
                 val connected   = if (setup.isEmpty) Usage.Idle else Usage.SettingUp
                 val onConnected = log.info(s"Connected to server $address") >> usage.update(_.max(connected))
                 (settingUp(address, usage) ++ (again ++ queued)
                   .evalTap(_ => usage.update(_.max(Usage.Used)))
-                  .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(unclaimed(taken))))
+                  .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(giveBack(current))))
                   .through(redisNetChannel(address, onConnected))
                   .evalMap(resp => receive(connection)(resp).flatMap(toSetup => usage.set(Usage.Answered).unlessA(toSetup)))
                   .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
@@ -462,9 +477,15 @@ object RedisClient {
               }
 
               // a connection that closed with nothing sent on it, as a server closes idle clients, is opened again only once there's
-              // something to send: the send waiting for it goes first on the new connection
+              // something to send: the send waiting for it goes first on the new connection. What it was given to send and didn't is
+              // something to send, so then it's opened again at once
               val nextSend: F[Unit] =
-                Concurrent[F].uncancelable(poll => poll(queue.take).flatMap(batch => retries.update(Chunk.singleton(batch) ++ _)))
+                Concurrent[F].uncancelable { poll =>
+                  retries.get.flatMap { again =>
+                    if (again.nonEmpty) Concurrent[F].unit
+                    else poll(queue.take).flatMap(batch => retries.update(Chunk.singleton(batch) ++ _))
+                  }
+                }
 
               // failures counts the addresses that couldn't be reached, or that closed the connection before answering what was sent on
               // it, since the last connection that answered. When that one goes, every address is tried again, its own last, before the
@@ -481,19 +502,20 @@ object RedisClient {
                         Ref.of[F, Usage](Usage.Connecting),
                         connections.updateAndGet(_ + 1),
                         Deferred[F, Unit],
-                        Deferred[F, Unit]
+                        Deferred[F, Unit],
+                        Ref.of[F, Chunk[Batch[F]]](Chunk.empty)
                       ).tupled
                     )
-                    .flatMap { case (address, usage, connection, reset, ended) =>
+                    .flatMap { case (address, usage, connection, reset, ended, current) =>
                       // a connection closed to stop a command waiting on the server isn't a failure: the next send connects again. ended
                       // is completed once what was sent on the connection has failed, so that nothing more is sent on it
                       val resettable = Stream.exec(resetting.set(Some(reset -> ended))) ++
-                        serverAvailable(address, connection, usage).concurrently(
+                        serverAvailable(address, connection, usage, current).concurrently(
                           Stream.exec(reset.get) ++ Stream.raiseError[F](ConnectionReset)
                         )
                       resettable.handleErrorWith { failure =>
                         val idle = log.info(s"Connection to $address ended with nothing sent on it: ${failure.getMessage}") >> nextSend
-                        Stream.eval(failInFlight(failure) >> ended.complete(()) >> usage.get).flatMap {
+                        Stream.eval(giveBack(current) >> failInFlight(failure) >> ended.complete(()) >> usage.get).flatMap {
                           case _ if failure == ConnectionReset =>
                             Stream.exec(log.info(s"Connection to $address closed to stop a command waiting on it") >> nextSend) ++ runner(
                               failures,

@@ -32,6 +32,8 @@ import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
 
+// Not on Scala.js: on Node.js 26, fs2 socket reads can stall when several replies arrive at once
+// (https://github.com/typelevel/fs2/issues/3793). The fix is in fs2's main branch, not yet in a release
 // connections ending while sends are queued: a send taken off the queue just as its connection ends, or waiting for a connection closed
 // while idle, must still be answered, with a reply or a failure, and never be left waiting for its timeout
 final class RedisClientChurnSpec extends CatsEffectSuite {

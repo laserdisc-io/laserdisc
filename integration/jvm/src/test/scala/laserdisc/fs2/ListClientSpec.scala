@@ -116,6 +116,15 @@ abstract class ListClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     assertEquals(send(blocking.blpop[String](OneOrMoreKeys.unsafeFrom(List(Key("l:b1"), Key("l:b2"))), 0.1)), None)
   }
 
+  test(s"a $dest client gets None when blmove or brpoplpush time out with nothing to move") {
+    import laserdisc.redis_6_2.*
+    import listtypes.*
+
+    send(del("l:t1", "l:t2"))
+    assertEquals(send(blocking.blmove[String]("l:t1", "l:t2", ListSide.left, ListSide.right, 0.1)), None)
+    assertEquals(send(blocking.brpoplpush[String]("l:t1", "l:t2", 0.1)), None)
+  }
+
   test(s"a $dest client reads nothing to pop with a count, whichever null the server replies with") {
     import laserdisc.redis_6_2.*
 

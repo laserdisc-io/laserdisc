@@ -125,6 +125,16 @@ abstract class BListPSpec extends BaseSpec with BListP {
     assertEquals(blpop[String](a, BlockingSeconds(0.25d)).encode, Arr(Bulk("BLPOP"), Bulk("a"), Bulk("0.25")))
   }
 
+  test(
+    "The Blocking List protocol reads the null array blmove and brpoplpush reply with when they time out, and a null bulk string, as None"
+  ) {
+    val (s, d, t) = (Key("s"), Key("d"), BlockingSeconds(0.1d))
+    assertEquals(blmove[String](s, d, ListP.Side.left, ListP.Side.right, t).decode(NilArr), None)
+    assertEquals(brpoplpush[String](s, d, t).decode(NilArr), None)
+    assertEquals(brpoplpush[String](s, d, t).decode(NullBulk), None)
+    assertEquals(brpoplpush[String](s, d, t).decode(Bulk("x")), Some("x"))
+  }
+
   property("The Blocking List protocol using blmove sends the timeout last") {
     forAll { (s: Key, d: Key, t: BlockingSeconds, os: Option[String]) =>
       val protocol = blmove[String](s, d, ListP.Side.right, ListP.Side.left, t)

@@ -166,6 +166,45 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
     }
   }
 
+  test("the client waits longer each time in a row no server answers") {
+    // reads each command and closes the connection without answering, keeping when each connection came
+    IO.ref(Vector.empty[FiniteDuration]).flatMap { came =>
+      val refusing =
+        FakeRedisServer((_, requests) => Stream.exec(IO.monotonic.flatMap(now => came.update(_ :+ now))) ++ requests.take(1).drain)
+      refusing.use { port =>
+        RedisClient[IO].to("127.0.0.1", port, reconnect = Reconnect(50.millis, 400.millis)).use { client =>
+          // sends keep coming, as each connection is opened for one
+          (client.send(get[String]("k"), 1.second).attempt >> IO.sleep(10.millis)).foreverM.timeoutTo(3.seconds, IO.unit)
+        } >> came.get.map { times =>
+          val gaps = times.zip(times.drop(1)).map { case (a, b) => b - a }
+          assert(gaps.size >= 5, s"only ${times.size} connections")
+          assert(gaps.takeRight(2).map(_.toMillis).sum > 3 * gaps.take(2).map(_.toMillis).sum, s"gaps didn't grow: $gaps")
+        }
+      }
+    }
+  }
+
+  test("a server that comes back is used again after a short wait") {
+    unusedPort.use { port =>
+      RedisClient[IO].to("127.0.0.1", port, reconnect = Reconnect(50.millis, 200.millis)).use { client =>
+        client.send(get[String]("k"), 1.second).attempt >>
+          FakeRedisServer.on(port)((_, requests) => requests.as(bulk("back"))).use { _ =>
+            untilBack(client).timed.map { case (took, reply) =>
+              assertEquals(reply, Some("back"))
+              assert(took < 1.second, s"took $took")
+            }
+          }
+      }
+    }
+  }
+
+  // sends every 20 milliseconds until one is answered
+  private def untilBack(client: RedisClient[IO]): IO[Option[String]] =
+    client.send(get[String]("k"), 1.second).attempt.map(_.flatten).flatMap {
+      case Right(reply) => IO.pure(reply)
+      case Left(_)      => IO.sleep(20.millis) >> untilBack(client)
+    }
+
   test("commands fail while no server can be reached, with why the last connection failed") {
     def untilUnavailable(client: RedisClient[IO]): IO[ServerUnavailable] =
       client.send(get[String]("k"), 1.second).attempt.flatMap {

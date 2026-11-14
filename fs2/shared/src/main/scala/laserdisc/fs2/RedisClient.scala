@@ -27,7 +27,7 @@ import _root_.fs2.io.net.Network
 import cats.data.NonEmptySet
 import cats.effect.kernel.{Deferred, Ref, Temporal}
 import cats.effect.syntax.all.*
-import cats.effect.std.{Mutex, Queue}
+import cats.effect.std.{Mutex, Queue, Random}
 import cats.effect.{Async, Concurrent, Fiber, Resource}
 import cats.syntax.all.*
 import laserdisc.protocol.RESPRead
@@ -55,9 +55,10 @@ object RedisClient {
         connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout,
         credentials: Option[Credentials] = None,
         database: Option[DbIndex] = None,
-        tls: Option[Tls[F]] = None
+        tls: Option[Tls[F]] = None,
+        reconnect: Reconnect = Reconnect.default
     ): Resource[F, RedisClient[F]] =
-      toNodes(NonEmptySet.one(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout, credentials, database, tls)
+      toNodes(NonEmptySet.one(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout, credentials, database, tls, reconnect)
 
     /** Like `to`, trying each address in turn, in the set's order, with the same credentials, database and TLS for each */
     @inline final def toNodes(
@@ -66,9 +67,11 @@ object RedisClient {
         connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout,
         credentials: Option[Credentials] = None,
         database: Option[DbIndex] = None,
-        tls: Option[Tls[F]] = None
+        tls: Option[Tls[F]] = None,
+        reconnect: Reconnect = Reconnect.default
     ): Resource[F, RedisClient[F]] =
-      connection(addresses.toSortedSet.toList, receiveBufferSizeBytes, connectTimeout, credentials, database, tls).flatMap(impl.mkClient(_))
+      connection(addresses.toSortedSet.toList, receiveBufferSizeBytes, connectTimeout, credentials, database, tls, reconnect)
+        .flatMap(impl.mkClient(_))
 
     /** A client of its own, for one caller at a time: it sends one command at a time, each once the one before it has returned, so it can
       * also send the commands under `blocking.forever`, which wait for as long as it takes. Cancelling one of those once it's sent closes
@@ -81,9 +84,10 @@ object RedisClient {
         connectTimeout: FiniteDuration = RedisChannel.DefaultConnectTimeout,
         credentials: Option[Credentials] = None,
         database: Option[DbIndex] = None,
-        tls: Option[Tls[F]] = None
+        tls: Option[Tls[F]] = None,
+        reconnect: Reconnect = Reconnect.default
     ): Resource[F, DedicatedClient[F]] =
-      connection(Seq(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout, credentials, database, tls)
+      connection(Seq(RedisAddress(host, port)), receiveBufferSizeBytes, connectTimeout, credentials, database, tls, reconnect)
         .flatMap(impl.mkDedicated(_))
 
     private def connection(
@@ -92,7 +96,8 @@ object RedisClient {
         connectTimeout: FiniteDuration,
         credentials: Option[Credentials],
         database: Option[DbIndex],
-        tls: Option[Tls[F]]
+        tls: Option[Tls[F]],
+        reconnect: Reconnect
     ): Resource[F, impl.Connection[F]] = {
       def redisChannel(address: RedisAddress, onConnected: F[Unit]): Pipe[F, RESP, RESP] =
         stream =>
@@ -102,7 +107,7 @@ object RedisClient {
             stream.through(RedisChannel(socketAddress, receiveBufferSizeBytes, connectTimeout, onConnected, secure))
           }
 
-      impl.connection(redisChannel, addresses, impl.setup(credentials, database))
+      impl.connection(redisChannel, addresses, impl.setup(credentials, database), reconnect)
     }
   }
 
@@ -181,12 +186,13 @@ object RedisClient {
       refused.message == "ERR max number of clients reached" ||
         List("LOADING", "BUSY", "MASTERDOWN", "TRYAGAIN").exists(code => refused.message.startsWith(s"$code "))
 
-    def connection[F[_]: Temporal](
+    def connection[F[_]: Async](
         redisNetChannel: (RedisAddress, F[Unit]) => Pipe[F, RESP, RESP],
         addresses: Seq[RedisAddress],
-        setup: List[Protocol[RESP]] = Nil
+        setup: List[Protocol[RESP]] = Nil,
+        reconnect: Reconnect = Reconnect.default
     )(implicit logSelector: LogSelector[F]): Resource[F, Connection[F]] =
-      Resource.eval(Deferred[F, Either[Throwable, Unit]]).flatMap { termSignal =>
+      Resource.eval((Deferred[F, Either[Throwable, Unit]], Random.scalaUtilRandom[F]).tupled).flatMap { case (termSignal, random) =>
         Resource.eval(Queue.bounded[F, Batch[F]](1024)).flatMap { queue =>
           // the requests sent and waiting for their replies, those of a batch the connection went before sending, the address to try
           // next, the number of the current connection, the number of the connection a WATCH last succeeded on, until a transaction or
@@ -466,14 +472,14 @@ object RedisClient {
                   .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
               }
 
-              // the batches are taken one at a time, each failed in the same step, so that stopping after 3 seconds leaves the next ones
-              // queued. Each fails with why the last connection failed
-              def serverUnavailable(cause: Throwable): Stream[F, Unit] = {
+              // the batches are taken one at a time, each failed in the same step, so that stopping once the wait is over leaves the next
+              // ones queued. Each fails with why the last connection failed
+              def serverUnavailable(cause: Throwable, wait: FiniteDuration): Stream[F, Unit] = {
                 val unavailable = ServerUnavailable(cause)
                 val again       = retries.getAndSet(Chunk.empty).flatMap(_.traverse_(failBatch(unavailable))).uncancelable
                 val queued      = Concurrent[F].uncancelable(poll => poll(queue.take).flatMap(failBatch(unavailable)))
                 log.errorS("Server unavailable for publishing") >>
-                  (Stream.exec(again) ++ Stream.repeatEval(queued).drain).interruptAfter(3.seconds) // FIXME magic number
+                  (Stream.exec(again) ++ Stream.repeatEval(queued).drain).interruptAfter(wait)
               }
 
               // a connection that closed with nothing sent on it, as a server closes idle clients, is opened again only once there's
@@ -490,11 +496,14 @@ object RedisClient {
               // failures counts the addresses that couldn't be reached, or that closed the connection before answering what was sent on
               // it, since the last connection that answered. When that one goes, every address is tried again, its own last, before the
               // client gives up: a server that answered may only have dropped the connection, and one that closes each connection at once,
-              // as when it has too many clients, isn't tried again and again. last is why the last connection failed
-              def runner(failures: Int, last: Option[Throwable]): Stream[F, Unit] =
-                if (failures >= addresses.size)
-                  serverUnavailable(last.getOrElse(new NoSuchElementException("No address to connect to"))) ++ runner(0, last)
-                else
+              // as when it has too many clients, isn't tried again and again. last is why the last connection failed, and waits how many
+              // times in a row the client has waited for want of a server since one last answered, which makes each wait longer
+              def runner(failures: Int, last: Option[Throwable], waits: Int): Stream[F, Unit] =
+                if (failures >= addresses.size) {
+                  val cause = last.getOrElse(new NoSuchElementException("No address to connect to"))
+                  val wait  = random.betweenDouble(0.5d, 1d).map(cut => (reconnect.after(waits).toNanos * cut).toLong.nanos)
+                  Stream.eval(wait).flatMap(serverUnavailable(cause, _)) ++ runner(0, last, waits + 1)
+                } else
                   Stream
                     .eval(
                       (
@@ -519,12 +528,13 @@ object RedisClient {
                           case _ if failure == ConnectionReset =>
                             Stream.exec(log.info(s"Connection to $address closed to stop a command waiting on it") >> nextSend) ++ runner(
                               failures,
-                              last
+                              last,
+                              waits
                             )
-                          case Usage.Idle => Stream.exec(idle) ++ runner(failures, last)
+                          case Usage.Idle => Stream.exec(idle) ++ runner(failures, last, waits)
                           case reached    =>
                             log.errorS(s"Failure of publishing connection to $address", failure) >>
-                              runner(if (reached == Usage.Answered) 0 else failures + 1, Some(failure))
+                              (if (reached == Usage.Answered) runner(0, Some(failure), 0) else runner(failures + 1, Some(failure), waits))
                         }
                       }
                     }
@@ -537,7 +547,7 @@ object RedisClient {
               val newConnection: Connection[F] = new Connection[F] {
                 override final def run: F[Fiber[F, Throwable, Unit]] =
                   log.debug("Starting connection") >>
-                    runner(0, None)
+                    runner(0, None, 0)
                       .interruptWhen(termSignal)
                       .compile
                       .drain

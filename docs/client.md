@@ -19,10 +19,27 @@ val client: Resource[IO, RedisClient[IO]] = RedisClient[IO].to("localhost", 6379
 ```
 
 If the connection drops, commands still waiting for a reply get a `Left` right
-away, and the client reconnects. While it can't reach the server, it tries again
-every 3 seconds, and commands sent in the meantime fail with
-`ServerUnavailable`. Its `cause` says why the last attempt failed, such as the
-connection being refused or the TLS handshake failing.
+away, and the client reconnects. While it can't reach the server, commands fail
+at once with `ServerUnavailable`. Its `cause` says why the last attempt failed,
+such as the connection being refused or the TLS handshake failing.
+
+Between attempts the client waits 100 milliseconds at first, then twice as long
+each time, up to 5 seconds. Once the server answers again, the next wait is
+short again. Each wait is cut by up to half at random, so that many clients
+don't all reconnect at the same moment. To wait differently, pass a
+`Reconnect` with the first and the longest wait:
+
+```scala mdoc:compile-only
+import cats.effect.{IO, Resource}
+import scala.concurrent.duration.*
+
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val patient: Resource[IO, RedisClient[IO]] =
+  RedisClient[IO].to("localhost", 6379, reconnect = Reconnect(500.millis, 30.seconds))
+```
 
 The client also reconnects when the server stops replying: once a reply is late
 by more than its `send`'s timeout, the client drops the connection and opens a
@@ -122,11 +139,11 @@ val client: Resource[IO, RedisClient[IO]] =
 The addresses are tried in the set's order: by host, then port, unless you
 build the set with an `Order` of your own.
 
-When none of the servers can be reached, it waits 3 seconds before trying them
-all again.
+When none of the servers can be reached, it waits before trying them all again,
+as described above.
 
-`toNodes` takes `credentials`, `database` and `tls` too, and uses them for
-every server.
+`toNodes` takes `credentials`, `database`, `tls` and `reconnect` too, and uses
+them for every server.
 
 This doesn't make it a Redis Cluster client: laserdisc doesn't send each key to
 the node that holds it, or follow a cluster's `MOVED` and `ASK` redirects. On a

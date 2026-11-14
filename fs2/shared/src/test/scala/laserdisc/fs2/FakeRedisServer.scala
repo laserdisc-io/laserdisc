@@ -51,8 +51,20 @@ object FakeRedisServer {
     }
 
   // a server that answers the commands of its n-th connection (from 1) with the replies of `handle`
-  def apply(handle: (Int, Stream[IO, RESP]) => Stream[IO, String]): Resource[IO, Port] =
-    withRetries(bindInRange).flatMap { case (server, port) =>
+  def apply(handle: (Int, Stream[IO, RESP]) => Stream[IO, String]): Resource[IO, Port] = serving(withRetries(bindInRange))(handle)
+
+  // the same, on the port given, as for a server that comes back where the client is trying to connect
+  def on(port: Port)(handle: (Int, Stream[IO, RESP]) => Stream[IO, String]): Resource[IO, Port] =
+    serving(
+      Network[IO]
+        .bind(ip4s.SocketAddress(ip4s.Ipv4Address.fromString("127.0.0.1").get, ip4s.Port.fromInt(port.value).get))
+        .map(_ -> port)
+    )(handle)
+
+  private def serving(
+      bound: Resource[IO, (ServerSocket[IO], Port)]
+  )(handle: (Int, Stream[IO, RESP]) => Stream[IO, String]): Resource[IO, Port] =
+    bound.flatMap { case (server, port) =>
       Resource.eval(IO.ref(0)).flatMap { connections =>
         server.accept
           .map { socket =>

@@ -26,7 +26,7 @@ import _root_.fs2.Stream
 import _root_.fs2.io.net.{Network, Socket}
 import cats.effect.std.Queue as CatsQueue
 import cats.effect.syntax.all.*
-import cats.effect.{Async, Ref, Resource}
+import cats.effect.{Async, Deferred, Ref, Resource}
 import cats.syntax.all.*
 import laserdisc.protocol.{Err, Feed, RESP}
 import laserdisc.protocol.Feed.Unreadable
@@ -133,21 +133,23 @@ object RedisSubscriber {
           } >> replies.offer(Left(ServerNotResponding(address)))
         _     <- (if (feed.keptAlive) pinging else Async[F].unit).background
         early <- Resource.eval(Ref.of[F, Vector[Either[Unreadable, A]]](confirmed._2))
-        ended <- Resource.eval(Ref.of[F, Option[Throwable]](None))
-        // closing the subscriber fails the runs after it, and the one waiting for a message, which would otherwise wait forever. It comes
-        // first among what's closed, so a run sees it before the connection's end
-        _ <- Resource.onFinalize(ended.set(Some(ClientTerminated)) >> replies.tryOffer(Left(ClientTerminated)).void)
+        ended <- Resource.eval(Deferred[F, Throwable])
+        // closing the subscriber ends every run, those waiting for a message included, as nothing more will come. It comes first among
+        // what's closed, so a run sees it before the connection's end
+        _ <- Resource.onFinalize(ended.complete(ClientTerminated).void)
         // the stream may be run more than once: what came during confirmation goes to the first run only, and each message is taken from
-        // the queue on its own, so that a run stopping early leaves the next ones there. Once the connection has failed, every run fails
-        // with the same error, as nothing more will come
-      } yield confirmed._1 -> Stream.eval(ended.get).flatMap {
+        // the queue on its own, so that a run stopping early leaves the next ones there. The connection's failure comes after the messages
+        // before it; the run that takes it ends the others, and every run after them fails with it, as nothing more will come
+        next = Async[F].race(ended.get, replies.take).flatMap {
+          case Right(Left(failure)) => ended.complete(failure) >> ended.get.flatMap(Async[F].raiseError[RESP])
+          case Right(Right(reply))  => reply.pure[F]
+          case Left(failure)        => Async[F].raiseError[RESP](failure)
+        }
+      } yield confirmed._1 -> Stream.eval(ended.tryGet).flatMap {
         case Some(failure) => Stream.raiseError[F](failure)
         case None          =>
           Stream.eval(early.getAndSet(Vector.empty)).flatMap(Stream.emits) ++
-            Stream.fromQueueUnterminated(replies, limit = 1).flatMap {
-              case Left(failure) => Stream.eval(ended.update(_.orElse(Some(failure)))) >> Stream.raiseError[F](failure)
-              case Right(reply)  => Stream.fromEither[F](feed.received(reply)).flatMap(Stream.fromOption[F](_))
-            }
+            Stream.repeatEval(next).flatMap(reply => Stream.fromEither[F](feed.received(reply)).flatMap(Stream.fromOption[F](_)))
       }
 
     // what arrives while the rest is being confirmed is kept for the stream. An error to what's sent before the feed's command, as to

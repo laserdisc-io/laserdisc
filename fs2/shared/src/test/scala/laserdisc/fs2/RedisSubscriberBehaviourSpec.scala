@@ -146,6 +146,36 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
     }
   }
 
+  test("a slow stream with a full queue fails with ClientTerminated once the subscriber is closed, instead of waiting forever") {
+    // confirms, then sends more messages than the queue holds, and stays connected
+    val many    = (1 to 2000).map(i => message("a", s"m$i")).mkString
+    val staying = FakeRedisServer((_, in) => in.take(1).as(confirmed + many) ++ Stream.never[IO])
+    staying.use { port =>
+      RedisSubscriber[IO].to("127.0.0.1", port, feed).allocated.flatMap { case (messages, close) =>
+        // takes one message, then waits until the subscriber is closed before taking the rest
+        IO.deferred[Unit].flatMap { closed =>
+          messages.zipWithIndex.evalTap { case (_, i) => closed.get.whenA(i == 0L) }.compile.drain.attempt.start.flatMap { running =>
+            IO.sleep(500.millis) >> close >> closed.complete(()) >> running.joinWithNever
+              .timeout(5.seconds)
+              .map(outcome => assertEquals(outcome, Left(ClientTerminated)))
+          }
+        }
+      }
+    }
+  }
+
+  test("two runs of the stream at once both fail when the connection drops, instead of one waiting forever") {
+    serving(1)(confirmed).use { case (port, _) =>
+      RedisSubscriber[IO].to("127.0.0.1", port, feed).use { messages =>
+        (messages.compile.toList.attempt, messages.compile.toList.attempt).parTupled.timeout(5.seconds).map { case (first, second) =>
+          // both fail, with the connection's failure: the end of the stream on the JVM, a reset on Node.js 26
+          assert(first.isLeft, first.toString)
+          assertEquals(second.left.map(_.getMessage), first.left.map(_.getMessage))
+        }
+      }
+    }
+  }
+
   test("logs in before subscribing") {
     serving(2)("+OK\r\n" + confirmed + message("a", "m")).use { case (port, seen) =>
       RedisSubscriber[IO]

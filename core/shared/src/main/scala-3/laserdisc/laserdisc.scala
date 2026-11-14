@@ -102,6 +102,11 @@ final val GlobPatternRegexWit = new Witness(
   """[^\x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
 )
 
+/** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand. A name starting with `@` is a
+  * category, which has rules of its own
+  */
+final val AclCommandRegexWit = new Witness("""[^@\x00-\x20\x7F][^\x00-\x20\x7F]*""")
+
 /** A glob for the keys and channels of ACL rules: a [[GlobPattern]] without spaces, which ACL SETUSER refuses */
 final val AclPatternRegexWit = new Witness(
   """[^ \x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
@@ -138,6 +143,7 @@ final type ConnectionNameRef   = MinLength[1] & ForAll[NoWhitespace & NoControlC
 final type DbIndexRef          = Interval.Closed[0, DbIndexMaxValueWit.T]
 final type GeoHashRef          = Match[GeoHashRegexWit.T]
 final type GlobPatternRef      = Match[GlobPatternRegexWit.T]
+final type AclCommandRef       = Match[AclCommandRegexWit.T]
 final type AclPatternRef       = Match[AclPatternRegexWit.T]
 final type HostRef             = ValidHost
 final type IndexRef            = Pure
@@ -171,6 +177,7 @@ final type ConnectionName        = ConnectionName.T
 final type DbIndex               = DbIndex.T
 final type GeoHash               = GeoHash.T
 final type GlobPattern           = GlobPattern.T
+final type AclCommand            = AclCommand.T
 final type AclPattern            = AclPattern.T
 final type Host                  = Host.T
 final type Index                 = Index.T
@@ -215,6 +222,7 @@ object ConnectionName        extends RefinedTypeOps[String, ConnectionNameRef]
 object DbIndex               extends RefinedTypeOps[Int, DbIndexRef]
 object GeoHash               extends RefinedTypeOps[String, GeoHashRef]
 object GlobPattern           extends RefinedTypeOps[String, GlobPatternRef]
+object AclCommand            extends RefinedTypeOps[String, AclCommandRef]
 object AclPattern            extends RefinedTypeOps[String, AclPatternRef]
 object Host                  extends RefinedTypeOps[String, HostRef]
 object Index                 extends RefinedTypeOps[Long, IndexRef]

@@ -28,9 +28,19 @@ final class AclPSpec extends BaseSpec with ServerP {
   private def bulks(ss: String*): Arr = Arr(ss.map(Bulk(_)).toList)
   private val hash                    = "2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b"
 
+  test("The ACL protocol allows or denies a command, and a category only with its own rules") {
+    assertEquals(servertypes.aclRules.allow(AclCommand("client|kill")).deny(AclCommand("get")).params, List("+client|kill", "-get"))
+    assertEquals(servertypes.aclRules.allowCategory(Key("all")).params, List("+@all"))
+    assert(compileErrors("servertypes.aclRules.allow(AclCommand(\"@all\"))").nonEmpty)
+  }
+
   test("The ACL protocol using setuser sends the rules in order") {
     val rules =
-      servertypes.aclRules.reset.on.password(Key("secret")).keys(AclPattern("app:*")).allow(Key("get")).denyCategory(Key("dangerous"))
+      servertypes.aclRules.reset.on
+        .password(Key("secret"))
+        .keys(AclPattern("app:*"))
+        .allow(AclCommand("get"))
+        .denyCategory(Key("dangerous"))
     assertEquals(
       acl.setuser(Key("u"), rules).encode,
       bulks("ACL", "SETUSER", "u", "reset", "on", ">secret", "~app:*", "+get", "-@dangerous")
@@ -39,7 +49,7 @@ final class AclPSpec extends BaseSpec with ServerP {
     val withSelectors =
       servertypes.aclSelectorRules.on
         .readKeys(AclPattern("r:*"))
-        .selector(servertypes.aclSelectorRules.keys(AclPattern("b:*")).allow(Key("set")))
+        .selector(servertypes.aclSelectorRules.keys(AclPattern("b:*")).allow(AclCommand("set")))
     assertEquals(acl.setuser(Key("u"), withSelectors).encode, bulks("ACL", "SETUSER", "u", "on", "%R~r:*", "(\"~b:*\" \"+set\")"))
     // the server takes quotes and backslashes out of a selector's rules, so they're quoted and escaped to stay as they are
     val quoting = servertypes.aclSelectorRules.selector(servertypes.aclSelectorRules.keys(AclPattern.unsafeFrom("\"q\\:*\"")))

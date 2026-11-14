@@ -109,6 +109,11 @@ package object laserdisc {
     """[^\x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
   )
 
+  /** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand. A name starting with `@` is
+    * a category, which has rules of its own
+    */
+  final val AclCommandRegexWit = W("""[^@\x00-\x20\x7F][^\x00-\x20\x7F]*""")
+
   /** A glob for the keys and channels of ACL rules: a [[GlobPattern]] without spaces, which ACL SETUSER refuses */
   final val AclPatternRegexWit = W(
     """[^ \x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
@@ -143,6 +148,7 @@ package object laserdisc {
   final type DbIndexRef          = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
   final type GeoHashRef          = MatchesRegex[GeoHashRegexWit.T]
   final type GlobPatternRef      = MatchesRegex[GlobPatternRegexWit.T]
+  final type AclCommandRef       = MatchesRegex[AclCommandRegexWit.T]
   final type AclPatternRef       = MatchesRegex[AclPatternRegexWit.T]
   final type HostRef             = ValidHost
   final type IndexRef            = True
@@ -177,6 +183,7 @@ package object laserdisc {
   final type DbIndex               = Int Refined DbIndexRef
   final type GeoHash               = String Refined GeoHashRef
   final type GlobPattern           = String Refined GlobPatternRef
+  final type AclCommand            = String Refined AclCommandRef
   final type AclPattern            = String Refined AclPatternRef
   final type Host                  = String Refined HostRef
   final type Index                 = Long Refined IndexRef
@@ -221,6 +228,7 @@ package object laserdisc {
   object DbIndex               extends RefinedTypeOps.Numeric[DbIndex, Int]
   object GeoHash               extends RefinedTypeOps[GeoHash, String]
   object GlobPattern           extends RefinedTypeOps[GlobPattern, String]
+  object AclCommand            extends RefinedTypeOps[AclCommand, String]
   object AclPattern            extends RefinedTypeOps[AclPattern, String]
   object Host                  extends RefinedTypeOps[Host, String]
   object Index                 extends RefinedTypeOps.Numeric[Index, Long]

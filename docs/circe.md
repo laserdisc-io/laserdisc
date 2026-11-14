@@ -4,8 +4,10 @@
 [circe](https://circe.github.io/circe/).
 
 ```scala
-libraryDependencies += "io.laserdisc" %%% "laserdisc-circe" % "@VERSION@"
+libraryDependencies += "io.laserdisc" %% "laserdisc-circe" % "@VERSION@"
 ```
+
+In a Scala.js or Scala Native project, use `%%%` instead of `%%`.
 
 Import `laserdisc.interop.circe.*`. To store a value as JSON, turn it into a
 circe `Json` with `asJson`, and read it back as `Json`:
@@ -26,6 +28,9 @@ implicit val userDecoder: Decoder[User] = Decoder.forProduct2("name", "age")(Use
 
 val save = set("user", User("Ada", 36).asJson)
 val load = get[Json]("user")
+
+// once the reply is in, turn the Json back into a User with its Decoder
+def user(json: Json): Decoder.Result[User] = json.as[User]
 ```
 
 To write and read a type as JSON without turning it into `Json` each time, give

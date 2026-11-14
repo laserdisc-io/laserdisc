@@ -10,8 +10,11 @@ On Scala 2, the argument types such as `Key` and `PosInt` come from
 [Iron](https://github.com/Iltotore/iron). Code that uses them through
 LaserDisc, with `from`, `unsafeFrom` and `.value`, works on both.
 
-If you write your own refined types for use with LaserDisc, write them with
-refined on Scala 2 and with Iron on Scala 3.
+If you write your own types with constraints, like `Key`, for use with
+LaserDisc, write them with refined on Scala 2 and with Iron on Scala 3.
+
+The examples in these pages use `*` imports, such as `import laserdisc.*`. On
+Scala 2 they need `scalacOptions += "-Xsource:3"`, or `_` in place of `*`.
 
 ## Scala.js and Scala Native
 

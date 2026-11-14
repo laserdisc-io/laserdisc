@@ -38,97 +38,12 @@ To import a single family instead, add its name:
 | Server | `laserdisc.redis_8_10.server.*` |
 | Cluster | `laserdisc.redis_8_10.cluster.*` |
 | Blocking commands of lists, sorted sets and streams | `laserdisc.redis_8_10.blocking.*` |
-| Blocking commands that wait for as long as it takes, and `WAIT` and `WAITAOF` without a timeout | `laserdisc.redis_8_10.blocking.forever.*` |
+| Blocking commands with no time limit: see [Client](client.md#waiting-for-as-long-as-it-takes) | `laserdisc.redis_8_10.blocking.forever.*` |
 
-## The version of your server
-
-Each server and version has its own import, with only what that server has:
-
-```scala mdoc:compile-only
-import laserdisc.*
-import laserdisc.auto.*
-import laserdisc.valkey_8_1.*
-
-val setIfOne = set("a", 2, stringtypes.ifEq(1))
-```
-
-A command or option your server doesn't have won't compile. For example,
-`stringtypes.ifEq` arrived in Valkey 8.1 and Redis 8.4, so the same line doesn't
-compile with `laserdisc.redis_8_2.*`.
-
-| Server | Import |
-| --- | --- |
-| Redis 6.2 to 8.10 | `laserdisc.redis_6_2.*`, `laserdisc.redis_7_0.*`, `laserdisc.redis_7_2.*`, `laserdisc.redis_7_4.*`, `laserdisc.redis_8_0.*`, `laserdisc.redis_8_2.*`, `laserdisc.redis_8_4.*`, `laserdisc.redis_8_6.*`, `laserdisc.redis_8_8.*`, `laserdisc.redis_8_10.*` |
-| Valkey 7.2 to 9.1 | `laserdisc.valkey_7_2.*`, `laserdisc.valkey_8_0.*`, `laserdisc.valkey_8_1.*`, `laserdisc.valkey_9_0.*`, `laserdisc.valkey_9_1.*` |
-| Dragonfly 2.0 | `laserdisc.dragonfly_2_0.*` |
-| KeyDB | `laserdisc.redis_6_2.*` |
-
-Each import matches the latest patch release of its version, so a command added
-in a patch release needs that release or a later one. For example, `HOTKEYS HELP`
-in `laserdisc.redis_8_6.*` needs Redis 8.6.1 or later.
-
-KeyDB's latest release is based on Redis 6.2, so use `laserdisc.redis_6_2.*`. It
-doesn't have `LOLWUT`, and laserdisc doesn't have KeyDB's own commands.
-
-An import also works with later versions of its server, so use the import for
-the oldest version you run. When you upgrade, upgrade your servers first and
-change the import afterwards. A later import can send commands an older server
-doesn't have, and can't read some of its replies. For example,
-`laserdisc.redis_7_0.*` can't read `XAUTOCLAIM` from Redis 6.2.
-
-Only one command an import has is gone from a later version: Redis 7.0 removed
-`STRALGO` and added `LCS` in its place. So `stralgolcs`, `stralgolcslen` and
-`stralgolcsidx` in `laserdisc.redis_6_2.*` fail on Redis 7.0 and later. Once all
-your servers run Redis 7.0 or later, switch to `laserdisc.redis_7_0.*` and use
-`lcs`, `lcslen` and `lcsidx` instead. `LCS` only compares the values at two
-keys, so to compare two values directly, store them at keys first.
-
-## Dragonfly
-
-`laserdisc.dragonfly_2_0.*` has only what Dragonfly accepts. That leaves out, for
-example, `MIGRATE`, `OBJECT`, `SWAPDB`, `FUNCTION` and most of `CLUSTER`. It also
-adds Dragonfly's own commands: `prepend`, `saddex`, `fieldexpire`, `fieldttl`,
-`stick`, `clthrottle`, `rm` and `repltakeover`.
-
-Its rules for `ACL SETUSER` leave out `reset`, `hashedPassword` and
-`removeHashedPassword`, which Dragonfly refuses. `shutdown` takes `now` or
-`force` alone, as Dragonfly refuses them together or with `save` or `nosave`.
-
-Some things still behave differently from Redis:
-
-- `CLUSTER` only works when Dragonfly runs in cluster mode, with
-  `--cluster_mode=emulated` or `--cluster_mode=yes`.
-- `role` replies with Dragonfly's own type, which has each server's state and no
-  replication offsets.
-- `SORT` ignores `BY`, and `GET` gives an empty value for a missing key.
-- `INFO` with the `default` or `everything` section replies with nothing. Use
-  `info` with no section, or the `all` section.
-- `ACL LOAD`, `ACL SAVE` and `CONFIG REWRITE` need Dragonfly to have been started
-  with those files.
-- `PUBSUB SHARDCHANNELS` and `PUBSUB SHARDNUMSUB` need cluster mode.
-- `CLIENT TRACKING` isn't available, because Dragonfly only allows it with protocol 3.
-
-## Commands laserdisc doesn't send
-
-These commands aren't available on purpose, because they're meant for servers
-talking to each other, because they would break or stall your connection, or
-because they have no use on a connection shared by all your calls:
-
-| Command | Why |
-| --- | --- |
-| `PSYNC`, `SYNC`, `REPLCONF` | They turn the connection into a replication link |
-| `ASKING` | It's only for the command right after a cluster's ASK redirect, and laserdisc doesn't follow those redirects |
-| `RESTORE-ASKING`, `CLUSTER SYNCSLOTS`, `XIDMPRECORD` | Servers send these to each other |
-| `SCRIPT DEBUG` | It takes over the connection with an interactive debugger |
-| `UNSUBSCRIBE`, `PUNSUBSCRIBE`, `SUNSUBSCRIBE` | Closing a [subscription](subscribing.md) ends it |
-| `HELLO 3` | laserdisc reads protocol 2, so `hello` only asks for that |
-| `AUTH`, `SELECT`, `HELLO` with `AUTH` | A connection the client opens again wouldn't have them: pass `credentials` and `database` when you [connect](client.md) |
-| `QUIT` | Closing the client closes its connections |
-| `DISCARD` | A transaction is sent whole, so there's never an open one to cancel |
-| `RESET` | It would log out and change the database for everyone sharing the connection |
-| `CLIENT REPLY` | Replies are matched to requests by their order, so a missing reply breaks the connection |
-| Dragonfly's `SHRINK`, `ADDREPLICAOF` | They aren't documented, so what they take and reply can't be relied on |
-| `DEBUG`, `PFDEBUG` | They can crash or stall a server, and their replies can change between versions |
+Commands whose name starts with a group, such as `CLIENT LIST` or
+`ACL SETUSER`, are under that group's name: `client.list`,
+`acl.setuser(user, rules)`. The groups are `acl`, `client`, `command`, `config`,
+`latency`, `memory`, `module` and `script`.
 
 ## Arguments
 
@@ -140,7 +55,7 @@ With `laserdisc.auto.*` imported, you can pass literal values directly. They're
 checked when your code compiles, so this doesn't compile:
 
 ```scala
-set("", 23) // an empty key
+set("", 23) // doesn't compile: a key can't be empty
 ```
 
 Values that are only known at runtime go through `from`, which returns an
@@ -156,6 +71,18 @@ def keyOf(name: String): Either[String, Key] = Key.from(name)
 `IllegalArgumentException` if it isn't valid. To get the plain value back, use
 `.value`.
 
+A command's options are in the `types` object of its family, such as
+`stringtypes` for strings or `servertypes` for the server's commands:
+
+```scala mdoc:compile-only
+import laserdisc.*
+import laserdisc.redis_8_10.*
+import laserdisc.auto.*
+
+// SET a 2 IFEQ 1: set a to 2 only if its value is 1
+val setIfOne = set("a", 2, stringtypes.ifEq(1))
+```
+
 ## Replies
 
 Commands that return a value let you choose its type. `get[PosInt]("a")` reads
@@ -163,6 +90,48 @@ the value at `a` as a `PosInt`; `get[String]("a")` reads it as a `String`.
 
 If the reply can't be read as that type, the result is an error rather than a
 wrong value. If the key doesn't exist, `get` gives `None`.
+
+The server's replies come in a few kinds, which LaserDisc names after the Redis
+protocol, RESP: `Str` is a short status such as `OK`, `Bulk` a string, `Num` an
+integer, `Arr` an array, `Err` an error, and `NullBulk` and `NilArr` stand for
+nil. LaserDisc reads replies in RESP2, version 2 of the protocol. The kinds
+matter when you read a type of your own, and for scripts.
+
+## Your own types
+
+To store values of your own types, give LaserDisc a `Show` to write them and a
+`Read` to read them back:
+
+```scala mdoc:compile-only
+import laserdisc.*
+import laserdisc.redis_8_10.*
+import laserdisc.auto.*
+
+final case class UserId(value: Long)
+
+implicit val userIdShow: Show[UserId]       = Show.instance(_.value.toString)
+implicit val userIdRead: Read[Bulk, UserId] = Read[Bulk, Long].map(UserId(_))
+
+val save = set("user", UserId(42L))
+val load = get[UserId]("user")
+```
+
+`Show.instance` turns a value into the string Redis stores. `Read.instance`
+reads a reply yourself, and lets you fail with a `RESPDecErr` when a value
+doesn't fit:
+
+```scala mdoc:compile-only
+import laserdisc.*
+
+final case class Score(points: Long)
+
+// a score can't be negative: a stored one that is fails to read, saying why
+implicit val scoreRead: Read[Bulk, Score] = Read.instance { bulk =>
+  Read[Bulk, Long].read(bulk).flatMap { n =>
+    if (n >= 0) Right(Score(n)) else Left(RESPDecErr(s"a score can't be negative, but was $n"))
+  }
+}
+```
 
 ## Hashes
 
@@ -191,17 +160,27 @@ itself a case class or a tuple needs a `Show` written for it.
 `hgetall` also reads a hash as a `Map`, like `hgetall[Map[Key, String]]`, or as
 a list of pairs, like `hgetall[Seq[(Key, Int)]]`.
 
-`hmget` reads the fields you name into a tuple, in the same order. Use an
-`Option` for a field that may be missing; any other missing field is an error
-that says which one:
+`hmget` reads the fields you name, in the same order, each as its own type.
+Use an `Option` for a field that may be missing; any other missing field is an
+error that says which one:
 
 ```scala mdoc:compile-only
 import laserdisc.*
 import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 
+val profile: Protocol[(Int, Option[String])] = hmget[Int, Option[String]]("user:1", "age", "email")
+```
+
+When the fields are in a list, pass them as `OneOrMoreKeys` and give the types
+as a tuple:
+
+```scala mdoc:compile-only
+import laserdisc.*
+import laserdisc.redis_8_10.*
+
 val fields  = OneOrMoreKeys.unsafeFrom(List(Key("age"), Key("email")))
-val profile = hmget[Int *: Option[String] *: EmptyTuple]("user:1", fields)
+val profile = hmget[Int *: Option[String] *: EmptyTuple](Key("user:1"), fields)
 ```
 
 `mget` works the same way for keys. When you don't know how many keys you'll
@@ -259,7 +238,7 @@ The result is:
 
 - `Right(Some(...))` with one result per command. Redis runs every command even
   if one of them fails, and doesn't undo the ones before it, so each result is a
-  `Maybe` of its own.
+  `Maybe` of its own: a `Right`, or a `Left` with the error, as for a `send`.
 - `Right(None)` when nothing ran because a watched key changed (see below).
 - `Left` when Redis refuses one of the commands, for example one it doesn't
   know. Nothing runs, and the error says why.
@@ -283,24 +262,93 @@ drops the watch with it, even if you watch more keys after that. The client
 then cancels the transaction before any of its commands are sent, and `multi`
 fails with `WatchLost`: send `watch` again, read the values again and retry.
 
-## Your own types
+## The version of your server
 
-To store values of your own types, give LaserDisc a `Show` to write them and a
-`Read` to read them back:
+Each server and version has its own import, with only what that server has:
 
 ```scala mdoc:compile-only
 import laserdisc.*
-import laserdisc.redis_8_10.*
+import laserdisc.valkey_8_1.*
 import laserdisc.auto.*
 
-final case class UserId(value: Long)
-
-implicit val userIdShow: Show[UserId]       = Show.instance(_.value.toString)
-implicit val userIdRead: Read[Bulk, UserId] = Read[Bulk, Long].map(UserId(_))
-
-val save = set("user", UserId(42L))
-val load = get[UserId]("user")
+val setIfOne = set("a", 2, stringtypes.ifEq(1))
 ```
 
-`Read.instance` lets you fail with an error when a value doesn't fit, and
-`Show.instance` turns a value into the string Redis stores.
+A command or option your server doesn't have won't compile. For example,
+`stringtypes.ifEq` arrived in Valkey 8.1 and Redis 8.4, so the same line doesn't
+compile with `laserdisc.redis_8_2.*`.
+
+| Server | Import |
+| --- | --- |
+| Redis 6.2 to 8.10 | `laserdisc.redis_6_2.*`, `laserdisc.redis_7_0.*`, `laserdisc.redis_7_2.*`, `laserdisc.redis_7_4.*`, `laserdisc.redis_8_0.*`, `laserdisc.redis_8_2.*`, `laserdisc.redis_8_4.*`, `laserdisc.redis_8_6.*`, `laserdisc.redis_8_8.*`, `laserdisc.redis_8_10.*` |
+| Valkey 7.2 to 9.1 | `laserdisc.valkey_7_2.*`, `laserdisc.valkey_8_0.*`, `laserdisc.valkey_8_1.*`, `laserdisc.valkey_9_0.*`, `laserdisc.valkey_9_1.*` |
+| Dragonfly 2.0 | `laserdisc.dragonfly_2_0.*` |
+| KeyDB | `laserdisc.redis_6_2.*` |
+
+Each import matches the latest patch release of its version, so a command added
+in a patch release needs that release or a later one. For example, `HOTKEYS HELP`
+in `laserdisc.redis_8_6.*` needs Redis 8.6.1 or later.
+
+KeyDB's latest release is based on Redis 6.2, so use `laserdisc.redis_6_2.*`. It
+doesn't have `LOLWUT`, and LaserDisc doesn't have KeyDB's own commands.
+
+An import also works with later versions of its server, so use the import for
+the oldest version you run. When you upgrade, upgrade your servers first and
+change the import afterwards. A later import can send commands an older server
+doesn't have, and can't read some of its replies. For example,
+`laserdisc.redis_7_0.*` can't read `XAUTOCLAIM` from Redis 6.2.
+
+One command was removed in a later version: Redis 7.0 replaced `STRALGO` with
+`LCS`. So `stralgolcs`, `stralgolcslen` and
+`stralgolcsidx` in `laserdisc.redis_6_2.*` fail on Redis 7.0 and later. Once all
+your servers run Redis 7.0 or later, switch to `laserdisc.redis_7_0.*` and use
+`lcs`, `lcslen` and `lcsidx` instead. `LCS` only compares the values at two
+keys, so to compare two values directly, store them at keys first.
+
+## Dragonfly
+
+`laserdisc.dragonfly_2_0.*` has only what Dragonfly accepts. That leaves out, for
+example, `MIGRATE`, `OBJECT`, `SWAPDB`, `FUNCTION` and most of `CLUSTER`. It also
+adds Dragonfly's own commands: `prepend`, `saddex`, `fieldexpire`, `fieldttl`,
+`stick`, `clthrottle`, `rm` and `repltakeover`.
+
+Its rules for `ACL SETUSER` leave out `reset`, `hashedPassword` and
+`removeHashedPassword`, which Dragonfly refuses. `shutdown` takes `now` or
+`force` alone, as Dragonfly refuses them together or with `save` or `nosave`.
+
+Some things still behave differently from Redis:
+
+- `CLUSTER` only works when Dragonfly runs in cluster mode, with
+  `--cluster_mode=emulated` or `--cluster_mode=yes`.
+- `role` replies with Dragonfly's own type, which has each server's state and no
+  replication offsets.
+- `SORT` ignores `BY`, and `GET` gives an empty value for a missing key.
+- `INFO` with the `default` or `everything` section replies with nothing. Use
+  `info` with no section, or the `all` section.
+- `ACL LOAD`, `ACL SAVE` and `CONFIG REWRITE` need Dragonfly to have been started
+  with those files.
+- `PUBSUB SHARDCHANNELS` and `PUBSUB SHARDNUMSUB` need cluster mode.
+- `CLIENT TRACKING` isn't available, because Dragonfly only allows it with RESP3,
+  and LaserDisc reads RESP2.
+
+## Commands LaserDisc doesn't send
+
+These commands aren't available on purpose, because they're meant for servers
+talking to each other, because they would break or stall your connection, or
+because they have no use on a connection shared by all your calls:
+
+| Command | Why |
+| --- | --- |
+| `PSYNC`, `SYNC`, `REPLCONF` | They turn the connection into a replication link |
+| `ASKING` | It's only for the command right after a cluster sends you to another node, which LaserDisc doesn't follow |
+| `RESTORE-ASKING`, `CLUSTER SYNCSLOTS`, `XIDMPRECORD` | Servers send these to each other |
+| `SCRIPT DEBUG` | It takes over the connection with an interactive debugger |
+| `UNSUBSCRIBE`, `PUNSUBSCRIBE`, `SUNSUBSCRIBE` | Closing a [subscription](subscribing.md) ends it |
+| `HELLO 3` | LaserDisc reads RESP2, so `hello` only asks for that |
+| `AUTH`, `SELECT`, `HELLO` with `AUTH` | A connection the client opens again wouldn't have them: pass `credentials` and `database` when you [connect](client.md) |
+| `QUIT` | Closing the client closes its connections |
+| `DISCARD` | A transaction is sent whole, so there's never an open one to cancel |
+| `RESET` | It would log out and change the database for everyone sharing the connection |
+| `CLIENT REPLY` | Replies are matched to requests by their order, so a missing reply breaks the connection |
+| Dragonfly's `SHRINK`, `ADDREPLICAOF` | They aren't documented, so what they take and reply can't be relied on |
+| `DEBUG`, `PFDEBUG` | They can crash or stall a server, and their replies can change between versions |

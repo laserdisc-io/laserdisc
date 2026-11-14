@@ -3,13 +3,22 @@
 `laserdisc-cli` is an interactive prompt for sending commands to a server, like
 `redis-cli`.
 
-From a checkout of this repository, start it with the server's host and port:
+Start it with the server's host and port. With
+[coursier](https://get-coursier.io/), it runs straight from its published
+artifact:
+
+```sh
+cs launch io.laserdisc:laserdisc-cli_3:@VERSION@ -M laserdisc.cli.CLI -- localhost 6379
+```
+
+From a checkout of this repository, run it with sbt:
 
 ```sh
 sbt "cli/run localhost 6379"
 ```
 
-On Scala.js, build it first, then start it with Node.js:
+On Scala Native, run `cliNative/run` the same way. On Scala.js, build it first,
+then start it with Node.js:
 
 ```sh
 sbt "++3.9.0" cliJS/fastLinkJS
@@ -17,7 +26,8 @@ node cli/.js/target/scala-3.9.0/laserdisc-cli-fastopt/main.js localhost 6379
 ```
 
 If the server needs a password, add `-a` (or `--password`) and the password
-after the port, and `--user` and the user if there's one. To use a database
+after the port, and `--user` and the user if there's one: `--user` needs a
+password too. To use a database
 other than 0, add `-n` (or `--database`) and its number:
 
 ```sh
@@ -75,7 +85,8 @@ commands that would break that:
   channel.
 - `SYNC`, `PSYNC` and `REPLCONF`, which are for replicas.
 - `CLIENT REPLY OFF` and `CLIENT REPLY SKIP`, as the server would stop replying.
-- `HELLO 3`, as the prompt reads RESP2 replies only.
+- `HELLO 3`, as the prompt reads replies in RESP2, version 2 of the format
+  Redis replies in, and `HELLO 3` would switch to version 3.
 - `RESET`, as it would log out and go back to database 0.
 - `QUIT`, as the server would close the connection.
 - `AUTH`, `HELLO` with `AUTH`, and `SELECT`, as the prompt opens a new

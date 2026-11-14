@@ -1,25 +1,29 @@
 # Subscribing
 
-Pub/sub messages and `MONITOR` don't answer a request: the server keeps sending
-them. A connection doing this can't be used for other commands, so
-`RedisSubscriber` opens one just for that. You keep using `RedisClient` for
-everything else, including `publish`.
+With pub/sub (publish/subscribe), clients send messages to named channels, and
+every client subscribed to a channel receives them. The messages don't answer a
+request: the server keeps sending them, as does `MONITOR`. A connection doing
+this can't be used for other commands, so `RedisSubscriber` opens one just for
+that. You keep using `RedisClient` for everything else, including `publish`.
 
-```scala
+```scala mdoc:compile-only
 import cats.effect.IO
+
 import laserdisc.*
+import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 import laserdisc.fs2.*
-import laserdisc.redis_8_10.*
 
 val channels = OneOrMoreKeys.unsafeFrom(List(Key("orders")))
 
-RedisSubscriber[IO].to("localhost", 6379, subscribe[String](channels)).use { messages =>
-  messages.evalMap {
-    case Right(message)   => IO.println(s"${message.channel}: ${message.value}")
-    case Left(unreadable) => IO.println(s"couldn't read ${unreadable.message}: ${unreadable.error.getMessage}")
-  }.compile.drain
-}
+val listening: IO[Unit] =
+  RedisSubscriber[IO].to("localhost", 6379, subscribe[String](channels)).use { messages =>
+    messages.evalMap {
+      case Right(message)   => IO.println(s"${message.channel}: ${message.value}")
+      // a message that couldn't be read as a String: why, and the message as it came
+      case Left(unreadable) => IO.println(s"couldn't read ${unreadable.message}: ${unreadable.error.getMessage}")
+    }.compile.drain
+  }
 ```
 
 Once the resource is open the server has confirmed the subscription, so anything
@@ -33,11 +37,12 @@ arrived, and the stream goes on to the next one.
 | --- | --- | --- |
 | `subscribe[A](channels)` | `Message(channel, value)` | Every server |
 | `psubscribe[A](patterns)` | `PatternMessage(pattern, channel, value)` | Every server |
-| `ssubscribe[A](channels)` | `ShardMessage(channel, value)` | Redis and Valkey 7.0 and later, Dragonfly |
+| `ssubscribe[A](channels)` | `ShardMessage(channel, value)` | Redis 7.0 and later, every Valkey, Dragonfly |
 | `monitor` | `MonitorEvent(time, db, client, command)` | Every server |
 
-`monitor` reports every command from every client. It slows the server down, so
-use it for debugging.
+Shard channels, for `ssubscribe`, are channels that live on a single node of a
+Redis Cluster, instead of on every node. `monitor` reports every command from
+every client. It slows the server down, so use it for debugging.
 
 ## What to expect
 
@@ -56,17 +61,27 @@ use it for debugging.
   the server would report the `PING` as a command it received.
 - **A message that can't be read doesn't stop the stream.** Anyone who can
   publish to your channels can send something that isn't the type you asked
-  for, or to a channel whose name isn't a valid `Key`, like the empty one. Ask
-  for `Bulk` to get the raw bytes of any message.
+  for. Ask for `Bulk` to get any message's value as raw bytes. A message on a
+  channel whose name isn't a valid `Key`, like the empty one, comes as
+  `Unreadable` whatever you ask for.
 - **The stream fails if the server replies with an error.**
-- **In a cluster**, `ssubscribe` needs a connection to the node that serves the
-  channel's slot.
+- **In a cluster**, `ssubscribe` needs a connection to the node that holds the
+  shard channel.
 
 If the server needs a password, pass it before the subscription, with the user
 if there's one:
 
-```scala
-RedisSubscriber[IO].to("localhost", 6379, Credentials("app", "secret"), subscribe[String](channels))
+```scala mdoc:compile-only
+import cats.effect.IO
+
+import laserdisc.*
+import laserdisc.redis_8_10.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val channels = OneOrMoreKeys.unsafeFrom(List(Key("orders")))
+
+val subscription = RedisSubscriber[IO].to("localhost", 6379, Credentials("app", "secret"), subscribe[String](channels))
 ```
 
 If the server refuses them, opening fails with `ConnectionSetupRefused`, which
@@ -75,24 +90,41 @@ says why, as with the client.
 To connect with TLS, start from `withTls`, with a `Tls` as for the
 [client](client.md):
 
-```scala
-Tls.system[IO].flatMap(tls => RedisSubscriber[IO].withTls(tls).to("redis.example.com", 6380, subscribe[String](channels)))
+```scala mdoc:compile-only
+import cats.effect.IO
+
+import laserdisc.*
+import laserdisc.redis_8_10.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val channels = OneOrMoreKeys.unsafeFrom(List(Key("orders")))
+
+val subscription =
+  Tls.system[IO].flatMap(tls => RedisSubscriber[IO].withTls(tls).to("redis.example.com", 6380, subscribe[String](channels)))
 ```
 
 ## Knowing when keys change
 
 Client tracking tells you when a key you've read changes, which is how you keep a
-local cache of it. laserdisc reads protocol 2, so the notices go to a second
-connection:
+local cache of it. LaserDisc reads replies in RESP2, version 2 of the format
+Redis replies in, where the notices can't share the connection, so they go to a
+second one:
 
-```scala
-val c       = laserdisc.redis_8_10.client
-val options = laserdisc.redis_8_10.servertypes.trackingOptions
+```scala mdoc:compile-only
+import cats.effect.IO
 
-RedisSubscriber[IO].identified("localhost", 6379, c.invalidations).use { case (id, notices) =>
-  redisClient.send(c.tracking(options.redirect(id))) *>
-    notices.evalMap(notice => IO.println(notice)).compile.drain
-}
+import laserdisc.*
+import laserdisc.redis_8_10.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+def track(redisClient: RedisClient[IO]): IO[Unit] =
+  // the subscriber's connection gives its id, which the client's tracking sends the notices to
+  RedisSubscriber[IO].identified("localhost", 6379, client.invalidations).use { case (id, notices) =>
+    redisClient.send(client.tracking(servertypes.trackingOptions.redirect(id))) *>
+      notices.evalMap(notice => IO.println(notice)).compile.drain
+  }
 ```
 
 Each notice is `Right(Invalidation.Keys(keys))`, or `Right(Invalidation.Everything)`
@@ -103,9 +135,9 @@ after a command like `FLUSHALL`. A notice that can't be read comes as a `Left` o
   the new connection isn't tracking anything, without any notice saying so. Don't
   rely on a cache being fresh after a connection problem.
 - **`caching` only applies to the very next command**, so send them together:
-  `redisClient.send(c.caching(true), get[String]("key"))`. Otherwise another
+  `redisClient.send(client.caching(true), get[String]("key"))`. Otherwise another
   caller's command may come in between.
 - **It's for the whole connection.** `RedisClient` shares one connection between all
   your calls, so what every caller reads gets tracked. Use a `RedisClient` of its own
   to track only some reads.
-- **Dragonfly doesn't have it.** It only allows tracking with protocol 3.
+- **Dragonfly doesn't have it.** It only allows tracking with RESP3.

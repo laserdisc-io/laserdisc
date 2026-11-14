@@ -13,12 +13,14 @@ LaserDisc works with Scala 2.12, 2.13 and 3.9 or newer, on Java 17 or newer.
 
 | Module | What it gives you | JVM | Scala.js | Scala Native |
 | --- | --- | --- | --- | --- |
-| `laserdisc-core` | Commands and the Redis wire format | ✓ | ✓ | ✓ |
+| `laserdisc-core` | The commands, and how they and their replies are written on the wire | ✓ | ✓ | ✓ |
 | `laserdisc-fs2` | A client built on [fs2](https://fs2.io/) and [Cats Effect](https://typelevel.org/cats-effect/) | ✓ | ✓ | ✓ |
 | `laserdisc-circe` | Store and read values as JSON with [circe](https://circe.github.io/circe/) | ✓ | ✓ | ✓ |
 | `laserdisc-cli` | An interactive prompt, like `redis-cli` | ✓ | ✓ | ✓ |
 
-With Redis running on `localhost:6379`:
+To add LaserDisc to your build and connect for the first time, see
+[Getting started](getting-started.md). With Redis running on `localhost:6379`,
+this sets a key and reads it back:
 
 ```scala mdoc:compile-only
 import cats.effect.{IO, IOApp}
@@ -31,19 +33,20 @@ import laserdisc.auto.*
 import laserdisc.fs2.*
 
 object Main extends IOApp.Simple {
+  // logs the client's connections to the console: leave it out to log nothing
   implicit val logWriter: LogWriter[IO] = SyncLogWriter.consoleLogUpToLevel(LogLevels.Info)
 
   override val run: IO[Unit] =
     RedisClient[IO].to("localhost", 6379).use { client =>
+      // both commands go to the server together, and each reply comes back as a Right, or a Left if that command failed
       client.send(set("a", 23), get[PosInt]("a")).flatMap {
+        // get gives None when the key doesn't exist, and .value turns the PosInt back into an Int
         case (Right(OK), Right(Some(a))) => IO.println(s"a is ${a.value}")
         case other                       => IO.raiseError(new RuntimeException(s"unexpected reply: $other"))
       }
     }
 }
 ```
-
-To add LaserDisc to your build, see [Getting started](getting-started.md).
 
 ## Why the name
 

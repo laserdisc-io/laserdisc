@@ -22,7 +22,8 @@ docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb
 docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:v2.0.2 --cluster_mode=emulated
 ```
 
-The last KeyDB is 6.3.4, named by its digest: its version tags are for one processor type each.
+The KeyDB is version 6.3.4. It's given by its digest because each of its version
+tags covers only one processor type.
 
 The TLS tests need a Redis that takes only TLS, on port 6390, with the test
 certificates in `test-setup/tls`. From the repository's root:
@@ -62,7 +63,8 @@ LASERDISC_PORT_OFFSET=40000 test-setup/matrix.sh valkey_9_0
 
 ## Coverage
 
-Each published module has to reach the minimums with its own tests. Tests also
+Each published module has to reach 90% of statements and 80% of branches with
+its own tests. Tests also
 count towards the modules they depend on, so run them in this order:
 
 ```sh
@@ -78,14 +80,16 @@ This includes the integration tests, so it needs the same servers. Each module's
 report is written to its `target/scala-2.13/scoverage-report/index.html`, and the
 report for all of them to `.jvm/target/scala-2.13/scoverage-report/index.html`.
 
-## Formatting
+## Formatting and license headers
 
 ```sh
-sbt scalafmtAll integration/scalafmtAll scalafmtSbt
+sbt scalafmtAll integration/scalafmtAll scalafmtSbt headerCreateAll
 ```
 
-To check formatting without changing files, use `scalafmtCheckAll`,
-`integration/scalafmtCheckAll` and `scalafmtSbtCheck`.
+Every source file starts with the license header, which `headerCreateAll` adds.
+To check formatting and headers without changing files, as CI does, use
+`scalafmtCheckAll`, `integration/scalafmtCheckAll`, `scalafmtSbtCheck` and
+`headerCheckAll`.
 
 ## The site
 

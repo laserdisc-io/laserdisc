@@ -239,7 +239,8 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
 
   test("a stream not taking its messages for a while isn't taken for a server that's gone") {
     val many = (1 to 2000).map(i => message("a", s"m$i")).mkString
-    FakeRedisServer((_, in) => in.take(1).as(confirmed + many) ++ Stream.never[IO]).use { port =>
+    // the server answers each PING, as a real one does, so that only a full queue holding up reading could make it look gone
+    FakeRedisServer((_, in) => in.zipWithIndex.map { case (_, i) => if (i == 0) confirmed + many else pong }).use { port =>
       keptAliveEvery(100.millis)
         .to("127.0.0.1", port, feed)
         .use(messages => IO.sleep(1.second) >> messages.take(2000).compile.toList.map(_.size))

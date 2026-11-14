@@ -55,43 +55,36 @@ object Show extends ShowInstances {
 }
 
 private[protocol] sealed trait ShowInstances {
-  private final def doubleCases(d: Double): String = d match {
-    case Double.NegativeInfinity => "-inf"
-    case Double.PositiveInfinity => "+inf"
-    case d                       => d.toString
-  }
-
-  implicit final val doubleShow: Show[Double] = Show.unsafeFromToString
+  // the same text on every platform, which toString isn't
+  implicit final val doubleShow: Show[Double] = Show.instance(Numbers.show)
   implicit final val intShow: Show[Int]       = Show.unsafeFromToString
   implicit final val longShow: Show[Long]     = Show.unsafeFromToString
   implicit final val stringShow: Show[String] = Show.instance(identity)
   implicit final val symbolShow: Show[Symbol] = Show.instance(_.name)
 
   implicit final val accessFrequencyShow: Show[AccessFrequency] = Show.unsafeFromToString
-  implicit final val blockingSecondsShow: Show[BlockingSeconds] = Show.instance { s =>
-    if (s.value == s.value.toLong.toDouble) s.value.toLong.toString else s.value.toString
-  }
-  implicit final val connectionNameShow: Show[ConnectionName] = Show.unsafeFromToString
-  implicit final val dbIndexShow: Show[DbIndex]               = Show.unsafeFromToString
-  implicit final val globPatternShow: Show[GlobPattern]       = Show.unsafeFromToString
-  implicit final val hostShow: Show[Host]                     = Show.unsafeFromToString
-  implicit final val indexShow: Show[Index]                   = Show.unsafeFromToString
-  implicit final val keyShow: Show[Key]                       = Show.unsafeFromToString
-  implicit final val latitudeShow: Show[Latitude]             = Show.unsafeFromToString
-  implicit final val longitudeShow: Show[Longitude]           = Show.unsafeFromToString
-  implicit final val nodeIdShow: Show[NodeId]                 = Show.unsafeFromToString
-  implicit final val sha1Show: Show[Sha1]                     = Show.unsafeFromToString
-  implicit final val nonNegDoubleShow: Show[NonNegDouble]     = Show.instance(d => doubleCases(d.value))
-  implicit final val nonNegIntShow: Show[NonNegInt]           = Show.unsafeFromToString
-  implicit final val nonNegLongShow: Show[NonNegLong]         = Show.unsafeFromToString
-  implicit final val nonZeroDoubleShow: Show[NonZeroDouble]   = Show.instance(d => doubleCases(d.value))
-  implicit final val nonZeroIntShow: Show[NonZeroInt]         = Show.unsafeFromToString
-  implicit final val nonZeroLongShow: Show[NonZeroLong]       = Show.unsafeFromToString
-  implicit final val portShow: Show[Port]                     = Show.unsafeFromToString
-  implicit final val posIntShow: Show[PosInt]                 = Show.unsafeFromToString
-  implicit final val posLongShow: Show[PosLong]               = Show.unsafeFromToString
-  implicit final val rangeOffsetShow: Show[RangeOffset]       = Show.unsafeFromToString
-  implicit final val slotShow: Show[Slot]                     = Show.unsafeFromToString
-  implicit final val stringLengthShow: Show[StringLength]     = Show.unsafeFromToString
-  implicit final val validDoubleShow: Show[ValidDouble]       = Show.instance(d => doubleCases(d.value))
+  implicit final val blockingSecondsShow: Show[BlockingSeconds] = Show.instance(s => Numbers.show(s.value))
+  implicit final val connectionNameShow: Show[ConnectionName]   = Show.unsafeFromToString
+  implicit final val dbIndexShow: Show[DbIndex]                 = Show.unsafeFromToString
+  implicit final val globPatternShow: Show[GlobPattern]         = Show.unsafeFromToString
+  implicit final val hostShow: Show[Host]                       = Show.unsafeFromToString
+  implicit final val indexShow: Show[Index]                     = Show.unsafeFromToString
+  implicit final val keyShow: Show[Key]                         = Show.unsafeFromToString
+  implicit final val latitudeShow: Show[Latitude]               = Show.instance(l => Numbers.show(l.value))
+  implicit final val longitudeShow: Show[Longitude]             = Show.instance(l => Numbers.show(l.value))
+  implicit final val nodeIdShow: Show[NodeId]                   = Show.unsafeFromToString
+  implicit final val sha1Show: Show[Sha1]                       = Show.unsafeFromToString
+  implicit final val nonNegDoubleShow: Show[NonNegDouble]       = Show.instance(d => Numbers.show(d.value))
+  implicit final val nonNegIntShow: Show[NonNegInt]             = Show.unsafeFromToString
+  implicit final val nonNegLongShow: Show[NonNegLong]           = Show.unsafeFromToString
+  implicit final val nonZeroDoubleShow: Show[NonZeroDouble]     = Show.instance(d => Numbers.show(d.value))
+  implicit final val nonZeroIntShow: Show[NonZeroInt]           = Show.unsafeFromToString
+  implicit final val nonZeroLongShow: Show[NonZeroLong]         = Show.unsafeFromToString
+  implicit final val portShow: Show[Port]                       = Show.unsafeFromToString
+  implicit final val posIntShow: Show[PosInt]                   = Show.unsafeFromToString
+  implicit final val posLongShow: Show[PosLong]                 = Show.unsafeFromToString
+  implicit final val rangeOffsetShow: Show[RangeOffset]         = Show.unsafeFromToString
+  implicit final val slotShow: Show[Slot]                       = Show.unsafeFromToString
+  implicit final val stringLengthShow: Show[StringLength]       = Show.unsafeFromToString
+  implicit final val validDoubleShow: Show[ValidDouble]         = Show.instance(d => Numbers.show(d.value))
 }

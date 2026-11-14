@@ -30,4 +30,41 @@ final class ShowSpec extends BaseSpec {
       "Cannot extend sealed trait Show in a different source file"
     )
   }
+
+  test("A Double is written the same on every platform") {
+    val written = List(
+      1.0d                    -> "1",
+      -3.0d                   -> "-3",
+      0.0d                    -> "0",
+      -0.0d                   -> "0",
+      1.5d                    -> "1.5",
+      0.1d                    -> "0.1",
+      -0.25d                  -> "-0.25",
+      123456789.125d          -> "123456789.125",
+      1e15d                   -> "1000000000000000",
+      1e20d                   -> "100000000000000000000",
+      1e21d                   -> "1e21",
+      1.5e22d                 -> "1.5e22",
+      0.00001d                -> "0.00001",
+      0.000001d               -> "0.000001",
+      1e-7d                   -> "1e-7",
+      -1.25e-9d               -> "-1.25e-9",
+      Double.MaxValue         -> "1.7976931348623157e308",
+      Double.MinPositiveValue -> "5e-324",
+      1e23d                   -> "1e23",
+      0.1d + 0.2d             -> "0.30000000000000004",
+      Double.PositiveInfinity -> "+inf",
+      Double.NegativeInfinity -> "-inf",
+      Double.NaN              -> "nan"
+    )
+    written.foreach { case (d, text) => assertEquals(Show[Double].show(d), text, d.toString) }
+    assertEquals(Show[Latitude].show(Latitude(38.0d)), "38")
+    assertEquals(Show[ValidDouble].show(ValidDouble(2.5d)), "2.5")
+  }
+
+  property("A Double written reads back as itself") {
+    org.scalacheck.Prop.forAll { (d: Double) =>
+      assertEquals(Numbers.toDouble(Show[Double].show(d)).map(r => r.equals(d) || (r == 0d && d == 0d)), Some(true), d.toString)
+    }
+  }
 }

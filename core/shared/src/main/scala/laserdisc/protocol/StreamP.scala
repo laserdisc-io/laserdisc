@@ -528,17 +528,23 @@ object StreamP {
   /** MAXCOUNT and MAXSIZE, for XREAD and XREADGROUP: end the whole read, across all its streams, after so many entries, or once it has
     * reached about so many bytes, which always lets at least one entry through. COUNT, instead, applies to each stream. Redis 8.10
     */
-  final class ReadLimits private (val params: List[String]) {
-    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(params ++ List("MAXCOUNT", Show[PosLong].show(entries)))
-    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(params ++ List("MAXSIZE", Show[PosLong].show(bytes)))
+  final class ReadLimits private (val params: List[String], maxEntries: Option[PosLong]) {
+    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(params ++ List("MAXCOUNT", Show[PosLong].show(entries)), Some(entries))
+    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(params ++ List("MAXSIZE", Show[PosLong].show(bytes)), maxEntries)
+
+    // the server refuses a COUNT above MAXCOUNT, which reads no more than MAXCOUNT does, as the whole read stops there: it's sent as MAXCOUNT
+    private[protocol] def withCount(count: PosLong): List[String] = {
+      val sent = maxEntries.filter(_.value < count.value).getOrElse(count)
+      "COUNT" :: Show[PosLong].show(sent) :: params
+    }
   }
   trait ReadLimitsBuilders {
     def maxCount(entries: PosLong): ReadLimits
     def maxSize(bytes: PosLong): ReadLimits
   }
   private[laserdisc] object ReadLimits extends ReadLimitsBuilders {
-    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(List("MAXCOUNT", Show[PosLong].show(entries)))
-    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(List("MAXSIZE", Show[PosLong].show(bytes)))
+    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(List("MAXCOUNT", Show[PosLong].show(entries)), Some(entries))
+    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(List("MAXSIZE", Show[PosLong].show(bytes)), None)
   }
 
   /** NOMKSTREAM, for XADD: don't create the stream when it doesn't exist */
@@ -1387,8 +1393,6 @@ trait StreamReadLimitsP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("XREAD: MAXCOUNT MAXSIZE", "XREADGROUP: MAXCOUNT MAXSIZE")
 
-  private final def countParams(count: PosLong): List[String] = List("COUNT", Show[PosLong].show(count))
-
   /** The streams' entries after the given ids, by stream, up to the limits for the whole read, or `None` when none of them has any */
   final def xread[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)], limits: ReadLimits): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREAD", limits.params ++ streamsParams(streams)(_.param)).using(maybeStreams[A])
@@ -1397,7 +1401,7 @@ trait StreamReadLimitsP extends Features {
       count: PosLong,
       limits: ReadLimits
   ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    Protocol("XREAD", countParams(count) ++ limits.params ++ streamsParams(streams)(_.param)).using(maybeStreams[A])
+    Protocol("XREAD", limits.withCount(count) ++ streamsParams(streams)(_.param)).using(maybeStreams[A])
 
   private final def group(group: Key, consumer: Key): List[String] = List("GROUP", group.value, consumer.value)
 
@@ -1418,7 +1422,7 @@ trait StreamReadLimitsP extends Features {
       count: PosLong,
       limits: ReadLimits
   ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    Protocol("XREADGROUP", this.group(group, consumer) ++ countParams(count) ++ limits.params ++ streamsParams(streams)(_.param))
+    Protocol("XREADGROUP", this.group(group, consumer) ++ limits.withCount(count) ++ streamsParams(streams)(_.param))
       .using(maybeStreams[A])
   final def xreadgroup[A: Read[Bulk, _]](
       group: Key,
@@ -1439,7 +1443,7 @@ trait StreamReadLimitsP extends Features {
   ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      this.group(group, consumer) ++ countParams(count) ++ limits.params ++ (Show[NoAck].show(noAck) :: streamsParams(streams)(_.param))
+      this.group(group, consumer) ++ limits.withCount(count) ++ (Show[NoAck].show(noAck) :: streamsParams(streams)(_.param))
     ).using(maybeStreams[A])
 
   /** XREADGROUP with CLAIM, up to the limits for the whole read */
@@ -1459,7 +1463,7 @@ trait StreamReadLimitsP extends Features {
       count: PosLong,
       limits: ReadLimits
   ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
-    Protocol("XREADGROUP", claimParams(group, consumer, minIdleMilliseconds, keys, countParams(count) ++ limits.params, Nil))
+    Protocol("XREADGROUP", claimParams(group, consumer, minIdleMilliseconds, keys, limits.withCount(count), Nil))
       .using(maybeClaimed[A])
   final def xreadgroupclaim[A: Read[Bulk, _]](
       group: Key,
@@ -1482,7 +1486,7 @@ trait StreamReadLimitsP extends Features {
   ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      claimParams(group, consumer, minIdleMilliseconds, keys, countParams(count) ++ limits.params, List(Show[NoAck].show(noAck)))
+      claimParams(group, consumer, minIdleMilliseconds, keys, limits.withCount(count), List(Show[NoAck].show(noAck)))
     ).using(maybeClaimed[A])
 }
 

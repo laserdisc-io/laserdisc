@@ -248,7 +248,6 @@ trait BStreamReadLimitsP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("XREAD: MAXCOUNT MAXSIZE", "XREADGROUP: MAXCOUNT MAXSIZE")
 
-  private final def countParams(count: PosLong): List[String]             = List("COUNT", Show[PosLong].show(count))
   private final def blockParams(blockMilliseconds: PosLong): List[String] = List("BLOCK", Show[PosLong].show(blockMilliseconds))
 
   /** The streams' entries after the given ids, by stream, up to the limits for the whole read, or `None` when none came within the wait */
@@ -264,7 +263,7 @@ trait BStreamReadLimitsP extends Features {
       count: PosLong,
       limits: ReadLimits
   ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    Protocol("XREAD", countParams(count) ++ limits.params ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(_.param))
+    Protocol("XREAD", limits.withCount(count) ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(_.param))
       .using(maybeStreams[A])
 
   private final def group(group: Key, consumer: Key): List[String] = List("GROUP", group.value, consumer.value)
@@ -293,7 +292,7 @@ trait BStreamReadLimitsP extends Features {
   ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      this.group(group, consumer) ++ countParams(count) ++ limits.params ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(
+      this.group(group, consumer) ++ limits.withCount(count) ++ blockParams(blockMilliseconds) ++ streamsParams(streams)(
         _.param
       )
     ).using(maybeStreams[A])
@@ -321,7 +320,7 @@ trait BStreamReadLimitsP extends Features {
   ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      this.group(group, consumer) ++ countParams(count) ++ limits.params ++ blockParams(blockMilliseconds) ++
+      this.group(group, consumer) ++ limits.withCount(count) ++ blockParams(blockMilliseconds) ++
         (Show[NoAck].show(noAck) :: streamsParams(streams)(_.param))
     ).using(maybeStreams[A])
 
@@ -347,7 +346,7 @@ trait BStreamReadLimitsP extends Features {
   ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      claimParams(group, consumer, minIdleMilliseconds, keys, countParams(count) ++ limits.params ++ blockParams(blockMilliseconds), Nil)
+      claimParams(group, consumer, minIdleMilliseconds, keys, limits.withCount(count) ++ blockParams(blockMilliseconds), Nil)
     ).using(maybeClaimed[A])
   final def xreadgroupclaim[A: Read[Bulk, _]](
       group: Key,
@@ -386,7 +385,7 @@ trait BStreamReadLimitsP extends Features {
         consumer,
         minIdleMilliseconds,
         keys,
-        countParams(count) ++ limits.params ++ blockParams(blockMilliseconds),
+        limits.withCount(count) ++ blockParams(blockMilliseconds),
         List(Show[NoAck].show(noAck))
       )
     ).using(maybeClaimed[A])

@@ -62,7 +62,7 @@ final class BForeverPSpec extends BaseSpec with Forever8_10 with ExtPArguments {
     assertEquals(sent(xread[Int](streams, limits)), frame("XREAD", "MAXCOUNT", "2", "BLOCK", "0", "STREAMS", "a", "$"))
     assertEquals(
       sent(xread[Int](streams, PosLong(5L), limits)),
-      frame("XREAD", "COUNT", "5", "MAXCOUNT", "2", "BLOCK", "0", "STREAMS", "a", "$")
+      frame("XREAD", "COUNT", "2", "MAXCOUNT", "2", "BLOCK", "0", "STREAMS", "a", "$")
     )
     assertEquals(sent(xreadgroup[Int](a, b, group)), frame("XREADGROUP", "GROUP", "a", "b", "BLOCK", "0", "STREAMS", "a", ">"))
     assertEquals(
@@ -71,7 +71,7 @@ final class BForeverPSpec extends BaseSpec with Forever8_10 with ExtPArguments {
     )
     assertEquals(
       sent(xreadgroup[Int](a, b, group, PosLong(5L), limits, NoAck)),
-      frame("XREADGROUP", "GROUP", "a", "b", "COUNT", "5", "MAXCOUNT", "2", "BLOCK", "0", "NOACK", "STREAMS", "a", ">")
+      frame("XREADGROUP", "GROUP", "a", "b", "COUNT", "2", "MAXCOUNT", "2", "BLOCK", "0", "NOACK", "STREAMS", "a", ">")
     )
     assertEquals(
       sent(xreadgroupclaim[Int](a, b, keys, NonNegLong(50L))),
@@ -85,7 +85,7 @@ final class BForeverPSpec extends BaseSpec with Forever8_10 with ExtPArguments {
         "a",
         "b",
         "COUNT",
-        "5",
+        "2",
         "MAXCOUNT",
         "2",
         "BLOCK",

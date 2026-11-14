@@ -69,6 +69,14 @@ final class BStreamPSpec extends BaseSpec with BStreamP {
     )
   }
 
+  test("The blocking Stream protocol sends a COUNT above MAXCOUNT as MAXCOUNT") {
+    val from = OneOrMore.unsafeFrom(List(Key("s") -> From.latest))
+    assertEquals(
+      xread[Int](from, PosLong(100L), PosLong(5L), ReadLimits.maxCount(PosLong(2L))).encode,
+      bulks("XREAD", "COUNT", "2", "MAXCOUNT", "2", "BLOCK", "100", "STREAMS", "s", "$")
+    )
+  }
+
   test("The blocking Stream protocol sends MAXCOUNT and MAXSIZE between COUNT and BLOCK") {
     val limits = ReadLimits.maxCount(PosLong(2L))
     val from   = OneOrMore.unsafeFrom(List(Key("s") -> From.latest))

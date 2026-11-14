@@ -536,6 +536,24 @@ final class StreamPSpec extends BaseSpec with StreamP {
     assertEquals(xreadgroupclaim[Int](Key("g"), Key("c"), keys, NonNegLong(50L)).decode(NilArr), None)
   }
 
+  test("The Stream protocol sends a COUNT above MAXCOUNT as MAXCOUNT, which the server would refuse and which reads no more") {
+    val from  = OneOrMore.unsafeFrom(List(Key("s") -> StreamFrom.latest))
+    val group = OneOrMore.unsafeFrom(List(Key("s") -> StreamGroupFrom.newEntries))
+    assertEquals(
+      xread[Int](from, PosLong(5L), StreamReadLimits.maxCount(PosLong(2L))).encode,
+      bulks("XREAD", "COUNT", "2", "MAXCOUNT", "2", "STREAMS", "s", "$")
+    )
+    assertEquals(
+      xreadgroup[Int](Key("g"), Key("c"), group, PosLong(5L), StreamReadLimits.maxSize(PosLong(9L)).maxCount(PosLong(3L))).encode,
+      bulks("XREADGROUP", "GROUP", "g", "c", "COUNT", "3", "MAXSIZE", "9", "MAXCOUNT", "3", "STREAMS", "s", ">")
+    )
+    // the last MAXCOUNT given is the one that counts
+    assertEquals(
+      xread[Int](from, PosLong(5L), StreamReadLimits.maxCount(PosLong(1L)).maxCount(PosLong(4L))).encode,
+      bulks("XREAD", "COUNT", "4", "MAXCOUNT", "1", "MAXCOUNT", "4", "STREAMS", "s", "$")
+    )
+  }
+
   test("The Stream protocol sends MAXCOUNT and MAXSIZE after COUNT, in xread, xreadgroup and xreadgroupclaim") {
     val limits = StreamReadLimits.maxCount(PosLong(2L)).maxSize(PosLong(100L))
     val from   = OneOrMore.unsafeFrom(List(Key("s") -> StreamFrom.latest))

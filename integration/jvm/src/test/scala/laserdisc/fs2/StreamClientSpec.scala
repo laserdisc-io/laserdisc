@@ -123,6 +123,9 @@ final class RedisStreamClientSpec extends StreamClientSpec(LiveServers.port(6379
     assertEquals(read(send(xread[Int](both, StreamReadLimits.maxCount(2L)))), List(first, second))
     assertEquals(read(send(blocking.xread[Int](both, 100L, StreamReadLimits.maxCount(1L)))), List(first))
     assertEquals(read(send(xread[Int](both, StreamReadLimits.maxSize(1L)))), List(first))
+    // a COUNT above MAXCOUNT, which the server refuses, is sent as MAXCOUNT, reading as much
+    assertEquals(read(send(xread[Int](both, 5L, StreamReadLimits.maxCount(2L)))), List(first, second))
+    assertEquals(read(send(blocking.xread[Int](both, 100L, 5L, StreamReadLimits.maxCount(1L)))), List(first))
 
     send(
       xreadgroup[Int](

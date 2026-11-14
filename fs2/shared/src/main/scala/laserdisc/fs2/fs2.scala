@@ -40,7 +40,7 @@ package fs2 {
         case (requests, replies) if requests.isEmpty => replies
         case (requests, replies)                     =>
           // blocking commands get their wait on the server on top of the timeout
-          val duration = timeout + protocol.Blocking.waitOf(requests.map(_._1.protocol))
+          val duration = RedisClient.impl.upToNever(timeout, protocol.Blocking.waitOf(requests.map(_._1.protocol)))
           Deferred[F, Unit].flatMap { claim =>
             val giveUp = claim.complete(()).void
 

@@ -127,7 +127,10 @@ object RedisClient {
     // how long a request that waits for as long as it takes is given: the watchdog never finds it overdue
     private[fs2] final val never: FiniteDuration = FiniteDuration(Long.MaxValue, NANOSECONDS)
 
-    private[fs2] def dueBy(now: FiniteDuration, timeout: FiniteDuration): FiniteDuration = if (timeout == never) never else now + timeout
+    // a duration added to another, as long as never at most: FiniteDuration fails on a sum past it, as a timeout that long can make
+    private[fs2] def upToNever(a: FiniteDuration, b: FiniteDuration): FiniteDuration = if (b >= never - a) never else a + b
+
+    private[fs2] def dueBy(now: FiniteDuration, timeout: FiniteDuration): FiniteDuration = upToNever(now, timeout)
 
     // what ends a connection closed to stop a command waiting on the server, which isn't a failure of the connection
     private[fs2] object ConnectionReset

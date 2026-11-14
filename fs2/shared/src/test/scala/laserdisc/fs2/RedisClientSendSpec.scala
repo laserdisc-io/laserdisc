@@ -36,6 +36,17 @@ final class RedisClientSendSpec extends CatsEffectSuite {
 
   override val munitIOTimeout: Duration = 60.seconds
 
+  test("a send with a timeout too long to add to the time it's sent at still gets its reply, and other sends theirs") {
+    val answering = FakeRedisServer((_, requests) => requests.as(bulk("v")))
+    answering.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        val longest = FiniteDuration(Long.MaxValue - 1, NANOSECONDS)
+        (client.send(get[String]("a"), longest), client.send(get[String]("b"))).parTupled
+          .assertEquals((Right(Some("v")), Right(Some("v"))))
+      }
+    }
+  }
+
   test("when the connection goes before MULTI's OK, the commands after the transaction fail too, without waiting for their timeout") {
     val closesOnMulti = FakeRedisServer { (n, commands) =>
       if (n == 1) commands.takeWhile(c => name(c) != "MULTI").drain else commands.as(bulk("v"))

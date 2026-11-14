@@ -23,7 +23,6 @@ package laserdisc
 package protocol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.lang as j
 
 import scodec.Err.{General, MatchingDiscriminatorNotFound}
 import scodec.bits.*
@@ -235,8 +234,7 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   private final val crlfTerminatedStringCodec: Codec[String] = crlfTerminatedCodec(utf8Codec)
   private final val crlfTerminatedLongCodec: Codec[Long]     = {
     @inline def parseLong(s: String) =
-      try Attempt.successful(j.Long.parseLong(s))
-      catch { case _: NumberFormatException => Attempt.failure(SErr(s"Expected long but found $s")) }
+      Numbers.toLong(s).fold[Attempt[Long]](Attempt.failure(SErr(s"Expected long but found $s")))(Attempt.successful)
     crlfTerminatedStringCodec.narrow(parseLong(_), _.toString)
   }
   private final val strCodec: Codec[Str]      = crlfTerminatedStringCodec.xmap[Str](Str.apply, _.value)
@@ -419,8 +417,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
 
   private final def sizeBetween(buffer: ByteVector, from: Long, until: Long): Either[String, Long] = {
     val size = buffer.slice(from, until).decodeUtf8.fold(_ => "", identity)
-    try Right(j.Long.parseLong(size))
-    catch { case _: NumberFormatException => Left(s"Expected long but found $size") }
+    Numbers.toLong(size).toRight(s"Expected long but found $size")
   }
 }
 

@@ -270,25 +270,13 @@ private[laserdisc] object ToInt {
   def unapply(l: Long): Option[Int] =
     try Some(j.Math.toIntExact(l))
     catch { case _: ArithmeticException => None }
-  def unapply(s: String): Option[Int] =
-    try Some(j.Integer.parseInt(s))
-    catch { case _: NumberFormatException => None }
+  def unapply(s: String): Option[Int] = Numbers.toInt(s)
 }
 private[laserdisc] object ToLong {
-  def unapply(s: String): Option[Long] =
-    try Some(j.Long.parseLong(s))
-    catch { case _: NumberFormatException => None }
+  def unapply(s: String): Option[Long] = Numbers.toLong(s)
 }
-// as Redis writes doubles, which includes infinite ones as inf and -inf
 private[laserdisc] object ToDouble {
-  def unapply(s: String): Option[Double] = s match {
-    case "inf" | "+inf" => Some(Double.PositiveInfinity)
-    case "-inf"         => Some(Double.NegativeInfinity)
-    case "nan" | "-nan" => Some(Double.NaN)
-    case _              =>
-      try Some(j.Double.parseDouble(s))
-      catch { case _: NumberFormatException => None }
-  }
+  def unapply(s: String): Option[Double] = Numbers.toDouble(s)
 }
 
 @implicitNotFound("Cannot prove that ${L} can be converted to the tuple ${T}")

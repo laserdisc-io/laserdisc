@@ -62,3 +62,8 @@ a `String` or an `Int`, are written and read as they are.
 Values are written as compact JSON, without spaces or line breaks. If a stored
 value isn't valid JSON, or doesn't match the `Decoder`, reading it gives an
 error.
+
+On Scala.js, circe reads JSON's numbers as JavaScript reads them, as a
+`Double`: a whole number above 9007199254740992, or one with more digits than a
+`Double` holds, comes back changed, and is stored changed if you write it back.
+Store such a number as a JSON string instead.

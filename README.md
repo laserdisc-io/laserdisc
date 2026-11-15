@@ -2,6 +2,7 @@
 
 [![Continuous Integration](https://github.com/laserdisc-io/laserdisc/actions/workflows/ci.yml/badge.svg)](https://github.com/laserdisc-io/laserdisc/actions/workflows/ci.yml)
 [![Known Vulnerabilities](https://snyk.io/test/github/laserdisc-io/laserdisc/badge.svg?targetFile=build.sbt)](https://snyk.io/test/github/laserdisc-io/laserdisc?targetFile=build.sbt)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.13)](https://central.sonatype.com/artifact/io.laserdisc/laserdisc-fs2_2.13)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-blue.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
 
@@ -27,7 +28,8 @@ LaserDisc works with Scala 2.12, 2.13 and 3.9 or newer, on Java 17 or newer.
 
 ## Usage
 
-Add the client to your build. On the JVM:
+Add the client to your build, with the version in the Maven Central badge above
+in place of `latestVersion`. On the JVM:
 
 ```scala
 libraryDependencies += "io.laserdisc" %% "laserdisc-fs2" % latestVersion

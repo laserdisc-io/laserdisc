@@ -41,9 +41,6 @@ final type NullBulk = protocol.NullBulk.type
 final type OrNullBulk[A] = OneOf[NullBulk *: A *: EmptyTuple]
 final type OrNilArr[A]   = OneOf[NilArr *: A *: EmptyTuple]
 
-private final type NoControlChar = Not[ControlChar]
-private final type NoWhitespace  = Not[WhitespaceChar]
-
 /** A refined newtype `T` (a subtype of `A`), checked by iron's constraint `C`, with the same operations as Scala 2's refined
   * `RefinedTypeOps`: compile-time checked `apply` for literals, `from`, `unsafeFrom`, `unapply` and `.value`, which (as with refined) gives
   * back the base type `A`, so that type class instances for `A` keep working on it.
@@ -92,8 +89,11 @@ final val AccessFrequencyMaxValueWit = new Witness(255)
 final val AllNICsEqWit               = new Witness("0.0.0.0")
 final val BlockingSecondsMinValueWit = new Witness(0.002d)
 final val BlockingSecondsMaxValueWit = new Witness(4294967.0d)
-final val DbIndexMaxValueWit         = new Witness(2147483647)
-final val GeoHashRegexWit            = new Witness("[a-z0-9]{11}")
+
+/** A connection's name, or its library's name or version: printable ASCII without spaces, as the server refuses anything else */
+final val ConnectionNameRegexWit = new Witness("[!-~]+")
+final val DbIndexMaxValueWit     = new Witness(2147483647)
+final val GeoHashRegexWit        = new Witness("[a-z0-9]{11}")
 
 /** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand. A name starting with `@` is a
   * category, which has rules of its own
@@ -128,7 +128,7 @@ final type AccessFrequencyRef = Interval.Closed[0, AccessFrequencyMaxValueWit.T]
   * Dragonfly takes
   */
 final type BlockingSecondsRef  = ValidDoubleRef & Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T]
-final type ConnectionNameRef   = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
+final type ConnectionNameRef   = Match[ConnectionNameRegexWit.T]
 final type DbIndexRef          = Interval.Closed[0, DbIndexMaxValueWit.T]
 final type GeoHashRef          = Match[GeoHashRegexWit.T]
 final type GlobPatternRef      = ValidGlobPattern

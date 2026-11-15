@@ -23,31 +23,13 @@ package laserdisc
 
 import io.github.iltotore.iron.Constraint
 
-/* The predicates below are spelled out (character ranges, `d == d`) rather than delegating to `Char.isControl` / `Char.isWhitespace` /
- * `Double.isNaN`, so that iron can evaluate them at compile time when refining literals. They match the JDK methods for every input. */
-
-final case class ControlChar()
-object ControlChar {
-  given Constraint[Char, ControlChar] with {
-    inline override def test(inline c: Char): Boolean = c <= '\u001f' || (c >= '\u007f' && c <= '\u009f')
-    inline override def message: String               = "isControl"
-  }
-}
+/* The predicate below is spelled out (`d == d`) rather than delegating to `Double.isNaN`, so that iron can evaluate it at compile time when
+ * refining literals. It matches the JDK method for every input. */
 
 private[laserdisc] final case class NonNaN()
 private[laserdisc] object NonNaN {
   given Constraint[Double, NonNaN] with {
     inline override def test(inline d: Double): Boolean = d == d
     inline override def message: String                 = "!isNaN"
-  }
-}
-
-private[laserdisc] final case class WhitespaceChar()
-private[laserdisc] object WhitespaceChar {
-  given Constraint[Char, WhitespaceChar] with {
-    inline override def test(inline c: Char): Boolean =
-      (c >= '\t' && c <= '\r') || (c >= '\u001c' && c <= ' ') || c == '\u1680' || (c >= '\u2000' && c <= '\u2006') ||
-        (c >= '\u2008' && c <= '\u200a') || c == '\u2028' || c == '\u2029' || c == '\u205f' || c == '\u3000'
-    inline override def message: String = "isWhitespace"
   }
 }

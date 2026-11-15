@@ -93,7 +93,7 @@ final class ServerPSpec extends BaseSpec with ServerP {
   }
 
   property("The Server protocol using the client commands sends their arguments") {
-    forAll { (ids: OneOrMore[NonNegLong], ms: PosLong, id: NonNegLong, k: Key) =>
+    forAll { (ids: OneOrMore[NonNegLong], ms: PosLong, id: NonNegLong, k: ConnectionName) =>
       assertEquals(client.list(ids).encode, Arr(Bulk("CLIENT") :: Bulk("LIST") :: Bulk("ID") :: ids.value.map(Bulk(_))))
       assertEquals(client.list(servertypes.clientType.replica).encode, Arr(Bulk("CLIENT"), Bulk("LIST"), Bulk("TYPE"), Bulk("replica")))
       assertEquals(client.pause(ms, servertypes.pauseMode.write).encode, Arr(Bulk("CLIENT"), Bulk("PAUSE"), Bulk(ms), Bulk("WRITE")))

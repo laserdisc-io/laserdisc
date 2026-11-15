@@ -115,7 +115,7 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   final val blockingSecondsGen: Gen[Double] =
     chooseNum(BlockingSecondsMinValueWit.value, BlockingSecondsMaxValueWit.value) :| "blocking seconds"
   final val connectionNameGen: Gen[String] =
-    strGen(nonEmptyListOf(noSpaceUtf8BMPCharGen)).filter(connectionNameIsValid) :| "connection name"
+    strGen(nonEmptyListOf(choose('!', '~'))).filter(connectionNameIsValid) :| "connection name"
   final val dbIndexGen: Gen[Int]        = chooseNum(0, DbIndexMaxValueWit.value).filter(dbIndexIsValid) :| "db index"
   final val signedBitWidthGen: Gen[Int] = chooseNum(1, SignedBitWidthMaxValueWit.value).filter(signedBitWidthIsValid) :| "signed bit width"
   final val unsignedBitWidthGen: Gen[Int] =

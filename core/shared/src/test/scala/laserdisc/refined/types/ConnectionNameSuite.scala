@@ -25,26 +25,24 @@ package refined.types
 import org.scalacheck.Prop.forAll
 
 final class ConnectionNameSuite extends BaseSpec {
-  test("ConnectionName fails to compile given an empty string") {
-    assertCompileErrors(
-      compileErrors("""ConnectionName("")"""),
-      """|error: Left predicate of (!isEmpty() && ()) failed: Predicate isEmpty() did not fail.
-         |ConnectionName("")
-         |              ^
-         |""".stripMargin,
-      "Message: Should have a minimum length of 1 & For each element: (!(isWhitespace) & !(isControl))"
+  test("ConnectionName fails to compile given an empty string, a space or a character that isn't printable ASCII") {
+    assertCompileErrorsContain(compileErrors("""ConnectionName("")"""), """Predicate failed: "".matches("[!-~]+")""", "Should match [!-~]+")
+    assertCompileErrorsContain(
+      compileErrors("""ConnectionName("a b")"""),
+      """Predicate failed: "a b".matches("[!-~]+")""",
+      "Should match [!-~]+"
+    )
+    assertCompileErrorsContain(
+      compileErrors("""ConnectionName("café")"""),
+      """Predicate failed: "café".matches("[!-~]+")""",
+      "Should match [!-~]+"
     )
   }
 
-  test("ConnectionName fails to compile given a space") {
-    assertCompileErrors(
-      compileErrors("""ConnectionName(" ")"""),
-      """|error: Right predicate of (!isEmpty( ) && ((!isWhitespace(' ') && !isControl(' ')))) failed: Predicate failed: ((!isWhitespace(' ') && !isControl(' '))).
-         |ConnectionName(" ")
-         |              ^
-         |""".stripMargin,
-      "Message: Should have a minimum length of 1 & For each element: (!(isWhitespace) & !(isControl))"
-    )
+  test("ConnectionName refuses control characters at runtime, and checks a long name without overflowing the stack") {
+    assert(ConnectionName.from("a\u0000b").isLeft)
+    assert(ConnectionName.from("a\u007fb").isLeft)
+    assert(ConnectionName.from("x" * 1000000).isRight)
   }
 
   property("ConnectionName fails at runtime provided non literal cases of strings that contain spaces") {
@@ -53,11 +51,12 @@ final class ConnectionNameSuite extends BaseSpec {
     }
   }
 
-  test("ConnectionName compiles given non empty String with no spaces") {
+  test("ConnectionName compiles given printable ASCII with no spaces") {
     ConnectionName("a")
+    ConnectionName("my-app_1.0~!")
   }
 
-  property("ConnectionName refines correctly provided non literal cases of non empty strings with no spaces") {
+  property("ConnectionName refines correctly provided non literal cases of printable ASCII with no spaces") {
     forAll(connectionNameGen) { s =>
       ConnectionName.from(s).onRight(_.value == s)
     }

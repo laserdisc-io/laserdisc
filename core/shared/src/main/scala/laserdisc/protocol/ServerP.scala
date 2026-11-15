@@ -691,10 +691,11 @@ trait ClientSetInfoCommands extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLIENT SETINFO: LIB-NAME LIB-VER")
 
   /** The name of the library this connection uses, shown by CLIENT LIST */
-  def setlibname(name: Key): Single[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-NAME" :: name.value :: Nil).as[Str, OK]
+  def setlibname(name: ConnectionName): Single[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-NAME" :: name.value :: Nil).as[Str, OK]
 
   /** The version of the library this connection uses, shown by CLIENT LIST */
-  def setlibversion(version: Key): Single[OK] = Protocol("CLIENT", "SETINFO" :: "LIB-VER" :: version.value :: Nil).as[Str, OK]
+  def setlibversion(version: ConnectionName): Single[OK] =
+    Protocol("CLIENT", "SETINFO" :: "LIB-VER" :: version.value :: Nil).as[Str, OK]
 }
 
 /** CLIENT NO-TOUCH, with CLIENT SETINFO: Redis 7.2 */

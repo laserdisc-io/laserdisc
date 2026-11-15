@@ -24,8 +24,7 @@ import java.lang as j
 import eu.timepit.refined.W
 import eu.timepit.refined.api.*
 import eu.timepit.refined.boolean.{And, Not, True}
-import eu.timepit.refined.char.Whitespace
-import eu.timepit.refined.collection.{Forall, MinSize, NonEmpty}
+import eu.timepit.refined.collection.{MinSize, NonEmpty}
 import eu.timepit.refined.generic.Equal
 import eu.timepit.refined.numeric.{Interval, NonNaN, NonNegative, Positive}
 import eu.timepit.refined.string.MatchesRegex
@@ -91,16 +90,16 @@ package object laserdisc {
   final type OrNullBulk[A] = OneOf[NullBulk *: A *: EmptyTuple]
   final type OrNilArr[A]   = OneOf[NilArr *: A *: EmptyTuple]
 
-  private final type NoControlChar = Not[ControlChar]
-  private final type NoWhitespace  = Not[Whitespace]
-
   // Witnesses
   final val AccessFrequencyMaxValueWit = W(255)
   final val AllNICsEqWit               = W("0.0.0.0")
   final val BlockingSecondsMinValueWit = W(0.002d)
   final val BlockingSecondsMaxValueWit = W(4294967.0d)
-  final val DbIndexMaxValueWit         = W(2147483647)
-  final val GeoHashRegexWit            = W("[a-z0-9]{11}")
+
+  /** A connection's name, or its library's name or version: printable ASCII without spaces, as the server refuses anything else */
+  final val ConnectionNameRegexWit = W("[!-~]+")
+  final val DbIndexMaxValueWit     = W(2147483647)
+  final val GeoHashRegexWit        = W("[a-z0-9]{11}")
 
   /** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand. A name starting with `@` is
     * a category, which has rules of its own
@@ -133,7 +132,7 @@ package object laserdisc {
     * what Dragonfly takes
     */
   final type BlockingSecondsRef  = NonNaN And Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T]
-  final type ConnectionNameRef   = OneOrMoreRef And Forall[NoWhitespace And NoControlChar]
+  final type ConnectionNameRef   = MatchesRegex[ConnectionNameRegexWit.T]
   final type DbIndexRef          = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
   final type GeoHashRef          = MatchesRegex[GeoHashRegexWit.T]
   final type GlobPatternRef      = ValidGlobPattern

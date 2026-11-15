@@ -238,9 +238,9 @@ tracking whose notices went to a connection that's gone, the client logs why
 and carries on without it.
 
 Between attempts the client waits 100 milliseconds at first, then twice as long
-each time, up to 5 seconds. Once the server answers again, the next wait is
-short again. Each wait is cut by up to half at random, so that many clients
-don't all reconnect at the same moment. To wait differently, pass a
+each time, up to 5 seconds. Once a server answers one of your commands again,
+the next wait is short again. Each wait is cut by up to half at random, so that
+many clients don't all reconnect at the same moment. To wait differently, pass a
 `Reconnect` with the first and the longest wait. The first has to be more than
 0, and the longest at least the first, or `Reconnect` throws an
 `IllegalArgumentException`:

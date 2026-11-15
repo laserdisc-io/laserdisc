@@ -136,4 +136,12 @@ final class RESPFrameChunksSpec extends BaseSpec {
     val decoded = RESP.respCodec.decode(bytes("+secret").bits)
     assert(decoded.toEither.left.toOption.exists(e => !e.messageWithContext.contains("secret")), decoded)
   }
+
+  test("a reply that would be more than 2 GiB is an error as soon as a size says so, rather than failing to be held once it's all come") {
+    val tooBig = EmptyFrame.append(bytes("$2147483647\r\nabc").bits)
+    assert(tooBig.left.toOption.exists(_.getMessage.contains("Expected a reply of at most 2147483647 bytes")), tooBig)
+    val inArray = EmptyFrame.append(bytes("*2\r\n$1\r\na\r\n$2147483640\r\n").bits)
+    assert(inArray.isLeft, inArray)
+    assert(EmptyFrame.append(bytes("$1000000\r\nabc").bits).isRight)
+  }
 }

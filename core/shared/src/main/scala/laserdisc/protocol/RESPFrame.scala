@@ -40,13 +40,16 @@ private[laserdisc] sealed trait RESPFrame extends Product with Serializable with
       case Right(Stopped(at, open, missing)) =>
         val inLine = missing == 0L && at < rest.size
         val next   = new FrameProgress(rest.drop(at).bits, open, inLine, progress.maxLine)
-        if (inLine && rest.size - at > next.lineLimit) Left(next.lineTooLong)
+        // a reply is held in one piece once it's all come, which can't be bigger than this: one that would be is refused as soon as a size
+        // says so, rather than once it's all been held
+        if ((bits.size + missing) / 8L > RESP.MaxSize) Left(RESPFrame.tooBig)
+        else if (inLine && rest.size - at > next.lineLimit) Left(next.lineTooLong)
         else Right(IncompleteFrame(bits, missing)(next))
       case Right(Scanned(end)) if end == rest.size => Right(CompleteFrame(bits.compact))
       case Right(Scanned(end))                     =>
-        val complete = bits.compact
-        val size     = bits.size - rest.drop(end).bits.size
-        consumeRemainder(MoreThanOneFrame(Vector(CompleteFrame(complete.take(size))), complete.drop(size)))
+        // each part on its own, as both together can be more than can be held in one piece
+        val size = bits.size - rest.drop(end).bits.size
+        consumeRemainder(MoreThanOneFrame(Vector(CompleteFrame(bits.take(size).compact)), bits.drop(size).compact))
       case Left(e) => Left(UnknownBufferState(s"Err building the frame from buffer: $e"))
     }
   }
@@ -59,6 +62,10 @@ private[laserdisc] sealed trait RESPFrame extends Product with Serializable with
       case Right(Complete) => Right(MoreThanOneFrame(current.complete :+ CompleteFrame(current.remainder), BitVector.empty))
       case _               => Right(current)
     }
+}
+
+private[protocol] object RESPFrame {
+  def tooBig: UnknownBufferState = UnknownBufferState(s"Expected a reply of at most ${RESP.MaxSize} bytes")
 }
 
 private[laserdisc] case object EmptyFrame        extends RESPFrame

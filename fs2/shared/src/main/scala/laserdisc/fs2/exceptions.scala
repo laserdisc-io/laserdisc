@@ -51,6 +51,17 @@ final case class WatchLost(redisAddress: RedisAddress)
       true,
       false
     )
+
+/** A transaction typed as plain commands, as at the CLI, was on a connection that's gone, or lost the watch it needed, and the server
+  * dropped it: what's sent until EXEC or DISCARD ends it isn't sent, so that nothing runs outside it
+  */
+final case class TransactionLost(redisAddress: RedisAddress)
+    extends RuntimeException(
+      s"The transaction begun with MULTI on the connection to $redisAddress is gone, with that connection or with the watch it needed, so this wasn't sent: EXEC or DISCARD ends it",
+      null,
+      true,
+      false
+    )
 final case class WatchCleanupRefused(redisAddress: RedisAddress, command: String, reply: String)
     extends RuntimeException(
       s"Server $redisAddress didn't say OK to the $command ending a transaction whose watch was lost, so the connection was closed. It said: ${protocol.RESPDecErr

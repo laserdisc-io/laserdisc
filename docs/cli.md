@@ -106,4 +106,10 @@ commands that would break that:
   connection if the server closes this one, and the new one wouldn't have them.
   Use `-a`, `--user` and `-n` instead.
 
+`MULTI`, `EXEC` and `WATCH` work as with `redis-cli`. If the connection is
+replaced while a transaction or a watch is open, as when the server closes idle
+clients, the server has dropped them. The commands you type next then fail
+with `TransactionLost`, or `MULTI` with `WatchLost`, without being sent, until
+`EXEC` or `DISCARD` ends the transaction, so that nothing runs outside it.
+
 To leave, press Ctrl-D.

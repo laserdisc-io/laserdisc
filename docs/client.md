@@ -66,7 +66,8 @@ def quickGet(client: RedisClient[IO]): IO[Maybe[Option[String]]] =
 
 When it times out, the whole `send` fails with `RequestTimedOut`, which names
 the first command still without a reply. Commands that were still waiting to be
-sent aren't sent at all.
+sent aren't sent at all. A command that was sent may still have run on the
+server: the client only stopped waiting for its reply.
 
 ## Errors
 
@@ -82,6 +83,7 @@ these:
 | `ServerTerminatedConnection` | The connection closed before the reply came. |
 | `ServerNotResponding` | The server stopped replying, so the client closed the connection. |
 | `WatchLost` | The keys of a transaction were watched on a connection that's gone: see [Transactions](commands.md#transactions). |
+| `WatchCleanupRefused` | As for `WatchLost`, and the server also refused to end the watch on the new connection, so the client closed that connection too. None of the transaction's commands ran. |
 
 The `send` itself fails, instead of giving results, when it times out, with
 `RequestTimedOut`, and when the client was already closed, with
@@ -103,9 +105,10 @@ val client: Resource[IO, RedisClient[IO]] =
   RedisClient[IO].to("localhost", 6379, credentials = Some(Credentials("app", "secret")), database = Some(DbIndex(2)))
 ```
 
-`Credentials("secret")`, with only a password, logs in as the default user. A
-password from your configuration is a `String`: turn it into a `Key` with
-`Key.from`, which gives a `Left` if it's empty:
+`Credentials("secret")`, with only a password, logs in as the default user.
+User names and passwords are `Key`s, LaserDisc's type for a string that isn't
+empty. A password from your configuration is a `String`: turn it into a `Key`
+with `Key.from`, which gives a `Left` if it's empty:
 
 ```scala mdoc:compile-only
 import laserdisc.*
@@ -218,15 +221,27 @@ with that error.
 ## Reconnecting
 
 If the connection drops, commands still waiting for a reply get a `Left` right
-away, and the client reconnects. While it can't reach the server, commands fail
-at once with `ServerUnavailable`. Its `cause` says why the last attempt failed,
+away, with `ServerTerminatedConnection` when the server closed it, and the
+client reconnects. Those commands may have run on the server: the connection
+went before their replies came. Commands that hadn't been sent yet go out on
+the new connection. While the client can't reach the server, commands fail at
+once with `ServerUnavailable`. Its `cause` says why the last attempt failed,
 such as the connection being refused or the TLS handshake failing.
+
+A new connection is set up like the one before it. It logs in and selects the
+database, then it's set again to what you last set on the connection with
+`client.tracking`, `client.setname`, `connection.hello` with a name, or
+`readonly`. If the server refuses one of these on the new connection, as with
+tracking whose notices went to a connection that's gone, the client logs why
+and carries on without it.
 
 Between attempts the client waits 100 milliseconds at first, then twice as long
 each time, up to 5 seconds. Once the server answers again, the next wait is
 short again. Each wait is cut by up to half at random, so that many clients
 don't all reconnect at the same moment. To wait differently, pass a
-`Reconnect` with the first and the longest wait:
+`Reconnect` with the first and the longest wait. The first has to be more than
+0, and the longest at least the first, or `Reconnect` throws an
+`IllegalArgumentException`:
 
 ```scala mdoc:compile-only
 import cats.effect.{IO, Resource}
@@ -245,7 +260,8 @@ by more than its `send`'s timeout, the client drops the connection and opens a
 new one.
 
 Connecting to a server gives up after 10 seconds, so a server that doesn't
-answer doesn't hold the client up. To choose another limit, pass
+answer doesn't hold the client up: commands then fail with `ServerUnavailable`,
+whose `cause` is `ConnectTimedOut`. To choose another limit, pass
 `connectTimeout`:
 
 ```scala mdoc:compile-only

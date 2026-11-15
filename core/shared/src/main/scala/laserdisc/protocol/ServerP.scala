@@ -32,7 +32,7 @@ object ServerP {
     s"${if (shown.contains(':')) s"[$shown]" else shown}:${Show.portShow.show(port)}"
   }
 
-  /** The name of a section in INFO's reply: one laserdisc names, or `Other` for one it doesn't, like a module's or KeyDB's */
+  /** The name of a section in INFO's reply: one LaserDisc names, or `Other` for one it doesn't, like a module's or KeyDB's */
   sealed trait InfoSectionKey
   object InfoSectionKey {
     final case class Other(name: String) extends InfoSectionKey
@@ -633,9 +633,10 @@ trait ClientCoreCommands extends Features {
   val unsetname: Single[OK] = Protocol("CLIENT", "SETNAME" :: "" :: Nil).as[Str, OK]
 }
 
-/** CLIENT TRACKING, CACHING, GETREDIR and TRACKINGINFO: Redis 6.2. Laserdisc reads protocol 2, so the notices go to another connection,
-  * with [[ServerP.TrackingOptions.redirect]]: open it with `RedisSubscriber.identified` and [[invalidations]]. Tracking belongs to the
-  * connection, so it's gone after the client reconnects, and a cache kept from these notices can go stale without any notice saying so
+/** CLIENT TRACKING, CACHING, GETREDIR and TRACKINGINFO: Redis 6.2. LaserDisc reads RESP2, so the notices go to another connection, with
+  * [[ServerP.TrackingOptions.redirect]]: open it with `RedisSubscriber.identified` and [[invalidations]]. The client turns tracking on
+  * again when it reconnects, but nothing is sent for what changed while it was reconnecting, so a cache kept from these notices can be
+  * stale after a connection problem
   */
 trait ClientTrackingCommands extends Features {
   import ServerP.{TrackingInfo, TrackingOptions}

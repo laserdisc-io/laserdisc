@@ -39,8 +39,8 @@ trait ConnectionBaseP extends Features {
 
   final def echo[A: Show: Read[Bulk, _]](message: A): Single[A] = Protocol("ECHO", message).as[Bulk, A]
 
-  /** What the server says about itself and this connection, optionally naming the connection first. It always asks for protocol 2, the one
-    * laserdisc reads
+  /** What the server says about itself and this connection, optionally naming the connection first. It always asks for RESP2, which
+    * LaserDisc reads
     */
   val hello: Single[ServerInspection.HelloCore]                       = helloWith(Nil, helloCore)
   def hello(name: ConnectionName): Single[ServerInspection.HelloCore] = helloWith(List("SETNAME", name.value), helloCore)

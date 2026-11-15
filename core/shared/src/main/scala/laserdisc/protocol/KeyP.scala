@@ -157,7 +157,7 @@ object KeyP {
     case object both        extends RestoreMode { override final val params: List[String] = List("REPLACE", "ABSTTL") }
   }
 
-  /** What TYPE replies, and what SCAN can look for. `other` is any type laserdisc doesn't name, like a module's `vectorset`, or an array
+  /** What TYPE replies, and what SCAN can look for. `other` is any type LaserDisc doesn't name, like a module's `vectorset`, or an array
     * before Redis 8.8
     */
   sealed trait Type
@@ -190,7 +190,7 @@ object KeyP {
     final val hash: Type.hash.type     = Type.hash
     final val stream: Type.stream.type = Type.stream
 
-    /** A type laserdisc doesn't name, to send or to match in a reply */
+    /** A type LaserDisc doesn't name, to send or to match in a reply */
     object other {
       def apply(name: Key): Type.other        = Type.other(name)
       def unapply(keyType: Type): Option[Key] = keyType match {

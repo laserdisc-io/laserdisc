@@ -867,20 +867,50 @@ trait RepliesValkey9_1
     with CommandReplies7_0
     with HelloReplies7_0
 
+/** The commands of Dragonfly 2.0, for that version and later ones: `import laserdisc.dragonfly_2_0.*` */
 object dragonfly_2_0 extends Dragonfly2_0 with RepliesDragonfly2_0
 
-object redis_6_2  extends Redis6_2 with Replies6_2
-object redis_7_0  extends Redis7_0 with Replies7_0
-object redis_7_2  extends Redis7_2 with Replies7_2
-object redis_7_4  extends Redis7_4 with Replies7_2
-object redis_8_0  extends Redis8_0 with Replies7_2
-object redis_8_2  extends Redis8_2 with Replies7_2
-object redis_8_4  extends Redis8_4 with Replies7_2
-object redis_8_6  extends Redis8_6 with Replies7_2
-object redis_8_8  extends Redis8_8 with Replies7_2
+/** The commands of Redis 6.2 and KeyDB, which is based on it, for that version and later ones: `import laserdisc.redis_6_2.*` */
+object redis_6_2 extends Redis6_2 with Replies6_2
+
+/** The commands of Redis 7.0, for that version and later ones: `import laserdisc.redis_7_0.*` */
+object redis_7_0 extends Redis7_0 with Replies7_0
+
+/** The commands of Redis 7.2, for that version and later ones: `import laserdisc.redis_7_2.*` */
+object redis_7_2 extends Redis7_2 with Replies7_2
+
+/** The commands of Redis 7.4, for that version and later ones: `import laserdisc.redis_7_4.*` */
+object redis_7_4 extends Redis7_4 with Replies7_2
+
+/** The commands of Redis 8.0, for that version and later ones: `import laserdisc.redis_8_0.*` */
+object redis_8_0 extends Redis8_0 with Replies7_2
+
+/** The commands of Redis 8.2, for that version and later ones: `import laserdisc.redis_8_2.*` */
+object redis_8_2 extends Redis8_2 with Replies7_2
+
+/** The commands of Redis 8.4, for that version and later ones: `import laserdisc.redis_8_4.*` */
+object redis_8_4 extends Redis8_4 with Replies7_2
+
+/** The commands of Redis 8.6, for that version and later ones: `import laserdisc.redis_8_6.*` */
+object redis_8_6 extends Redis8_6 with Replies7_2
+
+/** The commands of Redis 8.8, for that version and later ones: `import laserdisc.redis_8_8.*` */
+object redis_8_8 extends Redis8_8 with Replies7_2
+
+/** The commands of Redis 8.10, for that version and later ones: `import laserdisc.redis_8_10.*` */
 object redis_8_10 extends Redis8_10 with Replies8_10
+
+/** The commands of Valkey 7.2, for that version and later ones: `import laserdisc.valkey_7_2.*` */
 object valkey_7_2 extends Valkey7_2 with Replies7_2
+
+/** The commands of Valkey 8.0, for that version and later ones: `import laserdisc.valkey_8_0.*` */
 object valkey_8_0 extends Valkey8_0 with Replies7_2
+
+/** The commands of Valkey 8.1, for that version and later ones: `import laserdisc.valkey_8_1.*` */
 object valkey_8_1 extends Valkey8_1 with Replies7_2
+
+/** The commands of Valkey 9.0, for that version and later ones: `import laserdisc.valkey_9_0.*` */
 object valkey_9_0 extends Valkey9_0 with Replies7_2
+
+/** The commands of Valkey 9.1, for that version and later ones: `import laserdisc.valkey_9_1.*` */
 object valkey_9_1 extends Valkey9_1 with RepliesValkey9_1

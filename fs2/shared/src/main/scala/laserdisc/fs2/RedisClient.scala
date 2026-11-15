@@ -688,9 +688,11 @@ object RedisClient {
                   (Deferred[F, Maybe[A]], Deferred[F, Unit]).flatMapN { (reply, claim) =>
                     val request = Request[F, A](protocol, reply.complete(_).void)
                     (queueing(Batch(Vector(request), claim, never)) >> reply.get).onCancel {
+                      // the connection is read before the reply: a connection fails what's waiting on it before the next one takes its
+                      // place, so if it's already the next one, the reply has come, and that one isn't closed for nothing
                       claim.complete(()).flatMap { unsent =>
-                        (reply.tryGet, resetting.get)
-                          .flatMapN { (replied, current) =>
+                        (resetting.get, reply.tryGet)
+                          .flatMapN { (current, replied) =>
                             current.traverse_ { case (reset, ended) => reset.complete(()) >> ended.get }.whenA(replied.isEmpty)
                           }
                           .unlessA(unsent)

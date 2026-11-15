@@ -146,6 +146,21 @@ implicit val scoreRead: Read[Bulk, Score] = Read.instance { bulk =>
 }
 ```
 
+## Commands of your own
+
+To send a command LaserDisc doesn't have, such as a module's or one of KeyDB's
+own, build it with `Protocol`: its name and its arguments, then the kind of
+reply the server sends and the type to read it as, as for a script:
+
+```scala mdoc:compile-only
+import laserdisc.*
+
+// KeyDB's EXPIREMEMBER: the member old of the set tags expires in 10 seconds, with 1 if it was there to expire
+val expireMember: Protocol[Long] = Protocol("EXPIREMEMBER", "tags" *: "old" *: 10 *: EmptyTuple).as[Num, Long]
+```
+
+The arguments are written as the text the server gets, each with its `Show`.
+
 ## Hashes
 
 You can store a case class in a hash, one field per field of the class, and
@@ -322,7 +337,8 @@ in a patch release needs that release or a later one. For example, `HOTKEYS HELP
 in `laserdisc.redis_8_6.*` needs Redis 8.6.1 or later.
 
 KeyDB's latest release is based on Redis 6.2, so use `laserdisc.redis_6_2.*`. It
-doesn't have `LOLWUT`, and LaserDisc doesn't have KeyDB's own commands.
+doesn't have `LOLWUT`, and LaserDisc doesn't have KeyDB's own commands: send
+them as [commands of your own](#commands-of-your-own).
 
 An import also works with later versions of its server, so use the import for
 the oldest version you run. When you upgrade, upgrade your servers first and

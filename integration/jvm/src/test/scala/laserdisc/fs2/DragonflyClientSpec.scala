@@ -268,6 +268,35 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)
     send(del("df:h"))
   }
 
+  test("a dragonfly client sends the options it shares with Redis, which only a live server can say it accepts") {
+    import streamtypes.*
+    send(del("df:o:h", "df:o:x", "df:o:b"))
+    val a      = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    val inAMin = System.currentTimeMillis() / 1000L + 60L
+    send(hset("df:o:h", "a", 1))
+    List(hashtypes.HashExpireCondition.xx, hashtypes.HashExpireCondition.gt, hashtypes.HashExpireCondition.lt).foreach { condition =>
+      assertEquals(send(hexpire("df:o:h", 100L, condition, a)).size, 1)
+    }
+    val expiries = List(
+      stringtypes.expiry.millis(100000L),
+      stringtypes.expiry.atSeconds(PosLong.unsafeFrom(inAMin)),
+      stringtypes.expiry.atMillis(PosLong.unsafeFrom(inAMin * 1000L))
+    )
+    (expiries :+ stringtypes.expiry.persist).foreach(expiry => assertEquals(send(hgetex[Int]("df:o:h", expiry, a)), Seq(Some(1))))
+    (expiries :+ stringtypes.expiry.keepTtl).foreach { expiry =>
+      assert(send(hsetex("df:o:h", expiry, OneOrMore.unsafeFrom(List(Key("a") -> 1)))))
+    }
+    assert(send(hsetex("df:o:h", hashtypes.HashFieldsCondition.fnx, OneOrMore.unsafeFrom(List(Key("b") -> 2)))))
+
+    send(xadd("df:o:x", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
+    assertEquals(send(xgroupcreate("df:o:x", "g", StreamFrom.latest, 1L)), OK)
+
+    send(set("df:o:b", "abc"))
+    assertEquals(send(bitcount("df:o:b", 0L, 1L, stringtypes.bitUnit.byte)).value, 6L)
+    assertEquals(send(bitpos("df:o:b", stringtypes.bit.set, 0L, 0L, stringtypes.bitUnit.byte)).map(_.value), Some(1L))
+    send(del("df:o:h", "df:o:x", "df:o:b"))
+  }
+
   test("a dragonfly client digests strings, deletes on a match and counts bits by unit") {
     send(del("df:d", "df:b"))
     send(set("df:d", "v"))

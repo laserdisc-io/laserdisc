@@ -331,7 +331,7 @@ lazy val integration = laserdiscCrossModule("integration", CrossType.Full)
     }
   )
 
-lazy val cli = laserdiscCrossModule("cli")
+lazy val cli = laserdiscCrossModule("cli", CrossType.Full)
   .dependsOn(fs2 % "compile->compile;test->test")
   .settings(
     libraryDependencies ++= Seq(

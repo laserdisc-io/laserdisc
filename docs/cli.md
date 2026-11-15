@@ -22,7 +22,7 @@ then start it with Node.js:
 
 ```sh
 sbt "++3.9.0" cliJS/fastLinkJS
-node cli/.js/target/scala-3.9.0/laserdisc-cli-fastopt/main.js localhost 6379
+node cli/js/target/scala-3.9.0/laserdisc-cli-fastopt/main.js localhost 6379
 ```
 
 If the server needs a password, add `-a` (or `--password`) and the password

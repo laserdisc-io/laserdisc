@@ -51,6 +51,10 @@ every client. It slows the server down, so use it for debugging.
 - **Use the stream while the subscription is open.** Once it's closed, the
   stream fails with `ClientTerminated`, whether it was running or is run after.
 - **Each subscription uses a connection.**
+- **Opening fails if the server can't be reached.** A subscriber doesn't try
+  again, as the client does: opening fails with why the connection couldn't be
+  made, `ConnectTimedOut` when the server doesn't answer within 10 seconds, or
+  `ServerNotResponding` when it doesn't confirm the subscription within 30.
 - **The stream fails if the connection drops.** Pub/sub doesn't keep messages, so
   anything published in the meantime is lost, and running the stream again fails
   the same way. Whether to open a new one is up to you.

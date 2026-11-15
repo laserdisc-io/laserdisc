@@ -42,6 +42,21 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
       FakeRedisServer((_, in) => in.take(commands.toLong).evalMap(c => seen.update(_ :+ c)).drain ++ Stream.emit(reply)).map(_ -> seen.get)
     }
 
+  // a server that answers each command as it reads it, by the command's name, keeping them in order
+  private def answering(reply: String => String): Resource[IO, (Port, IO[List[RESP]])] =
+    Resource.eval(IO.ref(List.empty[RESP])).flatMap { seen =>
+      FakeRedisServer { (_, in) =>
+        in.evalMap { c =>
+          val name = c match {
+            case Arr(Bulk(name) :: _) => name
+            case _                    => ""
+          }
+          // the PINGs that keep the connection alive aren't kept
+          seen.update(_ :+ c).unlessA(name == "PING").as(reply(name))
+        }
+      }.map(_ -> seen.get)
+    }
+
   private def command(params: String*): RESP = Arr(params.toList.map(Bulk(_)))
 
   private val feed: Feed[Message[String]] = laserdisc.redis_6_2.subscribe[String](OneOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))))
@@ -177,7 +192,7 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
   }
 
   test("logs in before subscribing") {
-    serving(2)("+OK\r\n" + confirmed + message("a", "m")).use { case (port, seen) =>
+    answering(name => if (name == "AUTH") "+OK\r\n" else confirmed + message("a", "m")).use { case (port, seen) =>
       RedisSubscriber[IO]
         .to("127.0.0.1", port, Credentials(Key("secret")), feed)
         .use(_.take(1).compile.toList)
@@ -186,27 +201,32 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
     }
   }
 
-  test("a refused login fails opening with ConnectionSetupRefused, as with the client") {
-    serving(1)("-WRONGPASS invalid username-password pair\r\n").use { case (port, seen) =>
+  test("a refused login fails opening with ConnectionSetupRefused, as with the client, without subscribing as another user") {
+    answering(name => if (name == "AUTH") "-WRONGPASS invalid username-password pair\r\n" else confirmed).use { case (port, seen) =>
       RedisSubscriber[IO].to("127.0.0.1", port, Credentials(Key("wrong")), feed).use(_ => IO.unit).attempt.flatMap { outcome =>
         val refused = outcome.left.toOption.collect { case ConnectionSetupRefused(address, reason) =>
           address.port.value -> reason.getMessage
         }
         assertEquals(refused, Some(port.value -> "WRONGPASS invalid username-password pair"))
-        seen.map(commands => assertEquals(commands.take(1), List(command("AUTH", "wrong"))))
+        // a server whose default user needs no password would otherwise subscribe as that user
+        IO.sleep(200.millis) >> seen.assertEquals(List(command("AUTH", "wrong")))
       }
     }
   }
 
   test("identified gives the connection's id, asked for before subscribing") {
-    serving(2)(":42\r\n" + confirmed).use { case (port, seen) =>
+    answering(name => if (name == "CLIENT") ":42\r\n" else confirmed).use { case (port, seen) =>
       RedisSubscriber[IO].identified("127.0.0.1", port, feed).use { case (id, _) => IO.pure(id.value) }.assertEquals(42L) >>
         seen.assertEquals(List(command("CLIENT", "ID"), subscribing))
     }
   }
 
   test("identified logs in first") {
-    serving(3)("+OK\r\n:42\r\n" + confirmed).use { case (port, seen) =>
+    answering {
+      case "AUTH"   => "+OK\r\n"
+      case "CLIENT" => ":42\r\n"
+      case _        => confirmed
+    }.use { case (port, seen) =>
       RedisSubscriber[IO]
         .identified("127.0.0.1", port, Credentials(Key("user"), Key("secret")), feed)
         .use { case (id, _) => IO.pure(id.value) }
@@ -216,7 +236,7 @@ final class RedisSubscriberBehaviourSpec extends CatsEffectSuite {
   }
 
   test("identified fails when what comes back isn't an id") {
-    serving(2)("+OK\r\n" + confirmed).use { case (port, _) =>
+    answering(name => if (name == "CLIENT") "+OK\r\n" else confirmed).use { case (port, _) =>
       RedisSubscriber[IO].identified("127.0.0.1", port, feed).use(_ => IO.unit).attempt.map { outcome =>
         assert(outcome.left.exists(_.getMessage.contains("Expected the connection's id")), outcome.toString)
       }

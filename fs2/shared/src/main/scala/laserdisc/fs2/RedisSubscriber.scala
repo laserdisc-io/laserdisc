@@ -118,9 +118,12 @@ object RedisSubscriber {
           .drain
           .background
         write = (commands: List[RESP]) => Stream.emits(commands).through(RedisChannel.impl.send(socket.write)).compile.drain
-        _         <- Resource.eval(write(before :+ feed.command))
+        // the feed's command is sent once the server has agreed to what comes before it, so that it never runs as a user it didn't log in
         confirmed <- Resource.eval(
-          confirm(address, replies, before.size, feed.confirmations, feed, Vector.empty, Vector.empty)
+          (write(before) >> confirm(address, replies, before.size, Set.empty, feed, Vector.empty, Vector.empty))
+            .flatMap { case (answers, _) =>
+              write(List(feed.command)) >> confirm(address, replies, 0, feed.confirmations, feed, answers, Vector.empty)
+            }
             .timeoutTo(
               confirmationTimeout,
               Async[F].raiseError[(Vector[RESP], Vector[Either[Unreadable, A]])](ServerNotResponding(address))

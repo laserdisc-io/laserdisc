@@ -26,6 +26,12 @@ import com.comcast.ip4s.SocketAddress
 
 import scala.concurrent.duration.FiniteDuration
 
+// why an error happened: its message, or the first of its causes' when it has none, as fs2's TLS errors on Node.js, or else what it is
+private object Reason {
+  def of(error: Throwable): String =
+    Iterator.iterate(error)(_.getCause).takeWhile(_ != null).take(16).map(_.getMessage).find(_ != null).getOrElse(error.getClass.getName)
+}
+
 final case class ServerTerminatedConnection(redisAddress: RedisAddress)
     extends RuntimeException(s"Server $redisAddress terminated client connection", null, true, false)
 final case class ServerNotResponding(redisAddress: RedisAddress)
@@ -48,11 +54,11 @@ final case class WatchCleanupRefused(redisAddress: RedisAddress, command: String
       false
     )
 final case class ConnectionSetupRefused(redisAddress: RedisAddress, reason: Throwable)
-    extends RuntimeException(s"Server $redisAddress refused to set up the connection: ${reason.getMessage}", reason, true, false)
+    extends RuntimeException(s"Server $redisAddress refused to set up the connection: ${Reason.of(reason)}", reason, true, false)
 
 /** No server could be reached, or each closed the connection before answering: `cause` is why the last attempt failed */
 final case class ServerUnavailable(cause: Throwable)
-    extends RuntimeException(s"No server available: ${cause.getMessage}", cause, true, false)
+    extends RuntimeException(s"No server available: ${Reason.of(cause)}", cause, true, false)
 object ClientTerminated extends RuntimeException("Client terminated connection", null, true, false)
 final case class NoInFlightRequest(resp: RESP)
     extends RuntimeException(protocol.RESPDecErr.capped(s"Got unsolicited message from server: $resp"), null, true, false)

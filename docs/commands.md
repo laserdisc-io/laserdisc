@@ -120,16 +120,18 @@ import laserdisc.auto.*
 
 final case class UserId(value: Long)
 
-implicit val userIdShow: Show[UserId]       = Show.instance(_.value.toString)
+// written as the Long it holds, and read back from one
+implicit val userIdShow: Show[UserId]       = Show[Long].contramap(_.value)
 implicit val userIdRead: Read[Bulk, UserId] = Read[Bulk, Long].map(UserId(_))
 
 val save = set("user", UserId(42L))
 val load = get[UserId]("user")
 ```
 
-`Show.instance` turns a value into the string Redis stores. `Read.instance`
-reads a reply yourself, and lets you fail with a `RESPDecErr` when a value
-doesn't fit:
+`contramap` writes a value as one of another type is written, and `map` reads it
+from one. For a value that isn't like any other, `Show.instance` turns it into
+the text Redis stores. `Read.instance` lets you read a reply yourself, and fail
+with a `RESPDecErr` when a value doesn't fit:
 
 ```scala mdoc:compile-only
 import laserdisc.*

@@ -54,6 +54,7 @@ final class CLISpec extends CatsEffectSuite {
       case Arr(Bulk("GET") :: _)  => bulk("value")
       case Arr(Bulk("BOOM") :: _) => "-ERR boom\r\n"
       case Arr(Bulk("KEYS") :: _) => "*2\r\n$1\r\na\r\n$1\r\nb\r\n"
+      case Arr(Bulk("INFO") :: _) => bulk("# Server\r\nv:1\r\n")
       case Arr(Bulk(other) :: _)  => s"+$other\r\n"
       case other                  => sys.error(s"unexpected command $other")
     }
@@ -236,6 +237,15 @@ final class CLISpec extends CatsEffectSuite {
              |2) "b" - []
              |$prompt""".stripMargin
         )
+      }
+    }
+  }
+
+  test("shows INFO's text a line at a time, as redis-cli does") {
+    replying.use { port =>
+      session(List("127.0.0.1", port.value.toString), "INFO").map { case (_, screen) =>
+        assert(screen.contains("<<< # Server\n"), screen)
+        assert(screen.contains("v:1 - []"), screen)
       }
     }
   }

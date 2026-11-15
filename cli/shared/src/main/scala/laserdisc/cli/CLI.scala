@@ -296,12 +296,13 @@ object CLI extends IOApp { self =>
                   startTime             <- IO(System.nanoTime())
                   maybeProtocolResponse <- sending
                   endTime               <- IO(System.nanoTime())
-                } yield maybeProtocolResponse -> (endTime - startTime)
+                  raw = RESPFormat.isRaw(protocol.command, protocol.parameters.map(_.value).toList)
+                } yield (maybeProtocolResponse, endTime - startTime, raw)
               }
               .evalMap {
                 // the server refusing the password or the database would refuse every command, so the prompt stops; one refusing for
                 // now, as with too many clients, is shown like any other error, and the client connects again
-                case (Left(refused @ ConnectionSetupRefused(_, reason)), _) if !forNow(reason) =>
+                case (Left(refused @ ConnectionSetupRefused(_, reason)), _, _) if !forNow(reason) =>
                   Stream
                     .emit(s"ERROR ${messageOf(refused)}$LF")
                     .through(text.utf8.encode)
@@ -309,12 +310,13 @@ object CLI extends IOApp { self =>
                     .compile
                     .drain
                     .as(true)
-                case (reply, nanos) =>
+                case (reply, nanos, raw) =>
                   val ms    = nanos.toDouble / 1000000d
                   val shown = reply match {
-                    case Left(err: Err) => RESPFormat.format(err)
-                    case Left(e)        => s"ERROR ${messageOf(e)}"
-                    case Right(resp)    => RESPFormat.format(resp)
+                    case Left(err: Err)     => RESPFormat.format(err)
+                    case Left(e)            => s"ERROR ${messageOf(e)}"
+                    case Right(resp) if raw => RESPFormat.formatRaw(resp)
+                    case Right(resp)        => RESPFormat.format(resp)
                   }
                   prompt(f"<<< $shown - [$ms%.2fms]$LF").as(false)
               }

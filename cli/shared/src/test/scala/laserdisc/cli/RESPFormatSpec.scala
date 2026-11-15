@@ -56,4 +56,20 @@ final class RESPFormatSpec extends FunSuite {
       List(" 1) (integer) 1", " 2) (integer) 2")
     )
   }
+
+  test(
+    "shows the text of INFO, CLIENT LIST and the other commands redis-cli shows raw, a line at a time, with control characters as \\xHH"
+  ) {
+    assert(RESPFormat.isRaw("info", Nil))
+    assert(RESPFormat.isRaw("CLIENT", List("list", "TYPE", "normal")))
+    assert(RESPFormat.isRaw("cluster", List("nodes")))
+    assert(RESPFormat.isRaw("LATENCY", List("graph", "command")))
+    assert(!RESPFormat.isRaw("cluster", List("nodes", "x")))
+    assert(!RESPFormat.isRaw("GET", List("info")))
+    assertEquals(
+      RESPFormat.formatRaw(Bulk("# Server\r\nredis_version:8.10.3\r\n\u001b[2J\r\n")),
+      "# Server\nredis_version:8.10.3\n\\x1b[2J"
+    )
+    assertEquals(RESPFormat.formatRaw(Num(1L)), "(integer) 1")
+  }
 }

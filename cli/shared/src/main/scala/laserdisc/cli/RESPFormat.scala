@@ -26,6 +26,25 @@ package cli
 private[cli] object RESPFormat {
   final def format(resp: RESP): String = lines(resp).mkString(LF)
 
+  // the commands whose text redis-cli shows as it is, a line at a time, rather than quoted, as INFO's
+  final def isRaw(command: String, args: List[String]): Boolean = {
+    def is(name: String)    = command.equalsIgnoreCase(name)
+    def sub(names: String*) = args.headOption.exists(a => names.exists(_.equalsIgnoreCase(a)))
+    is("INFO") || is("LOLWUT") ||
+    (is("DEBUG") && sub("HTSTATS", "HTSTATS-KEY", "CLIENT-EVICTION")) ||
+    (is("MEMORY") && sub("MALLOC-STATS", "DOCTOR")) ||
+    (is("CLUSTER") && args.size == 1 && sub("NODES", "INFO")) ||
+    (is("CLIENT") && sub("LIST", "INFO")) ||
+    (is("LATENCY") && ((args.size == 2 && sub("GRAPH")) || (args.size == 1 && sub("DOCTOR")))) ||
+    (is("PROXY") && sub("INFO"))
+  }
+
+  // a string's text a line at a time, with its control characters as \xHH; any other reply as format shows it
+  final def formatRaw(resp: RESP): String = resp match {
+    case bulk: Bulk => bulk.value.split("\r?\n", -1).toList.reverse.dropWhile(_.isEmpty).reverse.map(printable).mkString(LF)
+    case other      => format(other)
+  }
+
   private final def lines(resp: RESP): List[String] = resp match {
     case Str(value)        => printable(value) :: Nil
     case bulk: Bulk        => quote(bulk.bytes) :: Nil

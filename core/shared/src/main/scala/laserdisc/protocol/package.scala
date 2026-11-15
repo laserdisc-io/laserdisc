@@ -41,7 +41,12 @@ package object protocol extends protocol.EitherSyntax {
 
   private[protocol] val KVP: Read[String, (String, String)] = Read.instance {
     case KVPairRegex(k, v) => Right(k -> v)
-    case other => Left(RESPDecErr(s"Read[String, (String, String)], error decoding key -> value pair. Expected [key:value] but was $other"))
+    case other             =>
+      Left(
+        RESPDecErr(
+          s"Read[String, (String, String)], error decoding key -> value pair. Expected [key:value] but was ${RESPDecErr.shown(other)}"
+        )
+      )
   }
 
   private[protocol] val KVPS: Read[Seq[String], List[(String, String)]] = Read.instance { ss =>

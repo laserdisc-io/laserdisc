@@ -586,7 +586,7 @@ object ServerInspection {
         case (Right(vs), (k, Num(n)))  => Right(vs + (k -> n.toString))
         case (Right(vs), (k, Bulk(v))) => Right(vs + (k -> v))
         case (Right(vs), (_, _: Arr))  => Right(vs)
-        case (Right(_), (k, other))    => Left(RESPDecErr(s"field $k: Unexpected value. Was $other"))
+        case (Right(_), (k, other))    => Left(RESPDecErr(s"field $k: Unexpected value. Was ${RESPDecErr.shown(other)}"))
         case (left, _)                 => left
       }
     } yield HotKeys(values, cpu.getOrElse(Nil), net.getOrElse(Nil))

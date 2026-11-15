@@ -75,7 +75,7 @@ object StreamP {
     implicit final val bulk2IdRead: Read[Bulk, Id] = Read.instance {
       case Bulk(s @ IdRegex(ms, seq)) =>
         IdPart.from(ms).flatMap(m => IdPart.from(seq).map(Id(m, _))).leftMap(e => RESPDecErr(s"Read[Bulk, Id], $e in $s"))
-      case other => Left(RESPDecErr(s"Read[Bulk, Id], expected a stream id but was $other"))
+      case other => Left(RESPDecErr(s"Read[Bulk, Id], expected a stream id but was ${RESPDecErr.shown(other)}"))
     }
   }
 

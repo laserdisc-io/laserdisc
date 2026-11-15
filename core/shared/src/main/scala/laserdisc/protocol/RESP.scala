@@ -281,6 +281,36 @@ object RESPDecErr {
     if (message.length <= MaxLength) message else s"${message.take(MaxLength)}… (${message.length - MaxLength} more characters)"
 
   def apply(message: String): RESPDecErr = new RESPDecErr(capped(message))
+
+  /** A reply, or a value read from one, as an error shows it: up to [[MaxLength]] characters, with … when there's more, without writing out
+    * the rest, however big the reply is
+    */
+  private[laserdisc] final def shown(a: Any): String = {
+    val out                                        = new java.lang.StringBuilder
+    def full: Boolean                              = out.length > MaxLength
+    def add(s: String): Unit                       = if (!full) { out.append(s, 0, math.min(s.length, MaxLength + 1 - out.length)); () }
+    def wrapped(name: String, inner: =>Unit): Unit = { add(s"$name("); inner; add(")") }
+    def go(a: Any): Unit                           =
+      if (!full) a match {
+        case bulk: Bulk    => wrapped("Bulk", add(new String(bulk.bytes.take(MaxLength.toLong + 1L).toArray, UTF_8)))
+        case Arr(elements) =>
+          wrapped(
+            "Arr", {
+              val each = elements.iterator
+              if (each.hasNext) go(each.next())
+              while (!full && each.hasNext) { add(COMMA); go(each.next()) }
+            }
+          )
+        case Str(value)    => wrapped("Str", add(value))
+        case Err(message)  => wrapped("Err", add(message))
+        case one: OneOf[?] => go(one.value)
+        case text: String  => add(text)
+        case other         => add(other.toString)
+      }
+    go(a)
+    if (full) { out.setLength(MaxLength); out.append('…'); () }
+    out.toString
+  }
 }
 
 sealed trait RESPFunctions { this: RESPCodecs =>

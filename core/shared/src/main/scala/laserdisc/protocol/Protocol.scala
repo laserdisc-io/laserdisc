@@ -151,7 +151,7 @@ object Protocol {
         case Arr(results) if results.size == protocols.size => Right(Some(M.read(in, results)))
         case NilArr                                         => Right(None)
         case err: Err                                       => Left(err)
-        case other => Left(RESPDecErr(s"Expected the results of ${protocols.size} commands but got: $other"))
+        case other => Left(RESPDecErr(s"Expected the results of ${protocols.size} commands but got: ${RESPDecErr.shown(other)}"))
       }
 
       override private[laserdisc] final val frames: Seq[RESP] = (Arr(Bulk("MULTI")) :: protocols.map(_.encode)) :+ Arr(Bulk("EXEC"))

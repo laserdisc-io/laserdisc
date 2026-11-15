@@ -67,4 +67,21 @@ final class RESPReadSpec extends BaseSpec {
     assertLeftEquals(optBulk.read(NilArr), RESPDecErr("RESP type(s) did not match: NilArr"))
     assertLeftEquals(optArr.read(NullBulk), RESPDecErr("RESP type(s) did not match: NullBulk"))
   }
+
+  test("an error reading a reply says what the reply was only up to a limit, without first writing it all out, however big it is") {
+    val big   = Bulk("x" * 20000000)
+    val many  = Arr(List.fill(200000)(Bulk("element")))
+    val limit = RESPDecErr.MaxLength + 100
+    List[Either[Throwable, Any]](
+      RESPRead[Num, Long].read(big),
+      RESPRead[Bulk, Int].read(big),
+      RESPRead[Arr.Of[Num], Seq[Long]].read(many),
+      Read[Bulk, Int].read(big)
+    ).foreach { result =>
+      val message = result.left.toOption.map(_.getMessage).getOrElse(fail(s"expected an error, got $result"))
+      assert(message.length <= limit, s"${message.length} characters: ${message.take(200)}")
+    }
+    assertEquals(RESPDecErr.shown(Arr(Bulk("a"), Num(1L), NullBulk)), "Arr(Bulk(a),Num(1),NullBulk)")
+    assert(RESPDecErr.shown(big).length <= RESPDecErr.MaxLength + 1)
+  }
 }

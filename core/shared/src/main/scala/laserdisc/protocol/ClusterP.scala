@@ -118,7 +118,7 @@ object ClusterP {
         case ":0@0"                                                            => Right(None)
         case HPCP(MaybeHost(h), ToInt(Port(p)), ToInt(Port(cp)), MaybeHost(n)) => Right(Some(AddressOf7_0(h, p, cp, n)))
         case HP(MaybeHost(h), ToInt(Port(p)))                                  => Right(Some(AddressOf7_0(h, p, p, None)))
-        case other => Left(RESPDecErr(s"Unexpected encoding for Address. Was $other"))
+        case other => Left(RESPDecErr(s"Unexpected encoding for Address. Was ${RESPDecErr.shown(other)}"))
       }
     }
     private final val Fs: Read[String, Seq[Flag]] = Read.instance {
@@ -141,12 +141,12 @@ object ClusterP {
     private final val MM: Read[String, Option[NodeId]] = Read.instance {
       case "-"        => Right(None)
       case NodeId(id) => Right(Some(id))
-      case other      => Left(RESPDecErr(s"Wrong encoding for Node Id. Was $other"))
+      case other      => Left(RESPDecErr(s"Wrong encoding for Node Id. Was ${RESPDecErr.shown(other)}"))
     }
     private final val L: Read[String, LinkState] = Read.instance {
       case "connected"    => Right(LinkState.connected)
       case "disconnected" => Right(LinkState.disconnected)
-      case other          => Left(RESPDecErr(s"Wrong encoding for link state. Was $other"))
+      case other          => Left(RESPDecErr(s"Wrong encoding for link state. Was ${RESPDecErr.shown(other)}"))
     }
     private final val Ss: Read[Seq[String], Seq[SlotType]] = {
       val R  = raw"(\d+)-(\d+)".r
@@ -158,8 +158,8 @@ object ClusterP {
           case (R(ToInt(Slot(f)), ToInt(Slot(t))), Right(fgs)) => Right(SlotType.Range(f, t) :: fgs)
           case (IS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.ImportingSlot(s, id) :: fgs)
           case (MS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.MigratingSlot(s, id) :: fgs)
-          case (other, Right(_))                               => Left(RESPDecErr(s"Wrong encoding for Node's slot type. Was $other"))
-          case (_, left)                                       => left
+          case (other, Right(_)) => Left(RESPDecErr(s"Wrong encoding for Node's slot type. Was ${RESPDecErr.shown(other)}"))
+          case (_, left)         => left
         }
       }
     }

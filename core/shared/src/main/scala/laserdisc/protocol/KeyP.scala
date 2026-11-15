@@ -512,7 +512,7 @@ trait KeyMigrateP extends Features {
   private implicit final val str2NOKEYOrOK: Read[Str, Either[NOKEY, OK]] = Read.instance {
     case Str("NOKEY") => Right(Left(NOKEY))
     case Str("OK")    => Right(Right(OK))
-    case Str(other)   => Left(RESPDecErr(s"Unexpected string for Read[Str, (NOKEY | OK)]. Was $other"))
+    case Str(other)   => Left(RESPDecErr(s"Unexpected string for Read[Str, (NOKEY | OK)]. Was ${RESPDecErr.shown(other)}"))
   }
 
   final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single[Either[NOKEY, OK]] =

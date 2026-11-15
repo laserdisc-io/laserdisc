@@ -94,13 +94,14 @@ object RESPRead {
 
   private final def mismatch(resp: RESP): Maybe[Nothing] = resp match {
     case err: Err => Left(err)
-    case other    => Left(RESPDecErr(s"RESP type(s) did not match: $other"))
+    case other    => Left(RESPDecErr(s"RESP type(s) did not match: ${RESPDecErr.shown(other)}"))
   }
 
   private final def readMatched[A, B](R: Read[A, B], resp: RESP, a: A): Maybe[B] = R.read(a) match {
     case Right(b)            => Right(b)
     case Left(RESPDecErr(m)) =>
-      Left(RESPDecErr(s"RESP type(s) matched but failed to deserialize correctly with error $m, reading $resp")).widenLeft[Throwable]
+      Left(RESPDecErr(s"RESP type(s) matched but failed to deserialize correctly with error $m, reading ${RESPDecErr.shown(resp)}"))
+        .widenLeft[Throwable]
   }
 
   final def instance[A, B](R: Read[A, B])(implicit S: RESPSub[A]): RESPRead.Aux[A, B] =
@@ -122,7 +123,7 @@ object RESPRead {
         case Str("OK") => Right(None)
         case Bulk(s)   => Right(Some(s))
         case err: Err  => Left(err)
-        case other     => Left(RESPDecErr(s"Expected OK or a message, but was $other"))
+        case other     => Left(RESPDecErr(s"Expected OK or a message, but was ${RESPDecErr.shown(other)}"))
       }
     }
 

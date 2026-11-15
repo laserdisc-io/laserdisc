@@ -34,7 +34,7 @@ trait ConnectionBaseP extends Features {
 
   private implicit final val pongRead: Read[Str, PONG] = Read.instance {
     case Str(pong) if pong == PONG.value => Right(PONG)
-    case Str(other)                      => Left(RESPDecErr(s"Wrong PONG encoding: was $other"))
+    case Str(other)                      => Left(RESPDecErr(s"Wrong PONG encoding: was ${RESPDecErr.shown(other)}"))
   }
 
   final def echo[A: Show: Read[Bulk, _]](message: A): Single[A] = Protocol("ECHO", message).as[Bulk, A]

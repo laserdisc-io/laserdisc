@@ -520,7 +520,7 @@ object ServerP {
   object ClientInfo {
     implicit val clientInfoRead: Read[Bulk, ClientInfo] = ConnectedClients.connectedClientsRead.flatMap {
       case ConnectedClients(Seq(parameters)) => Read.const(ClientInfo(parameters))
-      case other => Read.instance(_ => Left(RESPDecErr(s"Expected the information of one client, but was $other")))
+      case other => Read.instance(_ => Left(RESPDecErr(s"Expected the information of one client, but was ${RESPDecErr.shown(other)}")))
     }
   }
 

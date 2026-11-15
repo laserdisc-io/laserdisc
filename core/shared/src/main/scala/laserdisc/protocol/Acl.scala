@@ -389,7 +389,7 @@ object Acl {
       case Arr(elements) =>
         val fields =
           elements.grouped(2).collect { case Seq(Str(name), value) => name -> value; case Seq(Bulk(name), value) => name -> value }.toMap
-        def missing(name: String) = RESPDecErr(s"ACL log entry: no $name, or not of its type, in $resp")
+        def missing(name: String) = RESPDecErr(s"ACL log entry: no $name, or not of its type, in ${RESPDecErr.shown(resp)}")
         def text(name: String)    = fields.get(name).collect { case Str(s) => s; case Bulk(s) => s }.toRight(missing(name))
         def number(name: String)  = text(name).flatMap(ToDouble.unapply(_).toRight(missing(name)))
         def integer(name: String) = fields.get(name).collect { case Num(n) => n }.toRight(missing(name))
@@ -401,7 +401,7 @@ object Acl {
           info     <- text("client-info")
           created  <- integer("timestamp-created")
         } yield AclLogEntryOfDragonfly(reason, denied, username, age, info, created)
-      case other => Left(RESPDecErr(s"Unexpected ACL log entry: $other"))
+      case other => Left(RESPDecErr(s"Unexpected ACL log entry: ${RESPDecErr.shown(other)}"))
     }
     implicit val entries: Read[Arr, Seq[AclLogEntryDragonfly]] = Read.instance { reply =>
       reply.elements.foldRight[Either[RESPDecErr, List[AclLogEntryDragonfly]]](Right(Nil)) { (resp, rest) =>

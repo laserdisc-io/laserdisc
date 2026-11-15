@@ -95,7 +95,7 @@ object Feed {
 
   private final def unexpected[A](resp: RESP): Maybe[Option[A]] = resp match {
     case err: Err => Left(err)
-    case other    => Left(RESPDecErr(s"Unexpected message on a subscribed connection: $other"))
+    case other    => Left(RESPDecErr(s"Unexpected message on a subscribed connection: ${RESPDecErr.shown(other)}"))
   }
 
   private final def keyOf(channel: String): Maybe[Key] = Read[Bulk, Key].read(Bulk(channel))
@@ -169,7 +169,7 @@ object Feed {
           keys
             .foldRight[Maybe[List[Key]]](Right(Nil)) {
               case (bulk: Bulk, rest) => rest.flatMap(found => Read[Bulk, Key].read(bulk).map(_ :: found))
-              case (other, _)         => Left(RESPDecErr(s"Unexpected key in a tracking notice: $other"))
+              case (other, _)         => Left(RESPDecErr(s"Unexpected key in a tracking notice: ${RESPDecErr.shown(other)}"))
             }
             .map(found => Some(Invalidation.Keys(found)))
         case resp if confirmation(resp).nonEmpty => Right(None)

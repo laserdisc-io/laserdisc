@@ -70,7 +70,9 @@ object Read extends ReadInstances0 {
   @inline final def const[A, B](b: B): Read[A, B] = Read.infallible(_ => b)
 
   @inline final def instancePF[A, B](expectation: String)(pf: PartialFunction[A, B]): Read[A, B] =
-    new Of(a => if (pf.isDefinedAt(a)) Right(pf(a)) else Left(RESPDecErr(s"Read Error: expected $expectation but was $a")))
+    new Of(a =>
+      if (pf.isDefinedAt(a)) Right(pf(a)) else Left(RESPDecErr(s"Read Error: expected $expectation but was ${RESPDecErr.shown(a)}"))
+    )
 
   // None when the condition holds, otherwise the value read, failing if it can't be
   @inline final def lift2OptionWhen[A, B](cond: A => Boolean)(
@@ -110,7 +112,7 @@ private[protocol] sealed trait ReadInstances1 extends ReadLabelledInstances {
         read(resp) match {
           case Some(Right(b)) => go(tail, i + 1, b :: acc)
           case Some(Left(e))  => Left(RESPDecErr(s"Read[Arr.Of, Seq] error at element $i: ${e.message}"))
-          case None           => Left(RESPDecErr(s"Read[Arr.Of, Seq] error at element $i: Unexpected element. Was $resp"))
+          case None => Left(RESPDecErr(s"Read[Arr.Of, Seq] error at element $i: Unexpected element. Was ${RESPDecErr.shown(resp)}"))
         }
     }
     go(arr.elements, 1, Nil)
@@ -126,7 +128,10 @@ private[protocol] sealed trait ReadInstances1 extends ReadLabelledInstances {
   ): Either[RESPDecErr, Seq[(C, D)]] = {
     def element[X, Y](resp: RESP, i: Int, which: String)(S: RESPSub[X], R: Read[X, Y]): Either[RESPDecErr, Y] = S.unapply(resp) match {
       case Some(x) => R.read(x).leftMap(e => RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: ${e.message}"))
-      case None    => Left(RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: Unexpected element. Was $resp"))
+      case None    =>
+        Left(
+          RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: Unexpected element. Was ${RESPDecErr.shown(resp)}")
+        )
     }
     @scala.annotation.tailrec
     def go(rest: List[RESP], i: Int, acc: List[(C, D)]): Either[RESPDecErr, Seq[(C, D)]] = rest match {

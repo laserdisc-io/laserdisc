@@ -94,6 +94,28 @@ import laserdisc.auto.*
 val setIfOne = set("a", 2, stringtypes.ifEq(1))
 ```
 
+The rules of `ACL SETUSER` start from `servertypes` too, each added after the
+one before, in the order the server applies them. From Redis 7.0 they're
+`aclSelectorRules`, whose `selector` takes the permissions of a selector, built
+from `aclSelector`:
+
+```scala mdoc:compile-only
+import laserdisc.*
+import laserdisc.redis_8_10.*
+import laserdisc.auto.*
+
+// ACL SETUSER app on >secret ~app:* +get +set (~logs:* +xadd): app reads and writes its keys, and may also add to its logs
+val app = acl.setuser(
+  "app",
+  servertypes.aclSelectorRules.on
+    .password("secret")
+    .keys("app:*")
+    .allow("get")
+    .allow("set")
+    .selector(servertypes.aclSelector.keys("logs:*").allow("xadd"))
+)
+```
+
 ## Replies
 
 Commands that return a value let you choose its type. `get[PosInt]("a")` reads

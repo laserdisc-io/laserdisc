@@ -185,8 +185,10 @@ object RedisClient {
 
     // a server loading its data, running a script, cut off from its master or with too many clients refuses for now only: the client
     // connects again, as to a server it can't reach, instead of stopping
+    private final val MaxClients = "ERR max number of clients reached"
+
     def refusedForNow(refused: Err): Boolean =
-      refused.message == "ERR max number of clients reached" ||
+      refused.message == MaxClients ||
         List("LOADING", "BUSY", "MASTERDOWN", "TRYAGAIN").exists(code => refused.message.startsWith(s"$code "))
 
     def connection[F[_]: Async](
@@ -471,7 +473,16 @@ object RedisClient {
                   .evalTap(_ => usage.update(_.max(Usage.Used)))
                   .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(giveBack(current))))
                   .through(redisNetChannel(address, onConnected))
-                  .evalMap(resp => receive(connection)(resp).flatMap(toSetup => usage.set(Usage.Answered).unlessA(toSetup)))
+                  .evalMap {
+                    // a server with too many clients says so to the first command, without running it, and closes the connection: that's
+                    // a connection refused for now, as when it says so to the setup, not one that answered
+                    case full: Err if full.message == MaxClients =>
+                      usage.get.flatMap { reached =>
+                        if (reached == Usage.Answered) receive(connection)(full).void
+                        else Temporal[F].raiseError[Unit](ConnectionSetupRefused(address, full))
+                      }
+                    case resp => receive(connection)(resp).flatMap(toSetup => usage.set(Usage.Answered).unlessA(toSetup))
+                  }
                   .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
               }
 

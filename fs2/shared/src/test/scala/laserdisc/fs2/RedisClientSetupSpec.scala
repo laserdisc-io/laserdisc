@@ -119,6 +119,25 @@ final class RedisClientSetupSpec extends CatsEffectSuite {
     }
   }
 
+  test(
+    "a server with too many clients saying so to the first command refuses the connection for now, so the client waits to connect again"
+  ) {
+    IO.ref(0).flatMap { opened =>
+      val full = FakeRedisServer { (n, requests) =>
+        Stream.exec(opened.set(n)) ++ requests.take(1).as("-ERR max number of clients reached\r\n")
+      }
+      full.use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use { client =>
+          (client.send(get[String]("k")), client.send(get[String]("k")), opened.get).tupled.map { case (first, second, connections) =>
+            assert(first.left.exists(_.isInstanceOf[ConnectionSetupRefused]), first)
+            assert(second.left.exists(_.isInstanceOf[ServerUnavailable]), second)
+            assertEquals(connections, 1)
+          }
+        }
+      }
+    }
+  }
+
   test("a command isn't sent when the server refused to log in but agreed to select the database") {
     IO.ref(Vector.empty[(Int, List[String])]).flatMap { received =>
       // the first connection's login is refused, for good or for now, and its SELECT agreed to; the next connections set up fine

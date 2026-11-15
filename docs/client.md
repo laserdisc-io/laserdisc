@@ -366,6 +366,11 @@ waiting: as the server is still waiting on it, the client closes the connection,
 and the next command connects again. The shared client from `to` doesn't
 compile with these commands.
 
+The server may have run a command as you cancel it. A pop, such as `blpop`, can
+then have taken an item off the list that its reply would have brought you, and
+that item is lost. If items mustn't be lost, move them to a list of your own
+with `blmove` instead, and take them off that list once they're done.
+
 If the server goes away without closing the connection, as when its machine
 loses power, a command with no timeout only fails once the operating system
 gives up on the connection. Its keep-alive checks take about two hours by

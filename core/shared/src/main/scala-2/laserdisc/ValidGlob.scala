@@ -34,3 +34,9 @@ object ValidAclPattern {
   implicit final val validAclPatternValidate: Validate.Plain[String, ValidAclPattern] =
     Validate.fromPredicate(GlobCheck.isAclPattern, p => s"isAclPattern($p)", ValidAclPattern())
 }
+
+final case class ValidKey()
+object ValidKey {
+  implicit final val validKeyValidate: Validate.Plain[String, ValidKey] =
+    Validate.fromPredicate(TextCheck.isKey, k => s"isKey($k)", ValidKey())
+}

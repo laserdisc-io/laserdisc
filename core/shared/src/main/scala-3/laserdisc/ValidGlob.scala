@@ -47,3 +47,14 @@ object ValidAclPattern {
   private def testExpr(s: Expr[String])(using Quotes): Expr[Boolean] =
     s.value.fold('{ GlobCheck.isAclPattern($s) })(p => Expr(GlobCheck.isAclPattern(p)))
 }
+
+final case class ValidKey()
+object ValidKey {
+  given Constraint[String, ValidKey] with {
+    inline override def test(inline s: String): Boolean = ${ testExpr('s) }
+    inline override def message: String                 = "Should not be empty, nor hold half of a character"
+  }
+
+  private def testExpr(s: Expr[String])(using Quotes): Expr[Boolean] =
+    s.value.fold('{ TextCheck.isKey($s) })(k => Expr(TextCheck.isKey(k)))
+}

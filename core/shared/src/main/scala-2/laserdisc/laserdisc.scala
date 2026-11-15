@@ -142,7 +142,7 @@ package object laserdisc {
   final type AclPatternRef       = ValidAclPattern
   final type HostRef             = ValidHost
   final type IndexRef            = True
-  final type KeyRef              = OneOrMoreRef
+  final type KeyRef              = ValidKey
   final type LatitudeRef         = NonNaN And Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
   final type LongitudeRef        = NonNaN And Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
   final type NodeIdRef           = MatchesRegex[NodeIdRegexWit.T]

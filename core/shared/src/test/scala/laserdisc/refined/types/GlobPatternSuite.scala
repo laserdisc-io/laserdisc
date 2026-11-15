@@ -93,4 +93,10 @@ final class GlobPatternSuite extends BaseSpec {
       GlobPattern.from(s).onRight(_.value == s)
     }
   }
+
+  test("GlobPattern refuses half of a character, a lone surrogate, which would be sent as ?, a wildcard") {
+    assert(GlobPattern.from("a\uD800").isLeft)
+    assert(GlobPattern.from("[\uDC00]").isLeft)
+    assert(GlobPattern.from("a😀*").isRight)
+  }
 }

@@ -23,8 +23,8 @@ package laserdisc
 
 /** What a [[GlobPattern]] and an [[AclPattern]] can be, checked in one pass over the text, however long, the same on Scala 2 and Scala 3:
   * `*`, `?`, `[abc]`, `[a-z]`, `[^abc]`, `\x` for the character x itself, or any other character but a control character. A class can't be
-  * empty, can't start with `^` after the one that negates it, and must be closed; a `]` outside of a class is written `\]`. An
-  * [[AclPattern]] has no spaces either
+  * empty, can't start with `^` after the one that negates it, and must be closed; a `]` outside of a class is written `\]`. It can't hold
+  * half of a character either (see [[TextCheck]]). An [[AclPattern]] has no spaces
   */
 private[laserdisc] object GlobCheck {
   final def isGlobPattern(s: String): Boolean = isValid(s, spaces = true)
@@ -61,6 +61,6 @@ private[laserdisc] object GlobCheck {
         else if (c == '[') charClass(i)
         else i + 1
     }
-    s.nonEmpty && i == s.length
+    s.nonEmpty && i == s.length && TextCheck.isWellFormed(s)
   }
 }

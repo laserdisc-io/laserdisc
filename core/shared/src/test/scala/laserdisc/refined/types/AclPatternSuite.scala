@@ -50,4 +50,10 @@ final class AclPatternSuite extends BaseSpec {
     assert(AclPattern.from("[a]*" * 100000).isRight)
     assert(AclPattern.from(("a" * 100000) + " ").isLeft)
   }
+
+  test("AclPattern refuses half of a character, a lone surrogate, which would be sent as ?, a wildcard") {
+    assert(AclPattern.from("a\uD800").isLeft)
+    assert(AclPattern.from("[\uDC00]").isLeft)
+    assert(AclPattern.from("a😀*").isRight)
+  }
 }

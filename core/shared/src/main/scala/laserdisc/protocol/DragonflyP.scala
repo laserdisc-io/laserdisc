@@ -211,16 +211,15 @@ trait DragonflyP extends Features {
 
 /** CLIENT KILL as Dragonfly has it: one filter, with no others after it */
 trait ClientDragonflyKillCommands extends Features {
-  import Show.{hostShow, portShow}
 
   /** Closes the client with this id, and replies how many it closed */
   def kill(id: NonNegLong): Single[NonNegLong] = Protocol("CLIENT", "KILL" *: "ID" *: id *: EmptyTuple).as[Num, NonNegLong]
 
   /** Closes the client connected from this address, and replies how many it closed */
   def killaddress(host: Host, port: Port): Single[NonNegLong] =
-    Protocol("CLIENT", "KILL" :: "ADDR" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Num, NonNegLong]
+    Protocol("CLIENT", "KILL" :: "ADDR" :: ServerP.clientAddress(host, port) :: Nil).as[Num, NonNegLong]
 
   /** Closes the clients connected to this address of the server, and replies how many it closed */
   def killlocaladdress(host: Host, port: Port): Single[NonNegLong] =
-    Protocol("CLIENT", "KILL" :: "LADDR" :: s"${hostShow.show(host)}:${portShow.show(port)}" :: Nil).as[Num, NonNegLong]
+    Protocol("CLIENT", "KILL" :: "LADDR" :: ServerP.clientAddress(host, port) :: Nil).as[Num, NonNegLong]
 }

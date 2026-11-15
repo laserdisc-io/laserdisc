@@ -26,6 +26,12 @@ import Protocol.Single
 
 object ServerP {
 
+  // an address as the server shows a client's, which CLIENT KILL and CLIENT LIST match against: an IPv6 one in brackets, as in [::1]:6379
+  private[protocol] final def clientAddress(host: Host, port: Port): String = {
+    val shown = Show.hostShow.show(host)
+    s"${if (shown.contains(':')) s"[$shown]" else shown}:${Show.portShow.show(port)}"
+  }
+
   /** The name of a section in INFO's reply: one laserdisc names, or `Other` for one it doesn't, like a module's or KeyDB's */
   sealed trait InfoSectionKey
   object InfoSectionKey {
@@ -334,13 +340,12 @@ object ServerP {
 
   /** The filters of CLIENT KILL: a client is closed only if it matches all of them */
   final class ClientFilter private (val params: List[String]) {
-    import Show.{hostShow, portShow}
 
     def id(id: NonNegLong): ClientFilter              = new ClientFilter(params ++ List("ID", Show[NonNegLong].show(id)))
     def address(host: Host, port: Port): ClientFilter =
-      new ClientFilter(params ++ List("ADDR", s"${hostShow.show(host)}:${portShow.show(port)}"))
+      new ClientFilter(params ++ List("ADDR", clientAddress(host, port)))
     def localAddress(host: Host, port: Port): ClientFilter =
-      new ClientFilter(params ++ List("LADDR", s"${hostShow.show(host)}:${portShow.show(port)}"))
+      new ClientFilter(params ++ List("LADDR", clientAddress(host, port)))
     def clientType(clientType: ClientType): ClientFilter =
       new ClientFilter(params ++ List("TYPE", ClientType.clientTypeShow.show(clientType)))
     def user(username: String): ClientFilter = new ClientFilter(params ++ List("USER", username))
@@ -399,10 +404,10 @@ object ServerP {
     * and `capabilities` are the letters CLIENT LIST shows for them
     */
   final class ValkeyClientFilter private (val params: List[String]) {
-    import Show.{hostShow, portShow}
+    import Show.hostShow
 
     private def add(name: String, value: String): ValkeyClientFilter                 = new ValkeyClientFilter(params ++ List(name, value))
-    private def hostAndPort(host: Host, port: Port): String                          = s"${hostShow.show(host)}:${portShow.show(port)}"
+    private def hostAndPort(host: Host, port: Port): String                          = clientAddress(host, port)
     private def idList(name: String, ids: OneOrMore[NonNegLong]): ValkeyClientFilter =
       new ValkeyClientFilter(params ++ (name :: ids.value.map(Show[NonNegLong].show)))
 
@@ -680,7 +685,7 @@ trait ClientCommands extends ClientCoreCommands with ClientTrackingCommands {
 
   /** Closes the client at that address. Dragonfly replies to this with a count, so it has `killaddress` instead */
   def kill(host: Host, port: Port): Single[OK] =
-    Protocol("CLIENT", "KILL" :: s"${Show.hostShow.show(host)}:${Show.portShow.show(port)}" :: Nil).as[Str, OK]
+    Protocol("CLIENT", "KILL" :: ServerP.clientAddress(host, port) :: Nil).as[Str, OK]
 
   /** Closes the clients that match every filter, and replies how many it closed */
   def kill(filter: ClientFilter): Single[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]

@@ -153,6 +153,20 @@ final class ServerPSpec extends BaseSpec with ServerP {
     assertEquals(client.list(client.ids(twoIds)).encode, words("CLIENT", "LIST", "ID", "1", "2"))
   }
 
+  test("The Server protocol writes an IPv6 address in brackets, as the server shows a client's address, and an IPv4 one as it is") {
+    val (v6, v4, p)                 = (Host("::1"), Host("127.0.0.1"), Port(6379))
+    def sent(protocol: Protocol[?]) = protocol.frames.flatMap { case Arr(ws) => ws.collect { case Bulk(w) => w }; case _ => Nil }.toList
+    assertEquals(sent(client.kill(servertypes.clientFilter.address(v6, p))), List("CLIENT", "KILL", "ADDR", "[::1]:6379"))
+    assertEquals(sent(client.kill(servertypes.clientFilter.localAddress(v6, p))), List("CLIENT", "KILL", "LADDR", "[::1]:6379"))
+    assertEquals(sent(client.kill(servertypes.clientFilter.address(v4, p))), List("CLIENT", "KILL", "ADDR", "127.0.0.1:6379"))
+    assertEquals(sent(client.kill(v6, p)), List("CLIENT", "KILL", "[::1]:6379"))
+    val f = servertypes.valkeyClientFilter
+    assertEquals(
+      sent(client.kill(f.address(v6, p).localAddress(v6, p).notAddress(v6, p).notLocalAddress(v6, p))),
+      List("CLIENT", "KILL", "ADDR", "[::1]:6379", "LADDR", "[::1]:6379", "NOT-ADDR", "[::1]:6379", "NOT-LADDR", "[::1]:6379")
+    )
+  }
+
   test("The Server protocol sends each of Valkey's filters, for both CLIENT KILL and CLIENT LIST") {
     val h        = Host("h.example")
     val p        = Port(1)

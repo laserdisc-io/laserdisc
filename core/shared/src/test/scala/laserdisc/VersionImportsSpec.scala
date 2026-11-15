@@ -667,6 +667,8 @@ final class VersionImportsSpec extends BaseSpec {
     // Dragonfly replies to CLIENT KILL with an address with a count, read by killaddress
     assert(compileErrors("""client.kill(Host("h.example"), Port(1))""").nonEmpty)
     assertEquals(client.killaddress(Host("h.example"), Port(1)).frames, frame("CLIENT", "KILL", "ADDR", "h.example:1"))
+    assertEquals(client.killaddress(Host("::1"), Port(1)).frames, frame("CLIENT", "KILL", "ADDR", "[::1]:1"))
+    assertEquals(client.killlocaladdress(Host("::1"), Port(1)).frames, frame("CLIENT", "KILL", "LADDR", "[::1]:1"))
     assert(compileErrors("""countkeysinslot(1)""").nonEmpty)
     assert(compileErrors("""hpersist("a", OneOrMoreKeys.unsafeFrom(List(Key("b"))))""").nonEmpty)
     assert(compileErrors("""shutdownabort""").nonEmpty)

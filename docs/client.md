@@ -108,7 +108,7 @@ val client: Resource[IO, RedisClient[IO]] =
 
 `Credentials("secret")`, with only a password, logs in as the default user.
 User names and passwords are `Key`s, LaserDisc's type for a string that isn't
-empty. A password from your configuration is a `String`: turn it into a `Key`
+empty: see [Arguments](commands.md#arguments). A password from your configuration is a `String`: turn it into a `Key`
 with `Key.from`, which gives a `Left` if it's empty:
 
 ```scala mdoc:compile-only

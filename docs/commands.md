@@ -62,6 +62,11 @@ Arguments use types that only accept valid values. For example, a `Key` is a
 non-empty string, a `PosInt` is an `Int` greater than zero, and a `Port` is an
 `Int` between 1 and 65535.
 
+Keys, like other names, are text, sent as UTF-8, so a `Key` can't hold half of
+a character either, as an emoji cut in two does. A name another client wrote
+that isn't valid UTF-8 is read with those bytes replaced, as in a `scan`'s
+keys, and so can't be used to reach that key again.
+
 With `laserdisc.auto.*` imported, you can pass literal values directly. They're
 checked when your code compiles, so this doesn't compile:
 

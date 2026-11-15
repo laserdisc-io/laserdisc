@@ -98,8 +98,8 @@ commands that would break that:
   channel.
 - `SYNC`, `PSYNC` and `REPLCONF`, which are for replicas.
 - `CLIENT REPLY OFF` and `CLIENT REPLY SKIP`, as the server would stop replying.
-- `HELLO 3`, as the prompt reads replies in RESP2, version 2 of the format
-  Redis replies in, and `HELLO 3` would switch to version 3.
+- `HELLO 3`, as the prompt reads replies in [RESP2](commands.md#replies), and
+  `HELLO 3` would switch to RESP3.
 - `RESET`, as it would log out and go back to database 0.
 - `QUIT`, as the server would close the connection.
 - `AUTH`, `HELLO` with `AUTH`, and `SELECT`, as the prompt opens a new

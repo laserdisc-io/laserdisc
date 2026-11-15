@@ -17,11 +17,12 @@ can't be empty and a port can't be out of range. Mistakes in literal values are
 caught when your code compiles, and you choose the type each reply is read
 into.
 
-LaserDisc works with Scala 2.12, 2.13 and 3.9 or newer, on Java 17 or newer.
+LaserDisc works with Scala 2.12, 2.13 and 3.9 or newer, and on the JVM with Java
+17 or newer.
 
 | Module | What it gives you | JVM | Scala.js | Scala Native |
 | --- | --- | --- | --- | --- |
-| `laserdisc-core` | The commands, and how they and their replies are written on the wire | ✓ | ✓ | ✓ |
+| `laserdisc-core` | The commands, and how they're written and their replies read | ✓ | ✓ | ✓ |
 | `laserdisc-fs2` | A client built on [fs2](https://fs2.io/) and [Cats Effect](https://typelevel.org/cats-effect/) | ✓ | ✓ | ✓ |
 | `laserdisc-circe` | Store and read values as JSON with [circe](https://circe.github.io/circe/) | ✓ | ✓ | ✓ |
 | `laserdisc-cli` | An interactive prompt, like `redis-cli` | ✓ | ✓ | ✓ |

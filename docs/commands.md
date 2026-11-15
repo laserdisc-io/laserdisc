@@ -17,7 +17,8 @@ val getA: Protocol[Option[PosInt]] = get[PosInt]("a")
 import for your server: see
 [The version of your server](#the-version-of-your-server).
 
-To import a single family instead, add its name:
+To import a single family, the commands for one kind of data or one part of the
+server, add its name:
 
 | Family | Import |
 | --- | --- |
@@ -41,8 +42,8 @@ To import a single family instead, add its name:
 | Blocking commands with no time limit: see [Client](client.md#waiting-for-as-long-as-it-takes) | `laserdisc.redis_8_10.blocking.forever.*` |
 | Dragonfly's own commands: see [Dragonfly](#dragonfly) | `laserdisc.dragonfly_2_0.dragonfly.*` |
 
-Commands whose name starts with a group, such as `CLIENT LIST` or
-`ACL SETUSER`, are under that group's name: `client.list`,
+Within an import, commands that share their first word, such as `CLIENT LIST`
+and `ACL SETUSER`, are in a group named after it: `client.list`,
 `acl.setuser(user, rules)`. In `redis_8_10`, the groups are `acl`, `backup`,
 `client`, `command`, `config`, `function`, `hotkeys`, `latency`, `memory`,
 `migration`, `module`, `obj`, `pubsub`, `ro`, `script` and `slowlog`. `obj` is
@@ -132,8 +133,10 @@ wrong value. If the key doesn't exist, `get` gives `None`.
 The server's replies come in a few kinds, which LaserDisc names after the Redis
 protocol, RESP: `Str` is a short status such as `OK`, `Bulk` a string, `Num` an
 integer, `Arr` an array, `Err` an error, and `NullBulk` and `NilArr` stand for
-nil. LaserDisc reads replies in RESP2, version 2 of the protocol. The kinds
-matter when you read a type of your own, and for scripts.
+nil. The kinds matter when you read a type of your own, and for scripts.
+
+LaserDisc reads replies in RESP2, version 2 of that protocol, which every server
+speaks. It doesn't read RESP3, version 3, which some features need.
 
 ## Your own types
 

@@ -220,7 +220,6 @@ its nodes, and a node answers a command for a key it doesn't hold with a
 that holds it, or follow those redirects, so on a cluster such a command fails
 with that error.
 
-
 ## Reconnecting
 
 If the connection drops, commands still waiting for a reply get a `Left` right
@@ -233,7 +232,7 @@ with the commands sent before them.
 
 A new connection is set up like the one before it. It logs in and selects the
 database, then it's set again to what you last set on the connection with
-`client.tracking`, `client.setname`, `connection.hello` with a name, or
+`client.tracking`, `client.setname`, `hello` with a name, or
 `readonly`. If the server refuses one of these on the new connection, as with
 tracking whose notices went to a connection that's gone, the client logs why
 and carries on without it.
@@ -331,8 +330,9 @@ def wholeList(key: Key): Loop[String] =
 
 Blocking commands, under `blocking`, wait on the server for something to
 happen. The client adds that wait to the `send`'s timeout, so `blpop` with 30
-seconds and the default timeout can take up to 50 seconds. The wait can't be 0,
-which would mean for as long as it takes.
+seconds and the default timeout can take up to 50 seconds. The wait is at least
+0.002 seconds: 0 would mean for as long as it takes, and KeyDB and Dragonfly wait
+for as long as it takes on less.
 
 While one waits, it holds the client's connection: commands sent after it on the
 same client, from anywhere in your program, only get their replies once it's

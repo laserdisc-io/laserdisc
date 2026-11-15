@@ -113,9 +113,9 @@ val subscription =
 ## Knowing when keys change
 
 Client tracking tells you when a key you've read changes, which is how you keep a
-local cache of it. LaserDisc reads replies in RESP2, version 2 of the format
-Redis replies in, where the notices can't share the connection, so they go to a
-second one:
+local cache of it. LaserDisc reads replies in
+[RESP2](commands.md#replies), where the notices can't share the connection, so
+they go to a second one:
 
 ```scala mdoc:compile-only
 import cats.effect.IO

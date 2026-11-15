@@ -27,39 +27,43 @@ import Protocol.Single
 /** The replies and rules of ACL */
 object Acl {
 
-  /** The rules of ACL SETUSER that every server has, applied in order: whether the user is on, its passwords, the keys and channels it may
-    * use, and the commands it may run. Patterns are globs, and commands and categories are names like `get` or `string`
+  /** The rules of ACL SETUSER about what a user may use, applied in order: the keys and channels, and the commands. Patterns are globs,
+    * commands are names like `get`, and categories names like `string`. A selector holds only these
     */
-  sealed trait BaseRules[Self] {
+  sealed trait PermissionRules[Self] {
     def params: List[String]
     protected def next(params: List[String]): Self
 
     protected final def add(rule: String): Self = next(params :+ rule)
 
+    def keys(pattern: AclPattern): Self            = add(s"~${pattern.value}")
+    def allKeys: Self                              = add("allkeys")
+    def resetKeys: Self                            = add("resetkeys")
+    def channels(pattern: AclPattern): Self        = add(s"&${pattern.value}")
+    def allChannels: Self                          = add("allchannels")
+    def resetChannels: Self                        = add("resetchannels")
+    def allow(command: AclCommand): Self           = add(s"+${command.value}")
+    def deny(command: AclCommand): Self            = add(s"-${command.value}")
+    def allowCategory(category: AclCategory): Self = add(s"+@${category.value}")
+    def denyCategory(category: AclCategory): Self  = add(s"-@${category.value}")
+    def allCommands: Self                          = add("allcommands")
+    def noCommands: Self                           = add("nocommands")
+  }
+
+  /** The rules of ACL SETUSER that every server has: also whether the user is on, and its passwords */
+  sealed trait BaseRules[Self] extends PermissionRules[Self] {
     def on: Self                            = add("on")
     def off: Self                           = add("off")
     def nopass: Self                        = add("nopass")
     def resetpass: Self                     = add("resetpass")
     def password(password: Key): Self       = add(s">${password.value}")
     def removePassword(password: Key): Self = add(s"<${password.value}")
-    def keys(pattern: AclPattern): Self     = add(s"~${pattern.value}")
-    def allKeys: Self                       = add("allkeys")
-    def resetKeys: Self                     = add("resetkeys")
-    def channels(pattern: AclPattern): Self = add(s"&${pattern.value}")
-    def allChannels: Self                   = add("allchannels")
-    def resetChannels: Self                 = add("resetchannels")
-    def allow(command: AclCommand): Self    = add(s"+${command.value}")
-    def deny(command: AclCommand): Self     = add(s"-${command.value}")
-    def allowCategory(category: Key): Self  = add(s"+@${category.value}")
-    def denyCategory(category: Key): Self   = add(s"-@${category.value}")
-    def allCommands: Self                   = add("allcommands")
-    def noCommands: Self                    = add("nocommands")
   }
 
   /** The rules of Redis and Valkey: also passwords given by their SHA-256, and `reset` */
   sealed trait Rules[Self] extends BaseRules[Self] {
-    def hashedPassword(sha256: Key): Self       = add(s"#${sha256.value}")
-    def removeHashedPassword(sha256: Key): Self = add(s"!${sha256.value}")
+    def hashedPassword(sha256: Sha256): Self       = add(s"#${sha256.value}")
+    def removeHashedPassword(sha256: Sha256): Self = add(s"!${sha256.value}")
 
     /** Removes every rule, leaving the user off, without passwords, keys, channels or commands */
     def reset: Self = add("reset")
@@ -76,25 +80,52 @@ object Acl {
   }
 
   /** Rules that add keys that may only be read or only be written, or both, which is the same as `keys` */
-  sealed trait KeyPermissionRules[Self] extends BaseRules[Self] {
+  sealed trait KeyPermissionRules[Self] extends PermissionRules[Self] {
     def readKeys(pattern: AclPattern): Self      = add(s"%R~${pattern.value}")
     def writeKeys(pattern: AclPattern): Self     = add(s"%W~${pattern.value}")
     def readWriteKeys(pattern: AclPattern): Self = add(s"%RW~${pattern.value}")
   }
 
-  /** Rules that add selectors: other sets of rules a command may match instead */
-  sealed trait SelectorRules[Self <: BaseRules[Self]] extends KeyPermissionRules[Self] {
+  /** Rules that limit the databases a user, or a selector, may use: Valkey 9.0 */
+  sealed trait DatabaseRules[Self] extends PermissionRules[Self] {
+    def allDatabases: Self = add("alldbs")
+
+    /** Only these databases, instead of the ones allowed before */
+    def databases(indexes: OneOrMore[DbIndex]): Self = add(indexes.value.map(Show[DbIndex].show).mkString("db=", ",", ""))
+    def resetDatabases: Self                         = add("resetdbs")
+  }
+
+  /** Rules that add selectors: other sets of permissions a command may match instead. A selector has no passwords, and isn't on or off */
+  sealed trait SelectorRules[Self, Selector <: PermissionRules[Selector]] extends KeyPermissionRules[Self] {
     // the server splits a selector into its rules again, taking quotes and backslashes out: each rule is quoted, so it stays as it is
-    def selector(rules: Self): Self = add(rules.params.map(quoted).mkString("(", " ", ")"))
+    def selector(rules: Selector): Self = add(rules.params.map(quoted).mkString("(", " ", ")"))
 
     private def quoted(rule: String): String = "\"" + rule.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
     def clearSelectors: Self                 = add("clearselectors")
   }
 
+  /** The permissions of a selector of Redis 7.0 */
+  final class AclSelectorRules private (val params: List[String]) extends KeyPermissionRules[AclSelectorRules] {
+    override protected def next(params: List[String]): AclSelectorRules = new AclSelectorRules(params)
+  }
+  private[laserdisc] object AclSelectorRules {
+    final val none: AclSelectorRules = new AclSelectorRules(Nil)
+  }
+
+  /** The permissions of a selector of Valkey 9.0, with the databases it may use */
+  final class AclSelectorRulesWithDatabases private (val params: List[String])
+      extends KeyPermissionRules[AclSelectorRulesWithDatabases]
+      with DatabaseRules[AclSelectorRulesWithDatabases] {
+    override protected def next(params: List[String]): AclSelectorRulesWithDatabases = new AclSelectorRulesWithDatabases(params)
+  }
+  private[laserdisc] object AclSelectorRulesWithDatabases {
+    final val none: AclSelectorRulesWithDatabases = new AclSelectorRulesWithDatabases(Nil)
+  }
+
   /** The rules of Redis 7.0, with keys that may only be read or only be written, and selectors */
   final class AclRulesWithSelectors private (val params: List[String])
       extends Rules[AclRulesWithSelectors]
-      with SelectorRules[AclRulesWithSelectors] {
+      with SelectorRules[AclRulesWithSelectors, AclSelectorRules] {
     override protected def next(params: List[String]): AclRulesWithSelectors = new AclRulesWithSelectors(params)
   }
   private[laserdisc] object AclRulesWithSelectors {
@@ -104,26 +135,21 @@ object Acl {
   /** The rules of Dragonfly, which add keys that may only be read or only be written, but not selectors. Dragonfly refuses `reset` and
     * passwords given by their SHA-256
     */
-  final class AclDragonflyRules private (val params: List[String]) extends KeyPermissionRules[AclDragonflyRules] {
+  final class AclDragonflyRules private (val params: List[String])
+      extends BaseRules[AclDragonflyRules]
+      with KeyPermissionRules[AclDragonflyRules] {
     override protected def next(params: List[String]): AclDragonflyRules = new AclDragonflyRules(params)
   }
   private[laserdisc] object AclDragonflyRules {
     final val none: AclDragonflyRules = new AclDragonflyRules(Nil)
   }
 
-  /** The rules of Valkey 9.0, which add the databases a user, or a selector, may use
-    */
+  /** The rules of Valkey 9.0, which add the databases a user, or a selector, may use */
   final class AclRulesWithDatabases private (val params: List[String])
       extends Rules[AclRulesWithDatabases]
-      with SelectorRules[AclRulesWithDatabases] {
+      with SelectorRules[AclRulesWithDatabases, AclSelectorRulesWithDatabases]
+      with DatabaseRules[AclRulesWithDatabases] {
     override protected def next(params: List[String]): AclRulesWithDatabases = new AclRulesWithDatabases(params)
-
-    def allDatabases: AclRulesWithDatabases = add("alldbs")
-
-    /** Only these databases, instead of the ones allowed before */
-    def databases(indexes: OneOrMore[DbIndex]): AclRulesWithDatabases =
-      add(indexes.value.map(Show[DbIndex].show).mkString("db=", ",", ""))
-    def resetDatabases: AclRulesWithDatabases = add("resetdbs")
   }
   private[laserdisc] object AclRulesWithDatabases {
     final val none: AclRulesWithDatabases = new AclRulesWithDatabases(Nil)

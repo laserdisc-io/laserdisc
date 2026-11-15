@@ -540,8 +540,18 @@ object ServerP {
     final val trackingOptions = TrackingOptions
     final val unblockMode     = UnblockMode
   }
-  trait AclSelectorTypes  { final val aclSelectorRules: Acl.AclRulesWithSelectors = Acl.AclRulesWithSelectors.none              }
-  trait AclDatabaseTypes  { final val aclDatabaseRules: Acl.AclRulesWithDatabases = Acl.AclRulesWithDatabases.none              }
+  trait AclSelectorTypes {
+    final val aclSelectorRules: Acl.AclRulesWithSelectors = Acl.AclRulesWithSelectors.none
+
+    /** No permissions, to build a selector's from */
+    final val aclSelector: Acl.AclSelectorRules = Acl.AclSelectorRules.none
+  }
+  trait AclDatabaseTypes {
+    final val aclDatabaseRules: Acl.AclRulesWithDatabases = Acl.AclRulesWithDatabases.none
+
+    /** No permissions, to build a selector's from, with the databases it may use */
+    final val aclDatabaseSelector: Acl.AclSelectorRulesWithDatabases = Acl.AclSelectorRulesWithDatabases.none
+  }
   trait AclDragonflyTypes { final val aclDragonflyRules: Acl.AclDragonflyRules = Acl.AclDragonflyRules.none                     }
   trait CommandListTypes  { final val commandFilter: ServerInspection.CommandFilterBuilders = ServerInspection.CommandFilter    }
   trait CommandLogTypes   { final val commandLogType: ServerInspection.CommandLogTypeBuilders = ServerInspection.CommandLogType }

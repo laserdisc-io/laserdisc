@@ -113,6 +113,8 @@ final val PortMinValueWit             = new Witness(1)
 final val PortMaxValueWit             = new Witness(65535)
 final val RangeOffsetMaxValueWit      = new Witness(536870911)
 final val Sha1RegexWit                = new Witness("[a-f0-9]{40}")
+final val Sha256RegexWit              = new Witness("[a-f0-9]{64}")
+final val AclCategoryRegexWit         = new Witness("[A-Za-z0-9_-]+")
 final val SignedBitWidthMaxValueWit   = new Witness(64)
 final val SlotMaxValueWit             = new Witness(16383)
 final val StringLengthMaxValueWit     = new Witness(4294967295L)
@@ -153,6 +155,8 @@ final type PortRef             = Interval.Closed[PortMinValueWit.T, PortMaxValue
 final type PosRef              = Positive
 final type RangeOffsetRef      = Interval.Closed[0, RangeOffsetMaxValueWit.T]
 final type Sha1Ref             = Match[Sha1RegexWit.T]
+final type Sha256Ref           = Match[Sha256RegexWit.T]
+final type AclCategoryRef      = Match[AclCategoryRegexWit.T]
 final type SignedBitWidthRef   = Interval.Closed[1, SignedBitWidthMaxValueWit.T]
 final type SlotRef             = Interval.Closed[0, SlotMaxValueWit.T]
 final type StringLengthRef     = Interval.Closed[0L, StringLengthMaxValueWit.T]
@@ -190,6 +194,8 @@ final type PosInt                = PosInt.T
 final type PosLong               = PosLong.T
 final type RangeOffset           = RangeOffset.T
 final type Sha1                  = Sha1.T
+final type Sha256                = Sha256.T
+final type AclCategory           = AclCategory.T
 final type SignedBitWidth        = SignedBitWidth.T
 final type Slot                  = Slot.T
 final type StringLength          = StringLength.T
@@ -231,6 +237,8 @@ object PosInt                extends RefinedTypeOps[Int, PosRef]
 object PosLong               extends RefinedTypeOps[Long, PosRef]
 object RangeOffset           extends RefinedTypeOps[Int, RangeOffsetRef]
 object Sha1                  extends RefinedTypeOps[String, Sha1Ref]
+object Sha256                extends RefinedTypeOps[String, Sha256Ref]
+object AclCategory           extends RefinedTypeOps[String, AclCategoryRef]
 object SignedBitWidth        extends RefinedTypeOps[Int, SignedBitWidthRef]
 object Slot                  extends RefinedTypeOps[Int, SlotRef]
 object StringLength          extends RefinedTypeOps[Long, StringLengthRef]

@@ -41,7 +41,9 @@ final class ValkeyAclClientSpec extends AclClientSpec(LiveServers.port(6381), "v
       send(
         acl.setuser(
           "ld-acl-d",
-          rules.reset.databases(OneOrMore.unsafeFrom(List[DbIndex](0, 1))).selector(rules.databases(OneOrMore.unsafeFrom(List[DbIndex](2))))
+          rules.reset
+            .databases(OneOrMore.unsafeFrom(List[DbIndex](0, 1)))
+            .selector(servertypes.aclDatabaseSelector.databases(OneOrMore.unsafeFrom(List[DbIndex](2))))
         )
       ),
       OK
@@ -68,14 +70,14 @@ abstract class AclClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
       .password("secret")
       .keys("app:*")
       .allow("get")
-      .selector(servertypes.aclSelectorRules.keys("w:*").allow("set"))
+      .selector(servertypes.aclSelector.keys("w:*").allow("set"))
     assertEquals(send(acl.setuser("ld-acl-s", rules)), OK)
     assertEquals(send(acl.dryrun("ld-acl-s", get[String]("app:1"))), None)
     assertEquals(send(acl.dryrun("ld-acl-s", set("w:1", 1))), None)
     assert(send(acl.dryrun("ld-acl-s", del("app:1"))).exists(_.contains("del")))
     assertEquals(send(acl.getuser("ld-acl-s")).map(_.selectors.map(_.keys)), Some(Seq("~w:*")))
     // a selector's patterns keep their quotes and backslashes
-    val quoted = servertypes.aclSelectorRules.keys(AclPattern.unsafeFrom("\"private\\:*\"")).allow("get")
+    val quoted = servertypes.aclSelector.keys(AclPattern.unsafeFrom("\"private\\:*\"")).allow("get")
     assertEquals(send(acl.setuser("ld-acl-s", servertypes.aclSelectorRules.clearSelectors.selector(quoted))), OK)
     assertEquals(send(acl.getuser("ld-acl-s")).map(_.selectors.map(_.keys)), Some(Seq("~\"private\\:*\"")))
     assertEquals(send(acl.setuser("ld-acl-s", servertypes.aclSelectorRules.resetKeys.readWriteKeys("both:*"))), OK)

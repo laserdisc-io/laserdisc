@@ -119,6 +119,8 @@ package object laserdisc {
   final val PortMaxValueWit             = W(65535)
   final val RangeOffsetMaxValueWit      = W(536870911)
   final val Sha1RegexWit                = W("[a-f0-9]{40}")
+  final val Sha256RegexWit              = W("[a-f0-9]{64}")
+  final val AclCategoryRegexWit         = W("[A-Za-z0-9_-]+")
   final val SignedBitWidthMaxValueWit   = W(64)
   final val SlotMaxValueWit             = W(16383)
   final val StringLengthMaxValueWit     = W(4294967295L)
@@ -157,6 +159,8 @@ package object laserdisc {
   final type PosRef              = Positive
   final type RangeOffsetRef      = Interval.Closed[W.`0`.T, RangeOffsetMaxValueWit.T]
   final type Sha1Ref             = MatchesRegex[Sha1RegexWit.T]
+  final type Sha256Ref           = MatchesRegex[Sha256RegexWit.T]
+  final type AclCategoryRef      = MatchesRegex[AclCategoryRegexWit.T]
   final type SignedBitWidthRef   = Interval.Closed[W.`1`.T, SignedBitWidthMaxValueWit.T]
   final type SlotRef             = Interval.Closed[W.`0`.T, SlotMaxValueWit.T]
   final type StringLengthRef     = Interval.Closed[W.`0L`.T, StringLengthMaxValueWit.T]
@@ -195,6 +199,8 @@ package object laserdisc {
   final type PosLong               = Long Refined PosRef
   final type RangeOffset           = Int Refined RangeOffsetRef
   final type Sha1                  = String Refined Sha1Ref
+  final type Sha256                = String Refined Sha256Ref
+  final type AclCategory           = String Refined AclCategoryRef
   final type SignedBitWidth        = Int Refined SignedBitWidthRef
   final type Slot                  = Int Refined SlotRef
   final type StringLength          = Long Refined StringLengthRef
@@ -236,6 +242,8 @@ package object laserdisc {
   object PosLong               extends RefinedTypeOps.Numeric[PosLong, Long]
   object RangeOffset           extends RefinedTypeOps.Numeric[RangeOffset, Int]
   object Sha1                  extends RefinedTypeOps[Sha1, String]
+  object Sha256                extends RefinedTypeOps[Sha256, String]
+  object AclCategory           extends RefinedTypeOps[AclCategory, String]
   object SignedBitWidth        extends RefinedTypeOps.Numeric[SignedBitWidth, Int]
   object Slot                  extends RefinedTypeOps.Numeric[Slot, Int]
   object StringLength          extends RefinedTypeOps.Numeric[StringLength, Long]

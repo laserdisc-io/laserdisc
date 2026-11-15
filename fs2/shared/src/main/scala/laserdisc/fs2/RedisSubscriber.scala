@@ -109,7 +109,9 @@ object RedisSubscriber {
         heard         <- Resource.eval(Ref.of[F, Boolean](true))
         blocked       <- Resource.eval(Ref.of[F, Boolean](false))
         // a full queue holds up reading, so while it's full the server isn't expected to be heard
-        _ <- (socket.reads.through(RedisChannel.impl.receiveResp).attempt ++ Stream.emit(Left(ServerTerminatedConnection(address))))
+        // the socket failing, as when the server resets the connection, ends it as the server closing it does
+        _ <- (socket.reads.through(RedisChannel.impl.receiveResp).attempt.map(_.leftMap(RedisClient.impl.terminated(address))) ++
+          Stream.emit(Left(ServerTerminatedConnection(address))))
           .evalMap {
             case Right(reply) if feed.keptAlive && Feed.isPong(reply) => heard.set(true)
             case reply => heard.set(true) >> (blocked.set(true) >> replies.offer(reply)).guarantee(blocked.set(false))

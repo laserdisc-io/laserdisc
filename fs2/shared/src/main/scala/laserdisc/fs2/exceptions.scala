@@ -32,8 +32,14 @@ private object Reason {
     Iterator.iterate(error)(_.getCause).takeWhile(_ != null).take(16).map(_.getMessage).find(_ != null).getOrElse(error.getClass.getName)
 }
 
-final case class ServerTerminatedConnection(redisAddress: RedisAddress)
-    extends RuntimeException(s"Server $redisAddress terminated client connection", null, true, false)
+/** The connection closed, or failed, before the reply came: `cause` is the socket's error when there was one, such as a reset */
+final case class ServerTerminatedConnection(redisAddress: RedisAddress, cause: Option[Throwable] = None)
+    extends RuntimeException(
+      s"Server $redisAddress terminated client connection${cause.fold("")(c => s": ${Reason.of(c)}")}",
+      cause.orNull,
+      true,
+      false
+    )
 final case class ServerNotResponding(redisAddress: RedisAddress)
     extends RuntimeException(s"Server $redisAddress stopped replying", null, true, false)
 final case class ConnectTimedOut(address: SocketAddress[com.comcast.ip4s.Host], after: FiniteDuration)

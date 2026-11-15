@@ -22,7 +22,7 @@
 package laserdisc
 package fs2
 
-import _root_.fs2.{Chunk, Pipe, Stream}
+import _root_.fs2.{Chunk, CompositeFailure, Pipe, Stream}
 import _root_.fs2.io.net.Network
 import cats.data.NonEmptySet
 import cats.effect.kernel.{Deferred, Ref, Temporal}
@@ -34,6 +34,7 @@ import laserdisc.protocol.RESPRead
 import log.effect.fs2.LogSelector
 import log.effect.fs2.syntax.*
 
+import java.io.IOException
 import scala.concurrent.duration.*
 
 object RedisClient {
@@ -198,6 +199,15 @@ object RedisClient {
     // a server loading its data, running a script, cut off from its master or with too many clients refuses for now only: the client
     // connects again, as to a server it can't reach, instead of stopping
     private final val MaxClients = "ERR max number of clients reached"
+
+    // a connection in use that the server closed or reset fails with an error of the socket's, such as a broken pipe, or with one on
+    // each side at once: what was waiting on it fails with ServerTerminatedConnection, with that error as its cause
+    private[fs2] def terminated(address: RedisAddress)(failure: Throwable): Throwable =
+      failure match {
+        case socket: IOException                                                    => ServerTerminatedConnection(address, Some(socket))
+        case both: CompositeFailure if both.all.forall(_.isInstanceOf[IOException]) => ServerTerminatedConnection(address, Some(both))
+        case other                                                                  => other
+      }
 
     def refusedForNow(refused: Err): Boolean =
       refused.message == MaxClients ||
@@ -605,20 +615,29 @@ object RedisClient {
                         serverAvailable(address, connection, usage, current).concurrently(
                           Stream.exec(reset.get) ++ Stream.raiseError[F](ConnectionReset)
                         )).onFinalize(giveBack(current))
-                      resettable.handleErrorWith { failure =>
-                        val idle = log.info(s"Connection to $address ended with nothing sent on it: ${failure.getMessage}") >> nextSend
-                        Stream.eval(giveBack(current) >> failInFlight(failure) >> ended.complete(()) >> usage.get).flatMap {
-                          case _ if failure == ConnectionReset =>
-                            Stream.exec(log.info(s"Connection to $address closed to stop a command waiting on it") >> nextSend) ++ runner(
-                              failures,
-                              last,
-                              waits
-                            )
-                          case Usage.Idle => Stream.exec(idle) ++ runner(failures, last, waits)
-                          case reached    =>
-                            log.errorS(s"Failure of publishing connection to $address", failure) >>
-                              (if (reached == Usage.Answered) runner(0, Some(failure), 0) else runner(failures + 1, Some(failure), waits))
-                        }
+                      resettable.handleErrorWith { error =>
+                        // a socket's error once connected means the server closed or reset the connection; before, it says why connecting
+                        // failed, as it's refused or the TLS handshake fails, and is kept as it is
+                        Stream
+                          .eval(usage.get.map(reached => if (reached == Usage.Connecting) error else terminated(address)(error)))
+                          .flatMap { failure =>
+                            val idle = log.info(s"Connection to $address ended with nothing sent on it: ${failure.getMessage}") >> nextSend
+                            Stream.eval(giveBack(current) >> failInFlight(failure) >> ended.complete(()) >> usage.get).flatMap {
+                              case _ if failure == ConnectionReset =>
+                                Stream.exec(
+                                  log.info(s"Connection to $address closed to stop a command waiting on it") >> nextSend
+                                ) ++ runner(
+                                  failures,
+                                  last,
+                                  waits
+                                )
+                              case Usage.Idle => Stream.exec(idle) ++ runner(failures, last, waits)
+                              case reached    =>
+                                log.errorS(s"Failure of publishing connection to $address", failure) >>
+                                  (if (reached == Usage.Answered) runner(0, Some(failure), 0)
+                                   else runner(failures + 1, Some(failure), waits))
+                            }
+                          }
                       }
                     }
 

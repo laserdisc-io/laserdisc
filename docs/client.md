@@ -80,7 +80,7 @@ these:
 | `RESPDecErr` | The reply couldn't be read as the type you asked for. Its `message` says why. |
 | `ServerUnavailable` | The client couldn't reach the server: see [Reconnecting](#reconnecting). Its `cause` says why. |
 | `ConnectionSetupRefused` | The server refused the password or the database: see [Logging in](#logging-in-and-choosing-a-database). |
-| `ServerTerminatedConnection` | The connection closed before the reply came. |
+| `ServerTerminatedConnection` | The connection closed, or the server reset it, before the reply came. Its `cause` is the socket's error, if there was one. |
 | `ServerNotResponding` | The server stopped replying, so the client closed the connection. |
 | `WatchLost` | The keys of a transaction were watched on a connection that's gone: see [Transactions](commands.md#transactions). |
 | `WatchCleanupRefused` | As for `WatchLost`, and the server also refused to end the watch on the new connection, so the client closed that connection too. None of the transaction's commands ran. |

@@ -624,6 +624,24 @@ final class RedisClientSendSpec extends CatsEffectSuite {
       }
     }
   }
+
+  test("commands on a connection the server closes while they're sent fail with ServerTerminatedConnection, not the socket's error") {
+    // each connection takes one command and closes, while the client is still writing the next ones: its writes and reads then fail
+    val closing = FakeRedisServer((_, requests) => requests.take(1).as("+OK\r\n"))
+    val value   = "v" * 65536
+    closing.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        (1 to 64).toList.parTraverse(i => client.send(set(Key.unsafeFrom(s"k$i"), value), 5.seconds).attempt.map(_.flatten)).map {
+          results =>
+            val socketErrors = results.collect {
+              case Left(e: java.io.IOException)         => e
+              case Left(e: _root_.fs2.CompositeFailure) => e
+            }
+            assertEquals(socketErrors, Nil)
+        }
+      }
+    }
+  }
 }
 
 private object Throwing

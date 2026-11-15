@@ -22,7 +22,10 @@
 package laserdisc
 package fs2
 
+import _root_.fs2.CompositeFailure
 import munit.FunSuite
+
+import java.io.IOException
 
 final class ExceptionsSpec extends FunSuite {
   test("an error without a message of its own says why with its cause's, as TLS errors on Node.js have none, or else what it is") {
@@ -34,5 +37,23 @@ final class ExceptionsSpec extends FunSuite {
       ConnectionSetupRefused(RedisAddress(Host.unsafeFrom("localhost"), Port.unsafeFrom(6379)), withCause).getMessage,
       "Server localhost:6379 refused to set up the connection: self-signed certificate in certificate chain"
     )
+  }
+
+  test("a connection in use that fails on the socket, as when the server closes or resets it, is ServerTerminatedConnection, saying why") {
+    val address = RedisAddress(Host.unsafeFrom("localhost"), Port.unsafeFrom(6379))
+    val reset   = new IOException("Connection reset by peer")
+    val both    = CompositeFailure(new IOException("Broken pipe"), reset)
+    assertEquals(RedisClient.impl.terminated(address)(reset), ServerTerminatedConnection(address, Some(reset)))
+    assertEquals(RedisClient.impl.terminated(address)(both), ServerTerminatedConnection(address, Some(both)))
+    assertEquals(
+      RedisClient.impl.terminated(address)(reset).getMessage,
+      "Server localhost:6379 terminated client connection: Connection reset by peer"
+    )
+    assertEquals(RedisClient.impl.terminated(address)(reset).getCause, reset)
+    // anything else is left as it is
+    List(ServerNotResponding(address), new IllegalStateException("x"), CompositeFailure(reset, new IllegalStateException("y"))).foreach {
+      other => assertEquals(RedisClient.impl.terminated(address)(other), other)
+    }
+    assertEquals(ServerTerminatedConnection(address).getMessage, "Server localhost:6379 terminated client connection")
   }
 }

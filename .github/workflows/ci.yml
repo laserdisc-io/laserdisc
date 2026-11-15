@@ -112,6 +112,10 @@ jobs:
         if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
         run: sbt +update
 
+      - name: Install brew formulae (ubuntu)
+        if: (matrix.project == 'laserdiscNative' || matrix.project == 'integrationNative') && startsWith(matrix.os, 'ubuntu')
+        run: /home/linuxbrew/.linuxbrew/bin/brew install s2n
+
       - name: Check that workflows are up to date
         run: sbt githubWorkflowCheck
 
@@ -552,6 +556,10 @@ jobs:
       - name: sbt update
         if: matrix.java == 'temurin@25' && steps.setup-java-temurin-25.outputs.cache-hit == 'false'
         run: sbt +update
+
+      - name: Install brew formulae (ubuntu)
+        if: (matrix.project == 'laserdiscNative' || matrix.project == 'integrationNative') && startsWith(matrix.os, 'ubuntu')
+        run: /home/linuxbrew/.linuxbrew/bin/brew install s2n
 
       - name: Start up Redis
         run: 'docker run -p 6379:6379 -d redis:8.10.3-alpine'

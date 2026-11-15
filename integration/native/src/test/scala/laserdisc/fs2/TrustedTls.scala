@@ -21,12 +21,18 @@
 
 package laserdisc.fs2
 
+import _root_.fs2.io.net.Network
+import _root_.fs2.io.net.tls.S2nConfig
 import cats.effect.{IO, Resource}
 
-// TLS on Scala Native needs s2n-tls, which CI doesn't install, so it isn't tested there
+// a TLS context trusting the certificate given, as PEM, with the ciphers fs2 uses for the system's
 object TrustedTls {
-  final val supported = false
+  final val supported = true
 
   def trusting(pem: String): Resource[IO, Tls[IO]] =
-    Resource.eval(IO.raiseError(new UnsupportedOperationException(s"can't trust ${pem.length} characters of PEM without s2n-tls")))
+    S2nConfig.builder
+      .withCipherPreferences("default_tls13")
+      .withPemsToTrustStore(List(pem))
+      .build[IO]
+      .map(config => Tls(Network[IO].tlsContext.fromS2nConfig(config)))
 }

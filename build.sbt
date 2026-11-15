@@ -132,6 +132,10 @@ ThisBuild / githubWorkflowGeneratedCI ~= (_.map { job =>
 // permissions of its own. Uploads expire instead
 ThisBuild / githubWorkflowIncludeClean := false
 
+// the Scala Native binaries that use TLS link s2n-tls, which CI installs with Homebrew for the jobs that build them
+ThisBuild / nativeBrewInstallCond := Some("matrix.project == 'laserdiscNative' || matrix.project == 'integrationNative'")
+ThisBuild / githubWorkflowBuildPreamble ++= nativeBrewInstallWorkflowSteps.value
+
 ThisBuild / githubWorkflowAddedJobs ++= List(
   WorkflowJob(
     id = "integration",
@@ -148,7 +152,7 @@ ThisBuild / githubWorkflowAddedJobs ++= List(
         MatrixExclude(Map("project" -> "integrationNative", "java" -> java.render))
       )
     },
-    steps = githubWorkflowJobSetup.value.toList ++ startUpRedisServers :+
+    steps = githubWorkflowJobSetup.value.toList ++ nativeBrewInstallWorkflowSteps.value ++ startUpRedisServers :+
       WorkflowStep.Sbt(
         List("project ${{ matrix.project }}", "headerCheckAll", "scalafmtCheckAll", "test"),
         name = Some("Check headers and formatting, and run the tests")
@@ -330,6 +334,9 @@ lazy val integration = laserdiscCrossModule("integration", CrossType.Full)
       else Seq("org.scala-lang.modules" %%% "scala-parallel-collections" % V.`parallel-collections` % Test)
     }
   )
+  // TlsSpec connects with TLS, which needs s2n-tls on Scala Native
+  .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
+  .nativeSettings(nativeBrewFormulas += "s2n")
 
 lazy val cli = laserdiscCrossModule("cli", CrossType.Full)
   .dependsOn(fs2 % "compile->compile;test->test")
@@ -346,6 +353,9 @@ lazy val cli = laserdiscCrossModule("cli", CrossType.Full)
   .jsSettings(
     scalaJSUseMainModuleInitializer := true
   )
+  // --tls needs s2n-tls on Scala Native, so the CLI's binary always links it
+  .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
+  .nativeSettings(nativeBrewFormulas += "s2n")
 
 lazy val circe = laserdiscCrossModule("circe", CrossType.Full)
   .dependsOn(core)

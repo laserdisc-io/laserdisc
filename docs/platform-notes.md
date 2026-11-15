@@ -26,7 +26,8 @@ because they need network sockets.
 
 On Scala Native, connecting with TLS needs [s2n-tls](https://github.com/aws/s2n-tls)
 installed where your program is built and where it runs, as fs2 uses it for
-TLS. Without TLS, you don't need it.
+TLS. Without TLS, you don't need it, except for `laserdisc-cli`, which needs it
+on Scala Native whether you use `--tls` or not.
 
 On Scala Native, a connection whose server certificate fails a check takes 10
 to 30 seconds to fail, as s2n-tls waits that long on purpose before saying so.

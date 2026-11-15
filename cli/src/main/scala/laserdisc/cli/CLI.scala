@@ -24,6 +24,8 @@ package cli
 
 import java.nio.charset.StandardCharsets.UTF_8
 import _root_.fs2.{Pipe, Stream, io, text}
+import _root_.fs2.io.file.{Files, Path}
+import _root_.fs2.io.net.Network
 import cats.effect.*
 import cats.data.ValidatedNel
 import cats.syntax.all.*
@@ -118,8 +120,23 @@ object CLI extends IOApp { self =>
     // an error's message, which can hold what the server sent, or the error itself when it has none
     private def messageOf(error: Throwable): String = RESPFormat.printable(Option(error.getLocalizedMessage).getOrElse(error.toString))
 
+    // how the prompt connects with TLS: checking the server's certificate against the authorities the system trusts, or those of a file, or
+    // not checking it at all
+    sealed trait TlsWith
+    object TlsWith {
+      case object SystemTrust                    extends TlsWith
+      final case class Authorities(file: String) extends TlsWith
+      case object NoChecks                       extends TlsWith
+    }
+
     // what the prompt connects to and how: each connection logs in and selects the database first, so a new one does too
-    final case class Options(host: Host, port: Port, credentials: Option[Credentials], database: Option[DbIndex])
+    final case class Options(
+        host: Host,
+        port: Port,
+        credentials: Option[Credentials],
+        database: Option[DbIndex],
+        tls: Option[TlsWith] = None
+    )
 
     // what comes after -a or --user can't start with -, as it's more likely the next option than a password or a user. What came isn't
     // shown, as it may be the password
@@ -153,16 +170,45 @@ object CLI extends IOApp { self =>
       .mapValidated(n => DbIndex.from(n).leftMap(_ => s"$n isn't a database number from 0").toValidatedNel)
       .orNone
 
+    private val tls: Opts[Option[TlsWith]] = (
+      Opts.flag("tls", "Connect with TLS, checking the server's certificate against the authorities the system trusts.").orFalse,
+      Opts.option[String]("cacert", "With --tls, trust the certificate authorities in this PEM file instead.", metavar = "file").orNone,
+      Opts
+        .flag("insecure", "With --tls, don't check the server's certificate, so that anyone in between could pose as the server.")
+        .orFalse
+    ).tupled.mapValidated {
+      case (false, None, false)  => None.validNel
+      case (false, Some(_), _)   => "please supply --tls as well as --cacert".invalidNel
+      case (false, None, true)   => "please supply --tls as well as --insecure".invalidNel
+      case (true, Some(_), true) => "please supply --cacert or --insecure, not both".invalidNel
+      case (true, Some(file), _) => Some(TlsWith.Authorities(file)).validNel
+      case (true, None, true)    => Some(TlsWith.NoChecks).validNel
+      case (true, None, false)   => Some(TlsWith.SystemTrust).validNel
+    }
+
     private val command =
       Command("laserdisc-cli", "An interactive prompt for sending commands to a Redis, Valkey, KeyDB or Dragonfly server.")(
-        (host, port, password, user, database).tupled.mapValidated {
-          case (_, _, None, Some(_), _)      => "please supply the password with -a or REDISCLI_AUTH as well as --user".invalidNel
-          case (h, p, login, name, database) => Options(h, p, login.map(Credentials(name, _)), database).validNel
+        (host, port, password, user, database, tls).tupled.mapValidated {
+          case (_, _, None, Some(_), _, _)        => "please supply the password with -a or REDISCLI_AUTH as well as --user".invalidNel
+          case (h, p, login, name, database, tls) => Options(h, p, login.map(Credentials(name, _)), database, tls).validNel
         }
       )
 
+    // the authorities' file is read once, before connecting. Without checks, the name on the certificate isn't checked either
+    private def tlsOf(choice: TlsWith): Resource[IO, Tls[IO]] =
+      choice match {
+        case TlsWith.SystemTrust       => Tls.system[IO]
+        case TlsWith.NoChecks          => Network[IO].tlsContext.insecureResource.map(Tls(_, checkServerName = false))
+        case TlsWith.Authorities(file) =>
+          Resource
+            .eval(Files[IO].readUtf8(Path(file)).compile.string)
+            .flatMap(TrustedAuthorities.context)
+            .map(Tls(_))
+            .adaptError { case e => new Exception(s"can't read the certificate authorities in $file: ${messageOf(e)}", e) }
+      }
+
     // the host and the port, then -a for the password, or else REDISCLI_AUTH in env, --user for the user, which needs a password too, and
-    // -n for the database. --help, or a mistake, gives what to type
+    // -n for the database, and --tls, with --cacert or --insecure, to connect with TLS. --help, or a mistake, gives what to type
     def options(args: List[String], env: Map[String, String] = Map.empty): Either[Help, Options] = command.parse(args, env)
 
     def session(
@@ -182,9 +228,22 @@ object CLI extends IOApp { self =>
 
     // one command at a time, on a client of its own, so that a command typed with a wait of 0 can wait for as long as it takes
     def mkStream(options: Options, in: Stream[IO, Byte], out: Pipe[IO, Byte, Nothing], timeout: FiniteDuration): Stream[IO, ExitCode] =
+      Stream.resource(options.tls.traverse(tlsOf).attempt).flatMap {
+        case Left(error) =>
+          Stream.eval(Stream.emit(s"ERROR ${messageOf(error)}$LF").through(text.utf8.encode).through(out).compile.drain.as(ExitCode.Error))
+        case Right(tls) => connected(options, tls, in, out, timeout)
+      }
+
+    private def connected(
+        options: Options,
+        tls: Option[Tls[IO]],
+        in: Stream[IO, Byte],
+        out: Pipe[IO, Byte, Nothing],
+        timeout: FiniteDuration
+    ): Stream[IO, ExitCode] =
       Stream
         .resource(
-          RedisClient[IO].dedicated(options.host, options.port, credentials = options.credentials, database = options.database)
+          RedisClient[IO].dedicated(options.host, options.port, credentials = options.credentials, database = options.database, tls = tls)
         )
         .evalMap { redisClient =>
           val database                         = options.database.filter(_.value != 0).fold("")(db => s"[${db.value}]")

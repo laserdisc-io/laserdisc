@@ -50,6 +50,18 @@ isn't taken from the next option; use `REDISCLI_AUTH` for a password that does.
 If the server refuses the password or the database, the prompt shows why and
 stops.
 
+To connect with TLS, add `--tls`. The server's certificate then has to be
+signed by an authority your system trusts, and be for the host you typed. If
+your server's certificate comes from an authority of your own, add `--cacert`
+and the file holding that authority's certificate, in PEM:
+
+```sh
+sbt "cli/run redis.internal 6380 --tls --cacert ca.pem"
+```
+
+`--insecure` connects without checking the server's certificate at all. Use it
+only to try things out: anyone between you and the server could pose as it.
+
 `--help` lists the options. A mistake in them shows what's wrong, followed by
 the same list.
 

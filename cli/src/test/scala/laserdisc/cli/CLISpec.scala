@@ -99,6 +99,23 @@ final class CLISpec extends CatsEffectSuite {
     assertEquals(CLI.impl.options(List("localhost", "6379", "-a", "secret")).map(_.credentials), Right(Some(Credentials("secret"))))
   }
 
+  test("connects with TLS given --tls, trusting what the system trusts, the authorities of --cacert or, with --insecure, anything") {
+    def tls(options: String*) = CLI.impl.options(List("localhost", "6379") ++ options).map(_.tls)
+    assertEquals(tls(), Right(None))
+    assertEquals(tls("--tls"), Right(Some(CLI.impl.TlsWith.SystemTrust)))
+    assertEquals(tls("--tls", "--cacert", "ca.pem"), Right(Some(CLI.impl.TlsWith.Authorities("ca.pem"))))
+    assertEquals(tls("--cacert", "ca.pem", "--tls"), Right(Some(CLI.impl.TlsWith.Authorities("ca.pem"))))
+    assertEquals(tls("--tls", "--insecure"), Right(Some(CLI.impl.TlsWith.NoChecks)))
+  }
+
+  test("a file of authorities that can't be read says so, and exits with an error, without connecting") {
+    session(List("127.0.0.1", "1", "--tls", "--cacert", "/no/such/ca.pem"), "PING").map { case (code, screen) =>
+      assertEquals(code, ExitCode.Error)
+      assert(screen.contains("ERROR can't read the certificate authorities in /no/such/ca.pem: "), screen)
+      assert(!screen.contains("127.0.0.1:1>"), screen)
+    }
+  }
+
   test("takes the password from REDISCLI_AUTH, unless it's given with -a") {
     import laserdisc.auto.*
     def credentials(env: Map[String, String], options: String*) =
@@ -113,15 +130,18 @@ final class CLISpec extends CatsEffectSuite {
 
   test("says what's wrong with the options") {
     val wrong = List(
-      List("-a")                 -> "Missing value for option: -a",
-      List("-n")                 -> "Missing value for option: -n",
-      List("--user", "me")       -> "please supply the password with -a or REDISCLI_AUTH as well as --user",
-      List("-a", "--user", "me") -> "Unexpected argument: me",
-      List("-a", "-x")           -> "please supply a password after -a, which can't start with -",
-      List("--user", "-a", "x")  -> "Unexpected argument: x",
-      List("-n", "two")          -> "Invalid integer: two",
-      List("-n", "-1")           -> "-1 isn't a database number from 0",
-      List("--bogus", "x")       -> "Unexpected option: --bogus"
+      List("-a")                                        -> "Missing value for option: -a",
+      List("-n")                                        -> "Missing value for option: -n",
+      List("--user", "me")                              -> "please supply the password with -a or REDISCLI_AUTH as well as --user",
+      List("-a", "--user", "me")                        -> "Unexpected argument: me",
+      List("-a", "-x")                                  -> "please supply a password after -a, which can't start with -",
+      List("--user", "-a", "x")                         -> "Unexpected argument: x",
+      List("-n", "two")                                 -> "Invalid integer: two",
+      List("-n", "-1")                                  -> "-1 isn't a database number from 0",
+      List("--bogus", "x")                              -> "Unexpected option: --bogus",
+      List("--cacert", "ca.pem")                        -> "please supply --tls as well as --cacert",
+      List("--insecure")                                -> "please supply --tls as well as --insecure",
+      List("--tls", "--insecure", "--cacert", "ca.pem") -> "please supply --cacert or --insecure, not both"
     )
     wrong.foreach { case (options, message) =>
       assertEquals(errors(List("localhost", "6379") ++ options), List(message), options)

@@ -586,11 +586,13 @@ object RedisClient {
                 }
 
               // failures counts the addresses that couldn't be reached, or that closed the connection before answering what was sent on
-              // it, since the last connection that answered. When that one goes, every address is tried again, its own last, before the
-              // client gives up: a server that answered may only have dropped the connection, and one that closes each connection at once,
+              // it, since the last connection that answered. When that one goes with commands waiting on it, every address is tried again,
+              // its own last, before the client gives up: a server that answered may only have dropped the connection, and one that closes each connection at once,
               // as when it has too many clients, isn't tried again and again. last is why the last connection failed, and waits how many
-              // times in a row the client has waited for want of a server since one last answered, which makes each wait longer
-              def runner(failures: Int, last: Option[Throwable], waits: Int): Stream[F, Unit] =
+              // times in a row the client has waited for want of a server since one last answered, which makes each wait longer. again is
+              // the address to connect to next, when the last connection's server is still fine: it closed a connection nothing was waiting
+              // on, as a server closes idle clients, or the client closed it to stop a command
+              def runner(failures: Int, last: Option[Throwable], waits: Int, again: Option[RedisAddress] = None): Stream[F, Unit] =
                 if (failures >= addresses.size) {
                   val cause = last.getOrElse(new NoSuchElementException("No address to connect to"))
                   val wait  = random.betweenDouble(0.5d, 1d).map(cut => (reconnect.after(waits).toNanos * cut).toLong.nanos)
@@ -599,7 +601,7 @@ object RedisClient {
                   Stream
                     .eval(
                       (
-                        nextAddress,
+                        again.fold(nextAddress)(Concurrent[F].pure),
                         Ref.of[F, Usage](Usage.Connecting),
                         connections.updateAndGet(_ + 1),
                         Deferred[F, Unit],
@@ -621,22 +623,26 @@ object RedisClient {
                         Stream
                           .eval(usage.get.map(reached => if (reached == Usage.Connecting) error else terminated(address)(error)))
                           .flatMap { failure =>
-                            val idle = log.info(s"Connection to $address ended with nothing sent on it: ${failure.getMessage}") >> nextSend
-                            Stream.eval(giveBack(current) >> failInFlight(failure) >> ended.complete(()) >> usage.get).flatMap {
-                              case _ if failure == ConnectionReset =>
-                                Stream.exec(
-                                  log.info(s"Connection to $address closed to stop a command waiting on it") >> nextSend
-                                ) ++ runner(
-                                  failures,
-                                  last,
-                                  waits
-                                )
-                              case Usage.Idle => Stream.exec(idle) ++ runner(failures, last, waits)
-                              case reached    =>
-                                log.errorS(s"Failure of publishing connection to $address", failure) >>
-                                  (if (reached == Usage.Answered) runner(0, Some(failure), 0)
-                                   else runner(failures + 1, Some(failure), waits))
-                            }
+                            val idle =
+                              log.info(s"Connection to $address ended with nothing waiting on it: ${failure.getMessage}") >> nextSend
+                            val waiting = (inFlight.get, unsentRequests.get).mapN(_.nonEmpty || _.nonEmpty)
+                            Stream
+                              .eval(
+                                waiting
+                                  .flatMap(w => giveBack(current) >> failInFlight(failure) >> ended.complete(()) >> usage.get.tupleRight(w))
+                              )
+                              .flatMap {
+                                case _ if failure == ConnectionReset =>
+                                  Stream.exec(
+                                    log.info(s"Connection to $address closed to stop a command waiting on it") >> nextSend
+                                  ) ++ runner(failures, last, waits, Some(address))
+                                case (Usage.Idle, _)         => Stream.exec(idle) ++ runner(failures, last, waits, Some(address))
+                                case (Usage.Answered, false) => Stream.exec(idle) ++ runner(0, last, 0, Some(address))
+                                case (reached, _)            =>
+                                  log.errorS(s"Failure of publishing connection to $address", failure) >>
+                                    (if (reached == Usage.Answered) runner(0, Some(failure), 0)
+                                     else runner(failures + 1, Some(failure), waits))
+                              }
                           }
                       }
                     }

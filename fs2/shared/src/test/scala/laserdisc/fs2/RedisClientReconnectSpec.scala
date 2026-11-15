@@ -25,7 +25,7 @@ package fs2
 import _root_.fs2.Stream
 import cats.Order
 import cats.data.NonEmptySet
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import laserdisc.redis_6_2.*
 import laserdisc.auto.*
@@ -234,6 +234,38 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
         } yield {
           assert(first.left.exists(_.isInstanceOf[RequestTimedOut[?]]), s"expected a timeout, got $first")
           assertEquals(later, Some("back"))
+        }
+      }
+    }
+  }
+
+  // a server that answers the first command of each connection with its name, and closes the connection a little after it opened, as a
+  // server closing idle clients does
+  private def closingIdle(name: String): Resource[IO, Port] =
+    FakeRedisServer((_, requests) => requests.take(1).as(bulk(name)).interruptAfter(300.millis))
+
+  private def everyFewHundredMillis[A](times: Int)(send: IO[A]): IO[List[A]] =
+    (1 to times).toList.traverse(_ => send <* IO.sleep(600.millis))
+
+  // a server that closes each connection once it has answered its first command, with its name
+  private def closingAfterReply(name: String): Resource[IO, Port] = FakeRedisServer((_, requests) => requests.take(1).as(bulk(name)))
+
+  test("toNodes stays on its server when the server closes a connection with nothing waiting on it, instead of moving to the next address") {
+    (closingAfterReply("a"), closingAfterReply("b")).tupled.use { case (a, b) =>
+      RedisClient[IO].toNodes(NonEmptySet.of(address(a), address(b))).use { client =>
+        everyFewHundredMillis(5)(client.send(get[String]("k"), 2.seconds)).map { replies =>
+          assert(replies.forall(_.isRight), replies.toString)
+          assertEquals(replies.distinct.size, 1, replies.toString)
+        }
+      }
+    }
+  }
+
+  test("toNodes keeps answering from a server that closes idle connections while another address is unreachable") {
+    (closingIdle("up"), unusedPort).tupled.use { case (up, down) =>
+      RedisClient[IO].toNodes(NonEmptySet.of(address(up), address(down))).use { client =>
+        everyFewHundredMillis(6)(client.send(get[String]("k"), 2.seconds)).map { replies =>
+          assertEquals(replies, List.fill(6)(Right(Some("up"))))
         }
       }
     }

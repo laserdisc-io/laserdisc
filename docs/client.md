@@ -188,7 +188,9 @@ takes 10 to 30 seconds to fail: see [Platform notes](platform-notes.md).
 
 `RedisClient[IO].toNodes` takes a non-empty set of addresses. The client uses
 one server at a time, starting with the first. If it can't reach that server, or
-the connection drops, it moves on to the next one:
+the connection drops with commands waiting on it, it moves on to the next one. A
+server closing a connection nothing was waiting on, as servers do with idle
+clients, is connected to again:
 
 ```scala mdoc:compile-only
 import cats.data.NonEmptySet

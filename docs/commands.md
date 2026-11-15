@@ -194,7 +194,9 @@ have, it can also read them into a `Seq`, like `mget[Seq[Option[Int]]](keys)`.
 
 A script can return anything, so `eval`, `evalsha` and `fcall` take two types:
 the kind of reply the script sends, and the type to read it as. The keys and the
-arguments are the script's `KEYS` and `ARGV`:
+arguments are the script's `KEYS` and `ARGV`. The arguments are `Value`s: a
+value of any type that has a `Show`, such as a number or a string, becomes
+one, as `1` and `"two"` do here:
 
 ```scala mdoc:compile-only
 import laserdisc.*
@@ -212,6 +214,23 @@ val value: Protocol[Option[String]] = eval[OrNullBulk[Bulk], Option[String]]("re
 // always nil
 val done: Protocol[Unit] = evalargs[NullBulk, Unit]("redis.log(redis.LOG_NOTICE, ARGV[1])", args)
 ```
+
+The server turns what the script returns into one of the kinds of reply in
+[Replies](#replies):
+
+| The script returns | The reply is |
+| --- | --- |
+| A number | `Num`, cut to a whole number: return a string for a decimal |
+| A string | `Bulk` |
+| A table | `Arr`, with the table's elements up to the first nil |
+| `true` | `Num`, 1 |
+| `false` or `nil` | `NullBulk`, which stands for nil |
+| `redis.status_reply(...)` | `Str` |
+| `redis.error_reply(...)` | `Err`, which gives a `Left` |
+
+Dragonfly differs in two ways: a number that isn't whole comes as a `Bulk`
+holding it, such as `"3.7"`, and a table keeps its nils, as `NullBulk`s, up to
+its last element.
 
 When the script may return nil instead of a value, say so in the reply's kind:
 `OrNullBulk[Bulk]` for a string, `OrNullBulk[Num]` for a number, and

@@ -22,8 +22,8 @@
 package laserdisc
 package protocol
 
-/** Commands that arrived together. Each lists what it covers as "COMMAND: KEYWORD ...", which the tests check against each server version
-  */
+/** Commands that came in a version together: each version's import is made of these */
+// each lists what it covers as "COMMAND: KEYWORD ...", which the tests check against each server version
 trait Features {
   private[laserdisc] def supported: List[String] = Nil
 }

@@ -23,9 +23,8 @@ package laserdisc
 
 import protocol.*
 
-/** Each family's commands by version, for an import of one family only, like `laserdisc.redis_7_0.streams.*`. A new trait only where the
-  * family changed. The versions below are made of these, so a version and its families can't disagree
-  */
+/** Each family's commands by version, for an import of one family only, like `laserdisc.redis_7_0.streams.*` */
+// a new trait only where the family changed: the versions below are made of these, so a version and its families can't disagree
 trait Strings6_2     extends StringBaseP with StringExtP
 trait StringsAlgo6_2 extends Strings6_2 with StringAlgoP {
   override val stringtypes: StringP.StringTypes & StringP.StringAlgoTypes = new StringP.StringTypes with StringP.StringAlgoTypes {}
@@ -323,7 +322,8 @@ trait ScriptingValkey8_0 extends Scripting7_0 {
 trait Connection6_2 extends ConnectionBaseP with ConnectionSwapDbP with ConnectionHello6_2P
 trait Connection7_0 extends Connection6_2 with ConnectionHello7_0P
 
-/** What Redis 6.2 has, which every version below builds on */
+/** What every version has: Redis 6.2's commands, but for STRALGO, which Redis 7.0 removed */
+// every version below builds on this
 trait Base6_2
     extends Cluster6_2
     with Connection6_2
@@ -361,7 +361,8 @@ trait Base6_2
   override private[laserdisc] def supported: List[String] = super.supported ++ blocking.supported
 }
 
-/** Redis 7.0 removed STRALGO, so the later versions go on from the base and not from this */
+/** Redis 6.2's commands */
+// Redis 7.0 removed STRALGO, so the later versions go on from Base6_2 and not from this
 trait Redis6_2 extends Base6_2 with StringAlgoP {
   override val stringtypes: StringP.StringTypes & StringP.StringAlgoTypes = new StringP.StringTypes with StringP.StringAlgoTypes {}
 
@@ -477,7 +478,8 @@ trait Valkey9_1 extends Valkey9_0 with ClusterValkey9_1 with HashesValkey9_1 wit
   override val strings: StringsValkey9_1 = new StringsValkey9_1 {}
 }
 
-/** Dragonfly, made of the features it accepts, as `COMMAND DOCS` doesn't say */
+/** Dragonfly's commands by family */
+// made of the features Dragonfly accepts, checked one by one, as its COMMAND DOCS doesn't say
 trait ClusterDragonfly2_0 extends ClusterCoreP with ClusterShardsCoreP
 trait GeoDragonfly2_0     extends Geo6_2
 trait HashesDragonfly2_0  extends HashBaseP with HashExtP with HashScanNoValuesP with HashFieldExpiryCoreP with HashGetSetExpiryP {

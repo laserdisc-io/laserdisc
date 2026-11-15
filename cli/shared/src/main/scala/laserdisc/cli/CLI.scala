@@ -318,7 +318,8 @@ object CLI extends IOApp { self =>
                     case Right(resp) if raw => RESPFormat.formatRaw(resp)
                     case Right(resp)        => RESPFormat.format(resp)
                   }
-                  prompt(f"<<< $shown - [$ms%.2fms]$LF").as(false)
+                  // a reply of several lines, as an array, has them lined up under the first, after <<<
+                  prompt(f"<<< ${shown.replace(LF, s"$LF    ")} - [$ms%.2fms]$LF").as(false)
               }
               .exists(identity)
               .compile

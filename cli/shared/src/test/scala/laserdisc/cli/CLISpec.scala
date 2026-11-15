@@ -234,7 +234,7 @@ final class CLISpec extends CatsEffectSuite {
           s"""$prompt<<< PING - []
              |$prompt<<< "value" - []
              |$prompt<<< 1) "a"
-             |2) "b" - []
+             |    2) "b" - []
              |$prompt""".stripMargin
         )
       }
@@ -333,9 +333,9 @@ final class CLISpec extends CatsEffectSuite {
           assertEquals(
             afterLogo(screen),
             s"""$prompt<<< 1) "a"
-               |2) "v" - []
+               |    2) "v" - []
                |$prompt<<< 1) "b"
-               |2) "v" - []
+               |    2) "v" - []
                |$prompt""".stripMargin
           )
           sent.get.assertEquals(List(List("BLPOP", "a", "0"), List("BLPOP", "b", "2")))

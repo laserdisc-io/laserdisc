@@ -338,6 +338,11 @@ waiting: as the server is still waiting on it, the client closes the connection,
 and the next command connects again. The shared client from `to` doesn't
 compile with these commands.
 
+If the server goes away without closing the connection, as when its machine
+loses power, a command with no timeout only fails once the operating system
+gives up on the connection. Its keep-alive checks take about two hours by
+default on Linux and macOS.
+
 ## Logging
 
 The client logs through [log-effect](https://github.com/laserdisc-io/log-effect).

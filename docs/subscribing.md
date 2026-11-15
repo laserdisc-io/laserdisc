@@ -58,7 +58,9 @@ every client. It slows the server down, so use it for debugging.
   stays open, as when the network between you goes down. Every 30 seconds the
   server is sent a `PING`, and if it says nothing before the next one, the
   stream fails with `ServerNotResponding`. `monitor` isn't checked this way, as
-  the server would report the `PING` as a command it received.
+  the server would report the `PING` as a command it received: a `monitor`
+  stream only fails once the operating system gives up on the connection, which
+  takes about two hours by default on Linux and macOS.
 - **A message that can't be read doesn't stop the stream.** Anyone who can
   publish to your channels can send something that isn't the type you asked
   for. Ask for `Bulk` to get any message's value as raw bytes. A message on a

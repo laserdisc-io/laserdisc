@@ -109,4 +109,31 @@ final class RESPFrameChunksSpec extends BaseSpec {
     assertEquals(growing.flatMap(_.append(bytes("d").bits)).left.toOption.map(_.getMessage), Some(tooLong))
     assertEquals(growing.flatMap(_.append(bytes("\r\n").bits)), CompleteFrame(bytes("+abc\r\n").bits))
   }
+
+  test("a size or number line can't be longer than any real one, whether it has ended or not, while a status or error line can") {
+    val tooLong                = "Expected a line of at most 32 bytes"
+    def failure(reply: String) = EmptyFrame.append(bytes(reply).bits).left.toOption.map(_.getMessage)
+    val digits                 = "1" * 40
+
+    List(s":$digits", s"$$$digits", s"*$digits", s":$digits\r\n", s"$$$digits\r\n", s"*1\r\n:$digits\r\n").foreach { reply =>
+      assert(failure(reply).exists(_.contains(tooLong)), reply)
+    }
+    val growing = EmptyFrame.append(bytes(":1").bits).flatMap(_.append(bytes(digits).bits))
+    assert(growing.left.toOption.exists(_.getMessage.contains(tooLong)))
+    assertEquals(EmptyFrame.append(bytes(":-9223372036854775808\r\n").bits), CompleteFrame(bytes(":-9223372036854775808\r\n").bits))
+    val longError = s"-${"x" * 100000}\r\n"
+    assertEquals(EmptyFrame.append(bytes(longError).bits), CompleteFrame(bytes(longError).bits))
+    assert(EmptyFrame.append(bytes(s"+${"y" * 100000}").bits).isRight)
+    // each line has its own limit: a size line that arrived alone doesn't hold the status after it to 32 bytes
+    val afterSize = EmptyFrame.append(bytes("*2\r\n$5").bits).flatMap(_.append(bytes(s"\r\nhello\r\n+${"y" * 100}").bits))
+    assert(afterSize.isRight, afterSize)
+    assert(afterSize.flatMap(_.append(bytes("y" * 100).bits)).isRight)
+  }
+
+  test("an error reading a reply doesn't hold what the server sent before it") {
+    val frame = EmptyFrame.append(bytes("*2\r\n+secret\r\n?\r\n").bits)
+    assert(frame.left.toOption.exists(e => !e.getMessage.contains("secret")), frame)
+    val decoded = RESP.respCodec.decode(bytes("+secret").bits)
+    assert(decoded.toEither.left.toOption.exists(e => !e.messageWithContext.contains("secret")), decoded)
+  }
 }

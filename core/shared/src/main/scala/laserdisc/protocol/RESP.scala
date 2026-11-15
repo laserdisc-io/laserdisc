@@ -216,7 +216,7 @@ sealed trait RESPCodecs extends BitVectorSyntax {
       override final def decode(bits: BitVector): Attempt[DecodeResult[BitVector]] = {
         val i = bits.bytes.indexOfSlice(crlfBytes, from)
         if (i == -1)
-          Attempt.failure(new MatchingDiscriminatorNotFound(s"Does not contain 'CRLF' termination bytes. Content: ${bits.tailToUtf8}"))
+          Attempt.failure(new MatchingDiscriminatorNotFound("Does not contain 'CRLF' termination bytes"))
         else Attempt.successful(DecodeResult(bits.take(i * BitsInByte), bits.drop(i * BitsInByte + crlfSize)))
       }
     }
@@ -227,6 +227,12 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   // the most bytes a bulk string, or elements an array, can declare: a reply that big can't be held in memory, and a bigger size would
   // overflow the arithmetic that finds where the reply ends
   private[protocol] final val MaxSize: Long = Int.MaxValue.toLong
+
+  // the most bytes a line can have, from the byte that starts it: a size or a number has at most 20 digits and a sign, while a status or
+  // an error can be as long as a script makes it, so it has a bulk string's limit
+  private[protocol] final val MaxNumberLine: Long        = 32L
+  private[protocol] final def maxLine(first: Byte): Long =
+    if (first == dollar.toByte() || first == star.toByte() || first == colon.toByte()) MaxNumberLine else MaxSize
 
   // the most arrays a reply can nest: decoding goes one level deeper on the stack for each, and no reply nests more than a handful
   private[protocol] final val MaxDepth: Int = 128
@@ -385,9 +391,11 @@ sealed trait RESPFunctions { this: RESPCodecs =>
   private final def element(buffer: ByteVector, from: Long): Either[String, Element] = {
     val eol = buffer.indexOfSlice(crlfBytes, from)
     buffer(from) match {
-      case _ if eol == -1L && isDiscriminator(buffer(from)) => Right(Short(0L))
-      case `plusByte` | `minusByte` | `colonByte`           => Right(Finished(eol + crlfBytes.size))
-      case `dollarByte`                                     =>
+      case _ if eol == -1L && isDiscriminator(buffer(from))                       => Right(Short(0L))
+      case first if eol - from > MaxNumberLine && maxLine(first) == MaxNumberLine =>
+        Left(s"Expected a line of at most $MaxNumberLine bytes")
+      case `plusByte` | `minusByte` | `colonByte` => Right(Finished(eol + crlfBytes.size))
+      case `dollarByte`                           =>
         sizeBetween(buffer, from + 1L, eol).flatMap {
           case -1L              => Right(Finished(eol + crlfBytes.size))
           case n if n < -1L     => Left(s"Expected a size of at least -1 but found $n")

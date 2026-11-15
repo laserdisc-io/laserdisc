@@ -39,14 +39,15 @@ private[laserdisc] sealed trait RESPFrame extends Product with Serializable with
       // stopped with nothing missing and something to look at: an element whose first line hasn't ended yet
       case Right(Stopped(at, open, missing)) =>
         val inLine = missing == 0L && at < rest.size
-        if (inLine && rest.size - at > progress.maxLine) Left(progress.lineTooLong)
-        else Right(IncompleteFrame(bits, missing)(new FrameProgress(rest.drop(at).bits, open, inLine, progress.maxLine)))
+        val next   = new FrameProgress(rest.drop(at).bits, open, inLine, progress.maxLine)
+        if (inLine && rest.size - at > next.lineLimit) Left(next.lineTooLong)
+        else Right(IncompleteFrame(bits, missing)(next))
       case Right(Scanned(end)) if end == rest.size => Right(CompleteFrame(bits.compact))
       case Right(Scanned(end))                     =>
         val complete = bits.compact
         val size     = bits.size - rest.drop(end).bits.size
         consumeRemainder(MoreThanOneFrame(Vector(CompleteFrame(complete.take(size))), complete.drop(size)))
-      case Left(e) => Left(UnknownBufferState(s"Err building the frame from buffer: $e. Content: ${bits.tailToUtf8}"))
+      case Left(e) => Left(UnknownBufferState(s"Err building the frame from buffer: $e"))
     }
   }
 
@@ -77,7 +78,7 @@ private[laserdisc] final case class IncompleteFrame(partial: BitVector, bitsToCo
     if (bits.size < bitsToComplete)
       Right(IncompleteFrame(all, bitsToComplete - bits.size)(new FrameProgress(rest, progress.open, false, progress.maxLine)))
     else if (progress.inLine && !endsALine(progress.rest, bits))
-      if (rest.size / 8L > progress.maxLine) Left(progress.lineTooLong)
+      if (rest.size / 8L > progress.lineLimit) Left(progress.lineTooLong)
       else Right(IncompleteFrame(all, 0L)(new FrameProgress(rest, progress.open, true, progress.maxLine)))
     else nextFrame(all, new FrameProgress(rest, progress.open, false, progress.maxLine))
   }
@@ -91,7 +92,7 @@ private[laserdisc] final case class IncompleteFrame(partial: BitVector, bitsToCo
 }
 
 // what's left to look at, from the start of the element it stopped at, how many more elements each array it's in is waiting for,
-// whether it stopped for want of the end of that element's first line, and how many bytes that line may have before it's given up on, as a
+// whether it stopped for want of the end of that element's first line, and the most bytes any line may have before it's given up on, as a
 // server could send one that never ends
 private[protocol] final class FrameProgress(
     val rest: BitVector,
@@ -99,7 +100,10 @@ private[protocol] final class FrameProgress(
     val inLine: Boolean = false,
     val maxLine: Long = RESP.MaxSize
 ) {
-  def lineTooLong: UnknownBufferState = UnknownBufferState(s"Expected a line of at most $maxLine bytes, but it hasn't ended")
+  // the most bytes the line it stopped in may have, from the byte that starts it
+  def lineLimit: Long = rest.headOption.fold(maxLine)(_ => maxLine.min(RESP.maxLine(rest.take(8L).toByte())))
+
+  def lineTooLong: UnknownBufferState = UnknownBufferState(s"Expected a line of at most $lineLimit bytes, but it hasn't ended")
 }
 
 private[laserdisc] final case class UnknownBufferState(message: String) extends RuntimeException(message, null, true, false)

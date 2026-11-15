@@ -25,7 +25,7 @@ To import a single family instead, add its name:
 | Streams | `laserdisc.redis_8_10.streams.*` |
 | Keys | `laserdisc.redis_8_10.keys.*` |
 | Hashes | `laserdisc.redis_8_10.hashmaps.*` |
-| Arrays | `laserdisc.redis_8_10.arrays.*` |
+| Arrays, from Redis 8.8 | `laserdisc.redis_8_10.arrays.*` |
 | Lists | `laserdisc.redis_8_10.lists.*` |
 | Sets | `laserdisc.redis_8_10.sets.*` |
 | Sorted sets | `laserdisc.redis_8_10.sortedsets.*` |
@@ -39,11 +39,15 @@ To import a single family instead, add its name:
 | Cluster | `laserdisc.redis_8_10.cluster.*` |
 | Blocking commands of lists, sorted sets and streams | `laserdisc.redis_8_10.blocking.*` |
 | Blocking commands with no time limit: see [Client](client.md#waiting-for-as-long-as-it-takes) | `laserdisc.redis_8_10.blocking.forever.*` |
+| Dragonfly's own commands: see [Dragonfly](#dragonfly) | `laserdisc.dragonfly_2_0.dragonfly.*` |
 
 Commands whose name starts with a group, such as `CLIENT LIST` or
 `ACL SETUSER`, are under that group's name: `client.list`,
-`acl.setuser(user, rules)`. The groups are `acl`, `client`, `command`, `config`,
-`latency`, `memory`, `module` and `script`.
+`acl.setuser(user, rules)`. In `redis_8_10`, the groups are `acl`, `backup`,
+`client`, `command`, `config`, `function`, `hotkeys`, `latency`, `memory`,
+`module`, `pubsub`, `script` and `slowlog`. The Valkey imports from 8.1 also
+have `commandlog`. An import for an older version has only the groups whose
+commands that version has.
 
 ## Arguments
 

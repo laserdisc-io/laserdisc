@@ -31,88 +31,52 @@ import scodec.{Attempt, Codec, DecodeResult, Decoder, Err as SErr, SizeBound}
 
 import scala.annotation.tailrec
 
-/** [[https://redis.io/topics/protocol Redis Protocol Specification]]
-  *
-  * This sealed trait represents the entire Redis Serialization Protocol algebra
-  *
-  * Concrete instances of this trait must be created using this trait's companion object's methods, were [[scodec.Codec]] s for each are
-  * also defined
-  *
-  * @see
-  *   [[RESPCodecs]]
+/** A reply from the server, in RESP2, the format Redis replies in ([[https://redis.io/docs/latest/develop/reference/protocol-spec/ its
+  * specification]]): a status ([[Str]]), an error ([[Err]]), an integer ([[Num]]), a string ([[Bulk]]) or an array ([[Arr]]), or nil
+  * ([[NullBulk]] or [[NilArr]])
   */
 sealed trait RESP extends AnyRef with Serializable
 
-/** RESP [[https://redis.io/topics/protocol#resp-simple-strings Simple Strings]]
+/** A status, a short line of text such as `OK`
   *
-  * @note
-  *   Sometimes the value "OK" is used to represent a successful acknowledgement/processing of a command.
-  *
-  * @example
-  *   {{{
-  *   val s: Str = Str("some string")
-  *   }}}
-  *
-  * @param value
-  *   The wrapped string value
+  * {{{
+  * val s: Str = Str("OK")
+  * }}}
   */
 final case class Str(value: String) extends RESP
 object Str {
   final def apply[A](a: A)(implicit A: Show[A]): Str = new Str(A.show(a))
 }
 
-/** RESP [[https://redis.io/topics/protocol#resp-errors Errors]]
+/** An error the server replied with, such as `WRONGTYPE Operation against a key holding the wrong kind of value`. It's also an exception,
+  * without a stack trace, so that a failed command can give it as its `Left`
   *
-  * RESP [[Err]] s are also [[scala.RuntimeException]] s, although __where possible__ they will not contain stacktrace data
-  *
-  * @example
-  *   {{{
-  *   val e: Err = Err("some error message")
-  *   }}}
-  * @param message
-  *   The wrapped exception's message
+  * {{{
+  * val e: Err = Err("ERR unknown command")
+  * }}}
   */
 final case class Err(message: String) extends RuntimeException(message, null, true, false) with RESP
 
-/** RESP [[https://redis.io/topics/protocol#resp-integers Integers]]
+/** An integer. Some commands reply 1 or 0 for yes or no
   *
-  * @note
-  *   Sometimes the values 0 and 1 are used to represent boolean values. In this case 0 corresponds to False while 1 to True, respectively.
-  *
-  * @example
-  *   {{{
-  *   val n: Num = Num(42)
-  *   }}}
-  *
-  * @param value
-  *   The wrapped long value
+  * {{{
+  * val n: Num = Num(42)
+  * }}}
   */
 final case class Num(value: Long) extends RESP
 
-/** RESP [[https://redis.io/topics/protocol#resp-bulk-strings Bulk Strings]]
+/** A string, or nil: a [[Bulk]], or [[NullBulk]], as a missing key's value is
   *
-  * There can be 2 cases:
-  *   - `null` bulk strings, where the length is -1 and no actual underlying string is present
-  *   - actual (non-null) bulk strings, where the length is >= 0
-  *
-  * @example
-  *   {{{
-  *   val b: Bulk      = Bulk("some string")
-  *   val nb: NullBulk = NullBulk
-  *   }}}
-  * @see
-  *   [[Show]]
+  * {{{
+  * val b: Bulk      = Bulk("some string")
+  * val nb: NullBulk = NullBulk
+  * }}}
   */
 sealed trait GenBulk extends RESP
 case object NullBulk extends GenBulk
 
-/** This is the special case of a non-null RESP [[GenBulk]]
-  *
-  * It keeps the bytes exactly as they are, as what a bulk string holds may not be text, like what DUMP replies with. `value` is those bytes
-  * read as UTF-8 text, where any bytes that aren't valid UTF-8 are replaced, so it doesn't always say what `bytes` does
-  *
-  * @param bytes
-  *   The wrapped bulk string's bytes
+/** A string, as the bytes the server sent, which may not be text, as with what DUMP replies. `value` reads them as UTF-8, replacing any
+  * bytes that aren't valid UTF-8, so it doesn't always say what `bytes` does
   */
 final class Bulk private (val bytes: ByteVector, text: =>String) extends GenBulk {
   lazy val value: String = text
@@ -134,36 +98,19 @@ object Bulk {
   implicit final val bulkShow: Show[Bulk] = Show.bulkShow
 }
 
-/** RESP [[https://redis.io/topics/protocol#resp-arrays Arrays]]
+/** An array, or nil: an [[Arr]], or [[NilArr]]
   *
-  * There can be 2 cases:
-  *   - `nil` arrays, where the length is -1 and no array element is present
-  *   - actual (non-nil) arrays, where the length is >= 0
-  *
-  * @note
-  *   [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]] ] is an overload
-  *   which supports the creation of guaranteed non-empty sequences only. This is achieved through the usage of one fixed parameter followed
-  *   by a var-arg of the same
-  * @example
-  *   {{{
-  *   val arr: Arr                = Arr(List(Str("hello"), Str("world")))
-  *   val guaranteedNonEmpty: Arr = Arr(Str("hello"), Str("world"))
-  *   val empty: Arr              = Arr(List.empty)
-  *   val nil: NilArr             = NilArr
-  *   }}}
+  * {{{
+  * val arr: Arr      = Arr(List(Str("hello"), Str("world")))
+  * val nonEmpty: Arr = Arr(Str("hello"), Str("world"))
+  * val empty: Arr    = Arr(List.empty)
+  * val nil: NilArr   = NilArr
+  * }}}
   */
 sealed trait GenArr extends RESP
 case object NilArr  extends GenArr
 
-/** This is the special case of a non-nil RESP [[GenArr]]
-  *
-  * These can be constructed either by the default case class' apply by resorting to the overloaded
-  * [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]] ] method which expects
-  * one parameter to be supplied followed by a (possibly empty) sequence of [[RESP]] s (vararg).
-  *
-  * @param elements
-  *   The wrapped array values, as a [[scala.List]] of [[RESP]]
-  */
+/** An array of replies, which may be empty. `Arr(one, rest*)` makes one with at least one element */
 final case class Arr(elements: List[RESP]) extends GenArr {
   override def toString: String = s"Arr(${elements.mkString(COMMA)})"
 }

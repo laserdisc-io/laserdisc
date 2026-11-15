@@ -27,7 +27,7 @@ import scala.language.implicitConversions
 
 object auto {
 
-  /** Refines a literal into any laserdisc refined type (e.g. `val k: Key = "foo"`), checking it at compile time */
+  /** Lets a literal be given where a checked type is expected, as in `val k: Key = "foo"`, checking it when your code compiles */
   inline implicit def autoRefine[A, C, T](inline a: A)(
       using m: RefinedTypeOps.Mirror[T] { type BaseType = A; type ConstraintType = C },
       inline c: Constraint[A, C]

@@ -38,7 +38,7 @@ final class OneOf[T <: Tuple] private[protocol] (private[protocol] val value: RE
   override final def toString: String = s"OneOf($value)"
 }
 
-/** Evidence that the alternatives of a [[OneOf]] are distinct types, as a union's are */
+/** That each alternative of a [[OneOf]] is listed once, which is checked when your code compiles */
 @scala.annotation.implicitNotFound("The alternatives of OneOf[${T}] must be distinct types: one of them is listed more than once")
 sealed trait Distinct[T]
 
@@ -51,7 +51,7 @@ object Distinct {
     instance.asInstanceOf[Distinct[H *: T]]
 }
 
-/** Evidence that `H` isn't one of the types in `T` */
+/** That `H` isn't among the types in `T`, which [[Distinct]] checks for each alternative */
 @scala.annotation.implicitNotFound("${H} is listed more than once in a OneOf")
 sealed trait NotIn[H, T]
 

@@ -41,9 +41,9 @@ final type NullBulk = protocol.NullBulk.type
 final type OrNullBulk[A] = OneOf[NullBulk *: A *: EmptyTuple]
 final type OrNilArr[A]   = OneOf[NilArr *: A *: EmptyTuple]
 
-/** A refined newtype `T` (a subtype of `A`), checked by iron's constraint `C`, with the same operations as Scala 2's refined
-  * `RefinedTypeOps`: compile-time checked `apply` for literals, `from`, `unsafeFrom`, `unapply` and `.value`, which (as with refined) gives
-  * back the base type `A`, so that type class instances for `A` keep working on it.
+/** What a type whose values are checked, such as `Key` or `Port`, can do, as on Scala 2: `apply` takes a literal, checked when your code
+  * compiles; `from` gives a `Left` for a value that doesn't fit; `unsafeFrom` throws an `IllegalArgumentException` instead; `unapply`
+  * matches a value that fits; and `.value` gives back the plain value, such as the `String` of a `Key`
   */
 trait RefinedTypeOps[A, C](using C: RuntimeConstraint[A, C]) {
   opaque type T <: A = A :| C
@@ -63,14 +63,14 @@ trait RefinedTypeOps[A, C](using C: RuntimeConstraint[A, C]) {
 }
 object RefinedTypeOps {
 
-  /** Links a refined newtype to its base type and constraint, used by `auto.autoRefine` */
+  // what a checked type is made of, for auto.autoRefine to find
   trait Mirror[T] {
     type BaseType
     type ConstraintType
   }
 }
 
-/** Refined-style operations for refined collections, which are plain iron types rather than [[RefinedTypeOps]] newtypes */
+/** What a checked collection, such as `OneOrMoreKeys`, can do: `from`, `unsafeFrom` and `unapply`, as for [[RefinedTypeOps]] */
 sealed abstract class RefinedCollectionOps[A, C](using C: RuntimeConstraint[A, C]) {
   final def from(a: A): Either[String, A :| C] = if (C.test(a)) Right(a.asInstanceOf[A :| C]) else Left(C.message)
   final def unsafeFrom(a: A): A :| C           = from(a).fold(e => throw new IllegalArgumentException(e), identity)
@@ -79,7 +79,7 @@ sealed abstract class RefinedCollectionOps[A, C](using C: RuntimeConstraint[A, C
 
 extension [A, C](a: A :| C) inline def value: A = a
 
-/** A literal witness, as Scala 2's refined `W` (a shapeless `Witness`): `.value` is the literal, `.T` its literal type */
+// a literal and its type, as Scala 2's refined W: .value is the literal, .T its type
 final class Witness[A <: Singleton] private[laserdisc] (val value: A) {
   type T = A
 }

@@ -22,7 +22,10 @@
 package laserdisc
 package protocol
 
-/** Something that can be sent to Redis, replying with an `A`. It's covariant, so that a later version of a command can reply with more */
+/** A command, or a transaction of commands, to send with a client, whose reply is read as an `A`. A version's import, such as
+  * `laserdisc.redis_8_10`, has its commands
+  */
+// covariant, so that a later version of a command can reply with more
 sealed trait Protocol[+A] {
 
   /** What is sent to Redis, which replies to each one */
@@ -39,7 +42,7 @@ object Protocol {
   // the lines of text a command's HELP subcommand replies with
   private[protocol] final def help(command: String): Single[Seq[String]] = Protocol(command, "HELP").as[Arr.Of[Str], Seq[String]]
 
-  /** A single Redis command */
+  /** A single command: its name, its parameters and how its reply is read */
   sealed trait Single[+A] extends Protocol[A] { self =>
     def command: String
     def parameters: Seq[Bulk]
@@ -90,18 +93,12 @@ object Protocol {
       private final val l: L
   ) { self =>
 
-    /** We request evidence that the [[RESP]] sent back by Redis can be deserialized into an instance of a B.
-      *
-      * Ensuring this is the case here guarantees that no instance of a [[Protocol]] can '''ever''' be constructed unless proven that the
-      * response we eventually will get back can be deserialized into the expected type B.
+    /** The command, with its reply read as a `B`: a command can only be made for a reply there's a way to read.
       *
       * @tparam A
-      *   The [[RESP]] type of the response expected from Redis
+      *   The kind of reply the server sends, such as [[Bulk]] or [[Num]]
       * @tparam B
-      *   The type we expect to convert an A into
-      *
-      * @return
-      *   A [[Single]] command, sending this command and parameters and reading the reply as a B
+      *   The type to read it as
       */
     final def as[A, B](implicit R: RESPRead.Aux[A, B]): Single[B] = using(R)
 
@@ -143,8 +140,8 @@ object Protocol {
       }
   }
 
-  /** The way to create a [[Multi]] transaction for the commands in `in`. EXEC's reply is "null" when a WATCHed key changed and nothing ran,
-    * which is read as `None`, otherwise it holds one result per command.
+  /** A transaction of the commands in `in`, a tuple of one or more [[Single]] commands: MULTI, the commands, then EXEC. It's read as `None`
+    * when a watched key changed and nothing ran, and otherwise as a tuple of each command's result.
     */
   final def multi[In <: NonEmptyTuple, Out <: Tuple](in: In)(implicit M: MultiResults.Aux[In, Out]): Multi[Option[Out]] =
     new Multi[Option[Out]] {
@@ -164,10 +161,12 @@ object Protocol {
         replies.init.collectFirst { case err: Err => err }.fold(decodeExec(replies.last))(Left(_))
     }
 
-  /** The way to create a [[Single]] command, through this partial application (see [[multi]] for a transaction).
+  /** Starts a command of your own, named `cmd`, with the parameters `l`, which a [[RESPParamWrite]] writes as the strings the server gets.
+    * Finish it with `as[A, B]`, to read its reply as a `B`, or with `using`. For a transaction, see [[multi]].
     *
-    * This apply method requires the caller to provide the type of request parameters L this [[Protocol]] expects to deal with when encoding
-    * the request parameters into a [[RESP]] [[GenArr]] instance to send to Redis.
+    * {{{
+    * val echo: Protocol[String] = Protocol("ECHO", "hello").as[Bulk, String]
+    * }}}
     */
   final def apply[L: RESPParamWrite](cmd: String, l: L): PartiallyAppliedProtocol[L] = new PartiallyAppliedProtocol(cmd, l) {}
 }

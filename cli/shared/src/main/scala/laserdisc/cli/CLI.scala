@@ -117,6 +117,11 @@ object CLI extends IOApp { self =>
       else None
     }
 
+    private def forNow(reason: Throwable): Boolean = reason match {
+      case refused: Err => RedisClient.impl.refusedForNow(refused)
+      case _            => false
+    }
+
     // an error's message, which can hold what the server sent, or the error itself when it has none
     private def messageOf(error: Throwable): String = RESPFormat.printable(Option(error.getLocalizedMessage).getOrElse(error.toString))
 
@@ -292,8 +297,9 @@ object CLI extends IOApp { self =>
                 } yield maybeProtocolResponse -> (endTime - startTime)
               }
               .evalMap {
-                // the server refusing the password or the database would refuse every command, so the prompt stops
-                case (Left(refused: ConnectionSetupRefused), _) =>
+                // the server refusing the password or the database would refuse every command, so the prompt stops; one refusing for
+                // now, as with too many clients, is shown like any other error, and the client connects again
+                case (Left(refused @ ConnectionSetupRefused(_, reason)), _) if !forNow(reason) =>
                   Stream
                     .emit(s"ERROR ${messageOf(refused)}$LF")
                     .through(text.utf8.encode)

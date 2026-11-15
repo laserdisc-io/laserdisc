@@ -196,6 +196,17 @@ final class CLISpec extends CatsEffectSuite {
     }
   }
 
+  test("a server with too many clients is shown as an error and the prompt carries on, as it refuses only for now") {
+    val full = FakeRedisServer((n, commands) => commands.take(1).as(if (n == 1) "-ERR max number of clients reached\r\n" else "+PONG\r\n"))
+    full.use { port =>
+      session(List("127.0.0.1", port.value.toString), "PING", "PING").map { case (code, screen) =>
+        assertEquals(code, ExitCode.Success)
+        assert(screen.contains("max number of clients reached"), screen)
+        assert(screen.endsWith(s"127.0.0.1:${port.value}> "), screen)
+      }
+    }
+  }
+
   test("shows the reply to each command typed, formatted, then prompts again") {
     replying.use { port =>
       session(List("127.0.0.1", port.value.toString), "PING", "GET a", "KEYS *").map { case (code, screen) =>

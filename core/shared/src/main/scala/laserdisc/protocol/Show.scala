@@ -24,6 +24,9 @@ package protocol
 
 import scala.annotation.implicitNotFound
 
+/** How an `A` is written as the text a command sends, such as a value to store. Build one with the functions of its companion, or from
+  * another with `contramap`
+  */
 @implicitNotFound(
   """Implicit not found Show[${A}].
 
@@ -35,12 +38,14 @@ implicit final val myShow: Show[${A}] = Show.instance { (a: ${A}) =>
 
 You may also be able to build it from an existing Show with contramap.
 """
-) sealed trait Show[A] {
+)
+sealed trait Show[A] {
   def show(a: A): String
 
   // what's sent for a: its text, except for a Bulk, and what's shown with a Show built from Show[Bulk], which are sent as their bytes
   private[protocol] def bulk(a: A): Bulk = Bulk(show(a))
 
+  /** Writes a `B` by turning it into the `A` this writes, as `Show[Long].contramap(_.value)` for a type holding a `Long` */
   final def contramap[B](f: B => A): Show[B] = new Show.Contramapped(this, f)
 }
 
@@ -62,8 +67,13 @@ object Show extends ShowInstances {
 
   private[protocol] final val bulkShow: Show[Bulk] = new OfBulk
 
-  final def const[A](s: =>String): Show[A]       = new Of(_ => s)
-  final def unsafeFromToString[A]: Show[A]       = new Of(_.toString)
+  /** Writes every value as `s` */
+  final def const[A](s: =>String): Show[A] = new Of(_ => s)
+
+  /** Writes a value as its `toString`, which suits only a type whose `toString` is exactly the text to send */
+  final def unsafeFromToString[A]: Show[A] = new Of(_.toString)
+
+  /** Writes a value as the text `f` gives */
   final def instance[A](f: A => String): Show[A] = new Of(f)
 }
 

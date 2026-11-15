@@ -24,6 +24,9 @@ package protocol
 
 import scala.annotation.implicitNotFound
 
+/** How a reply of the kind `A`, such as a [[Bulk]], is read as a `B`, or fails to be with a [[RESPDecErr]] saying why. Build one with the
+  * functions of its companion, or from another with `map`, `contramap` or `flatMap`
+  */
 @implicitNotFound(
   """Implicit not found Read[${A}, ${B}].
 
@@ -35,14 +38,18 @@ implicit final val myRead: Read[${A}, ${B}] = Read.instance { (a: ${A}) =>
 
 You may also be able to build it from an existing Read with map, contramap or flatMap.
 """
-) sealed trait Read[A, B] { self =>
+)
+sealed trait Read[A, B] { self =>
 
   def read(a: A): Either[RESPDecErr, B]
 
+  /** Reads a `B` as this does, then turns it into a `C` */
   final def map[C](f: B => C): Read[A, C] = Read.instance(read(_).map(f))
 
+  /** Reads from a `C` that's turned into the `A` this reads */
   final def contramap[C](f: C => A): Read[C, B] = Read.instance(c => read(f(c)))
 
+  /** Reads a `B` as this does, then reads the same reply again with the `Read` that `B` chooses */
   final def flatMap[C](f: B => Read[A, C]): Read[A, C] = Read.instance(a => read(a).flatMap(f(_).read(a)))
 
   private final val _extract: Any => Read.Extract[Any]         = new Read.Extract[Any](_)
@@ -63,26 +70,32 @@ object Read extends ReadInstances0 {
     override final def read(a: A): Either[RESPDecErr, B] = f(a)
   }
 
+  /** Reads with `f`, which gives a `Left` with a [[RESPDecErr]] when the reply can't be read */
   @inline final def instance[A, B](f: A => Either[RESPDecErr, B]): Read[A, B] = new Of(f)
 
+  /** Reads with `f`, which reads every reply */
   @inline final def infallible[A, B](f: A => B): Read[A, B] = new Of(a => Right(f(a)))
 
+  /** Reads every reply as `b` */
   @inline final def const[A, B](b: B): Read[A, B] = Read.infallible(_ => b)
 
+  /** Reads the replies `pf` takes, and fails on any other, saying `expectation` was what it expected */
   @inline final def instancePF[A, B](expectation: String)(pf: PartialFunction[A, B]): Read[A, B] =
     new Of(a =>
       if (pf.isDefinedAt(a)) Right(pf(a)) else Left(RESPDecErr(s"Read Error: expected $expectation but was ${RESPDecErr.shown(a)}"))
     )
 
-  // None when the condition holds, otherwise the value read, failing if it can't be
+  /** `None` when `cond` holds, otherwise the value read, as `Some` */
   @inline final def lift2OptionWhen[A, B](cond: A => Boolean)(
       implicit R: Read[A, B]
   ): Read[A, Option[B]] =
     Read.instance(a => if (cond(a)) Right(None) else R.read(a).map(Some(_)))
 
+  /** `None` for -1, which some commands reply when there's nothing, otherwise the number read */
   @inline final def numMinusOneIsNone[A: Read[Num, _]]: Read[Num, Option[A]] =
     lift2OptionWhen(_.value == -1L)
 
+  /** `None` for 0, otherwise the number read */
   @inline final def numZeroIsNone[A: Read[Num, _]]: Read[Num, Option[A]] =
     lift2OptionWhen(_.value == 0L)
 }

@@ -117,7 +117,7 @@ final class CLISpec extends CatsEffectSuite {
       List("-n")                 -> "Missing value for option: -n",
       List("--user", "me")       -> "please supply the password with -a or REDISCLI_AUTH as well as --user",
       List("-a", "--user", "me") -> "Unexpected argument: me",
-      List("-a", "-x")           -> "please supply a password after -a, not -x",
+      List("-a", "-x")           -> "please supply a password after -a, which can't start with -",
       List("--user", "-a", "x")  -> "Unexpected argument: x",
       List("-n", "two")          -> "Invalid integer: two",
       List("-n", "-1")           -> "-1 isn't a database number from 0",
@@ -163,6 +163,15 @@ final class CLISpec extends CatsEffectSuite {
           assert(screen.endsWith("refused to set up the connection: WRONGPASS invalid username-password pair\n"), screen)
           sent.get.map(names => assert(!names.contains("PING") && !names.contains("GET"), names))
         }
+      }
+    }
+  }
+
+  test("shows a refusal's control characters as \\xHH, as for a reply") {
+    val refusing = FakeRedisServer((_, commands) => commands.as("-WRONGPASS \u001b[2J\r\n"))
+    refusing.use { port =>
+      session(List("127.0.0.1", port.value.toString, "-a", "wrong"), "PING").map { case (_, screen) =>
+        assert(screen.endsWith("refused to set up the connection: WRONGPASS \\x1b[2J\n"), screen)
       }
     }
   }

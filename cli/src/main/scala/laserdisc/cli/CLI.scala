@@ -115,12 +115,16 @@ object CLI extends IOApp { self =>
       else None
     }
 
+    // an error's message, which can hold what the server sent, or the error itself when it has none
+    private def messageOf(error: Throwable): String = RESPFormat.printable(Option(error.getLocalizedMessage).getOrElse(error.toString))
+
     // what the prompt connects to and how: each connection logs in and selects the database first, so a new one does too
     final case class Options(host: Host, port: Port, credentials: Option[Credentials], database: Option[DbIndex])
 
-    // what comes after -a or --user can't start with -, as it's more likely the next option than a password or a user
+    // what comes after -a or --user can't start with -, as it's more likely the next option than a password or a user. What came isn't
+    // shown, as it may be the password
     private def notAnOption(what: String)(value: String): ValidatedNel[String, String] =
-      if (value.startsWith("-")) s"please supply $what, not $value".invalidNel else value.validNel
+      if (value.startsWith("-")) s"please supply $what, which can't start with -".invalidNel else value.validNel
 
     private def key(what: String)(value: String): ValidatedNel[String, Key] =
       Key.from(value).leftMap(_ => s"please supply $what").toValidatedNel
@@ -231,12 +235,18 @@ object CLI extends IOApp { self =>
               .evalMap {
                 // the server refusing the password or the database would refuse every command, so the prompt stops
                 case (Left(refused: ConnectionSetupRefused), _) =>
-                  Stream.emit(s"ERROR ${refused.getLocalizedMessage}$LF").through(text.utf8.encode).through(out).compile.drain.as(true)
+                  Stream
+                    .emit(s"ERROR ${messageOf(refused)}$LF")
+                    .through(text.utf8.encode)
+                    .through(out)
+                    .compile
+                    .drain
+                    .as(true)
                 case (reply, nanos) =>
                   val ms    = nanos.toDouble / 1000000d
                   val shown = reply match {
                     case Left(err: Err) => RESPFormat.format(err)
-                    case Left(e)        => s"ERROR ${e.getLocalizedMessage}"
+                    case Left(e)        => s"ERROR ${messageOf(e)}"
                     case Right(resp)    => RESPFormat.format(resp)
                   }
                   prompt(f"<<< $shown - [$ms%.2fms]$LF").as(false)

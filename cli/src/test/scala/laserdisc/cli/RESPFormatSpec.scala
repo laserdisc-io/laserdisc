@@ -41,6 +41,13 @@ final class RESPFormatSpec extends FunSuite {
     assertEquals(RESPFormat.format(Bulk("a\u0007\bz")), "\"a\\a\\bz\"")
   }
 
+  test("shows the control characters of a status or an error as \\xHH, so that a server can't drive the terminal with them") {
+    assertEquals(RESPFormat.format(Str("a\u001b[2Jb\u007f")), "a\\x1b[2Jb\\x7f")
+    assertEquals(RESPFormat.format(Err("ERR \u001b]0;title\u0007\u009b")), "(error) ERR \\x1b]0;title\\x07\\x9b")
+    assertEquals(RESPFormat.format(Str("café €")), "café €")
+    assertEquals(RESPFormat.printable("refused: \u001b[31m"), "refused: \\x1b[31m")
+  }
+
   test("formats (nested) arrays as numbered, aligned lines") {
     val nested = Arr(Bulk("a"), Arr(Num(1L), NullBulk))
     assertEquals(RESPFormat.format(nested), List("1) \"a\"", "2) 1) (integer) 1", "   2) (nil)").mkString("\n"))

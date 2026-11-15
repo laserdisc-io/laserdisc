@@ -27,10 +27,10 @@ private[cli] object RESPFormat {
   final def format(resp: RESP): String = lines(resp).mkString(LF)
 
   private final def lines(resp: RESP): List[String] = resp match {
-    case Str(value)        => value :: Nil
+    case Str(value)        => printable(value) :: Nil
     case bulk: Bulk        => quote(bulk.bytes) :: Nil
     case Num(value)        => s"(integer) $value" :: Nil
-    case Err(message)      => s"(error) $message" :: Nil
+    case Err(message)      => s"(error) ${printable(message)}" :: Nil
     case NullBulk | NilArr => "(nil)" :: Nil
     case Arr(Nil)          => "(empty array)" :: Nil
     case Arr(elements)     =>
@@ -43,6 +43,13 @@ private[cli] object RESPFormat {
         }
       }
   }
+
+  // text from the server with its control characters as \xHH, so that it can't move the cursor, clear the screen or change the terminal
+  final def printable(text: String): String =
+    text.flatMap {
+      case c if c < ' ' || (c >= '\u007f' && c <= '\u009f') => f"\\x${c.toInt}%02x"
+      case c                                                => c.toString
+    }
 
   // as redis-cli shows a value: byte by byte, with the bytes that aren't printable ASCII as \xHH
   private final def quote(bytes: scodec.bits.ByteVector): String =

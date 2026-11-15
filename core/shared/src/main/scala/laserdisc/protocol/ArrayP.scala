@@ -140,8 +140,9 @@ object ArrayP {
   }
 }
 
-/** The arrays of Redis 8.8: values at whole number indexes, with gaps. Indexes above the largest `Long` aren't supported, though a server
-  * takes them, and replies with one fail to read
+/** The arrays of Redis 8.8: values at whole number indexes, with gaps. The highest index to use is one below the largest `Long`: a server
+  * takes higher ones, but replies holding one fail to read, and so do ARLEN and ARINFO's length, the highest index plus one, once an
+  * element is set at the largest `Long` itself
   */
 trait ArrayP extends Features {
   import ArrayP.{Bound, Full, FullInfo, GrepOptions, Info, Op, Predicate, Rev}

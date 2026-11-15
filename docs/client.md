@@ -178,7 +178,8 @@ have, pass `Tls(context, checkServerName = false)`. The certificate still has to
 be signed by one you trust, but any server with such a certificate could then
 pose as yours.
 
-On Scala Native, TLS needs s2n-tls installed: see [Platform notes](platform-notes.md).
+On Scala Native, TLS needs s2n-tls installed, and a certificate that fails a check
+takes 10 to 30 seconds to fail: see [Platform notes](platform-notes.md).
 
 ## Several servers
 

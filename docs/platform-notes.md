@@ -28,6 +28,11 @@ On Scala Native, connecting with TLS needs [s2n-tls](https://github.com/aws/s2n-
 installed where your program is built and where it runs, as fs2 uses it for
 TLS. Without TLS, you don't need it.
 
+On Scala Native, a connection whose server certificate fails a check takes 10
+to 30 seconds to fail, as s2n-tls waits that long on purpose before saying so.
+Commands sent meanwhile wait, and may time out, and closing the client waits
+for that time to pass.
+
 On Node.js 26, the connection can stop receiving replies when several arrive
 at once. The commands waiting for those replies time out, and the client then
 reconnects on its own. Node.js 25 and earlier aren't affected.

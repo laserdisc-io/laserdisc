@@ -282,6 +282,10 @@ import laserdisc.fs2.*
 val client: Resource[IO, RedisClient[IO]] = RedisClient[IO].to("localhost", 6379, connectTimeout = 2.seconds)
 ```
 
+Each connection also asks the system for an 8 MiB buffer to hold replies until
+they're read. Pass `receiveBufferSizeBytes` to choose another size. On
+Scala.js, Node.js chooses the size, and this setting is ignored.
+
 ## Loops
 
 Some commands are meant to be sent again and again. SCAN replies with a cursor

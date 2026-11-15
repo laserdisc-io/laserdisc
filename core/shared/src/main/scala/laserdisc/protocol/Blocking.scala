@@ -72,6 +72,11 @@ private[laserdisc] object Blocking {
       // after the source, destination and both sides, before the amount and order
       case "BLMOVEM" if words.size > 4          => Some(4 -> true)
       case "WAIT" | "WAITAOF" if words.nonEmpty => Some(words.size - 1 -> false)
+      // Dragonfly's takeover waits up to its timeout for the primary, and Valkey's CLUSTER SETSLOT up to its TIMEOUT for the replicas
+      case "REPLTAKEOVER" if words.nonEmpty                                    => Some(0 -> true)
+      case "CLUSTER" if words.headOption.exists(_.equalsIgnoreCase("SETSLOT")) =>
+        val timeout = words.indexWhere(_.equalsIgnoreCase("TIMEOUT"))
+        if (timeout >= 0 && timeout + 1 < words.size) Some(timeout + 1 -> false) else None
       // the options come before STREAMS, after XREADGROUP's group and consumer, whose names could be BLOCK
       case read @ ("XREAD" | "XREADGROUP") =>
         val skipped = if (read == "XREADGROUP") 3 else 0

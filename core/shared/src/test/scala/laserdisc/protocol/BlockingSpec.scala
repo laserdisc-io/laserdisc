@@ -32,6 +32,16 @@ final class BlockingSpec extends BaseSpec {
   // as typed at the CLI
   private def typed(words: String*): Protocol.Single[RESP] = Protocol(words.head, words.tail.toList).using(RESPRead.raw)
 
+  test("REPLTAKEOVER and CLUSTER SETSLOT with TIMEOUT get their wait on top of the timeout") {
+    assertEquals(Blocking.waitOf(laserdisc.dragonfly_2_0.repltakeover(PosInt(60))), 60.seconds)
+    assertEquals(Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1), NonNegLong(30000L))), 30.seconds)
+    assertEquals(
+      Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1), ClusterP.SetSlotMode.node, NodeId.unsafeFrom("a" * 40), NonNegLong(2500L))),
+      2500.millis
+    )
+    assertEquals(Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1))), Duration.Zero)
+  }
+
   test("A blocking command's wait is read from what's sent, in seconds or milliseconds") {
     assertEquals(Blocking.waitOf(b.blpop[String](Key("k"), BlockingSeconds.unsafeFrom(1.5d))), 1500.millis)
     assertEquals(Blocking.waitOf(b.brpoplpush[String](Key("a"), Key("b"), BlockingSeconds.unsafeFrom(2d))), 2.seconds)

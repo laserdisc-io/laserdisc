@@ -77,6 +77,17 @@ final class RESPParamWriteSpec extends BaseSpec {
     assertEquals(RESPParamWrite[(String, Int, String)].write(("a", 1, "c")), Seq[GenBulk](Bulk("a"), Bulk("1"), Bulk("c")))
   }
 
+  test("A command's parameters can't hold a nil, which would be a protocol error closing the connection") {
+    assert(compileErrors("RESPParamWrite[Seq[GenBulk]]").nonEmpty)
+    assert(compileErrors("Protocol(\"SET\", Seq[GenBulk](Bulk(\"k\"), NullBulk)).as[Str, OK]").nonEmpty)
+    assert(compileErrors("RESPParamWrite[NullBulk.type]").nonEmpty)
+    assertEquals(RESPParamWrite[Seq[Bulk]].write(Seq(Bulk("a"))), Seq(Bulk("a")))
+  }
+
+  test("A transaction takes at least one command") {
+    assert(compileErrors("Protocol.multi(EmptyTuple)").nonEmpty)
+  }
+
   test("A RESPParamWrite can only be built with RESPParamWrite's own functions, not written by hand") {
     assertCompileErrorsContain(
       compileErrors("new RESPParamWrite[Int] { override def write(a: Int): Seq[GenBulk] = Seq(Bulk(a.toString)) }"),

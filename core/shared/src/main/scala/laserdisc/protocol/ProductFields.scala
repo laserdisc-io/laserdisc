@@ -53,20 +53,20 @@ sealed trait FieldReadLowPriority {
   * fields
   */
 sealed trait FieldWrite[A] {
-  def write(name: String, a: A): Seq[GenBulk]
+  def write(name: String, a: A): Seq[Bulk]
 }
 
 object FieldWrite extends FieldWriteLowPriority {
   implicit final def optionFieldWrite[A: Show]: FieldWrite[Option[A]] = new FieldWrite[Option[A]] {
-    override final def write(name: String, a: Option[A]): Seq[GenBulk] = a.fold(Seq.empty[GenBulk])(FieldWrite.write(name, _))
+    override final def write(name: String, a: Option[A]): Seq[Bulk] = a.fold(Seq.empty[Bulk])(FieldWrite.write(name, _))
   }
 
-  private[protocol] final def write[A: Show](name: String, a: A): Seq[GenBulk] = Seq(Bulk(name), Value.fromShow(a).bulk)
+  private[protocol] final def write[A: Show](name: String, a: A): Seq[Bulk] = Seq(Bulk(name), Value.fromShow(a).bulk)
 }
 
 sealed trait FieldWriteLowPriority {
   implicit final def fieldWrite[A: Show]: FieldWrite[A] = new FieldWrite[A] {
-    override final def write(name: String, a: A): Seq[GenBulk] = FieldWrite.write(name, a)
+    override final def write(name: String, a: A): Seq[Bulk] = FieldWrite.write(name, a)
   }
 }
 

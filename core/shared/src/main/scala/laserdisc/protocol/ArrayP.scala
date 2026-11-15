@@ -49,9 +49,9 @@ object ArrayP {
   }
 
   /** What ARGREP looks for: a value that's exactly this, contains this, or matches a glob pattern or a regular expression */
-  sealed trait Predicate { private[protocol] def params: Seq[GenBulk] }
+  sealed trait Predicate { private[protocol] def params: Seq[Bulk] }
   object Predicate       {
-    private final class Of(override private[protocol] final val params: Seq[GenBulk]) extends Predicate
+    private final class Of(override private[protocol] final val params: Seq[Bulk]) extends Predicate
 
     implicit final val predicateRESPParamWrite: RESPParamWrite[Predicate] = RESPParamWrite.instance(_.params)
 
@@ -83,7 +83,7 @@ object ArrayP {
   object Op {
     final class Number private[ArrayP] (private[protocol] val param: String)
     final class Bits private[ArrayP] (private[protocol] val param: String)
-    final class Count private[ArrayP] (private[protocol] val params: Seq[GenBulk])
+    final class Count private[ArrayP] (private[protocol] val params: Seq[Bulk])
 
     final val sum: Number                  = new Number("SUM")
     final val min: Number                  = new Number("MIN")

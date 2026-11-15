@@ -33,7 +33,7 @@ Normally you would not need to define one manually, as one will be derived for y
 - ${A} is a Tuple whose elements all have a RESPParamWrite instance defined
 """
 ) sealed trait RESPParamWrite[A] {
-  def write(a: A): Seq[GenBulk]
+  def write(a: A): Seq[Bulk]
 
   final def contramap[B](f: B => A): RESPParamWrite[B] = RESPParamWrite.instance(b => write(f(b)))
 }
@@ -42,20 +42,21 @@ object RESPParamWrite extends RESPParamWriteInstances {
   @inline final def apply[A](implicit instance: RESPParamWrite[A]): RESPParamWrite[A] = instance
 
   // the only RESPParamWrite there is: every one is built with the functions below
-  private final class Of[A](f: A => Seq[GenBulk]) extends RESPParamWrite[A] {
-    override final def write(a: A): Seq[GenBulk] = f(a)
+  private final class Of[A](f: A => Seq[Bulk]) extends RESPParamWrite[A] {
+    override final def write(a: A): Seq[Bulk] = f(a)
   }
 
-  final def const[A](thunk: =>Seq[GenBulk]): RESPParamWrite[A]   = new Of(_ => thunk)
-  final def instance[A](f: A => Seq[GenBulk]): RESPParamWrite[A] = new Of(f)
+  final def const[A](thunk: =>Seq[Bulk]): RESPParamWrite[A]   = new Of(_ => thunk)
+  final def instance[A](f: A => Seq[Bulk]): RESPParamWrite[A] = new Of(f)
 
   // what an option made of several values is sent as, kept in the option until a command sends it
-  private[protocol] final def params[A](a: A)(implicit A: RESPParamWrite[A]): Seq[GenBulk] = A.write(a)
+  private[protocol] final def params[A](a: A)(implicit A: RESPParamWrite[A]): Seq[Bulk] = A.write(a)
 }
 
 private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteInstances1 {
-  implicit final val bulkRESPParamWrite: RESPParamWrite[Bulk]           = RESPParamWrite.instance(a => Seq(a))
-  implicit final val paramsRESPParamWrite: RESPParamWrite[Seq[GenBulk]] = RESPParamWrite.instance(identity)
+  implicit final val bulkRESPParamWrite: RESPParamWrite[Bulk] = RESPParamWrite.instance(a => Seq(a))
+  // only Bulk, never NullBulk: no command takes a nil argument, and one in a request would be a protocol error that closes the connection
+  implicit final val paramsRESPParamWrite: RESPParamWrite[Seq[Bulk]] = RESPParamWrite.instance(identity)
   implicit final def pairRESPParamWrite[A, B](
       implicit A: RESPParamWrite[A],
       B: RESPParamWrite[B]

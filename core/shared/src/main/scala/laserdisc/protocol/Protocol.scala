@@ -42,7 +42,7 @@ object Protocol {
   /** A single Redis command */
   sealed trait Single[+A] extends Protocol[A] { self =>
     def command: String
-    def parameters: Seq[GenBulk]
+    def parameters: Seq[Bulk]
     def decode(resp: RESP): Maybe[A]
 
     final def encode: RESP = Arr(Bulk(command), parameters*)
@@ -53,7 +53,7 @@ object Protocol {
     override final def map[B](f: A => B): Single[B] =
       new Single[B] {
         override def command: String              = self.command
-        override def parameters: Seq[GenBulk]     = self.parameters
+        override def parameters: Seq[Bulk]        = self.parameters
         override def decode(resp: RESP): Maybe[B] = self.decode(resp).map(f(_))
       }
 
@@ -61,7 +61,7 @@ object Protocol {
     private[protocol] final def withParameter(index: Int, value: String): Single[A] =
       new Single[A] {
         override val command: String              = self.command
-        override val parameters: Seq[GenBulk]     = self.parameters.updated(index, Bulk(value))
+        override val parameters: Seq[Bulk]        = self.parameters.updated(index, Bulk(value))
         override def decode(resp: RESP): Maybe[A] = self.decode(resp)
       }
 
@@ -108,7 +108,7 @@ object Protocol {
     final def using[B](R: RESPRead[B]): Single[B] =
       new Single[B] {
         override final val command: String              = self.command
-        override final val parameters: Seq[GenBulk]     = RESPParamWrite[L].write(l)
+        override final val parameters: Seq[Bulk]        = RESPParamWrite[L].write(l)
         override final def decode(resp: RESP): Maybe[B] = R.read(resp)
       }
   }
@@ -146,7 +146,7 @@ object Protocol {
   /** The way to create a [[Multi]] transaction for the commands in `in`. EXEC's reply is "null" when a WATCHed key changed and nothing ran,
     * which is read as `None`, otherwise it holds one result per command.
     */
-  final def multi[In <: Tuple, Out <: Tuple](in: In)(implicit M: MultiResults.Aux[In, Out]): Multi[Option[Out]] =
+  final def multi[In <: NonEmptyTuple, Out <: Tuple](in: In)(implicit M: MultiResults.Aux[In, Out]): Multi[Option[Out]] =
     new Multi[Option[Out]] {
       override final val protocols: List[Single[Any]] = M.protocols(in)
 

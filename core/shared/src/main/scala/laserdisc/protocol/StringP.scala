@@ -169,13 +169,13 @@ object StringP {
     }
 
   /** What STRALGO LCS compares: the values at two keys, or two values given directly */
-  sealed trait StrAlgoInput  { private[protocol] def params: Seq[GenBulk] }
+  sealed trait StrAlgoInput  { private[protocol] def params: Seq[Bulk] }
   trait StrAlgoInputBuilders {
     def keys(key1: Key, key2: Key): StrAlgoInput
     def strings[A: Show](value1: A, value2: A): StrAlgoInput
   }
   private[laserdisc] object StrAlgoInput extends StrAlgoInputBuilders {
-    private final class Of(override private[protocol] final val params: Seq[GenBulk]) extends StrAlgoInput
+    private final class Of(override private[protocol] final val params: Seq[Bulk]) extends StrAlgoInput
 
     def keys(key1: Key, key2: Key): StrAlgoInput             = new Of(RESPParamWrite.params("KEYS" *: key1 *: key2 *: EmptyTuple))
     def strings[A: Show](value1: A, value2: A): StrAlgoInput =
@@ -240,19 +240,19 @@ object StringP {
   }
 
   /** IFEQ, which Valkey and Redis added separately from IFNE, IFDEQ and IFDNE */
-  final class IfEq private (private[protocol] val params: Seq[GenBulk])
+  final class IfEq private (private[protocol] val params: Seq[Bulk])
   private[laserdisc] object IfEq {
     def apply[A: Show](a: A): IfEq = new IfEq(RESPParamWrite.params("IFEQ" *: a *: EmptyTuple))
   }
 
-  sealed trait Compare  { private[protocol] def params: Seq[GenBulk] }
+  sealed trait Compare  { private[protocol] def params: Seq[Bulk] }
   trait CompareBuilders {
     def ifNe[A: Show](a: A): Compare
     def ifDeq(digest: String): Compare
     def ifDne(digest: String): Compare
   }
   private[laserdisc] object Compare extends CompareBuilders {
-    private final class Of(override private[protocol] final val params: Seq[GenBulk]) extends Compare
+    private final class Of(override private[protocol] final val params: Seq[Bulk]) extends Compare
 
     def ifNe[A: Show](a: A): Compare   = new Of(RESPParamWrite.params("IFNE" *: a *: EmptyTuple))
     def ifDeq(digest: String): Compare = new Of(RESPParamWrite.params("IFDEQ" *: digest *: EmptyTuple))

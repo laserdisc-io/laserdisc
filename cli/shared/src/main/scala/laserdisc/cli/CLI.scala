@@ -199,6 +199,8 @@ object CLI extends IOApp { self =>
         }
       )
 
+    private final val Certificate = "-----BEGIN CERTIFICATE-----"
+
     // the authorities' file is read once, before connecting. Without checks, the name on the certificate isn't checked either
     private def tlsOf(choice: TlsWith): Resource[IO, Tls[IO]] =
       choice match {
@@ -207,6 +209,8 @@ object CLI extends IOApp { self =>
         case TlsWith.Authorities(file) =>
           Resource
             .eval(Files[IO].readUtf8(Path(file)).compile.string)
+            // checked here, as each platform otherwise finds out at a different time: Node.js only once it connects
+            .evalTap(pem => IO.raiseError(new IllegalArgumentException("there's no certificate in it")).unlessA(pem.contains(Certificate)))
             .flatMap(TrustedAuthorities.context)
             .map(Tls(_))
             .adaptError { case e => new Exception(s"can't read the certificate authorities in $file: ${messageOf(e)}", e) }

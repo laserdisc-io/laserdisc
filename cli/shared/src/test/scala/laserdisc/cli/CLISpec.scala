@@ -117,6 +117,16 @@ final class CLISpec extends CatsEffectSuite {
     }
   }
 
+  test("a file of authorities with no certificate in it says so, and exits with an error, on every platform") {
+    _root_.fs2.io.file.Files[IO].tempFile.use { file =>
+      Stream.emit("not a certificate").through(_root_.fs2.io.file.Files[IO].writeUtf8(file)).compile.drain >>
+        session(List("127.0.0.1", "1", "--tls", "--cacert", file.toString), "PING").map { case (code, screen) =>
+          assertEquals(code, ExitCode.Error)
+          assert(screen.contains(s"ERROR can't read the certificate authorities in $file: there's no certificate in it"), screen)
+        }
+    }
+  }
+
   test("takes the password from REDISCLI_AUTH, unless it's given with -a") {
     import laserdisc.auto.*
     def credentials(env: Map[String, String], options: String*) =

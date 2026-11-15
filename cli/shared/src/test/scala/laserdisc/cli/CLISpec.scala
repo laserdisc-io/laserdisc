@@ -161,7 +161,7 @@ final class CLISpec extends CatsEffectSuite {
         session(List("127.0.0.1", port.value.toString, "--user", "me", "-a", "secret", "-n", "2"), "PING").flatMap { case (code, screen) =>
           val prompt = s"127.0.0.1:${port.value}[2]> "
           assertEquals(code, ExitCode.Success)
-          assertEquals(afterLogo(screen), s"$prompt<<< OK - []\n$prompt")
+          assertEquals(afterLogo(screen), s"$prompt<<< OK - []\n$prompt\n")
           sent.get.assertEquals(List(List("AUTH", "me", "secret"), List("SELECT", "2"), List("PING")))
         }
       }
@@ -203,7 +203,7 @@ final class CLISpec extends CatsEffectSuite {
       session(List("127.0.0.1", port.value.toString), "PING", "PING").map { case (code, screen) =>
         assertEquals(code, ExitCode.Success)
         assert(screen.contains("max number of clients reached"), screen)
-        assert(screen.endsWith(s"127.0.0.1:${port.value}> "), screen)
+        assert(screen.endsWith(s"127.0.0.1:${port.value}> \n"), screen)
       }
     }
   }
@@ -235,7 +235,7 @@ final class CLISpec extends CatsEffectSuite {
              |$prompt<<< "value" - []
              |$prompt<<< 1) "a"
              |    2) "b" - []
-             |$prompt""".stripMargin
+             |$prompt\n""".stripMargin
         )
       }
     }
@@ -246,6 +246,14 @@ final class CLISpec extends CatsEffectSuite {
       session(List("127.0.0.1", port.value.toString), "INFO").map { case (_, screen) =>
         assert(screen.contains("<<< # Server\n"), screen)
         assert(screen.contains("v:1 - []"), screen)
+      }
+    }
+  }
+
+  test("ends the last prompt's line at the end of input, so that the shell's prompt starts on a line of its own") {
+    replying.use { port =>
+      session(List("127.0.0.1", port.value.toString), "PING").map { case (_, screen) =>
+        assert(screen.endsWith(s"127.0.0.1:${port.value}> \n"), screen)
       }
     }
   }
@@ -264,7 +272,7 @@ final class CLISpec extends CatsEffectSuite {
       session(List("127.0.0.1", port.value.toString), "", "SET \"unbalanced").map { case (code, screen) =>
         val prompt = s"127.0.0.1:${port.value}> "
         assertEquals(code, ExitCode.Success)
-        assertEquals(afterLogo(screen), s"$prompt$prompt(error) Invalid argument(s)\n$prompt")
+        assertEquals(afterLogo(screen), s"$prompt$prompt(error) Invalid argument(s)\n$prompt\n")
       }
     }
   }
@@ -308,7 +316,7 @@ final class CLISpec extends CatsEffectSuite {
           assertEquals(
             afterLogo(screen),
             refused.map { case (_, message) => s"$prompt(error) $message\n" }.mkString +
-              allowed.map(line => s"$prompt<<< ${line.split(' ').head} - []\n").mkString + prompt
+              allowed.map(line => s"$prompt<<< ${line.split(' ').head} - []\n").mkString + prompt + "\n"
           )
           sent.get.assertEquals(allowed.map(_.split(' ').head))
         }
@@ -336,7 +344,7 @@ final class CLISpec extends CatsEffectSuite {
                |    2) "v" - []
                |$prompt<<< 1) "b"
                |    2) "v" - []
-               |$prompt""".stripMargin
+               |$prompt\n""".stripMargin
           )
           sent.get.assertEquals(List(List("BLPOP", "a", "0"), List("BLPOP", "b", "2")))
         }
@@ -362,7 +370,7 @@ final class CLISpec extends CatsEffectSuite {
       sessionWithin(500.millis, List("127.0.0.1", port.value.toString), "GET a").map { case (code, screen) =>
         val prompt = s"127.0.0.1:${port.value}> "
         assertEquals(code, ExitCode.Success)
-        assertEquals(afterLogo(screen), s"$prompt<<< ERROR The request Protocol(GET) timed-out - []\n$prompt")
+        assertEquals(afterLogo(screen), s"$prompt<<< ERROR The request Protocol(GET) timed-out - []\n$prompt\n")
       }
     }
   }

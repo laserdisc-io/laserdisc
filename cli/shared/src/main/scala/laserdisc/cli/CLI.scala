@@ -324,6 +324,9 @@ object CLI extends IOApp { self =>
               .exists(identity)
               .compile
               .lastOrError
+              // at the end of input the last prompt's line is ended, so that what comes next starts on a line of its own; a refusal
+              // ended its own
+              .flatTap(refused => Stream.emit(LF).through(text.utf8.encode).through(out).compile.drain.unlessA(refused))
               .map(refused => if (refused) ExitCode.Error else ExitCode.Success)
         }
   }

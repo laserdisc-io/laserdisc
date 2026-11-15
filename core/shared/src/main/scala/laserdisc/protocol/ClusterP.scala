@@ -48,7 +48,7 @@ object ClusterP {
     def maybeMaster: Option[NodeId]
     def ping: NonNegLong
     def pong: NonNegLong
-    def configEpoch: NonNegInt
+    def configEpoch: NonNegLong
     def link: LinkState
     def slots: Seq[SlotType]
   }
@@ -65,7 +65,7 @@ object ClusterP {
       maybeMaster: Option[NodeId],
       ping: NonNegLong,
       pong: NonNegLong,
-      configEpoch: NonNegInt,
+      configEpoch: NonNegLong,
       link: LinkState,
       slots: Seq[SlotType]
   ) extends Node6_2
@@ -76,7 +76,7 @@ object ClusterP {
       maybeMaster: Option[NodeId],
       ping: NonNegLong,
       pong: NonNegLong,
-      configEpoch: NonNegInt,
+      configEpoch: NonNegLong,
       link: LinkState,
       slots: Seq[SlotType]
   ) extends Node7_0
@@ -170,7 +170,7 @@ object ClusterP {
       val errorS = "Read[String, Node], Error decoding a cluster Node. Error was: "
       Read.instance(_.split(SPACE_CH).toList match {
         case NodeId(id) :: A(Right(a)) :: Fs(Right(fs)) :: MM(Right(mm)) :: ToLong(NonNegLong(ps)) :: ToLong(NonNegLong(pr)) ::
-            ToInt(NonNegInt(ce)) :: L(Right(l)) :: Ss(Right(ss)) =>
+            ToLong(NonNegLong(ce)) :: L(Right(l)) :: Ss(Right(ss)) =>
           Right(NodeOf7_0(id, a, fs, mm, ps, pr, ce, l, ss))
         case _ :: A(Left(e)) :: _ :: _ :: _ :: _ :: _ :: _ :: _  => Left(RESPDecErr(s"$errorS $e"))
         case _ :: _ :: Fs(Left(e)) :: _ :: _ :: _ :: _ :: _ :: _ => Left(RESPDecErr(s"$errorS $e"))
@@ -538,7 +538,7 @@ trait ClusterBaseP extends ClusterCoreP {
 
   final val saveconfig: Single[OK] = Protocol("CLUSTER", "SAVECONFIG").as[Str, OK]
 
-  final def setconfigepoch(configEpoch: NonNegInt): Single[OK] =
+  final def setconfigepoch(configEpoch: NonNegLong): Single[OK] =
     Protocol("CLUSTER", "SET-CONFIG-EPOCH" *: configEpoch *: EmptyTuple).as[Str, OK]
 
   final def setslot(slot: Slot): Single[OK] = Protocol("CLUSTER", "SETSLOT" *: slot *: "STABLE" *: EmptyTuple).as[Str, OK]

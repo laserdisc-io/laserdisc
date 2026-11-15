@@ -38,7 +38,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
         maybeMaster: Option[NodeId],
         ping: NonNegLong,
         pong: NonNegLong,
-        configEpoch: NonNegInt,
+        configEpoch: NonNegLong,
         link: ClusterLinkState,
         slots: Seq[ClusterP.SlotType]
     ): ClusterP.Node7_0              = ClusterP.NodeOf7_0(id, address, flags, maybeMaster, ping, pong, configEpoch, link, slots)
@@ -105,7 +105,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   }
 
   private type RawNode =
-    (String, Either[EmptyString, Host], Port, Option[Port], Seq[String], String, Long, Long, Int, String, Seq[String])
+    (String, Either[EmptyString, Host], Port, Option[Port], Seq[String], String, Long, Long, Long, String, Seq[String])
   private type RawNodes = List[RawNode]
   private val rawNodeToString: RawNode => String = {
     case (nid, h, p, None, fs, mnid, ps, pr, ce, l, ss) =>
@@ -140,7 +140,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       mmnid <- Gen.oneOf(const("-"), nodeIdGen)
       ps    <- nonNegLongGen
       pr    <- nonNegLongGen
-      ce    <- nonNegIntGen
+      ce    <- nonNegLongGen
       l     <- Gen.oneOf("connected", "disconnected")
       ss    <- choose(1, 20).flatMap(listOfN(_, slotType))
     } yield (nid, h, p, mcp, fs, mmnid, ps, pr, ce, l, ss)
@@ -421,8 +421,13 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     assertEquals(protocol.decode(Str(OK.value)), OK)
   }
 
+  test("The Cluster protocol using nodes reads a config epoch above 2^31, as the server keeps a 64-bit one") {
+    val line = "0ca04a0a36e401b77e45584f8c44d7543eb9cc68 127.0.0.1:6379@16379 myself,master - 0 0 3000000000 connected"
+    assertEquals(nodes.decode(Bulk(line)).map(_.nodes.map(_.configEpoch.value)), Seq(3000000000L))
+  }
+
   property("The Cluster protocol using setconfigepoch roundtrips successfully given a config epoch") {
-    forAll { (nni: NonNegInt) =>
+    forAll { (nni: NonNegLong) =>
       val protocol = setconfigepoch(nni)
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SET-CONFIG-EPOCH"), Bulk(nni)))
       assertEquals(protocol.decode(Str(OK.value)), OK)

@@ -690,7 +690,7 @@ trait ClusterReplies6_2 {
   final type ClusterSlots    = ClusterP.Slots6_2
   object ClusterNode {
     def unapply(n: ClusterNode): Some[
-      (NodeId, Option[ClusterAddress], Seq[ClusterP.Flag], Option[NodeId], NonNegLong, NonNegLong, NonNegInt, ClusterP.LinkState, Seq[ClusterP.SlotType])
+      (NodeId, Option[ClusterAddress], Seq[ClusterP.Flag], Option[NodeId], NonNegLong, NonNegLong, NonNegLong, ClusterP.LinkState, Seq[ClusterP.SlotType])
     ] = Some((n.id, n.address, n.flags, n.maybeMaster, n.ping, n.pong, n.configEpoch, n.link, n.slots))
   }
   object ClusterNodes    { def unapply(n: ClusterNodes): Some[Seq[ClusterNode]] = Some(n.nodes) }
@@ -712,7 +712,7 @@ trait ClusterReplies7_0 {
   final type ClusterSlots    = ClusterP.Slots7_0
   object ClusterNode {
     def unapply(n: ClusterNode): Some[
-      (NodeId, Option[ClusterAddress], Seq[ClusterP.Flag], Option[NodeId], NonNegLong, NonNegLong, NonNegInt, ClusterP.LinkState, Seq[ClusterP.SlotType])
+      (NodeId, Option[ClusterAddress], Seq[ClusterP.Flag], Option[NodeId], NonNegLong, NonNegLong, NonNegLong, ClusterP.LinkState, Seq[ClusterP.SlotType])
     ] = Some((n.id, n.address, n.flags, n.maybeMaster, n.ping, n.pong, n.configEpoch, n.link, n.slots))
   }
   object ClusterNodes    { def unapply(n: ClusterNodes): Some[Seq[ClusterNode]] = Some(n.nodes) }

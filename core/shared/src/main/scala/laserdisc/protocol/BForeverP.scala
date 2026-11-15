@@ -29,7 +29,7 @@ trait BListForeverBaseP {
   import ListP.Side
 
   private final val timed = new BListBaseP {}
-  private final val any   = BlockingSeconds(1.0d)
+  private final val any   = BlockingSeconds.unsafeFrom(1.0d)
 
   final def blmove[A: Read[Bulk, _]](source: Key, destination: Key, from: Side, to: Side): Forever[Option[A]] =
     Forever(timed.blmove[A](source, destination, from, to, any))
@@ -44,7 +44,7 @@ trait BListMPopForeverP {
   import ListP.Side
 
   private final val timed = new BListMPopP {}
-  private final val any   = BlockingSeconds(1.0d)
+  private final val any   = BlockingSeconds.unsafeFrom(1.0d)
 
   final def blmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, side: Side): Forever[Option[KV[Seq[A]]]] =
     Forever(timed.blmpop[A](keys, side, any))
@@ -57,7 +57,7 @@ trait BListMoveManyForeverP {
   import ListP.{Amount, Order, Side}
 
   private final val timed = new BListMoveManyP {}
-  private final val any   = BlockingSeconds(1.0d)
+  private final val any   = BlockingSeconds.unsafeFrom(1.0d)
 
   /** Moves one element like `blmove`, replying with a list */
   final def blmovem[A: Read[Bulk, _]](source: Key, destination: Key, from: Side, to: Side): Forever[Option[Seq[A]]] =
@@ -75,7 +75,7 @@ trait BListMoveManyForeverP {
 
 trait BSortedSetForeverBaseP {
   private final val timed = new BSortedSetBaseP {}
-  private final val any   = BlockingSeconds(1.0d)
+  private final val any   = BlockingSeconds.unsafeFrom(1.0d)
 
   final def bzpopmax[A: Read[Bulk, _]](keys: OneOrMoreKeys): Forever[Option[KV[(A, Double)]]] = Forever(timed.bzpopmax[A](keys, any))
   final def bzpopmin[A: Read[Bulk, _]](keys: OneOrMoreKeys): Forever[Option[KV[(A, Double)]]] = Forever(timed.bzpopmin[A](keys, any))
@@ -86,7 +86,7 @@ trait BSortedSetMPopForeverP {
   import SortedSetP.Pop
 
   private final val timed = new BSortedSetMPopP {}
-  private final val any   = BlockingSeconds(1.0d)
+  private final val any   = BlockingSeconds.unsafeFrom(1.0d)
 
   final def bzmpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, pop: Pop): Forever[Option[KV[Seq[(A, Double)]]]] =
     Forever(timed.bzmpop[A](keys, pop, any))

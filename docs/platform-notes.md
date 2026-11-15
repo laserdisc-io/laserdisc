@@ -14,7 +14,9 @@ If you write your own types with constraints, like `Key`, for use with
 LaserDisc, write them with refined on Scala 2 and with Iron on Scala 3.
 
 The examples in these pages use `*` imports, such as `import laserdisc.*`. On
-Scala 2 they need `scalacOptions += "-Xsource:3"`, or `_` in place of `*`.
+Scala 2 they need `scalacOptions += "-Xsource:3"`, or `_` in place of `*`. On
+Scala 2.12, they also need `"-Ypartial-unification"`, as cats does there, for
+`stream` to know the kind of stream to give.
 
 ## Scala.js and Scala Native
 

@@ -17,7 +17,8 @@ If you only need the commands, for example to write your own client, add
 
 The examples in these pages use Scala 3's `*` imports, such as
 `import laserdisc.*`. On Scala 2, add `scalacOptions += "-Xsource:3"` to your
-build to use them as they are, or write `_` in their place.
+build to use them as they are, or write `_` in their place. On Scala 2.12,
+also add `"-Ypartial-unification"`, which cats needs there too.
 
 ## Run a server
 

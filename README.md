@@ -37,7 +37,8 @@ libraryDependencies += "io.laserdisc" %% "laserdisc-fs2" % latestVersion
 
 In a Scala.js or Scala Native project, use `%%%` instead of `%%`. On Scala 2,
 the examples need `scalacOptions += "-Xsource:3"` for their `*` imports, or
-write `_` in their place.
+write `_` in their place. On Scala 2.12, also add `"-Ypartial-unification"`,
+which cats needs there too.
 
 With Redis running on `localhost:6379`:
 

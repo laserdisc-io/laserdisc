@@ -183,6 +183,18 @@ object RedisClient {
 
     private final val setupTimeout = 30.seconds
 
+    // what a connection was set to by a command the server agreed to, which each new connection is set to again after its setup: its name,
+    // reading from a replica and tracking, each as it was last set. One set back to how a connection starts isn't kept
+    private[fs2] final case class Kept(name: Option[Protocol[RESP]], readonly: Option[Protocol[RESP]], tracking: Option[Protocol[RESP]]) {
+      def all: List[Protocol[RESP]] = name.toList ++ readonly ++ tracking
+
+      def without(protocol: Protocol[RESP]): Kept =
+        Kept(name.filterNot(_ eq protocol), readonly.filterNot(_ eq protocol), tracking.filterNot(_ eq protocol))
+    }
+    private[fs2] object Kept {
+      final val none: Kept = Kept(None, None, None)
+    }
+
     // a server loading its data, running a script, cut off from its master or with too many clients refuses for now only: the client
     // connects again, as to a server it can't reach, instead of stopping
     private final val MaxClients = "ERR max number of clients reached"
@@ -201,7 +213,7 @@ object RedisClient {
         Resource.eval(Queue.bounded[F, Batch[F]](1024)).flatMap { queue =>
           // the requests sent and waiting for their replies, those of a batch the connection went before sending, the address to try
           // next, the number of the current connection, the number of the connection a WATCH last succeeded on, until a transaction or
-          // UNWATCH ends it, and the batches to send again
+          // UNWATCH ends it, the batches to send again, what each new connection is set to again and what the current one was
           Resource
             .eval(
               (
@@ -212,10 +224,12 @@ object RedisClient {
                 Ref.of[F, Option[Long]](None),
                 Ref.of[F, Chunk[Batch[F]]](Chunk.empty),
                 Ref.of[F, Option[Throwable]](None),
-                Ref.of[F, Option[(Deferred[F, Unit], Deferred[F, Unit])]](None)
+                Ref.of[F, Option[(Deferred[F, Unit], Deferred[F, Unit])]](None),
+                Ref.of[F, Kept](Kept.none),
+                Ref.of[F, List[Protocol[RESP]]](Nil)
               ).tupled
             )
-            .flatMap { case (inFlight, unsentRequests, nextIndex, connections, watchedOn, retries, stopped, resetting) =>
+            .flatMap { case (inFlight, unsentRequests, nextIndex, connections, watchedOn, retries, stopped, resetting, kept, setAgain) =>
               val log = logSelector.log
 
               def isTransaction(request: Request[F]): Boolean  = request.protocol.isInstanceOf[Protocol.Multi[?]]
@@ -362,7 +376,37 @@ object RedisClient {
                     case _                                                             => Concurrent[F].unit
                   }
 
-              def isSetup(request: Request[F]): Boolean = setup.exists(_ eq request.protocol)
+              // what a CLIENT TRACKING, READONLY, READWRITE, CLIENT SETNAME and HELLO naming the connection set it to, once the server
+              // has agreed, which a new connection is set to again. HELLO's name is set again with CLIENT SETNAME
+              def keep(request: Request[F], replies: Vector[RESP]): F[Unit] =
+                if (isTransaction(request)) Concurrent[F].unit
+                else {
+                  val words                         = wordsOf(request.protocol)
+                  val upper                         = words.map(_.toUpperCase)
+                  def again(ws: List[String])       = Some(Protocol(ws.head, ws.tail).using(RESPRead.raw))
+                  def set(f: Kept => Kept): F[Unit] = kept.update(f)
+                  (upper.take(3), replies.headOption) match {
+                    case ("CLIENT" :: "TRACKING" :: "ON" :: Nil, Some(Str("OK")))  => set(_.copy(tracking = again(words)))
+                    case ("CLIENT" :: "TRACKING" :: "OFF" :: Nil, Some(Str("OK"))) => set(_.copy(tracking = None))
+                    case ("READONLY" :: Nil, Some(Str("OK")))                      => set(_.copy(readonly = again(words)))
+                    case ("READWRITE" :: Nil, Some(Str("OK")))                     => set(_.copy(readonly = None))
+                    case ("CLIENT" :: "SETNAME" :: _, Some(Str("OK")))             => set(_.copy(name = again(words)))
+                    case ("HELLO" :: _, Some(Arr(_)))                              =>
+                      val at = upper.indexOf("SETNAME")
+                      if (at >= 0 && at + 1 < words.size) set(_.copy(name = again(List("CLIENT", "SETNAME", words(at + 1)))))
+                      else Concurrent[F].unit
+                    case _ => Concurrent[F].unit
+                  }
+                }
+
+              def wordsOf(protocol: Protocol[?]): List[String] =
+                protocol.frames.headOption.toList.flatMap {
+                  case Arr(elements) => elements.collect { case Bulk(word) => word }
+                  case _             => Nil
+                }
+
+              def isSetup(request: Request[F]): F[Boolean] =
+                setAgain.get.map(again => setup.exists(_ eq request.protocol) || again.exists(_ eq request.protocol))
 
               // a request is answered once it has a reply for each frame it sent. Taking it off the requests in flight and answering it
               // go together, as nothing else would answer it. Says whether the reply was to the connection's setup
@@ -379,8 +423,10 @@ object RedisClient {
                     // a reader that throws, as one of the caller's own can, fails only its own request
                     case Right((request, Some(replies))) =>
                       val decoded = Either.catchNonFatal(request.protocol.decodeReplies(replies)).flatten
-                      watch(connection, request, replies) >> request.callback(decoded).as(isSetup(request))
-                    case Right((request, None)) => isSetup(request).pure[F]
+                      isSetup(request).flatTap { toSetup =>
+                        watch(connection, request, replies) >> keep(request, replies).unlessA(toSetup) >> request.callback(decoded)
+                      }
+                    case Right((request, None)) => isSetup(request)
                     case Left(error)            => Concurrent[F].raiseError[Boolean](error)
                   }
                   .uncancelable
@@ -426,19 +472,19 @@ object RedisClient {
               // each connection logs in and selects the database before anything else, and sends nothing more until the server has agreed
               // to all of it, so that no command runs as another user or in another database. Until then, the connection closing counts as
               // a failure
-              def settingUp(address: RedisAddress, usage: Ref[F, Usage]): Stream[F, RESP] =
-                if (setup.isEmpty) Stream.empty
+              def settingUp(address: RedisAddress, usage: Ref[F, Usage], again: List[Protocol[RESP]]): Stream[F, RESP] =
+                if (setup.isEmpty && again.isEmpty) Stream.empty
                 else
                   Stream.eval((Deferred[F, Unit], Ref.of[F, Int](0)).tupled).flatMap { case (ready, agreed) =>
+                    val done = agreed.updateAndGet(_ + 1).flatMap { n =>
+                      (ready.complete(()) >> usage.update(_.max(Usage.Idle))).whenA(n == setup.size + again.size)
+                    }
                     val requests = setup.map { protocol =>
                       Request[F, RESP](
                         protocol,
                         {
-                          case Right(Str("OK")) =>
-                            agreed.updateAndGet(_ + 1).flatMap { n =>
-                              (ready.complete(()) >> usage.update(_.max(Usage.Idle))).whenA(n == setup.size)
-                            }
-                          case Right(other) => stop(ConnectionSetupRefused(address, RESPDecErr(s"Expected OK but got: $other")))
+                          case Right(Str("OK")) => done
+                          case Right(other)     => stop(ConnectionSetupRefused(address, RESPDecErr(s"Expected OK but got: $other")))
                           case Left(refused: Err) if refusedForNow(refused) =>
                             Temporal[F].raiseError(ConnectionSetupRefused(address, refused))
                           case Left(refused: Err) => stop(ConnectionSetupRefused(address, refused))
@@ -447,7 +493,27 @@ object RedisClient {
                         }
                       )
                     }
-                    Stream.evalUnChunk(Temporal[F].monotonic.flatMap(now => sending(now + setupTimeout, requests))) ++
+                    // what the connection is set to again isn't kept when the server refuses it, as when the connection tracking sends
+                    // its notices to has gone: the connection carries on without it
+                    def dropped(protocol: Protocol[RESP], reason: String): F[Unit] =
+                      log.error(
+                        s"Connection to $address refused to be set again with ${wordsOf(protocol).mkString(" ")}, which isn't sent again: $reason"
+                      ) >>
+                        kept.update(_.without(protocol)) >> done
+                    val settingAgain = again.map { protocol =>
+                      Request[F, RESP](
+                        protocol,
+                        {
+                          case Right(Str("OK"))                             => done
+                          case Right(other)                                 => dropped(protocol, s"Expected OK but got: $other")
+                          case Left(refused: Err) if refusedForNow(refused) =>
+                            Temporal[F].raiseError(ConnectionSetupRefused(address, refused))
+                          case Left(refused: Err) => dropped(protocol, refused.message)
+                          case Left(_)            => Temporal[F].unit
+                        }
+                      )
+                    }
+                    Stream.evalUnChunk(Temporal[F].monotonic.flatMap(now => sending(now + setupTimeout, requests ++ settingAgain))) ++
                       Stream.exec(ready.get)
                   }
 
@@ -467,23 +533,25 @@ object RedisClient {
                     .flatMap(first => queue.tryTakeN(None).map(rest => Chunk.from(first :: rest)))
                     .flatTap(current.set)
                 })
-                val connected   = if (setup.isEmpty) Usage.Idle else Usage.SettingUp
-                val onConnected = log.info(s"Connected to server $address") >> usage.update(_.max(connected))
-                (settingUp(address, usage) ++ (again ++ queued)
-                  .evalTap(_ => usage.update(_.max(Usage.Used)))
-                  .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(giveBack(current))))
-                  .through(redisNetChannel(address, onConnected))
-                  .evalMap {
-                    // a server with too many clients says so to the first command, without running it, and closes the connection: that's
-                    // a connection refused for now, as when it says so to the setup, not one that answered
-                    case full: Err if full.message == MaxClients =>
-                      usage.get.flatMap { reached =>
-                        if (reached == Usage.Answered) receive(connection)(full).void
-                        else Temporal[F].raiseError[Unit](ConnectionSetupRefused(address, full))
-                      }
-                    case resp => receive(connection)(resp).flatMap(toSetup => usage.set(Usage.Answered).unlessA(toSetup))
-                  }
-                  .concurrently(watchdog(address)) ++ Stream.raiseError(ServerTerminatedConnection(address))
+                Stream.eval(kept.get.map(_.all).flatTap(setAgain.set)).flatMap { setTo =>
+                  val connected   = if (setup.isEmpty && setTo.isEmpty) Usage.Idle else Usage.SettingUp
+                  val onConnected = log.info(s"Connected to server $address") >> usage.update(_.max(connected))
+                  (settingUp(address, usage, setTo) ++ (again ++ queued)
+                    .evalTap(_ => usage.update(_.max(Usage.Used)))
+                    .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(giveBack(current))))
+                    .through(redisNetChannel(address, onConnected))
+                    .evalMap {
+                      // a server with too many clients says so to the first command, without running it, and closes the connection: that's
+                      // a connection refused for now, as when it says so to the setup, not one that answered
+                      case full: Err if full.message == MaxClients =>
+                        usage.get.flatMap { reached =>
+                          if (reached == Usage.Answered) receive(connection)(full).void
+                          else Temporal[F].raiseError[Unit](ConnectionSetupRefused(address, full))
+                        }
+                      case resp => receive(connection)(resp).flatMap(toSetup => usage.set(Usage.Answered).unlessA(toSetup))
+                    }
+                    .concurrently(watchdog(address))
+                } ++ Stream.raiseError(ServerTerminatedConnection(address))
               }
 
               // the batches are taken one at a time, each failed in the same step, so that stopping once the wait is over leaves the next

@@ -278,6 +278,83 @@ final class RedisClientSetupSpec extends CatsEffectSuite {
     }
   }
 
+  // a server that keeps each connection's commands, agreeing to those that set the connection up, refusing CLIENT TRACKING on the
+  // connections refuseTracking says, and closing the connection on GET bye
+  private def resetting(
+      refuseTracking: Int => Boolean = _ => false
+  ): Resource[IO, (Port, Ref[IO, Vector[(Int, List[String])]])] =
+    Resource.eval(IO.ref(Vector.empty[(Int, List[String])])).flatMap { received =>
+      FakeRedisServer { (n, requests) =>
+        requests
+          .map(words)
+          .evalTap(ws => received.update(_ :+ (n -> ws)))
+          .takeWhile(_ != List("GET", "bye"))
+          .map {
+            case "CLIENT" :: "TRACKING" :: _ if refuseTracking(n) => "-ERR The client ID you want redirect to does not exist\r\n"
+            case "HELLO" :: _                                     =>
+              "*14\r\n" + List("server", "redis", "version", "6.2.0").map(bulk).mkString + bulk("proto") + ":2\r\n" + bulk("id") +
+                ":5\r\n" + List("mode", "standalone", "role", "master", "modules").map(bulk).mkString + "*0\r\n"
+            case ("AUTH" | "SELECT" | "CLIENT" | "READONLY" | "READWRITE") :: _ => "+OK\r\n"
+            case _                                                              => bulk("value")
+          }
+      }.map(_ -> received)
+    }
+
+  // the commands each connection after the first got
+  private def after(received: Ref[IO, Vector[(Int, List[String])]], connection: Int): IO[Vector[List[String]]] =
+    received.get.map(_.collect { case (`connection`, ws) => ws })
+
+  private def reconnected(client: RedisClient[IO]): IO[String] =
+    client.send(get[String]("bye"), 2.seconds).attempt >> untilReplied(client.send(get[String]("k"), 2.seconds)).map(_.getOrElse(""))
+
+  test("tracking, reading from a replica and the connection's name are set again on a new connection, after it has logged in") {
+    resetting().use { case (port, received) =>
+      RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn).use { client =>
+        val ok = (c: IO[Maybe[OK]]) => c.flatMap(IO.fromEither).void
+        ok(client.send(laserdisc.redis_6_2.client.tracking(servertypes.trackingOptions.redirect(NonNegLong(7L)).bcast))) >>
+          ok(client.send(laserdisc.redis_6_2.readonly)) >>
+          ok(client.send(laserdisc.redis_6_2.client.setname(ConnectionName("ld")))) >>
+          reconnected(client).assertEquals("value") >>
+          after(received, 2).assertEquals(
+            Vector(
+              List("AUTH", "user", "secret"),
+              List("CLIENT", "SETNAME", "ld"),
+              List("READONLY"),
+              List("CLIENT", "TRACKING", "ON", "REDIRECT", "7", "BCAST"),
+              List("GET", "k")
+            )
+          )
+      }
+    }
+  }
+
+  test("what's set back as a connection starts, and a name given with HELLO, are set again as such") {
+    resetting().use { case (port, received) =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        val ok = (c: IO[Maybe[OK]]) => c.flatMap(IO.fromEither).void
+        ok(client.send(laserdisc.redis_6_2.client.tracking(servertypes.trackingOptions.redirect(NonNegLong(7L))))) >>
+          ok(client.send(laserdisc.redis_6_2.client.trackingoff)) >>
+          ok(client.send(laserdisc.redis_6_2.readonly)) >>
+          ok(client.send(laserdisc.redis_6_2.readwrite)) >>
+          client.send(laserdisc.redis_6_2.connection.hello(ConnectionName("ld-hello"))).flatMap(IO.fromEither).void >>
+          reconnected(client).assertEquals("value") >>
+          after(received, 2).assertEquals(Vector(List("CLIENT", "SETNAME", "ld-hello"), List("GET", "k")))
+      }
+    }
+  }
+
+  test("a new connection refusing what's set again carries on without it, and the next ones aren't set to it") {
+    resetting(refuseTracking = _ == 2).use { case (port, received) =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        client.send(laserdisc.redis_6_2.client.tracking(servertypes.trackingOptions.redirect(NonNegLong(7L)))).flatMap(IO.fromEither) >>
+          reconnected(client).assertEquals("value") >>
+          after(received, 2).assertEquals(Vector(List("CLIENT", "TRACKING", "ON", "REDIRECT", "7"), List("GET", "k"))) >>
+          reconnected(client).assertEquals("value") >>
+          after(received, 3).assertEquals(Vector(List("GET", "k")))
+      }
+    }
+  }
+
   test("the password stays out of what the credentials show") {
     assertEquals(Credentials("user", "secret").toString, "Credentials(user, ***)")
     assertEquals(Credentials("secret").toString, "Credentials(default, ***)")

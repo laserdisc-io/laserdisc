@@ -45,9 +45,16 @@ Commands whose name starts with a group, such as `CLIENT LIST` or
 `ACL SETUSER`, are under that group's name: `client.list`,
 `acl.setuser(user, rules)`. In `redis_8_10`, the groups are `acl`, `backup`,
 `client`, `command`, `config`, `function`, `hotkeys`, `latency`, `memory`,
-`module`, `pubsub`, `script` and `slowlog`. The Valkey imports from 8.1 also
-have `commandlog`. An import for an older version has only the groups whose
-commands that version has.
+`migration`, `module`, `obj`, `pubsub`, `ro`, `script` and `slowlog`. `obj` is
+for `OBJECT`, as `object` is a Scala keyword, `migration` for
+`CLUSTER MIGRATION`, and `ro` for the read-only `GEORADIUS_RO` and
+`GEORADIUSBYMEMBER_RO`. The Valkey imports from 8.1 also have `commandlog`. An
+import for an older version has only the groups whose commands that version
+has.
+
+The other commands of `CLUSTER`, `XGROUP` and `XINFO` aren't in a group: each
+is one word, such as `clusterinfo`, `keyslot`, `xgroupcreate` and
+`xinfostream`.
 
 ## Arguments
 

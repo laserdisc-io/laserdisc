@@ -45,6 +45,10 @@ final class ClosedBuildersSpec extends munit.FunSuite {
     assert(compileErrors("""laserdisc.valkey_9_1.clustertypes.ClusterScanCursor.start""").isEmpty)
     assert(compileErrors("""laserdisc.protocol.Acl.AclRulesWithDatabases.none""").nonEmpty)
     assert(compileErrors("""laserdisc.protocol.Acl.AclSelectorRules.none""").nonEmpty)
+    // Read's instances come only through Read, so that a later version can add to them
+    assert(compileErrors("""new laserdisc.protocol.ReadInstances0 {}""").nonEmpty)
+    assert(compileErrors("""new laserdisc.protocol.ReadInstances1 {}""").nonEmpty)
+    assert(compileErrors("""laserdisc.protocol.Read[laserdisc.Str, String]""").isEmpty)
     assert(compileErrors("""laserdisc.protocol.Acl.AclSelectorRulesWithDatabases.none""").nonEmpty)
     assert(compileErrors("""laserdisc.redis_7_0.servertypes.aclSelector""").isEmpty)
     assert(compileErrors("""laserdisc.valkey_9_1.servertypes.aclDatabaseSelector""").isEmpty)

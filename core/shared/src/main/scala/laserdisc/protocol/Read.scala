@@ -85,11 +85,11 @@ object Read extends ReadInstances0 {
     lift2OptionWhen(_.value == 0L)
 }
 
-trait ReadInstances0 extends ReadInstances1 {
+private[protocol] sealed trait ReadInstances0 extends ReadInstances1 {
   implicit final def identity[A]: Read[A, A] = Read.instance(_.asRight)
 }
 
-trait ReadInstances1 extends ReadLabelledInstances {
+private[protocol] sealed trait ReadInstances1 extends ReadLabelledInstances {
   import Read.{infallible, instance, instancePF}
 
   implicit final val str2StringRead: Read[Str, String] = infallible(_.value)

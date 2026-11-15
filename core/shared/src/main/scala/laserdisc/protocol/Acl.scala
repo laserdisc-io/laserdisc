@@ -86,7 +86,7 @@ object Acl {
     def readWriteKeys(pattern: AclPattern): Self = add(s"%RW~${pattern.value}")
   }
 
-  /** Rules that limit the databases a user, or a selector, may use: Valkey 9.0 */
+  /** Rules that limit the databases a user, or a selector, may use: Valkey 9.1 */
   sealed trait DatabaseRules[Self] extends PermissionRules[Self] {
     def allDatabases: Self = add("alldbs")
 
@@ -112,7 +112,7 @@ object Acl {
     final val none: AclSelectorRules = new AclSelectorRules(Nil)
   }
 
-  /** The permissions of a selector of Valkey 9.0, with the databases it may use */
+  /** The permissions of a selector of Valkey 9.1, with the databases it may use */
   final class AclSelectorRulesWithDatabases private (val params: List[String])
       extends KeyPermissionRules[AclSelectorRulesWithDatabases]
       with DatabaseRules[AclSelectorRulesWithDatabases] {
@@ -144,7 +144,7 @@ object Acl {
     final val none: AclDragonflyRules = new AclDragonflyRules(Nil)
   }
 
-  /** The rules of Valkey 9.0, which add the databases a user, or a selector, may use */
+  /** The rules of Valkey 9.1, which add the databases a user, or a selector, may use */
   final class AclRulesWithDatabases private (val params: List[String])
       extends Rules[AclRulesWithDatabases]
       with SelectorRules[AclRulesWithDatabases, AclSelectorRulesWithDatabases]

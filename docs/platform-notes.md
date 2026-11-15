@@ -38,4 +38,5 @@ for that time to pass.
 
 On Node.js 26, the connection can stop receiving replies when several arrive
 at once. The commands waiting for those replies time out, and the client then
-reconnects on its own. Node.js 25 and earlier aren't affected.
+reconnects on its own. A subscription's stream stops getting messages the same
+way, and fails with `ServerNotResponding` once its ping goes unanswered. Node.js 25 and earlier aren't affected.

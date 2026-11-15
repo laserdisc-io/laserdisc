@@ -323,18 +323,30 @@ final class ServerPSpec extends BaseSpec with ServerP {
     assertEquals(role.decode(Arr(Bulk("master"), Num(0L), Arr(Nil))), Role.Master(NonNegLong(0L), Nil): Role)
     assertEquals(
       role.decode(Arr(Bulk("master"), Num(14L), Arr(Arr(Bulk("172.18.0.3"), Bulk("6379"), Bulk("14"))))),
-      Role.Master(NonNegLong(14L), Seq(Role.Client(Host.unsafeFrom("172.18.0.3"), Port.unsafeFrom(6379), NonNegLong(14L)))): Role
+      Role.Master(NonNegLong(14L), Seq(Role.Client("172.18.0.3", 6379, NonNegLong(14L)))): Role
     )
   }
 
   test("The Server protocol using role reads a replica, with no offset until it has synced") {
     def replica(status: String, offset: Long) = Arr(Bulk("slave"), Bulk("10.0.0.1"), Num(6379L), Bulk(status), Num(offset))
-    val host                                  = Host.unsafeFrom("10.0.0.1")
-    val port                                  = Port.unsafeFrom(6379)
+    val (host, port)                          = ("10.0.0.1", 6379)
     assertEquals(role.decode(replica("connected", 14L)), Role.Slave(host, port, Role.connected, Some(NonNegLong(14L))): Role)
     assertEquals(role.decode(replica("handshake", -1L)), Role.Slave(host, port, Role.handshake, None): Role)
     assertEquals(role.decode(replica("connecting", -1L)), Role.Slave(host, port, Role.connecting, None): Role)
     assert(role.decode(replica("nope", 0L)).isLeft)
+  }
+
+  test("The Server protocol using role reads hosts and ports as the server gives them: any name, and a port of 0") {
+    // a replica given its master by a name that isn't a hostname, as Docker Compose services are named
+    assertEquals(
+      role.decode(Arr(Bulk("slave"), Bulk("redis_master"), Num(6379L), Bulk("connect"), Num(-1L))),
+      Role.Slave("redis_master", 6379, Role.connect, None): Role
+    )
+    // a replica that didn't give its port, as a client syncing with PSYNC alone
+    assertEquals(
+      role.decode(Arr(Bulk("master"), Num(0L), Arr(Arr(Bulk("172.17.0.1"), Bulk("0"), Bulk("0"))))),
+      Role.Master(NonNegLong(0L), Seq(Role.Client("172.17.0.1", 0, NonNegLong(0L)))): Role
+    )
   }
 
   test("The Server protocol using role reads a sentinel, and rejects a reply naming another role") {

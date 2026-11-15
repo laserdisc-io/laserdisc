@@ -144,7 +144,7 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
 
     List(master -> p, replica -> replicaPort, other -> otherPort).foreach { case (id, port) =>
       val address = all(id).address.getOrElse(fail(s"no address for $id"))
-      assertEquals(address.host, Some[Host]("127.0.0.1"))
+      assertEquals(address.host, Some("127.0.0.1"))
       assertEquals(address.port, port)
       assertEquals(address.clusterPort.value, port.value + 10000)
     }
@@ -174,7 +174,7 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
 
     assertEquals(info.master.nodeId, master)
     assertEquals(info.master.port, p)
-    assertEquals(info.master.host, Some[Host]("127.0.0.1"))
+    assertEquals(info.master.host, Some("127.0.0.1"))
     assertEquals(info.replicas.map(_.nodeId), Seq(replica))
     assertEquals(info.replicas.map(_.port), Seq(replicaPort))
   }
@@ -192,7 +192,7 @@ abstract class ClusterClientSpec(p: Port, dest: String, cluster: Cluster6_2) ext
     val name           = "my.host.example"
 
     assertEquals(send(set), OK)
-    assertEquals(send(version.nodes).nodes.find(_.id == master).flatMap(_.address).flatMap(_.hostname), Some(Host.unsafeFrom(name)))
+    assertEquals(send(version.nodes).nodes.find(_.id == master).flatMap(_.address).flatMap(_.hostname), Some(name))
     assertEquals(send(version.slots).infoFor(Slot.unsafeFrom(0)).map(_.master.metadata.get("hostname")), Some(Some(name)))
   }
 }

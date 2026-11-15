@@ -700,8 +700,8 @@ trait ClusterReplies6_2 {
   object ClusterSlots {
     def unapply(s: ClusterSlots): Some[Map[ClusterP.SlotType.Range, ClusterSlotInfo]] = Some(s.slots)
   }
-  object ClusterAddress  { def unapply(a: ClusterAddress): Some[(Option[Host], Port, Port)] = Some((a.host, a.port, a.clusterPort)) }
-  object ClusterSlotNode { def unapply(n: ClusterSlotNode): Some[(Option[Host], Port, NodeId)] = Some((n.host, n.port, n.nodeId))   }
+  object ClusterAddress  { def unapply(a: ClusterAddress): Some[(Option[String], Port, Port)] = Some((a.host, a.port, a.clusterPort)) }
+  object ClusterSlotNode { def unapply(n: ClusterSlotNode): Some[(Option[String], Port, NodeId)] = Some((n.host, n.port, n.nodeId))   }
 }
 trait ClusterReplies7_0 {
   final type ClusterAddress  = ClusterP.Address7_0
@@ -723,10 +723,11 @@ trait ClusterReplies7_0 {
     def unapply(s: ClusterSlots): Some[Map[ClusterP.SlotType.Range, ClusterSlotInfo]] = Some(s.slots)
   }
   object ClusterAddress {
-    def unapply(a: ClusterAddress): Some[(Option[Host], Port, Port, Option[Host])] = Some((a.host, a.port, a.clusterPort, a.hostname))
+    def unapply(a: ClusterAddress): Some[(Option[String], Port, Port, Option[String])] = Some((a.host, a.port, a.clusterPort, a.hostname))
   }
   object ClusterSlotNode {
-    def unapply(n: ClusterSlotNode): Some[(Option[Host], Port, NodeId, Map[String, String])] = Some((n.host, n.port, n.nodeId, n.metadata))
+    def unapply(n: ClusterSlotNode): Some[(Option[String], Port, NodeId, Map[String, String])] =
+      Some((n.host, n.port, n.nodeId, n.metadata))
   }
 }
 trait ShardReplies7_0 {

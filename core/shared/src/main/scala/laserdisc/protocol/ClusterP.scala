@@ -110,12 +110,9 @@ object ClusterP {
       // other fields, which are left out
       val HPCP = raw"([^@,]*):(\d+)@(\d+)(?:,|$$)([^,]*)(?:,.*)?".r
       val HP   = raw"([^@,]*):(\d+)".r
+      // as the node was given its address or hostname, which can be any name: empty when it has none
       object MaybeHost {
-        def unapply(s: String): Option[Option[Host]] = s match {
-          case ""      => Some(None)
-          case Host(h) => Some(Some(h))
-          case _       => None
-        }
+        def unapply(s: String): Some[Option[String]] = Some(Some(s).filter(_.nonEmpty))
       }
       Read.instance {
         case ":0@0"                                                            => Right(None)
@@ -248,7 +245,7 @@ object ClusterP {
 
   /** A node of CLUSTER SLOTS. `host` is `None` when the server says to use the host you connected to */
   sealed trait SlotNode6_2 {
-    def host: Option[Host]
+    def host: Option[String]
     def port: Port
     def nodeId: NodeId
   }
@@ -258,8 +255,8 @@ object ClusterP {
     def metadata: Map[String, String]
   }
 
-  private[laserdisc] final case class SlotNodeOf6_2(host: Option[Host], port: Port, nodeId: NodeId) extends SlotNode6_2
-  private[laserdisc] final case class SlotNodeOf7_0(host: Option[Host], port: Port, nodeId: NodeId, metadata: Map[String, String])
+  private[laserdisc] final case class SlotNodeOf6_2(host: Option[String], port: Port, nodeId: NodeId) extends SlotNode6_2
+  private[laserdisc] final case class SlotNodeOf7_0(host: Option[String], port: Port, nodeId: NodeId, metadata: Map[String, String])
       extends SlotNode7_0
 
   sealed trait LinkState
@@ -275,18 +272,18 @@ object ClusterP {
 
   /** Where a node listens. `host` is `None` until the node knows its own address, as on a fresh node */
   sealed trait Address6_2 {
-    def host: Option[Host]
+    def host: Option[String]
     def port: Port
     def clusterPort: Port
   }
 
   /** Where a node listens, from Redis 7.0: also the hostname the node announces with cluster-announce-hostname, if it does */
   sealed trait Address7_0 extends Address6_2 {
-    def hostname: Option[Host]
+    def hostname: Option[String]
   }
 
-  private[laserdisc] final case class AddressOf6_2(host: Option[Host], port: Port, clusterPort: Port) extends Address6_2
-  private[laserdisc] final case class AddressOf7_0(host: Option[Host], port: Port, clusterPort: Port, hostname: Option[Host])
+  private[laserdisc] final case class AddressOf6_2(host: Option[String], port: Port, clusterPort: Port) extends Address6_2
+  private[laserdisc] final case class AddressOf7_0(host: Option[String], port: Port, clusterPort: Port, hostname: Option[String])
       extends Address7_0
 
   sealed trait ResetMode
@@ -364,24 +361,28 @@ object ClusterP {
     // the first and last slot and the master, then the replicas
     private type Assigned[N] = Arr.AsTupleThen[Num *: Num *: N *: EmptyTuple, N]
 
-    // an empty host, like a null one, means the server doesn't know it, so use the one you connected to
-    private implicit final val hostRead: Read[Bulk, Option[Host]] = Read.instancePF("Bulk(Host)") {
-      case Bulk("")      => None
-      case Bulk(Host(h)) => Some(h)
+    // an empty host, like a null one, means the server doesn't know it, so use the one you connected to. A ? is what Redis sends for a
+    // node without a hostname when it's told to give hostnames
+    private final case class NodeHost(host: Option[String])
+    private implicit final val hostRead: Read[Bulk, NodeHost] = Read.instance {
+      case Bulk("") | Bulk("?") => Right(NodeHost(None))
+      case Bulk(h)              => Right(NodeHost(Some(h)))
     }
     private implicit final val portRead: Read[Num, Port]      = Read.instancePF("Num(Port)") { case Num(ToInt(Port(p))) => p }
     private implicit final val nodeIdRead: Read[Bulk, NodeId] = ClusterManagement.nodeId
     // what Redis 6.2 reads of either node, and what Redis 7.0 reads of its own
     private implicit final val node6_2Read: Read[NodeReply6_2, SlotNode6_2] =
-      Read[NodeReply6_2, Option[Host] *: Port *: NodeId *: EmptyTuple].map { case host *: port *: id *: _ => SlotNodeOf6_2(host, port, id) }
+      Read[NodeReply6_2, NodeHost *: Port *: NodeId *: EmptyTuple].map { case host *: port *: id *: _ =>
+        SlotNodeOf6_2(host.host, port, id)
+      }
     private implicit final val node7_0As6_2Read: Read[NodeReply7_0, SlotNode6_2] =
-      Read[NodeReply7_0, Option[Host] *: Port *: NodeId *: Map[String, String] *: EmptyTuple].map { case host *: port *: id *: _ =>
-        SlotNodeOf6_2(host, port, id)
+      Read[NodeReply7_0, Option[NodeHost] *: Port *: NodeId *: Map[String, String] *: EmptyTuple].map { case host *: port *: id *: _ =>
+        SlotNodeOf6_2(host.flatMap(_.host), port, id)
       }
     private implicit final val node7_0Read: Read[NodeReply7_0, SlotNode7_0] =
-      Read[NodeReply7_0, Option[Host] *: Port *: NodeId *: Map[String, String] *: EmptyTuple].map {
+      Read[NodeReply7_0, Option[NodeHost] *: Port *: NodeId *: Map[String, String] *: EmptyTuple].map {
         case host *: port *: id *: metadata *: _ =>
-          SlotNodeOf7_0(host, port, id, metadata)
+          SlotNodeOf7_0(host.flatMap(_.host), port, id, metadata)
       }
 
     private final def slotsRead[N, SN, I, S](info: (SN, Seq[SN]) => I, all: Map[Range, I] => S)(

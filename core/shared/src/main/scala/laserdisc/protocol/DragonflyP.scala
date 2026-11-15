@@ -87,19 +87,16 @@ object DragonflyP {
     */
   sealed trait Role
   object Role {
-    final case class Replica(host: Host, port: Port, state: String)
-    final case class Primary(replicas: Seq[Replica])                                                     extends Role
-    final case class Follower(host: Host, port: Port, state: String, otherPrimaries: Seq[Replica] = Nil) extends Role
+    final case class Replica(host: String, port: Int, state: String)
+    final case class Primary(replicas: Seq[Replica])                                                      extends Role
+    final case class Follower(host: String, port: Int, state: String, otherPrimaries: Seq[Replica] = Nil) extends Role
 
     private type ReplicaReply  = Arr.AsTuple[Bulk *: Bulk *: Bulk *: EmptyTuple]
     private type PrimaryReply  = Arr.AsTuple[Bulk *: Arr.Of[ReplicaReply] *: EmptyTuple]
     private type FollowerReply = Arr.AsTupleThen[Bulk *: Bulk *: Bulk *: Bulk *: EmptyTuple, Bulk]
 
-    private implicit final val hostRead: Read[Bulk, Host] = Read.instancePF("Bulk(Host)") { case Bulk(Host(h)) => h }
-    private implicit final val portRead: Read[Bulk, Port] = Read.instancePF("Bulk(Port)") { case Bulk(ToInt(Port(p))) => p }
-
     private implicit final val replicaRead: Read[ReplicaReply, Replica] =
-      Read[ReplicaReply, Host *: Port *: String *: EmptyTuple].map { case host *: port *: state *: _ => Replica(host, port, state) }
+      Read[ReplicaReply, String *: Int *: String *: EmptyTuple].map { case host *: port *: state *: _ => Replica(host, port, state) }
     private implicit final val primaryRead: Read[PrimaryReply, Role] = Read.instance { reply =>
       Read[PrimaryReply, String *: Seq[Replica] *: EmptyTuple].read(reply).flatMap {
         case "master" *: replicas *: _ => Right(Primary(replicas))
@@ -109,12 +106,12 @@ object DragonflyP {
     // each other primary as its host, port and state
     private final def otherPrimaries(rest: Seq[String]): Either[RESPDecErr, List[Replica]] =
       rest.grouped(3).foldRight[Either[RESPDecErr, List[Replica]]](Right(Nil)) {
-        case (Seq(Host(host), ToInt(Port(port)), state), others) => others.map(Replica(host, port, state) :: _)
+        case (Seq(host, ToInt(port), state), others) => others.map(Replica(host, port, state) :: _)
         case (other, _) => Left(RESPDecErr(s"Expected another primary's host, port and state but got ${other.mkString(" ")}"))
       }
 
     private implicit final val followerRead: Read[FollowerReply, Role] = Read.instance { reply =>
-      Read[FollowerReply, (String *: Host *: Port *: String *: EmptyTuple, Seq[String])].read(reply).flatMap {
+      Read[FollowerReply, (String *: String *: Int *: String *: EmptyTuple, Seq[String])].read(reply).flatMap {
         // "replica" when Dragonfly runs with --info_replication_valkey_compatible=false
         case (("slave" | "replica") *: host *: port *: state *: _, rest) => otherPrimaries(rest).map(Follower(host, port, state, _))
         case (name *: _, _)                                              => Left(RESPDecErr(s"Expected the role slave but was $name"))

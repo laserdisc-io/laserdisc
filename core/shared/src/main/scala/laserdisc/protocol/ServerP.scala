@@ -146,7 +146,11 @@ object ServerP {
 
   sealed trait Role
   object Role {
-    final case class Client(host: Host, port: Port, lastAcknowledgedReplicationOffset: NonNegLong)
+
+    /** A replica as its master sees it. The host and port are as the replica gave them, so the host can be any name, and the port is 0 for
+      * one that didn't give its own
+      */
+    final case class Client(host: String, port: Int, lastAcknowledgedReplicationOffset: NonNegLong)
 
     sealed trait ReplicaStatus
     case object none       extends ReplicaStatus
@@ -159,10 +163,12 @@ object ServerP {
 
     final case class Master(currentReplicationOffset: NonNegLong, clients: Seq[Client]) extends Role
 
-    /** `masterReplicationOffset` is `None` until the replica has synced with its master */
+    /** `masterReplicationOffset` is `None` until the replica has synced with its master. The master's host is as it was given to the
+      * replica, which can be any name its system resolves, such as `redis_master`
+      */
     final case class Slave(
-        masterHost: Host,
-        masterPort: Port,
+        masterHost: String,
+        masterPort: Int,
         masterViewReplicaStatus: ReplicaStatus,
         masterReplicationOffset: Option[NonNegLong]
     ) extends Role
@@ -173,9 +179,6 @@ object ServerP {
     private type SlaveReply    = Arr.AsTuple[Bulk *: Bulk *: Num *: Bulk *: Num *: EmptyTuple]
     private type SentinelReply = Arr.AsTuple[Bulk *: Arr.Of[Bulk] *: EmptyTuple]
 
-    private implicit final val hostRead: Read[Bulk, Host]                = Read.instancePF("Bulk(Host)") { case Bulk(Host(h)) => h }
-    private implicit final val bulkPortRead: Read[Bulk, Port]            = Read.instancePF("Bulk(Port)") { case Bulk(ToInt(Port(p))) => p }
-    private implicit final val numPortRead: Read[Num, Port]              = Read.instancePF("Num(Port)") { case Num(ToInt(Port(p))) => p }
     private implicit final val offsetRead: Read[Num, Option[NonNegLong]] = Read.numMinusOneIsNone[NonNegLong]
     private implicit final val statusRead: Read[Bulk, ReplicaStatus]     = Read.instancePF("Bulk(ReplicaStatus)") {
       case Bulk("none")       => none
@@ -187,7 +190,7 @@ object ServerP {
       case Bulk("unknown")    => unknown
     }
     private implicit final val clientRead: Read[ClientReply, Client] =
-      Read[ClientReply, Host *: Port *: NonNegLong *: EmptyTuple].map { case host *: port *: offset *: _ => Client(host, port, offset) }
+      Read[ClientReply, String *: Int *: NonNegLong *: EmptyTuple].map { case host *: port *: offset *: _ => Client(host, port, offset) }
 
     // a role's reply starts with its name
     private final def named[T, L <: Tuple](name: String)(R: Read[T, String *: L]): Read[T, L] = Read.instance {
@@ -198,7 +201,7 @@ object ServerP {
         Master(offset, clients)
       }
     private implicit final val slaveRead: Read[SlaveReply, Role] =
-      named("slave")(Read[SlaveReply, String *: Host *: Port *: ReplicaStatus *: Option[NonNegLong] *: EmptyTuple]).map {
+      named("slave")(Read[SlaveReply, String *: String *: Int *: ReplicaStatus *: Option[NonNegLong] *: EmptyTuple]).map {
         case host *: port *: status *: offset *: _ => Slave(host, port, status, offset)
       }
     private implicit final val sentinelRead: Read[SentinelReply, Role] =

@@ -84,6 +84,15 @@ final class LoopSpec extends BaseSpec {
     assertEquals(client.commands, List(bulks("XRANGE", "x", "-", "+", "COUNT", "2"), bulks("XRANGE", "x", "(1-2", "+", "COUNT", "2")))
   }
 
+  test("xrangeAll stops after a full page that ends at the largest id, as the server refuses to start after it") {
+    val largest          = "18446744073709551615-18446744073709551615"
+    val client           = new Scripted(Arr(entry("1-1", "1"), entry(largest, "2")))
+    val (entries, ended) = client.stream(redis_8_10.xrangeAll[Int](Key("x"), PosLong(2L)))
+    assertEquals(entries.size, 2)
+    assertEquals(ended, None)
+    assertEquals(client.commands, List(bulks("XRANGE", "x", "-", "+", "COUNT", "2")))
+  }
+
   test("xrevrangeAll reads a page at a time from the end, from before the last entry, until a page comes short") {
     val client           = new Scripted(Arr(entry("2-0", "3"), entry("1-2", "2")), Arr(Nil))
     val (entries, ended) = client.stream(redis_8_10.xrevrangeAll[Int](Key("x"), PosLong(2L)))

@@ -63,6 +63,9 @@ object StreamP {
   /** The id of a stream entry: the time it was added, in milliseconds, and a sequence number for entries added in the same millisecond */
   final case class Id(milliseconds: IdPart, sequence: IdPart)
   object Id {
+    // the largest id a stream can have
+    private[protocol] final val largest: Id = Id(IdPart.max, IdPart.max)
+
     private final val IdRegex = raw"(\d+)-(\d+)".r
 
     def apply(milliseconds: NonNegLong, sequence: NonNegLong): Id = Id(IdPart(milliseconds), IdPart(sequence))
@@ -891,7 +894,8 @@ trait StreamBaseP extends Features {
   final def xrangeAll[A: Read[Bulk, _]](key: Key, count: PosLong): Loop[Entry[A]] = xrangeAll[A](key, Bound.min, Bound.max, count)
   final def xrangeAll[A: Read[Bulk, _]](key: Key, start: Bound, end: Bound, count: PosLong): Loop[Entry[A]] =
     Loop(start)(xrange[A](key, _, end, count)) { (_, page) =>
-      page -> (if (page.size < count.value) None else Some(Bound.exclusive(page.last.id)))
+      // no id comes after the largest, and the server refuses to start after it
+      page -> (if (page.size < count.value || page.last.id == Id.largest) None else Some(Bound.exclusive(page.last.id)))
     }
 
   /** The streams' entries after the given ids, by stream, or `None` when none of them has any */

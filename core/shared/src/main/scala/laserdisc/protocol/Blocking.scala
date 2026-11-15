@@ -37,6 +37,11 @@ private[laserdisc] object Blocking {
 
   def waitOf(protocol: Protocol[?]): FiniteDuration =
     protocol.frames match {
+      // MIGRATE waits up to its timeout for the other server, after the host, port, key and database, and a second when it's 0: never
+      // for as long as it takes
+      case Seq(Arr(Bulk(command) :: arguments)) if command.equalsIgnoreCase("MIGRATE") =>
+        val timeout = arguments.lift(4).collect { case Bulk(word) => word }
+        if (timeout.flatMap(w => Try(w.toLong).toOption).exists(_ > 0L)) milliseconds(timeout) else 1.second
       case Seq(Arr(Bulk(command) :: arguments)) =>
         val words = arguments.collect { case Bulk(word) => word }
         waitAt(command, words).fold(Duration.Zero: FiniteDuration) {

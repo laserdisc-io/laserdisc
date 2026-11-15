@@ -122,4 +122,13 @@ final class BlockingSpec extends BaseSpec {
       4294967.seconds
     )
   }
+
+  test("MIGRATE waits up to its timeout, in milliseconds, or a second when it's 0, which isn't a wait for as long as it takes") {
+    import laserdisc.redis_6_2.migrate
+    val (host, port, db) = (Host("10.0.0.1"), Port(6379), DbIndex(0))
+    assertEquals(Blocking.waitOf(migrate(Key("k"), host, port, db, NonNegInt(30000))), 30.seconds)
+    assertEquals(Blocking.waitOf(migrate(TwoOrMoreKeys.unsafeFrom(List(Key("a"), Key("b"))), host, port, db, NonNegInt(2500))), 2500.millis)
+    assertEquals(Blocking.waitOf(migrate(Key("k"), host, port, db, NonNegInt(0))), 1.second)
+    assert(!Blocking.waitsForever(migrate(Key("k"), host, port, db, NonNegInt(0))))
+  }
 }

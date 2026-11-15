@@ -133,9 +133,13 @@ Each notice is `Right(Invalidation.Keys(keys))`, or `Right(Invalidation.Everythi
 after a command like `FLUSHALL`. A notice that can't be read comes as a `Left` of
 `Unreadable`; to be safe, treat it as `Everything`.
 
-- **Tracking doesn't survive a reconnect.** `RedisClient` reconnects on its own, and
-  the new connection isn't tracking anything, without any notice saying so. Don't
-  rely on a cache being fresh after a connection problem.
+- **A reconnect loses what was tracked.** `RedisClient` turns tracking on again
+  when it reconnects, but the new connection only gets notices for the keys it
+  reads from then on, and none for what changed while the client was
+  reconnecting. Don't rely on a cache being fresh after a connection problem.
+- **Notices stop when the subscriber's connection goes.** Its stream fails, and
+  the client stops tracking when it next reconnects. To track again, open a new
+  subscriber and send `client.tracking` with its id.
 - **`caching` only applies to the very next command**, so send them together:
   `redisClient.send(client.caching(true), get[String]("key"))`. Otherwise another
   caller's command may come in between.

@@ -307,6 +307,17 @@ final class CLISpec extends CatsEffectSuite {
     }
   }
 
+  test("a command at the prompt waits for as long as it takes, as with redis-cli") {
+    assertEquals(CLI.timeLimit, FiniteDuration(Long.MaxValue, NANOSECONDS))
+    val slow = FakeRedisServer((_, commands) => commands.evalMap(_ => IO.sleep(1500.millis).as("+SLOW\r\n")))
+    slow.use { port =>
+      sessionWithin(CLI.timeLimit, List("127.0.0.1", port.value.toString), "PING").map { case (code, screen) =>
+        assertEquals(code, ExitCode.Success)
+        assert(screen.contains("<<< SLOW - []"), screen)
+      }
+    }
+  }
+
   test("shows an error when a command times out, and prompts again") {
     val silent = FakeRedisServer((_, commands) => commands.evalMap(_ => IO.never[String]))
 

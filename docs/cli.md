@@ -79,8 +79,9 @@ Each reply is shown the way `redis-cli` shows it, followed by how long it took.
 Arguments with spaces go in quotes. Double quotes understand escapes such as
 `\n`, `\t` and `\x41`. Single quotes take everything literally, except `\'`.
 
+Each command waits for its reply for as long as it takes, as with `redis-cli`.
 Commands that block, such as `BLPOP`, wait on the server for as long as you
-give them. With a wait of 0, they wait for as long as it takes:
+give them, and with a wait of 0, for as long as it takes:
 
 ```
 localhost:6379> BLPOP jobs 0

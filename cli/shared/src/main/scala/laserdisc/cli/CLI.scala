@@ -84,14 +84,14 @@ object CLI extends IOApp { self =>
 
   private final val bufSize = 10 * 1024
 
-  // how long a command may take, on top of the wait it's given
-  private final val timeout = 20.seconds
+  // how long a command may take: as long as it takes, as with redis-cli, so that a slow one isn't cut off and its connection dropped
+  private[cli] final val timeLimit: FiniteDuration = FiniteDuration(Long.MaxValue, NANOSECONDS)
 
   // a password can also come from REDISCLI_AUTH, as with redis-cli, so that it isn't shown in the list of running programs
   override final def run(args: List[String]): IO[ExitCode] =
     std.Env[IO].get("REDISCLI_AUTH").flatMap { password =>
       val env = password.filter(_.nonEmpty).map("REDISCLI_AUTH" -> _).toMap
-      impl.session(args, env, io.stdin[IO](bufSize), io.stdout[IO], timeout)
+      impl.session(args, env, io.stdin[IO](bufSize), io.stdout[IO], timeLimit)
     }
 
   private[cli] object impl {

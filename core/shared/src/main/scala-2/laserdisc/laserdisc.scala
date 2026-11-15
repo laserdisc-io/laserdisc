@@ -285,16 +285,21 @@ package object laserdisc {
   }
 
   @nowarn private[laserdisc] sealed trait =:!=[A, B] extends Serializable
-  private[laserdisc] implicit def neq[A, B]: A =:!= B    = new =:!=[A, B] {}
-  private[laserdisc] implicit def neqAmbig1[A]: A =:!= A = absurd
-  private[laserdisc] implicit def neqAmbig2[A]: A =:!= A = absurd
+  // found from any code, as reading a OneOf asks for it where the command is: ambiguous when A is B, so that none is found then
+  object =:!= {
+    implicit def neq[A, B]: A =:!= B    = new =:!=[A, B] {}
+    implicit def neqAmbig1[A]: A =:!= A = absurd
+    implicit def neqAmbig2[A]: A =:!= A = absurd
+  }
 
   @implicitNotFound("${A} must not be a subtype of ${B}")
   @nowarn private[laserdisc] sealed trait <:!<[A, B] extends Serializable
-
-  private[laserdisc] implicit def nsub[A, B]: A <:!< B            = new <:!<[A, B] {}
-  private[laserdisc] implicit def nsubAmbig1[A, B >: A]: A <:!< B = absurd
-  private[laserdisc] implicit def nsubAmbig2[A, B >: A]: A <:!< B = absurd
+  // found from any code, as reading and writing a case class ask for it where the command is: ambiguous when A is a B
+  object <:!< {
+    implicit def nsub[A, B]: A <:!< B            = new <:!<[A, B] {}
+    implicit def nsubAmbig1[A, B >: A]: A <:!< B = absurd
+    implicit def nsubAmbig2[A, B >: A]: A <:!< B = absurd
+  }
 
   private[laserdisc] implicit final class WidenOps1[F[_], A](private val fa: F[A]) extends AnyVal {
     def widen[AA: <:<[A, _]: =:!=[A, _]]: F[AA] = fa.asInstanceOf[F[AA]]

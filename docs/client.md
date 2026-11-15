@@ -225,11 +225,11 @@ with that error.
 
 If the connection drops, commands still waiting for a reply get a `Left` right
 away, with `ServerTerminatedConnection` when the server closed it, and the
-client reconnects. Those commands may have run on the server: the connection
-went before their replies came. Commands that hadn't been sent yet go out on
-the new connection. While the client can't reach the server, commands fail at
-once with `ServerUnavailable`. Its `cause` says why the last attempt failed,
-such as the connection being refused or the TLS handshake failing.
+client connects again at once. Those commands may have run on the server: the
+connection went before their replies came. Commands that hadn't been sent yet
+go out on the new connection, except the rest of a `send` that was partly sent,
+such as the commands of a transaction waiting for `MULTI`'s reply: they fail
+with the commands sent before them.
 
 A new connection is set up like the one before it. It logs in and selects the
 database, then it's set again to what you last set on the connection with
@@ -238,9 +238,13 @@ database, then it's set again to what you last set on the connection with
 tracking whose notices went to a connection that's gone, the client logs why
 and carries on without it.
 
-Between attempts the client waits 100 milliseconds at first, then twice as long
-each time, up to 5 seconds. Once a server answers one of your commands again,
-the next wait is short again. Each wait is cut by up to half at random, so that
+If the client can't reach the server, or with `toNodes` any of its servers, it
+waits before trying again: 100 milliseconds at first, then twice as long each
+time, up to 5 seconds. While it waits, commands fail at once with
+`ServerUnavailable`, whose `cause` says why the last attempt failed, such as the
+connection being refused or the TLS handshake failing. While it's connecting,
+commands wait for the connection, up to their timeout. Once a server answers one
+of your commands again, the next wait is short again. Each wait is cut by up to half at random, so that
 many clients don't all reconnect at the same moment. To wait differently, pass a
 `Reconnect` with the first and the longest wait. The first has to be more than
 0, and the longest at least the first, or `Reconnect` throws an

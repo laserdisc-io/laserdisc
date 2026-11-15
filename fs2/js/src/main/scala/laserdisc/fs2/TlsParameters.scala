@@ -31,12 +31,12 @@ import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.typedarray.Uint8Array
 
 // Node checks the certificate against the server name. An address can't be one, so its certificate is checked against the address here:
-// without a server name, Node wouldn't check it against anything
+// without a server name, Node wouldn't check it against anything. A name ending with a dot is sent without it
 private[fs2] object TlsParameters {
   final def apply(host: String, checkServerName: Boolean): TLSParameters =
     (IpAddress.fromString(host), checkServerName) match {
-      case (None, true)     => TLSParameters(servername = Some(host))
-      case (None, false)    => TLSParameters(servername = Some(host), checkServerIdentity = Some(anyName))
+      case (None, true)     => TLSParameters(servername = Some(host.stripSuffix(".")))
+      case (None, false)    => TLSParameters(servername = Some(host.stripSuffix(".")), checkServerIdentity = Some(anyName))
       case (Some(_), true)  => TLSParameters(checkServerIdentity = Some(forAddress(host)))
       case (Some(_), false) => TLSParameters(checkServerIdentity = Some(anyName))
     }

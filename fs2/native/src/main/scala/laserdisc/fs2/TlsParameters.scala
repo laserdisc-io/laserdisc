@@ -23,12 +23,20 @@ package laserdisc.fs2
 
 import _root_.fs2.io.net.tls.TLSParameters
 import cats.effect.SyncIO
+import com.comcast.ip4s.IpAddress
 
-// s2n checks the certificate against the server name, unless the check is replaced
+// s2n checks the certificate against the server name, unless the check is replaced. An address can't be a server name, so it isn't sent
+// as one, and the certificate is checked against the address instead: s2n gives the check each name and address the certificate has. A
+// name ending with a dot is sent without it
 private[fs2] object TlsParameters {
   final def apply(host: String, checkServerName: Boolean): TLSParameters =
-    TLSParameters(
-      serverName = Some(host),
-      verifyHostCallback = if (checkServerName) None else Some((_: String) => SyncIO.pure(true))
-    )
+    (IpAddress.fromString(host), checkServerName) match {
+      case (None, true)          => TLSParameters(serverName = Some(host.stripSuffix(".")))
+      case (None, false)         => TLSParameters(serverName = Some(host.stripSuffix(".")), verifyHostCallback = Some(anyName))
+      case (Some(address), true) =>
+        TLSParameters(verifyHostCallback = Some(name => SyncIO.pure(IpAddress.fromString(name).contains(address))))
+      case (Some(_), false) => TLSParameters(verifyHostCallback = Some(anyName))
+    }
+
+  private val anyName: String => SyncIO[Boolean] = _ => SyncIO.pure(true)
 }

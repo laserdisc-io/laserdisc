@@ -207,6 +207,22 @@ final class CLISpec extends CatsEffectSuite {
     }
   }
 
+  test("sends the bytes typed as they are, also when they aren't UTF-8, as from a Latin-1 terminal") {
+    IO.ref(Vector.empty[scodec.bits.ByteVector]).flatMap { received =>
+      val echoing = FakeRedisServer { (_, commands) =>
+        commands.evalMap {
+          case Arr(_ :: (arg: Bulk) :: _) => received.update(_ :+ arg.bytes).as("+OK\r\n")
+          case _                          => IO.pure("+OK\r\n")
+        }
+      }
+      echoing.use { port =>
+        val typed = Stream.chunk(Chunk.array("ECHO caf".getBytes(UTF_8) ++ Array(0xe9.toByte) ++ " é\n".getBytes(UTF_8))).covary[IO]
+        CLI.impl.session(List("127.0.0.1", port.value.toString), Map.empty, typed, _.drain, 5.seconds) >>
+          received.get.map(r => assertEquals(r.map(_.toHex), Vector("636166e9")))
+      }
+    }
+  }
+
   test("shows the reply to each command typed, formatted, then prompts again") {
     replying.use { port =>
       session(List("127.0.0.1", port.value.toString), "PING", "GET a", "KEYS *").map { case (code, screen) =>

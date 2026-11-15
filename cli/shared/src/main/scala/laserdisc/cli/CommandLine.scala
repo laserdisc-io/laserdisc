@@ -24,16 +24,18 @@ package cli
 
 import scodec.bits.ByteVector
 
+import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import scala.annotation.tailrec
 
 /** Splits a line typed at the prompt into a command and its arguments, following redis-cli's rules: arguments are separated by whitespace,
   * and a quote starts quoting anywhere in one, so `a"b c"` is `ab c`. "Double quoted" text supports the escapes \\ \" \n \r \t \b \a and
-  * \xHH, where \xHH is that byte, 'single quoted' text only \'. Each argument is the bytes of its text, in UTF-8, and of its \xHH escapes
+  * \xHH, where \xHH is that byte, 'single quoted' text only \'. Each argument is the bytes of its text, in `charset`, and of its \xHH
+  * escapes: the prompt reads each line as ISO-8859-1, a character for each byte, so that the bytes typed are sent as they are, UTF-8 or not
   */
 private[cli] object CommandLine {
   // an argument's text and the bytes of its escapes, in order: each run of text is encoded once, so characters made of two chars stay whole
-  private final class Argument {
+  private final class Argument(charset: Charset) {
     private val bytes = Array.newBuilder[Byte]
     private val text  = new StringBuilder
     private var empty = true
@@ -60,22 +62,23 @@ private[cli] object CommandLine {
 
     private def flush(): Unit =
       if (text.nonEmpty) {
-        bytes ++= text.toString.getBytes(UTF_8)
+        bytes ++= text.toString.getBytes(charset)
         text.clear()
       }
   }
 
-  final def parse(line: String): Either[String, List[ByteVector]] = {
+  final def parse(line: String, charset: Charset = UTF_8): Either[String, List[ByteVector]] = {
     val error = Left("Invalid argument(s)")
 
     @tailrec def unquoted(i: Int, acc: Argument, args: List[ByteVector]): Either[String, List[ByteVector]] =
       if (i == line.length) Right((if (acc.isEmpty) args else acc.result() :: args).reverse)
       else
         line.charAt(i) match {
-          case c if ends(c) || (acc.isEmpty && isSpace(c)) => unquoted(i + 1, new Argument, if (acc.isEmpty) args else acc.result() :: args)
-          case '"'                                         => quoted(i + 1, '"', acc, args)
-          case '\''                                        => quoted(i + 1, '\'', acc, args)
-          case c                                           => unquoted(i + 1, acc += c, args)
+          case c if ends(c) || (acc.isEmpty && isSpace(c)) =>
+            unquoted(i + 1, new Argument(charset), if (acc.isEmpty) args else acc.result() :: args)
+          case '"'  => quoted(i + 1, '"', acc, args)
+          case '\'' => quoted(i + 1, '\'', acc, args)
+          case c    => unquoted(i + 1, acc += c, args)
         }
 
     @tailrec def quoted(i: Int, quote: Char, acc: Argument, args: List[ByteVector]): Either[String, List[ByteVector]] =
@@ -83,7 +86,7 @@ private[cli] object CommandLine {
       else
         line.charAt(i) match {
           case `quote` if i + 1 == line.length || isSpace(line.charAt(i + 1)) =>
-            unquoted(i + 1, new Argument, acc.result() :: args)
+            unquoted(i + 1, new Argument(charset), acc.result() :: args)
           case `quote`                                      => error
           case '\\' if i + 1 < line.length && quote == '\'' =>
             line.charAt(i + 1) match {
@@ -104,7 +107,7 @@ private[cli] object CommandLine {
           case c => quoted(i + 1, quote, acc += c, args)
         }
 
-    unquoted(0, new Argument, Nil)
+    unquoted(0, new Argument(charset), Nil)
   }
 
   // ASCII only, as in redis-cli, where a fullwidth digit like U+FF26 isn't one

@@ -22,7 +22,7 @@
 package laserdisc
 package cli
 
-import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import _root_.fs2.{Pipe, Stream, io, text}
 import _root_.fs2.io.file.{Files, Path}
 import _root_.fs2.io.net.Network
@@ -271,7 +271,7 @@ object CLI extends IOApp { self =>
               .drain
 
           val protocol: Pipe[IO, String, Protocol.Single[RESP]] =
-            _.map(CommandLine.parse).flatMap {
+            _.map(CommandLine.parse(_, ISO_8859_1)).flatMap {
               case Left(error)            => Stream.exec(prompt(s"(error) $error$LF"))
               case Right(Nil)             => Stream.exec(emptyPrompt)
               case Right(command :: args) =>
@@ -284,7 +284,9 @@ object CLI extends IOApp { self =>
 
           emptyPrompt >>
             in
-              .through(text.utf8.decode)
+              // a character for each byte, so that what isn't UTF-8 is sent as it was typed: a line is split at its ASCII newline
+              .chunks
+              .map(chunk => new String(chunk.toArray, ISO_8859_1))
               .through(text.lines)
               .through(protocol)
               .evalMap { protocol =>

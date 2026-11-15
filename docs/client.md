@@ -281,9 +281,9 @@ Some commands are meant to be sent again and again. SCAN replies with a cursor
 to send back until the server is done, XRANGE reads a stream a page at a time,
 and XREAD can follow a stream as entries are added. For these there are loops:
 `scanAll`, `hscanAll`, `hscannovaluesAll`, `sscanAll`, `zscanAll`,
-`zscannoscoresAll`, `xrangeAll` and `xrevrangeAll`, and, with the blocking
-commands, `xreadFollow` and `xreadgroupFollow`. `stream` runs a loop and gives
-you its values as a `Stream`:
+`zscannoscoresAll`, `xrangeAll` and `xrevrangeAll`, and, among the blocking
+commands, `blocking.xreadFollow` and `blocking.xreadgroupFollow`. `stream` runs
+a loop and gives you its values as a `Stream`:
 
 ```scala mdoc:compile-only
 import cats.effect.IO

@@ -216,10 +216,10 @@ trait ClientDragonflyKillCommands extends Features {
   def kill(id: NonNegLong): Single[NonNegLong] = Protocol("CLIENT", "KILL" *: "ID" *: id *: EmptyTuple).as[Num, NonNegLong]
 
   /** Closes the client connected from this address, and replies how many it closed */
-  def killaddress(host: Host, port: Port): Single[NonNegLong] =
-    Protocol("CLIENT", "KILL" :: "ADDR" :: ServerP.clientAddress(host, port) :: Nil).as[Num, NonNegLong]
+  def killaddress(ip: IpAddress, port: Port): Single[NonNegLong] =
+    Protocol("CLIENT", "KILL" :: "ADDR" :: ServerP.clientAddress(ip, port) :: Nil).as[Num, NonNegLong]
 
   /** Closes the clients connected to this address of the server, and replies how many it closed */
-  def killlocaladdress(host: Host, port: Port): Single[NonNegLong] =
-    Protocol("CLIENT", "KILL" :: "LADDR" :: ServerP.clientAddress(host, port) :: Nil).as[Num, NonNegLong]
+  def killlocaladdress(ip: IpAddress, port: Port): Single[NonNegLong] =
+    Protocol("CLIENT", "KILL" :: "LADDR" :: ServerP.clientAddress(ip, port) :: Nil).as[Num, NonNegLong]
 }

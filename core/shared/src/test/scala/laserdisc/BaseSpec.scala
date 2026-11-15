@@ -133,6 +133,8 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
 
     frequency(hosts, loopbackHost)
   } :| "host"
+  final val ipAddressGen: Gen[IpAddress] =
+    Gen.oneOf(ipv4Gen(), Gen.oneOf("::1", "2001:db8::1", "fe80::1:2", "::ffff:10.0.0.1")).map(IpAddress.unsafeFrom) :| "ip address"
   final val hostOrEmptyGen: Gen[Either[EmptyString, Host]] =
     frequency(10 -> hostGen.map(Right.apply), 1 -> const(EmptyString).map(Left.apply)) :| "host or empty string"
   final val keyGen: Gen[Key]         = strGen(nonEmptyListOf(utf8BMPCharGen)).filter(keyIsValid).map(Key.unsafeFrom) :| "key"
@@ -163,6 +165,7 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   implicit final val geoHashArb: Arbitrary[GeoHash]                       = Arbitrary(geoHashGen.map(GeoHash.unsafeFrom))
   implicit final val globPatternArb: Arbitrary[GlobPattern]               = Arbitrary(globPatternGen.map(GlobPattern.unsafeFrom))
   implicit final val hostArb: Arbitrary[Host]                             = Arbitrary(hostGen)
+  implicit final val ipAddressArb: Arbitrary[IpAddress]                   = Arbitrary(ipAddressGen)
   implicit final val indexArb: Arbitrary[Index]                           = Arbitrary(arbitrary[Long].map(Index.unsafeFrom))
   implicit final val keyArb: Arbitrary[Key]                               = Arbitrary(keyGen)
   implicit final def kvArb[A](implicit A: Arbitrary[A]): Arbitrary[KV[A]] =

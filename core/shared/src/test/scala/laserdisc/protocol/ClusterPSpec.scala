@@ -295,8 +295,8 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
   }
 
-  property("The Cluster protocol using meet roundtrips successfully given a host and a port") {
-    forAll { (h: Host, p: Port) =>
+  property("The Cluster protocol using meet roundtrips successfully given an address and a port") {
+    forAll { (h: IpAddress, p: Port) =>
       val protocol = meet(h, p)
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("MEET"), Bulk(h), Bulk(p)))
       assertEquals(protocol.decode(Str(OK.value)), OK)

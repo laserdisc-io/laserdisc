@@ -74,20 +74,21 @@ final class ServerPSpec extends BaseSpec with ServerP {
   }
 
   property("The Server protocol using client.kill with filters sends each filter and reads how many clients it closed") {
-    forAll { (id: NonNegLong, h: Host, p: Port, u: String, n: NonNegLong) =>
+    forAll { (id: NonNegLong, h: IpAddress, p: Port, u: String, n: NonNegLong) =>
+      val at       = if (h.value.contains(':')) s"[${h.value}]:${p.value}" else s"${h.value}:${p.value}"
       val filter   = servertypes.clientFilter.id(id).address(h, p).clientType(servertypes.clientType.pubsub).user(u).skipMe(false)
       val protocol = client.kill(filter)
       assertEquals(
         protocol.encode,
         Arr(
-          List("CLIENT", "KILL", "ID", id.value.toString, "ADDR", s"${h.value}:${p.value}", "TYPE", "pubsub", "USER", u, "SKIPME", "no")
+          List("CLIENT", "KILL", "ID", id.value.toString, "ADDR", at, "TYPE", "pubsub", "USER", u, "SKIPME", "no")
             .map(Bulk(_))
         )
       )
       assertEquals(protocol.decode(Num(n.value)), n)
       assertEquals(
         client.kill(servertypes.clientFilter.localAddress(h, p), PosLong(10L)).encode,
-        Arr(List("CLIENT", "KILL", "LADDR", s"${h.value}:${p.value}", "MAXAGE", "10").map(Bulk(_)))
+        Arr(List("CLIENT", "KILL", "LADDR", at, "MAXAGE", "10").map(Bulk(_)))
       )
     }
   }
@@ -154,7 +155,7 @@ final class ServerPSpec extends BaseSpec with ServerP {
   }
 
   test("The Server protocol writes an IPv6 address in brackets, as the server shows a client's address, and an IPv4 one as it is") {
-    val (v6, v4, p)                 = (Host("::1"), Host("127.0.0.1"), Port(6379))
+    val (v6, v4, p)                 = (IpAddress("::1"), IpAddress("127.0.0.1"), Port(6379))
     def sent(protocol: Protocol[?]) = protocol.frames.flatMap { case Arr(ws) => ws.collect { case Bulk(w) => w }; case _ => Nil }.toList
     assertEquals(sent(client.kill(servertypes.clientFilter.address(v6, p))), List("CLIENT", "KILL", "ADDR", "[::1]:6379"))
     assertEquals(sent(client.kill(servertypes.clientFilter.localAddress(v6, p))), List("CLIENT", "KILL", "LADDR", "[::1]:6379"))
@@ -168,7 +169,7 @@ final class ServerPSpec extends BaseSpec with ServerP {
   }
 
   test("The Server protocol sends each of Valkey's filters, for both CLIENT KILL and CLIENT LIST") {
-    val h        = Host("h.example")
+    val h        = IpAddress("10.0.0.1")
     val p        = Port(1)
     val k        = Key("k")
     val n        = ConnectionName("n")
@@ -199,11 +200,11 @@ final class ServerPSpec extends BaseSpec with ServerP {
       "USER",
       "u",
       "ADDR",
-      "h.example:1",
+      "10.0.0.1:1",
       "LADDR",
-      "h.example:1",
+      "10.0.0.1:1",
       "IP",
-      "h.example",
+      "10.0.0.1",
       "NAME",
       "n",
       "FLAGS",
@@ -246,11 +247,11 @@ final class ServerPSpec extends BaseSpec with ServerP {
       "NOT-USER",
       "u",
       "NOT-ADDR",
-      "h.example:1",
+      "10.0.0.1:1",
       "NOT-LADDR",
-      "h.example:1",
+      "10.0.0.1:1",
       "NOT-IP",
-      "h.example",
+      "10.0.0.1",
       "NOT-NAME",
       "n",
       "NOT-FLAGS",
@@ -272,9 +273,9 @@ final class ServerPSpec extends BaseSpec with ServerP {
     List[(ServerP.ValkeyClientFilter, List[String])](
       f.clientType(servertypes.clientType.normal)    -> List("TYPE", "normal"),
       f.user("u")                                    -> List("USER", "u"),
-      f.address(h, p)                                -> List("ADDR", "h.example:1"),
-      f.localAddress(h, p)                           -> List("LADDR", "h.example:1"),
-      f.ip(h)                                        -> List("IP", "h.example"),
+      f.address(h, p)                                -> List("ADDR", "10.0.0.1:1"),
+      f.localAddress(h, p)                           -> List("LADDR", "10.0.0.1:1"),
+      f.ip(h)                                        -> List("IP", "10.0.0.1"),
       f.name(n)                                      -> List("NAME", "n"),
       f.flags(k)                                     -> List("FLAGS", "k"),
       f.libName(k)                                   -> List("LIB-NAME", "k"),
@@ -286,9 +287,9 @@ final class ServerPSpec extends BaseSpec with ServerP {
       f.notIds(twoIds)                               -> List("NOT-ID", "1", "2"),
       f.notClientType(servertypes.clientType.pubsub) -> List("NOT-TYPE", "pubsub"),
       f.notUser("u")                                 -> List("NOT-USER", "u"),
-      f.notAddress(h, p)                             -> List("NOT-ADDR", "h.example:1"),
-      f.notLocalAddress(h, p)                        -> List("NOT-LADDR", "h.example:1"),
-      f.notIp(h)                                     -> List("NOT-IP", "h.example"),
+      f.notAddress(h, p)                             -> List("NOT-ADDR", "10.0.0.1:1"),
+      f.notLocalAddress(h, p)                        -> List("NOT-LADDR", "10.0.0.1:1"),
+      f.notIp(h)                                     -> List("NOT-IP", "10.0.0.1"),
       f.notFlags(k)                                  -> List("NOT-FLAGS", "k"),
       f.notLibName(k)                                -> List("NOT-LIB-NAME", "k"),
       f.notLibVersion(k)                             -> List("NOT-LIB-VER", "k"),

@@ -60,7 +60,7 @@ final class ValkeyServerClientSpec extends ServerClientSpec(LiveServers.port(638
     import v.servertypes
 
     val f     = servertypes.valkeyClientFilter
-    val other = Host("192.0.2.1")
+    val other = IpAddress("192.0.2.1")
     val port  = Port(1)
     val me    = send(v.client.id)
     val mine  = OneOrMore.unsafeFrom(List(me))

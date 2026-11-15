@@ -111,8 +111,8 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)
     assertEquals(send(v.client.pause(1L, servertypes.pauseMode.write)), OK)
     assertEquals(send(v.client.unpause), OK)
     assertEquals(send(v.client.kill(999999L)).value, 0L)
-    assertEquals(send(v.client.killaddress(Host("192.0.2.1"), Port(1))).value, 0L)
-    assertEquals(send(v.client.killlocaladdress(Host("192.0.2.1"), Port(1))).value, 0L)
+    assertEquals(send(v.client.killaddress(IpAddress("192.0.2.1"), Port(1))).value, 0L)
+    assertEquals(send(v.client.killlocaladdress(IpAddress("192.0.2.1"), Port(1))).value, 0L)
   }
 
   test("a dragonfly client inspects the server") {

@@ -527,7 +527,7 @@ trait ClusterBaseP extends ClusterCoreP {
   final def getkeysinslot(slot: Slot, count: PosInt): Single[Seq[Key]] =
     Protocol("CLUSTER", "GETKEYSINSLOT" *: slot *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
 
-  final def meet(host: Host, port: Port): Single[OK] = Protocol("CLUSTER", "MEET" *: host *: port *: EmptyTuple).as[Str, OK]
+  final def meet(ip: IpAddress, port: Port): Single[OK] = Protocol("CLUSTER", "MEET" *: ip *: port *: EmptyTuple).as[Str, OK]
 
   def replicas(nodeId: NodeId): Single[ClusterP.Nodes6_2] =
     Protocol("CLUSTER", "REPLICAS" *: nodeId *: EmptyTuple).using(RESPRead.instance(ClusterP.Nodes.nodesOfArr6_2))

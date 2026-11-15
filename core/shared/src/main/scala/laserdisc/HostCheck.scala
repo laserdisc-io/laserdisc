@@ -28,7 +28,8 @@ private[laserdisc] object HostCheck {
   private final val HostnameMaxLength = 253
   private final val LabelMaxLength    = 63
 
-  final def isValid(s: String): Boolean = isIPv4(s) || isIPv6(s) || isHostname(s)
+  final def isValid(s: String): Boolean     = isIPv4(s) || isIPv6(s) || isHostname(s)
+  final def isIpAddress(s: String): Boolean = isIPv4(s) || isIPv6(s)
 
   private def isDigit(c: Char): Boolean        = c >= '0' && c <= '9'
   private def isHexDigit(c: Char): Boolean     = isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')

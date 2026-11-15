@@ -36,3 +36,14 @@ object ValidHost {
   private def testExpr(s: Expr[String])(using Quotes): Expr[Boolean] =
     s.value.fold('{ HostCheck.isValid($s) })(h => Expr(HostCheck.isValid(h)))
 }
+
+final case class ValidIpAddress()
+object ValidIpAddress {
+  given Constraint[String, ValidIpAddress] with {
+    inline override def test(inline s: String): Boolean = ${ testExpr('s) }
+    inline override def message: String                 = "Should be an IPv4 or IPv6 address"
+  }
+
+  private def testExpr(s: Expr[String])(using Quotes): Expr[Boolean] =
+    s.value.fold('{ HostCheck.isIpAddress($s) })(a => Expr(HostCheck.isIpAddress(a)))
+}

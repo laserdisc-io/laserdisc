@@ -141,6 +141,7 @@ package object laserdisc {
   final type AclCommandRef       = MatchesRegex[AclCommandRegexWit.T]
   final type AclPatternRef       = ValidAclPattern
   final type HostRef             = ValidHost
+  final type IpAddressRef        = ValidIpAddress
   final type IndexRef            = True
   final type KeyRef              = ValidKey
   final type LatitudeRef         = NonNaN And Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
@@ -178,6 +179,7 @@ package object laserdisc {
   final type AclCommand            = String Refined AclCommandRef
   final type AclPattern            = String Refined AclPatternRef
   final type Host                  = String Refined HostRef
+  final type IpAddress             = String Refined IpAddressRef
   final type Index                 = Long Refined IndexRef
   final type Key                   = String Refined KeyRef
   final type Latitude              = Double Refined LatitudeRef
@@ -225,6 +227,7 @@ package object laserdisc {
   object AclCommand            extends RefinedTypeOps[AclCommand, String]
   object AclPattern            extends RefinedTypeOps[AclPattern, String]
   object Host                  extends RefinedTypeOps[Host, String]
+  object IpAddress             extends RefinedTypeOps[IpAddress, String]
   object Index                 extends RefinedTypeOps.Numeric[Index, Long]
   object Key                   extends RefinedTypeOps[Key, String]
   object Latitude              extends RefinedTypeOps[Latitude, Double]

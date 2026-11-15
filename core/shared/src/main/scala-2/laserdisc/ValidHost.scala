@@ -28,3 +28,9 @@ object ValidHost {
   implicit final val validHostValidate: Validate.Plain[String, ValidHost] =
     Validate.fromPredicate(HostCheck.isValid, h => s"isHost($h)", ValidHost())
 }
+
+final case class ValidIpAddress()
+object ValidIpAddress {
+  implicit final val validIpAddressValidate: Validate.Plain[String, ValidIpAddress] =
+    Validate.fromPredicate(HostCheck.isIpAddress, a => s"isIpAddress($a)", ValidIpAddress())
+}

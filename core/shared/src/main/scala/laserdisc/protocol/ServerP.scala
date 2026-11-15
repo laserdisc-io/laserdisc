@@ -27,8 +27,8 @@ import Protocol.Single
 object ServerP {
 
   // an address as the server shows a client's, which CLIENT KILL and CLIENT LIST match against: an IPv6 one in brackets, as in [::1]:6379
-  private[protocol] final def clientAddress(host: Host, port: Port): String = {
-    val shown = Show.hostShow.show(host)
+  private[protocol] final def clientAddress(ip: IpAddress, port: Port): String = {
+    val shown = Show.ipAddressShow.show(ip)
     s"${if (shown.contains(':')) s"[$shown]" else shown}:${Show.portShow.show(port)}"
   }
 
@@ -341,11 +341,11 @@ object ServerP {
   /** The filters of CLIENT KILL: a client is closed only if it matches all of them */
   final class ClientFilter private (val params: List[String]) {
 
-    def id(id: NonNegLong): ClientFilter              = new ClientFilter(params ++ List("ID", Show[NonNegLong].show(id)))
-    def address(host: Host, port: Port): ClientFilter =
-      new ClientFilter(params ++ List("ADDR", clientAddress(host, port)))
-    def localAddress(host: Host, port: Port): ClientFilter =
-      new ClientFilter(params ++ List("LADDR", clientAddress(host, port)))
+    def id(id: NonNegLong): ClientFilter                 = new ClientFilter(params ++ List("ID", Show[NonNegLong].show(id)))
+    def address(ip: IpAddress, port: Port): ClientFilter =
+      new ClientFilter(params ++ List("ADDR", clientAddress(ip, port)))
+    def localAddress(ip: IpAddress, port: Port): ClientFilter =
+      new ClientFilter(params ++ List("LADDR", clientAddress(ip, port)))
     def clientType(clientType: ClientType): ClientFilter =
       new ClientFilter(params ++ List("TYPE", ClientType.clientTypeShow.show(clientType)))
     def user(username: String): ClientFilter = new ClientFilter(params ++ List("USER", username))
@@ -359,12 +359,12 @@ object ServerP {
     // from Valkey 8.1, where `client.ids` gives it
     private[protocol] def ids(ids: OneOrMore[NonNegLong]): ClientFilter = new ClientFilter("ID" :: ids.value.map(Show[NonNegLong].show))
 
-    def id(id: NonNegLong): ClientFilter                   = none.id(id)
-    def address(host: Host, port: Port): ClientFilter      = none.address(host, port)
-    def localAddress(host: Host, port: Port): ClientFilter = none.localAddress(host, port)
-    def clientType(clientType: ClientType): ClientFilter   = none.clientType(clientType)
-    def user(username: String): ClientFilter               = none.user(username)
-    def skipMe(skip: Boolean): ClientFilter                = none.skipMe(skip)
+    def id(id: NonNegLong): ClientFilter                      = none.id(id)
+    def address(ip: IpAddress, port: Port): ClientFilter      = none.address(ip, port)
+    def localAddress(ip: IpAddress, port: Port): ClientFilter = none.localAddress(ip, port)
+    def clientType(clientType: ClientType): ClientFilter      = none.clientType(clientType)
+    def user(username: String): ClientFilter                  = none.user(username)
+    def skipMe(skip: Boolean): ClientFilter                   = none.skipMe(skip)
   }
 
   /** REDIRECT, BCAST, PREFIX, OPTIN, OPTOUT and NOLOOP, for CLIENT TRACKING. Which connection gets the notices, for every key under the
@@ -404,25 +404,24 @@ object ServerP {
     * and `capabilities` are the letters CLIENT LIST shows for them
     */
   final class ValkeyClientFilter private (val params: List[String]) {
-    import Show.hostShow
 
     private def add(name: String, value: String): ValkeyClientFilter                 = new ValkeyClientFilter(params ++ List(name, value))
-    private def hostAndPort(host: Host, port: Port): String                          = clientAddress(host, port)
+    private def hostAndPort(ip: IpAddress, port: Port): String                       = clientAddress(ip, port)
     private def idList(name: String, ids: OneOrMore[NonNegLong]): ValkeyClientFilter =
       new ValkeyClientFilter(params ++ (name :: ids.value.map(Show[NonNegLong].show)))
 
-    def ids(ids: OneOrMore[NonNegLong]): ValkeyClientFilter      = idList("ID", ids)
-    def clientType(clientType: ClientType): ValkeyClientFilter   = add("TYPE", ClientType.clientTypeShow.show(clientType))
-    def user(username: String): ValkeyClientFilter               = add("USER", username)
-    def address(host: Host, port: Port): ValkeyClientFilter      = add("ADDR", hostAndPort(host, port))
-    def localAddress(host: Host, port: Port): ValkeyClientFilter = add("LADDR", hostAndPort(host, port))
-    def ip(host: Host): ValkeyClientFilter                       = add("IP", hostShow.show(host))
-    def name(name: ConnectionName): ValkeyClientFilter           = add("NAME", name.value)
-    def flags(flags: Key): ValkeyClientFilter                    = add("FLAGS", flags.value)
-    def libName(name: Key): ValkeyClientFilter                   = add("LIB-NAME", name.value)
-    def libVersion(version: Key): ValkeyClientFilter             = add("LIB-VER", version.value)
-    def db(index: DbIndex): ValkeyClientFilter                   = add("DB", Show[DbIndex].show(index))
-    def capabilities(capabilities: Key): ValkeyClientFilter      = add("CAPA", capabilities.value)
+    def ids(ids: OneOrMore[NonNegLong]): ValkeyClientFilter         = idList("ID", ids)
+    def clientType(clientType: ClientType): ValkeyClientFilter      = add("TYPE", ClientType.clientTypeShow.show(clientType))
+    def user(username: String): ValkeyClientFilter                  = add("USER", username)
+    def address(ip: IpAddress, port: Port): ValkeyClientFilter      = add("ADDR", hostAndPort(ip, port))
+    def localAddress(ip: IpAddress, port: Port): ValkeyClientFilter = add("LADDR", hostAndPort(ip, port))
+    def ip(ip: IpAddress): ValkeyClientFilter                       = add("IP", Show.ipAddressShow.show(ip))
+    def name(name: ConnectionName): ValkeyClientFilter              = add("NAME", name.value)
+    def flags(flags: Key): ValkeyClientFilter                       = add("FLAGS", flags.value)
+    def libName(name: Key): ValkeyClientFilter                      = add("LIB-NAME", name.value)
+    def libVersion(version: Key): ValkeyClientFilter                = add("LIB-VER", version.value)
+    def db(index: DbIndex): ValkeyClientFilter                      = add("DB", Show[DbIndex].show(index))
+    def capabilities(capabilities: Key): ValkeyClientFilter         = add("CAPA", capabilities.value)
 
     /** Connected for longer than `seconds` */
     def maxAge(seconds: PosLong): ValkeyClientFilter = add("MAXAGE", Show[PosLong].show(seconds))
@@ -433,49 +432,49 @@ object ServerP {
     /** Whether to spare the client sending the command */
     def skipMe(skip: Boolean): ValkeyClientFilter = add("SKIPME", if (skip) "yes" else "no")
 
-    def notIds(ids: OneOrMore[NonNegLong]): ValkeyClientFilter      = idList("NOT-ID", ids)
-    def notClientType(clientType: ClientType): ValkeyClientFilter   = add("NOT-TYPE", ClientType.clientTypeShow.show(clientType))
-    def notUser(username: String): ValkeyClientFilter               = add("NOT-USER", username)
-    def notAddress(host: Host, port: Port): ValkeyClientFilter      = add("NOT-ADDR", hostAndPort(host, port))
-    def notLocalAddress(host: Host, port: Port): ValkeyClientFilter = add("NOT-LADDR", hostAndPort(host, port))
-    def notIp(host: Host): ValkeyClientFilter                       = add("NOT-IP", hostShow.show(host))
-    def notName(name: ConnectionName): ValkeyClientFilter           = add("NOT-NAME", name.value)
-    def notFlags(flags: Key): ValkeyClientFilter                    = add("NOT-FLAGS", flags.value)
-    def notLibName(name: Key): ValkeyClientFilter                   = add("NOT-LIB-NAME", name.value)
-    def notLibVersion(version: Key): ValkeyClientFilter             = add("NOT-LIB-VER", version.value)
-    def notDb(index: DbIndex): ValkeyClientFilter                   = add("NOT-DB", Show[DbIndex].show(index))
-    def notCapabilities(capabilities: Key): ValkeyClientFilter      = add("NOT-CAPA", capabilities.value)
+    def notIds(ids: OneOrMore[NonNegLong]): ValkeyClientFilter         = idList("NOT-ID", ids)
+    def notClientType(clientType: ClientType): ValkeyClientFilter      = add("NOT-TYPE", ClientType.clientTypeShow.show(clientType))
+    def notUser(username: String): ValkeyClientFilter                  = add("NOT-USER", username)
+    def notAddress(ip: IpAddress, port: Port): ValkeyClientFilter      = add("NOT-ADDR", hostAndPort(ip, port))
+    def notLocalAddress(ip: IpAddress, port: Port): ValkeyClientFilter = add("NOT-LADDR", hostAndPort(ip, port))
+    def notIp(ip: IpAddress): ValkeyClientFilter                       = add("NOT-IP", Show.ipAddressShow.show(ip))
+    def notName(name: ConnectionName): ValkeyClientFilter              = add("NOT-NAME", name.value)
+    def notFlags(flags: Key): ValkeyClientFilter                       = add("NOT-FLAGS", flags.value)
+    def notLibName(name: Key): ValkeyClientFilter                      = add("NOT-LIB-NAME", name.value)
+    def notLibVersion(version: Key): ValkeyClientFilter                = add("NOT-LIB-VER", version.value)
+    def notDb(index: DbIndex): ValkeyClientFilter                      = add("NOT-DB", Show[DbIndex].show(index))
+    def notCapabilities(capabilities: Key): ValkeyClientFilter         = add("NOT-CAPA", capabilities.value)
   }
   object ValkeyClientFilter {
     private final val none = new ValkeyClientFilter(Nil)
 
-    def ids(ids: OneOrMore[NonNegLong]): ValkeyClientFilter         = none.ids(ids)
-    def clientType(clientType: ClientType): ValkeyClientFilter      = none.clientType(clientType)
-    def user(username: String): ValkeyClientFilter                  = none.user(username)
-    def address(host: Host, port: Port): ValkeyClientFilter         = none.address(host, port)
-    def localAddress(host: Host, port: Port): ValkeyClientFilter    = none.localAddress(host, port)
-    def ip(host: Host): ValkeyClientFilter                          = none.ip(host)
-    def name(name: ConnectionName): ValkeyClientFilter              = none.name(name)
-    def flags(flags: Key): ValkeyClientFilter                       = none.flags(flags)
-    def libName(name: Key): ValkeyClientFilter                      = none.libName(name)
-    def libVersion(version: Key): ValkeyClientFilter                = none.libVersion(version)
-    def db(index: DbIndex): ValkeyClientFilter                      = none.db(index)
-    def capabilities(capabilities: Key): ValkeyClientFilter         = none.capabilities(capabilities)
-    def maxAge(seconds: PosLong): ValkeyClientFilter                = none.maxAge(seconds)
-    def idle(seconds: PosLong): ValkeyClientFilter                  = none.idle(seconds)
-    def skipMe(skip: Boolean): ValkeyClientFilter                   = none.skipMe(skip)
-    def notIds(ids: OneOrMore[NonNegLong]): ValkeyClientFilter      = none.notIds(ids)
-    def notClientType(clientType: ClientType): ValkeyClientFilter   = none.notClientType(clientType)
-    def notUser(username: String): ValkeyClientFilter               = none.notUser(username)
-    def notAddress(host: Host, port: Port): ValkeyClientFilter      = none.notAddress(host, port)
-    def notLocalAddress(host: Host, port: Port): ValkeyClientFilter = none.notLocalAddress(host, port)
-    def notIp(host: Host): ValkeyClientFilter                       = none.notIp(host)
-    def notName(name: ConnectionName): ValkeyClientFilter           = none.notName(name)
-    def notFlags(flags: Key): ValkeyClientFilter                    = none.notFlags(flags)
-    def notLibName(name: Key): ValkeyClientFilter                   = none.notLibName(name)
-    def notLibVersion(version: Key): ValkeyClientFilter             = none.notLibVersion(version)
-    def notDb(index: DbIndex): ValkeyClientFilter                   = none.notDb(index)
-    def notCapabilities(capabilities: Key): ValkeyClientFilter      = none.notCapabilities(capabilities)
+    def ids(ids: OneOrMore[NonNegLong]): ValkeyClientFilter            = none.ids(ids)
+    def clientType(clientType: ClientType): ValkeyClientFilter         = none.clientType(clientType)
+    def user(username: String): ValkeyClientFilter                     = none.user(username)
+    def address(ip: IpAddress, port: Port): ValkeyClientFilter         = none.address(ip, port)
+    def localAddress(ip: IpAddress, port: Port): ValkeyClientFilter    = none.localAddress(ip, port)
+    def ip(ip: IpAddress): ValkeyClientFilter                          = none.ip(ip)
+    def name(name: ConnectionName): ValkeyClientFilter                 = none.name(name)
+    def flags(flags: Key): ValkeyClientFilter                          = none.flags(flags)
+    def libName(name: Key): ValkeyClientFilter                         = none.libName(name)
+    def libVersion(version: Key): ValkeyClientFilter                   = none.libVersion(version)
+    def db(index: DbIndex): ValkeyClientFilter                         = none.db(index)
+    def capabilities(capabilities: Key): ValkeyClientFilter            = none.capabilities(capabilities)
+    def maxAge(seconds: PosLong): ValkeyClientFilter                   = none.maxAge(seconds)
+    def idle(seconds: PosLong): ValkeyClientFilter                     = none.idle(seconds)
+    def skipMe(skip: Boolean): ValkeyClientFilter                      = none.skipMe(skip)
+    def notIds(ids: OneOrMore[NonNegLong]): ValkeyClientFilter         = none.notIds(ids)
+    def notClientType(clientType: ClientType): ValkeyClientFilter      = none.notClientType(clientType)
+    def notUser(username: String): ValkeyClientFilter                  = none.notUser(username)
+    def notAddress(ip: IpAddress, port: Port): ValkeyClientFilter      = none.notAddress(ip, port)
+    def notLocalAddress(ip: IpAddress, port: Port): ValkeyClientFilter = none.notLocalAddress(ip, port)
+    def notIp(ip: IpAddress): ValkeyClientFilter                       = none.notIp(ip)
+    def notName(name: ConnectionName): ValkeyClientFilter              = none.notName(name)
+    def notFlags(flags: Key): ValkeyClientFilter                       = none.notFlags(flags)
+    def notLibName(name: Key): ValkeyClientFilter                      = none.notLibName(name)
+    def notLibVersion(version: Key): ValkeyClientFilter                = none.notLibVersion(version)
+    def notDb(index: DbIndex): ValkeyClientFilter                      = none.notDb(index)
+    def notCapabilities(capabilities: Key): ValkeyClientFilter         = none.notCapabilities(capabilities)
   }
 
   /** NOW, FORCE, SAFE and FAILOVER, for SHUTDOWN on Valkey 9.0: the first two as in [[ShutdownOptions]], then have the server refuse a
@@ -684,8 +683,8 @@ trait ClientCommands extends ClientCoreCommands with ClientTrackingCommands {
     )
 
   /** Closes the client at that address. Dragonfly replies to this with a count, so it has `killaddress` instead */
-  def kill(host: Host, port: Port): Single[OK] =
-    Protocol("CLIENT", "KILL" :: ServerP.clientAddress(host, port) :: Nil).as[Str, OK]
+  def kill(ip: IpAddress, port: Port): Single[OK] =
+    Protocol("CLIENT", "KILL" :: ServerP.clientAddress(ip, port) :: Nil).as[Str, OK]
 
   /** Closes the clients that match every filter, and replies how many it closed */
   def kill(filter: ClientFilter): Single[NonNegLong] = Protocol("CLIENT", "KILL" :: filter.params).as[Num, NonNegLong]

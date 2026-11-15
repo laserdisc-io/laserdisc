@@ -137,6 +137,7 @@ final type GlobPatternRef      = ValidGlobPattern
 final type AclCommandRef       = Match[AclCommandRegexWit.T]
 final type AclPatternRef       = ValidAclPattern
 final type HostRef             = ValidHost
+final type IpAddressRef        = ValidIpAddress
 final type IndexRef            = Pure
 final type KeyRef              = ValidKey
 final type LatitudeRef         = Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
@@ -173,6 +174,7 @@ final type GlobPattern           = GlobPattern.T
 final type AclCommand            = AclCommand.T
 final type AclPattern            = AclPattern.T
 final type Host                  = Host.T
+final type IpAddress             = IpAddress.T
 final type Index                 = Index.T
 final type Key                   = Key.T
 final type Latitude              = Latitude.T
@@ -220,6 +222,7 @@ object GlobPattern           extends RefinedTypeOps[String, GlobPatternRef]
 object AclCommand            extends RefinedTypeOps[String, AclCommandRef]
 object AclPattern            extends RefinedTypeOps[String, AclPatternRef]
 object Host                  extends RefinedTypeOps[String, HostRef]
+object IpAddress             extends RefinedTypeOps[String, IpAddressRef]
 object Index                 extends RefinedTypeOps[Long, IndexRef]
 object Key                   extends RefinedTypeOps[String, KeyRef]
 object Latitude              extends RefinedTypeOps[Double, LatitudeRef]

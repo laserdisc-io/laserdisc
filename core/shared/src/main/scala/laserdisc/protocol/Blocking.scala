@@ -43,11 +43,19 @@ private[laserdisc] object Blocking {
         val timeout = arguments.lift(4).collect { case Bulk(word) => word }
         if (timeout.flatMap(w => Try(w.toLong).toOption).exists(_ > 0L)) milliseconds(timeout) else 1.second
       case Seq(Arr(Bulk(command) :: arguments)) =>
-        val words = arguments.collect { case Bulk(word) => word }
-        waitAt(command, words).fold(Duration.Zero: FiniteDuration) {
+        val words             = arguments.collect { case Bulk(word) => word }
+        def has(word: String) = words.exists(_.equalsIgnoreCase(word))
+        // Valkey's CLUSTER SETSLOT without TIMEOUT waits up to 2 seconds for the replicas, and SHUTDOWN up to shutdown-timeout, 10 seconds
+        // unless the server's set otherwise, for them to catch up, unless it's told NOW, or ABORT to stop one going on
+        val fixed = Ascii.upper(command) match {
+          case "CLUSTER" if words.headOption.exists(_.equalsIgnoreCase("SETSLOT")) && !has("TIMEOUT") => Some(2.seconds)
+          case "SHUTDOWN" if !has("NOW") && !has("ABORT")                                             => Some(10.seconds)
+          case _                                                                                      => None
+        }
+        fixed.getOrElse(waitAt(command, words).fold(Duration.Zero: FiniteDuration) {
           case (index, true)  => seconds(words.lift(index))
           case (index, false) => milliseconds(words.lift(index))
-        }
+        })
       case _ => Duration.Zero
     }
 

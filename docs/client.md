@@ -335,6 +335,11 @@ seconds and the default timeout can take up to 50 seconds. The wait is at least
 0.002 seconds: 0 would mean for as long as it takes, and KeyDB and Dragonfly wait
 for as long as it takes on less.
 
+A few other commands wait on the server too, and get their wait added the same
+way, such as `WAIT`, `MIGRATE` and `CLUSTER SETSLOT`. `SHUTDOWN` gets 10 seconds,
+as long as a server waits for its replicas unless set otherwise with
+`shutdown-timeout`: if yours waits longer, give `SHUTDOWN` a longer timeout.
+
 While one waits, it holds the client's connection: commands sent after it on the
 same client, from anywhere in your program, only get their replies once it's
 done, and may time out first. Give blocking commands, and loops that follow

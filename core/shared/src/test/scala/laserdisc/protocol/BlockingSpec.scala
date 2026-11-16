@@ -32,6 +32,15 @@ final class BlockingSpec extends BaseSpec {
   // as typed at the CLI
   private def typed(words: String*): Protocol.Single[RESP] = Protocol(words.head, words.tail.toList).using(RESPRead.raw)
 
+  test("CLUSTER SETSLOT without TIMEOUT gets the 2 seconds Valkey waits for replicas, and SHUTDOWN without NOW or ABORT the 10 it waits") {
+    assertEquals(Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1), ClusterP.SetSlotMode.node, NodeId.unsafeFrom("a" * 40))), 2.seconds)
+    assertEquals(Blocking.waitOf(typed("cluster", "setslot", "1", "stable")), 2.seconds)
+    assertEquals(Blocking.waitOf(laserdisc.redis_8_10.shutdown), 10.seconds)
+    assertEquals(Blocking.waitOf(typed("shutdown", "nosave")), 10.seconds)
+    assertEquals(Blocking.waitOf(typed("SHUTDOWN", "NOSAVE", "NOW")), Duration.Zero)
+    assertEquals(Blocking.waitOf(typed("shutdown", "abort")), Duration.Zero)
+  }
+
   test("REPLTAKEOVER and CLUSTER SETSLOT with TIMEOUT get their wait on top of the timeout") {
     assertEquals(Blocking.waitOf(laserdisc.dragonfly_2_0.repltakeover(PosInt(60))), 60.seconds)
     assertEquals(Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1), PosLong(30000L))), 30.seconds)
@@ -39,7 +48,6 @@ final class BlockingSpec extends BaseSpec {
       Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1), ClusterP.SetSlotMode.node, NodeId.unsafeFrom("a" * 40), PosLong(2500L))),
       2500.millis
     )
-    assertEquals(Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1))), Duration.Zero)
   }
 
   test("A blocking command's wait is read from what's sent, in seconds or milliseconds") {

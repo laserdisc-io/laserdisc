@@ -57,6 +57,12 @@ The other commands of `CLUSTER`, `XGROUP` and `XINFO` aren't in a group: each
 is one word, such as `clusterinfo`, `keyslot`, `xgroupcreate` and
 `xinfostream`.
 
+To find a command's name and arguments, browse the
+[API documentation](https://javadoc.io/doc/io.laserdisc/laserdisc-core_3/latest/index.html):
+the commands of `redis_8_10`, for example, are the members of
+`laserdisc.redis_8_10`. The client's is under
+[laserdisc-fs2](https://javadoc.io/doc/io.laserdisc/laserdisc-fs2_3/latest/index.html).
+
 ## Arguments
 
 Arguments use types that only accept valid values. For example, a `Key` is a

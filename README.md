@@ -78,6 +78,12 @@ It covers commands and their argument types, reading replies into your own
 types, the client, subscribing to channels, JSON with circe, the command line
 prompt, and the differences between platforms.
 
+The API documentation lists every command and type:
+[laserdisc-core](https://javadoc.io/doc/io.laserdisc/laserdisc-core_3/latest/index.html)
+for the commands, and
+[laserdisc-fs2](https://javadoc.io/doc/io.laserdisc/laserdisc-fs2_3/latest/index.html)
+for the client.
+
 ## Versioning
 
 LaserDisc follows early semantic versioning. Upgrades within a series, such as

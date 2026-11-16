@@ -344,8 +344,9 @@ streams, a client of their own.
 
 To wait with no limit, use a dedicated client and the commands under
 `blocking.forever`. A dedicated client sends one command at a time, each once
-the one before it has returned, so it's meant for one caller. Besides those
-commands, it sends any other:
+the one before it has returned, so it's meant for one caller: a command's
+timeout only starts once its turn comes. Besides those commands, it sends any
+other:
 
 ```scala mdoc:compile-only
 import cats.effect.IO

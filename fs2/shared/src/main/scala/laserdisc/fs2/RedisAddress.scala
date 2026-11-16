@@ -43,6 +43,8 @@ final case class RedisAddress(host: Host, port: Port) {
 
 object RedisAddress {
 
-  /** By host, then port: the order in which `toNodes` tries a `NonEmptySet` of addresses built with it */
+  /** By host, alphabetically, so `redis-10` comes before `redis-2`, then by port: the order in which `toNodes` tries a `NonEmptySet` of
+    * addresses built with it
+    */
   implicit final val redisAddressOrder: Order[RedisAddress] = Order.by(address => (address.host.value, address.port.value))
 }

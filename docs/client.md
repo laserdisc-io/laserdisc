@@ -207,8 +207,9 @@ val client: Resource[IO, RedisClient[IO]] =
   RedisClient[IO].toNodes(NonEmptySet.of(RedisAddress("redis-1", 6379), RedisAddress("redis-2", 6379)))
 ```
 
-The addresses are tried in the set's order: by host, then port, unless you
-build the set with an `Order` of your own.
+The addresses are tried in the set's order: by host, alphabetically, so
+`redis-10` comes before `redis-2`, then by port, unless you build the set with
+an `Order` of your own.
 
 When none of the servers can be reached, it waits before trying them all again,
 as described in [Reconnecting](#reconnecting).

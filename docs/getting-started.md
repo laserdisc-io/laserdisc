@@ -62,8 +62,9 @@ What each import gives you:
 - `laserdisc.redis_8_10.*` is the commands of Redis 8.10. Import the version of
   your server, or the oldest one you run: see
   [The version of your server](commands.md#the-version-of-your-server).
-- `laserdisc.auto.*` turns literals into argument types, so `"a"` can be passed
-  as a `Key` and `23` checked when your code compiles.
+- `laserdisc.auto.*` turns literals into argument types, checked when your code
+  compiles: `"localhost"` is passed as a `Host`, `6379` as a `Port` and `"a"` as
+  a `Key`.
 - `laserdisc.fs2.*` is the client.
 
 The `LogWriter` comes from [log-effect](https://github.com/laserdisc-io/log-effect),

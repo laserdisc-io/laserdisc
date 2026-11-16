@@ -350,6 +350,11 @@ lazy val cli = laserdiscCrossModule("cli", CrossType.Full)
       "org.typelevel" %%% "munit-cats-effect" % V.`munit-cats-effect` % Test
     )
   )
+  // run in a process of its own, reading sbt's input, so that what's typed reaches it and Ctrl-D ends it
+  .jvmSettings(
+    Compile / run / fork         := true,
+    Compile / run / connectInput := true
+  )
   .jsSettings(
     scalaJSUseMainModuleInitializer := true
   )

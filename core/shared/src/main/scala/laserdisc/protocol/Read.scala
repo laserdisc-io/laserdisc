@@ -154,7 +154,8 @@ private[protocol] sealed trait ReadInstances1 extends ReadLabelledInstances {
           case Right(cd) => go(tail, i + 1, cd :: acc)
           case Left(e)   => Left(e)
         }
-      case last :: Nil => Left(RESPDecErr(s"Read[Arr.OfPairs, Seq] error: odd number of elements, the last being $last"))
+      case last :: Nil =>
+        Left(RESPDecErr(s"Read[Arr.OfPairs, Seq] error: odd number of elements, the last being ${RESPDecErr.shown(last)}"))
     }
     go(elements, 1, Nil)
   }

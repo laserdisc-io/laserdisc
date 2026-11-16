@@ -40,6 +40,8 @@ arrived, and the stream goes on to the next one.
 | `ssubscribe[A](channels)` | `ShardMessage(channel, value)` | Redis 7.0 and later, every Valkey, Dragonfly |
 | `monitor` | `MonitorEvent(time, db, client, command)` | Every server |
 
+To name these types, as in a `case`, import `laserdisc.protocol.Feed.*`.
+
 Shard channels, for `ssubscribe`, are channels that live on a single node of a
 Redis Cluster, instead of on every node. `monitor` reports every command from
 every client. It slows the server down, so use it for debugging.
@@ -124,12 +126,18 @@ import laserdisc.*
 import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 import laserdisc.fs2.*
+import laserdisc.protocol.Feed.Invalidation
 
-def track(redisClient: RedisClient[IO]): IO[Unit] =
+// forget drops keys from your cache, and forgetAll empties it
+def track(redisClient: RedisClient[IO], forget: Seq[Key] => IO[Unit], forgetAll: IO[Unit]): IO[Unit] =
   // the subscriber's connection gives its id, which the client's tracking sends the notices to
   RedisSubscriber[IO].identified("localhost", 6379, client.invalidations).use { case (id, notices) =>
     redisClient.send(client.tracking(servertypes.trackingOptions.redirect(id))) *>
-      notices.evalMap(notice => IO.println(notice)).compile.drain
+      notices.evalMap {
+        case Right(Invalidation.Keys(keys)) => forget(keys)
+        // after a command like FLUSHALL, or for a notice that couldn't be read
+        case Right(Invalidation.Everything) | Left(_) => forgetAll
+      }.compile.drain
   }
 ```
 

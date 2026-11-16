@@ -222,6 +222,9 @@ its nodes, and a node answers a command for a key it doesn't hold with a
 that holds it, or follow those redirects, so on a cluster such a command fails
 with that error.
 
+It doesn't ask Redis Sentinel which server is the primary either: give `toNodes`
+the addresses of the servers themselves.
+
 ## Reconnecting
 
 If the connection drops, commands still waiting for a reply get a `Left` right

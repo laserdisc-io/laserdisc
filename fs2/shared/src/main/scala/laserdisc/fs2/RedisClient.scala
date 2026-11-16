@@ -271,7 +271,7 @@ object RedisClient {
 
                 def isTransaction(request: Request[F]): Boolean  = request.protocol.isInstanceOf[Protocol.Multi[?]]
                 def command(request: Request[F]): Option[String] = request.protocol.frames.headOption.collect { case Arr(Bulk(name) :: _) =>
-                  name.toUpperCase
+                  Ascii.upper(name)
                 }
 
                 // replies come in order, so a request isn't due before those sent ahead of it, like a blocking command still waiting
@@ -450,7 +450,7 @@ object RedisClient {
                   if (isTransaction(request)) Concurrent[F].unit
                   else {
                     val words                         = wordsOf(request.protocol)
-                    val upper                         = words.map(_.toUpperCase)
+                    val upper                         = words.map(Ascii.upper)
                     def again(ws: List[String])       = Some(Protocol(ws.head, ws.tail).using(RESPRead.raw))
                     def set(f: Kept => Kept): F[Unit] = kept.update(f)
                     (upper.take(3), replies.headOption) match {

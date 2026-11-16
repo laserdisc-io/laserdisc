@@ -71,7 +71,7 @@ private[laserdisc] object Blocking {
 
   // where a command's wait is among its parameters, and whether it's in seconds rather than milliseconds
   private def waitAt(command: String, words: Seq[String]): Option[(Int, Boolean)] =
-    command.toUpperCase match {
+    Ascii.upper(command) match {
       case "BLPOP" | "BRPOP" | "BRPOPLPUSH" | "BLMOVE" | "BZPOPMIN" | "BZPOPMAX" if words.nonEmpty => Some(words.size - 1 -> true)
       case "BLMPOP" | "BZMPOP" if words.nonEmpty                                                   => Some(0 -> true)
       // after the source, destination and both sides, before the amount and order

@@ -251,7 +251,7 @@ object ServerP {
   /** INFO's reply, by section. A section a later version added is `Other` with versions before it */
   final case class Info(sections: Map[InfoSectionKey, Parameters])
   object Info {
-    private def section(later: List[LaterInfoSection])(name: String): InfoSectionKey = name.toLowerCase match {
+    private def section(later: List[LaterInfoSection])(name: String): InfoSectionKey = Ascii.lower(name) match {
       case "server"       => InfoSection.server
       case "clients"      => InfoSection.clients
       case "memory"       => InfoSection.memory

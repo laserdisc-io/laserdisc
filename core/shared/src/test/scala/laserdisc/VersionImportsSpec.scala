@@ -896,6 +896,12 @@ final class VersionImportsSpec extends BaseSpec {
     {
       import laserdisc.valkey_9_0.*
       assertEquals(acl.whoami.frames, frame("ACL", "WHOAMI"))
+      assertEquals(acl.whoami.decode(Bulk("wu")), "wu")
+    }
+    {
+      // Dragonfly says "User is" before the name
+      import laserdisc.dragonfly_2_0.*
+      assertEquals(acl.whoami.decode(Bulk("User is wu")), "wu")
       assert(compileErrors("""acl.setuser("u", servertypes.aclDatabaseRules.allDatabases)""").nonEmpty)
     }
     {

@@ -489,6 +489,10 @@ trait AclDryRunCommands extends Features {
 
 /** ACL as Dragonfly has it: without selectors, and it refuses the rules `reset`, `hashedPassword` and `removeHashedPassword` */
 trait AclDragonflyCommands extends AclCoreCommands with AclDryRunCommands {
+
+  /** The user this connection is logged in as, without the "User is " Dragonfly says before it */
+  override val whoami: Single[String] = Protocol("ACL", "WHOAMI").as[Bulk, String].map(_.stripPrefix("User is "))
+
   override def getuser(user: Key): Single[Option[Acl.AclUser6_2]] =
     Protocol("ACL", "GETUSER" :: user.value :: Nil).using(Acl.maybeUserDragonfly)
 

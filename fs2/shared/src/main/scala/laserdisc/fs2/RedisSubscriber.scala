@@ -42,6 +42,8 @@ import scala.concurrent.duration.*
   * server replies with an error
   */
 object RedisSubscriber {
+
+  /** Where opening a subscription starts, as in `RedisSubscriber[IO].to("localhost", 6379, subscribe[String](channels))` */
   @inline final def apply[F[_]: Async: Network: LogSelector]: RedisSubscriberConnector[F] = new RedisSubscriberConnector[F](30.seconds)
 
   private final val receiveBufferSizeBytes = 8 * 1024 * 1024
@@ -58,6 +60,9 @@ object RedisSubscriber {
     /** Opens each connection with TLS, checking the server's certificate */
     final def withTls(tls: Tls[F]): RedisSubscriberConnector[F] = new RedisSubscriberConnector[F](keepAlive, Some(tls))
 
+    /** Opens a connection subscribed to `feed`: the resource is open once the server has confirmed the subscription, and closing it ends
+      * the subscription
+      */
     final def to[A](host: Host, port: Port, feed: Feed[A]): Resource[F, Stream[F, Either[Unreadable, A]]] =
       open(RedisAddress(host, port), Nil, feed).map(_._2)
 

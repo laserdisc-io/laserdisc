@@ -38,6 +38,8 @@ import log.effect.fs2.syntax.*
 import scala.concurrent.duration.*
 
 object RedisClient {
+
+  /** Where opening a client starts, as in `RedisClient[IO].to("localhost", 6379)` */
   @inline final def apply[F[_]: Async: Network: LogSelector]: RedisClientConnector[F] =
     new RedisClientConnector[F]()
 

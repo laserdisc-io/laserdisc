@@ -26,6 +26,7 @@ import cats.{ApplicativeError, Order}
 import com.comcast.ip4s
 import com.comcast.ip4s.SocketAddress
 
+/** A server's address, as `RedisClient[F].toNodes` takes them */
 final case class RedisAddress(host: Host, port: Port) {
   // a hostname ending with a dot is resolved without it, as ip4s takes no such name
   def toSocketAddress[F[_]](implicit F: ApplicativeError[F, Throwable]): F[SocketAddress[ip4s.Host]] =

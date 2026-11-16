@@ -65,7 +65,9 @@ package fs2 {
 
 package object fs2 {
   // how a send's batch is queued, and how long the send may take
-  final type Env[F[_]]         = (Batch[F] => F[Unit], FiniteDuration)
+  final type Env[F[_]] = (Batch[F] => F[Unit], FiniteDuration)
+
+  /** A client, opened with `RedisClient[F].to`, `toNodes` or `dedicated`: `send` sends commands and gives each one's result */
   final type RedisClient[F[_]] = Client[F, Env[F]]
 
   // the requests of a send, each with a check for whether its reply arrived, and the action that waits for all the replies

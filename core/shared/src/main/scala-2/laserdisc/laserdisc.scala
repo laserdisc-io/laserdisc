@@ -51,7 +51,7 @@ package object laserdisc {
   @implicitNotFound("Cannot prove that every element of ${L} is a subtype of ${A}")
   type LUBConstraint[L <: Tuple, A] = shapeless.LUBConstraint[L, A]
 
-  // Basic type aliases
+  /** A command's result: its reply read as an `A`, or why it failed, such as the server's [[Err]] or a [[RESPDecErr]] */
   final type Maybe[+A] = Either[Throwable, A]
 
   // Type forwarders
@@ -85,10 +85,11 @@ package object laserdisc {
   final val RESPDecErr = protocol.RESPDecErr
   final val Value      = protocol.Value
 
-  // a value that may be missing, as RESP2 sends it: a null bulk string for a string, a number or a simple string, and a null array for an
-  // array
+  /** A reply that may be missing, as for a string, a number or a simple string: an `A`, or the null RESP2 sends instead */
   final type OrNullBulk[A] = OneOf[NullBulk *: A *: EmptyTuple]
-  final type OrNilArr[A]   = OneOf[NilArr *: A *: EmptyTuple]
+
+  /** An array reply that may be missing: an `A`, or the null array RESP2 sends instead */
+  final type OrNilArr[A] = OneOf[NilArr *: A *: EmptyTuple]
 
   // Witnesses
   final val AccessFrequencyMaxValueWit = W(255)

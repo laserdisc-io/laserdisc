@@ -29,7 +29,7 @@ import io.github.iltotore.iron.constraint.all.*
 import scala.annotation.{implicitNotFound, nowarn}
 import scala.util.NotGiven
 
-// Basic type aliases
+/** A command's result: its reply read as an `A`, or why it failed, such as the server's [[Err]] or a [[RESPDecErr]] */
 final type Maybe[+A] = Either[Throwable, A]
 
 // Export all protocol
@@ -37,13 +37,15 @@ export protocol.{Arr, Bulk, Err, Forever, NilArr, NullBulk, Num, OneOf, Protocol
 final type NilArr   = protocol.NilArr.type
 final type NullBulk = protocol.NullBulk.type
 
-// a value that may be missing, as RESP2 sends it: a null bulk string for a string, a number or a simple string, and a null array for an array
+/** A reply that may be missing, as for a string, a number or a simple string: an `A`, or the null RESP2 sends instead */
 final type OrNullBulk[A] = OneOf[NullBulk *: A *: EmptyTuple]
-final type OrNilArr[A]   = OneOf[NilArr *: A *: EmptyTuple]
 
-/** What a type whose values are checked, such as `Key` or `Port`, can do, as on Scala 2: `apply` takes a literal, checked when your code
-  * compiles; `from` gives a `Left` for a value that doesn't fit; `unsafeFrom` throws an `IllegalArgumentException` instead; `unapply`
-  * matches a value that fits; and `.value` gives back the plain value, such as the `String` of a `Key`
+/** An array reply that may be missing: an `A`, or the null array RESP2 sends instead */
+final type OrNilArr[A] = OneOf[NilArr *: A *: EmptyTuple]
+
+/** What a type whose values are checked, such as `Key` or `Port`, can do, as on Scala 2: `apply` takes a literal, checked when your code compiles; `from`
+  * gives a `Left` for a value that doesn't fit; `unsafeFrom` throws an `IllegalArgumentException` instead; `unapply` matches a value that
+  * fits; and `.value` gives back the plain value, such as the `String` of a `Key`
   */
 trait RefinedTypeOps[A, C](using C: RuntimeConstraint[A, C]) {
   opaque type T <: A = A :| C

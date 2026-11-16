@@ -47,6 +47,22 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  test("a reply that isn't RESP2 fails the commands waiting for it with UnreadableReply, saying why") {
+    // the first isn't a reply, and the second is one that can't be read
+    List("?not RESP2\r\n", ":not a number\r\n").traverse_ { reply =>
+      FakeRedisServer((_, requests) => requests.as(reply)).use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use { client =>
+          client.send(get[String]("a"), 5.seconds).map {
+            case Left(UnreadableReply(address, reason)) =>
+              assertEquals(address.port.value, port.value)
+              assert(reason.nonEmpty)
+            case other => fail(s"expected UnreadableReply for $reply, got $other")
+          }
+        }
+      }
+    }
+  }
+
   test("sends with timeouts of decades, or none, are answered one after the other, as a timer that long can stop the client reading") {
     val answering = FakeRedisServer((_, requests) => requests.as(bulk("v")))
     answering.use { port =>

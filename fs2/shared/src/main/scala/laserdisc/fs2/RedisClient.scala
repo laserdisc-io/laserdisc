@@ -23,6 +23,7 @@ package laserdisc
 package fs2
 
 import _root_.fs2.{Chunk, CompositeFailure, Pipe, Stream}
+import _root_.fs2.interop.scodec.CodecError
 import _root_.fs2.io.net.Network
 import cats.data.NonEmptySet
 import cats.effect.kernel.{Deferred, Ref, Temporal}
@@ -228,7 +229,9 @@ object RedisClient {
       failure match {
         case socket: IOException                                                    => ServerTerminatedConnection(address, Some(socket))
         case both: CompositeFailure if both.all.forall(_.isInstanceOf[IOException]) => ServerTerminatedConnection(address, Some(both))
-        case other                                                                  => other
+        case frame: protocol.UnknownBufferState                                     => UnreadableReply(address, frame.getMessage)
+        case decoding: CodecError => UnreadableReply(address, decoding.err.messageWithContext)
+        case other                => other
       }
 
     def refusedForNow(refused: Err): Boolean =

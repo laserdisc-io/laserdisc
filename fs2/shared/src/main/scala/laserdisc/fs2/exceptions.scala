@@ -41,6 +41,12 @@ final case class ServerTerminatedConnection(redisAddress: RedisAddress, cause: O
       false
     )
 
+/** What the server sent couldn't be read: a reply bigger than 2 GiB, a line that doesn't end, or something that isn't RESP2. The client
+  * closed the connection, and `reason` says what was wrong
+  */
+final case class UnreadableReply(redisAddress: RedisAddress, reason: String)
+    extends RuntimeException(s"A reply from $redisAddress couldn't be read, so the connection was closed: $reason", null, true, false)
+
 /** The server stopped replying: a reply was late by more than its send's timeout, so the client closed the connection */
 final case class ServerNotResponding(redisAddress: RedisAddress)
     extends RuntimeException(s"Server $redisAddress stopped replying", null, true, false)

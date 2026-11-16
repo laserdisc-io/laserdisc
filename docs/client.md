@@ -82,6 +82,7 @@ these:
 | `ConnectionSetupRefused` | The server refused the password or the database: see [Logging in](#logging-in-and-choosing-a-database). |
 | `ServerTerminatedConnection` | The connection closed, or the server reset it, before the reply came. Its `cause` is the socket's error, if there was one. |
 | `ServerNotResponding` | The server stopped replying, so the client closed the connection. |
+| `UnreadableReply` | A reply couldn't be read, so the client closed the connection: it was bigger than 2 GiB, had a line that didn't end, or wasn't RESP2. Its `reason` says what was wrong. |
 | `WatchLost` | The keys of a transaction were watched on a connection that's gone: see [Transactions](commands.md#transactions). |
 | `TransactionLost` | A transaction sent as plain commands, as from the command line, was on a connection that's gone, or lost the watch it needed. What's sent until `EXEC` or `DISCARD` ends it fails with this, and isn't sent. |
 | `WatchCleanupRefused` | As for `WatchLost`, and the server also refused to end the watch on the new connection, so the client closed that connection too. None of the transaction's commands ran. |

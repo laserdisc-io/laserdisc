@@ -109,8 +109,9 @@ val client: Resource[IO, RedisClient[IO]] =
 
 `Credentials("secret")`, with only a password, logs in as the default user.
 User names and passwords are `Key`s, LaserDisc's type for a string that isn't
-empty: see [Arguments](commands.md#arguments). A password from your configuration is a `String`: turn it into a `Key`
-with `Key.from`, which gives a `Left` if it's empty:
+empty: see [Arguments](commands.md#arguments). A password from your
+configuration is a `String`: turn it into a `Key` with `Key.from`, which gives a
+`Left` if it's empty:
 
 ```scala mdoc:compile-only
 import laserdisc.*
@@ -249,11 +250,11 @@ time, up to 5 seconds. While it waits, commands fail at once with
 `ServerUnavailable`, whose `cause` says why the last attempt failed, such as the
 connection being refused or the TLS handshake failing. While it's connecting,
 commands wait for the connection, up to their timeout. Once a server answers one
-of your commands again, the next wait is short again. Each wait is cut by up to half at random, so that
-many clients don't all reconnect at the same moment. To wait differently, pass a
-`Reconnect` with the first and the longest wait. The first has to be more than
-0, and the longest at least the first, or `Reconnect` throws an
-`IllegalArgumentException`:
+of your commands again, the next wait is short again. Each wait is cut by up to
+half at random, so that many clients don't all reconnect at the same moment. To
+wait differently, pass a `Reconnect` with the first and the longest wait. The
+first has to be more than 0, and the longest at least the first, or `Reconnect`
+throws an `IllegalArgumentException`:
 
 ```scala mdoc:compile-only
 import cats.effect.{IO, Resource}

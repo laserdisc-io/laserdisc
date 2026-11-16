@@ -17,7 +17,10 @@ From a checkout of this repository, run it with sbt:
 sbt "cli/run localhost 6379"
 ```
 
-On Scala Native, run `cliNative/run` the same way. On Scala.js, build it first,
+On Scala Native, run `cliNative/run` the same way. It needs
+[s2n-tls](https://github.com/aws/s2n-tls) installed, as with `brew install s2n`,
+even without `--tls`: see
+[Scala.js and Scala Native](platform-notes.md#scalajs-and-scala-native). On Scala.js, build it first,
 then start it with Node.js:
 
 ```sh

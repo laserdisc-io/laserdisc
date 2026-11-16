@@ -300,8 +300,9 @@ final class RedisClientSendSpec extends CatsEffectSuite {
   }
 
   // the first connection answers WATCH and a GET, then closes; the next ones run transactions, keeping the names of what they get. The
-  // connection numbered refusingDiscardOn refuses DISCARD, as for a user an ACL rule doesn't let run it, so it stays in the transaction
-  private def droppingWatch(seen: cats.effect.Ref[IO, List[String]], refusingDiscardOn: Int = 0) =
+  // connection numbered refusingDiscardOn refuses DISCARD, as for a user an ACL rule doesn't let run it, so it stays in the transaction,
+  // and the one numbered refusingUnwatchOn refuses UNWATCH
+  private def droppingWatch(seen: cats.effect.Ref[IO, List[String]], refusingDiscardOn: Int = 0, refusingUnwatchOn: Int = 0) =
     FakeRedisServer { (n, commands) =>
       def ok(c: RESP): Boolean = Set("WATCH", "UNWATCH", "DISCARD")(name(c))
       if (n == 1) commands.take(2).map(c => if (ok(c)) "+OK\r\n" else bulk("v"))
@@ -313,9 +314,11 @@ final class RedisClientSendSpec extends CatsEffectSuite {
             case (_, c) if name(c) == "EXEC"                              => false -> s"*1\r\n+OK\r\n"
             case (_, c) if name(c) == "DISCARD" && n == refusingDiscardOn =>
               true -> "-NOPERM User has no permissions to run the 'discard' command\r\n"
-            case (_, c) if name(c) == "DISCARD" => false -> "+OK\r\n"
-            case (true, _)                      => true  -> "+QUEUED\r\n"
-            case (false, c)                     => false -> (if (ok(c)) "+OK\r\n" else bulk("w"))
+            case (_, c) if name(c) == "DISCARD"                           => false -> "+OK\r\n"
+            case (_, c) if name(c) == "UNWATCH" && n == refusingUnwatchOn =>
+              false -> "-NOPERM User has no permissions to run the 'unwatch' command\r\n"
+            case (true, _)  => true  -> "+QUEUED\r\n"
+            case (false, c) => false -> (if (ok(c)) "+OK\r\n" else bulk("w"))
           }
           .map(_._2)
     }
@@ -380,20 +383,29 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
-  test("when the server refuses to discard the transaction of a lost watch, the client connects again, as it may still be inside it") {
-    IO.ref(List.empty[String]).flatMap { seen =>
-      droppingWatch(seen, refusingDiscardOn = 2).use { port =>
-        RedisClient[IO].to("127.0.0.1", port).use { client =>
-          for {
-            _    <- watchedThenReconnected(client)
-            lost <- client.send(multi(set("k", 2)), 2.seconds)
-            // on a connection still inside the transaction, the GET would be queued instead of run
-            after <- untilReplied(client.send(get[String]("k"), 2.seconds))
-            ran   <- client.send(multi(set("k", 2)), 2.seconds)
-          } yield {
-            assert(lost.left.exists(_.isInstanceOf[WatchLost]), s"expected WatchLost, got $lost")
-            assertEquals(after, Some("w"))
-            assertEquals(ran, Right(Some(Right(OK))))
+  List("DISCARD", "UNWATCH").foreach { refused =>
+    test(s"when the server refuses $refused for the transaction of a lost watch, its caller hears, and the client connects again") {
+      IO.ref(List.empty[String]).flatMap { seen =>
+        val server =
+          if (refused == "DISCARD") droppingWatch(seen, refusingDiscardOn = 2) else droppingWatch(seen, refusingUnwatchOn = 2)
+        server.use { port =>
+          RedisClient[IO].to("127.0.0.1", port).use { client =>
+            for {
+              _    <- watchedThenReconnected(client)
+              lost <- client.send(multi(set("k", 2)), 2.seconds)
+              // on a connection still inside the transaction, the GET would be queued instead of run
+              after <- untilReplied(client.send(get[String]("k"), 2.seconds))
+              ran   <- client.send(multi(set("k", 2)), 2.seconds)
+            } yield {
+              lost match {
+                case Left(WatchCleanupRefused(_, command, reply)) =>
+                  assertEquals(command, refused)
+                  assert(reply.startsWith("NOPERM"), reply)
+                case other => fail(s"expected WatchCleanupRefused, got $other")
+              }
+              assertEquals(after, Some("w"))
+              assertEquals(ran, Right(Some(Right(OK))))
+            }
           }
         }
       }

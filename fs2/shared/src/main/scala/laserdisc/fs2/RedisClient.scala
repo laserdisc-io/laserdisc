@@ -318,18 +318,24 @@ object RedisClient {
                       }
                     )
                     // a DISCARD or UNWATCH the server doesn't say OK to may leave the connection inside the transaction, where what's sent
-                    // next would be queued instead of run, so the connection is closed, and the client connects again
-                    def ending(command: String)(answered: F[Unit]): Request[F] =
+                    // next would be queued instead of run, so the connection is closed, and the client connects again. answered is told
+                    // of the refusal: UNWATCH's own, or DISCARD's, which closing the connection fails UNWATCH with
+                    def ending(command: String)(answered: Option[WatchCleanupRefused] => F[Unit]): Request[F] = {
+                      def refusing(reply: String) = {
+                        val refusal = WatchCleanupRefused(address, command, reply)
+                        answered(Some(refusal)) >> Concurrent[F].raiseError[Unit](refusal)
+                      }
                       Request[F, RESP](
                         Protocol(command, EmptyTuple).using(RESPRead.raw),
                         {
-                          case Right(Str("OK")) => answered
-                          case Right(other) => answered >> Concurrent[F].raiseError(WatchCleanupRefused(address, command, other.toString))
-                          case Left(refused: Err) =>
-                            answered >> Concurrent[F].raiseError(WatchCleanupRefused(address, command, refused.message))
-                          case Left(_) => answered
+                          case Right(Str("OK"))                   => answered(None)
+                          case Right(other)                       => refusing(other.toString)
+                          case Left(refused: Err)                 => refusing(refused.message)
+                          case Left(refusal: WatchCleanupRefused) => answered(Some(refusal))
+                          case Left(_)                            => answered(None)
                         }
                       )
+                    }
 
                     val sendingMulti =
                       inFlight.modify(in => (in :+ InFlight(multi, dueAfter(in, due), 1, Vector.empty)) -> Chunk(frames.head))
@@ -343,8 +349,9 @@ object RedisClient {
                           Stream.eval(watchedOn.get).flatMap {
                             case Some(watched) if watched != connection =>
                               // the caller hears once the server has ended the watch
-                              val lost    = watchedOn.set(None) >> request.callback(Left(WatchLost(address)))
-                              val cleanup = sending(due, List(ending("DISCARD")(Concurrent[F].unit), ending("UNWATCH")(lost)))
+                              def lost(refusal: Option[WatchCleanupRefused]) =
+                                watchedOn.set(None) >> request.callback(Left(refusal.getOrElse(WatchLost(address))))
+                              val cleanup = sending(due, List(ending("DISCARD")(_ => Concurrent[F].unit), ending("UNWATCH")(lost)))
                               Stream.evalUnChunk((cleanup <* sent.update(_ + 1)).uncancelable)
                             case _ =>
                               val commands =

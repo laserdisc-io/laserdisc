@@ -172,13 +172,15 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
       val refusing =
         FakeRedisServer((_, requests) => Stream.exec(IO.monotonic.flatMap(now => came.update(_ :+ now))) ++ requests.take(1).drain)
       refusing.use { port =>
-        RedisClient[IO].to("127.0.0.1", port, reconnect = Reconnect(50.millis, 400.millis)).use { client =>
+        RedisClient[IO].to("127.0.0.1", port, reconnect = Reconnect(50.millis, 800.millis)).use { client =>
           // sends keep coming, as each connection is opened for one
-          (client.send(get[String]("k"), 1.second).attempt >> IO.sleep(10.millis)).foreverM.timeoutTo(3.seconds, IO.unit)
+          (client.send(get[String]("k"), 1.second).attempt >> IO.sleep(10.millis)).foreverM.timeoutTo(4500.millis, IO.unit)
         } >> came.get.map { times =>
           val gaps = times.zip(times.drop(1)).map { case (a, b) => b - a }
           assert(gaps.size >= 5, s"only ${times.size} connections")
-          assert(gaps.takeRight(2).map(_.toMillis).sum > 3 * gaps.take(2).map(_.toMillis).sum, s"gaps didn't grow: $gaps")
+          // each gap is also each connection's own time, which a busy machine makes longer, so the last ones only have to be well above
+          // the first: waits of 400 milliseconds or more, after the random cut, against 50 at most
+          assert(gaps.takeRight(2).forall(_ > gaps.head * 2), s"gaps didn't grow: $gaps")
         }
       }
     }

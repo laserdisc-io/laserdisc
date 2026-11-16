@@ -101,10 +101,10 @@ package object laserdisc {
   final val DbIndexMaxValueWit     = W(2147483647)
   final val GeoHashRegexWit        = W("[a-z0-9]{11}")
 
-  /** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand. A name starting with `@` is
-    * a category, which has rules of its own
+  /** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand, in printable ASCII without
+    * spaces. A name starting with `@` is a category, which has rules of its own
     */
-  final val AclCommandRegexWit = W("""[^@\x00-\x20\x7F][^\x00-\x20\x7F]*""")
+  final val AclCommandRegexWit = W("""[!-?A-~][!-~]*""")
 
   final val LatitudeMinValueWit         = W(-85.05112878d)
   final val LatitudeMaxValueWit         = W(85.05112878d)

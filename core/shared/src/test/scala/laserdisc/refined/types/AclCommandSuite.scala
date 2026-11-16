@@ -38,6 +38,13 @@ final class AclCommandSuite extends BaseSpec {
     assert(AclCommand.from("get\u007F").isLeft)
   }
 
+  test("AclCommand refuses what isn't ASCII, as no command's name has it: half of a character, which would be sent as ?, or C1 controls") {
+    assert(AclCommand.from("\ud83d").isLeft)
+    assert(AclCommand.from("get\u0085").isLeft)
+    assert(AclCommand.from("gét").isLeft)
+    assert(AclCommand.from("json.get").isRight)
+  }
+
   test("AclCommand compiles given a command, a subcommand, or a name with @ after its first character") {
     AclCommand("get")
     AclCommand("client|kill")

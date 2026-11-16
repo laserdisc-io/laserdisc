@@ -95,10 +95,10 @@ final val ConnectionNameRegexWit = new Witness("[!-~]+")
 final val DbIndexMaxValueWit     = new Witness(2147483647)
 final val GeoHashRegexWit        = new Witness("[a-z0-9]{11}")
 
-/** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand. A name starting with `@` is a
-  * category, which has rules of its own
+/** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand, in printable ASCII without
+  * spaces. A name starting with `@` is a category, which has rules of its own
   */
-final val AclCommandRegexWit = new Witness("""[^@\x00-\x20\x7F][^\x00-\x20\x7F]*""")
+final val AclCommandRegexWit = new Witness("""[!-?A-~][!-~]*""")
 
 final val LatitudeMinValueWit         = new Witness(-85.05112878d)
 final val LatitudeMaxValueWit         = new Witness(85.05112878d)

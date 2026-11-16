@@ -26,8 +26,9 @@ import io.github.iltotore.iron.Constraint
 /* The predicate below is spelled out (`d == d`) rather than delegating to `Double.isNaN`, so that iron can evaluate it at compile time when
  * refining literals. It matches the JDK method for every input. */
 
-private[laserdisc] final case class NonNaN()
-private[laserdisc] object NonNaN {
+/** A `Double` that's a number, not NaN */
+final case class NonNaN()
+object NonNaN {
   given Constraint[Double, NonNaN] with {
     inline override def test(inline d: Double): Boolean = d == d
     inline override def message: String                 = "!isNaN"

@@ -40,6 +40,14 @@ final class OutsideTheLibrarySpec extends munit.FunSuite {
     assert(compileErrors("""laserdisc.redis_8_10.hset(laserdisc.Key("u"), User("ada", 36, None))""").isEmpty)
     assert(compileErrors("""laserdisc.redis_8_10.hgetall[User](laserdisc.Key("u"))""").isEmpty)
   }
+
+  test("a literal of a checked type holding a double, which is checked when it's compiled, can be written outside laserdisc") {
+    import laserdisc.{BlockingSeconds, NonNegDouble, NonZeroDouble, ValidDouble}
+    assertEquals(
+      List(BlockingSeconds(1.5).value, ValidDouble(1.5).value, NonNegDouble(1.5).value, NonZeroDouble(1.5).value),
+      List.fill(4)(1.5)
+    )
+  }
 }
 
 final case class User(name: String, age: Int, email: Option[String])

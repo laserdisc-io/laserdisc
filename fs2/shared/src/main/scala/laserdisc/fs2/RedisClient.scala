@@ -200,15 +200,22 @@ object RedisClient {
     private final val LostBeforeItBegan = -1L
 
     // what a connection was set to by a command the server agreed to, which each new connection is set to again after its setup: its name,
-    // reading from a replica and tracking, each as it was last set. One set back to how a connection starts isn't kept
-    private[fs2] final case class Kept(name: Option[Protocol[RESP]], readonly: Option[Protocol[RESP]], tracking: Option[Protocol[RESP]]) {
+    // reading from a replica and tracking, each as it was last set. One set back to how a connection starts isn't kept. Tracking that sends
+    // its notices to another connection isn't set again, as a server restarted, or another one, can give that connection's id to another
+    // client's: redirected is that id, until the next connection says it's no longer tracking
+    private[fs2] final case class Kept(
+        name: Option[Protocol[RESP]],
+        readonly: Option[Protocol[RESP]],
+        tracking: Option[Protocol[RESP]],
+        redirected: Option[String]
+    ) {
       def all: List[Protocol[RESP]] = name.toList ++ readonly ++ tracking
 
       def without(protocol: Protocol[RESP]): Kept =
-        Kept(name.filterNot(_ eq protocol), readonly.filterNot(_ eq protocol), tracking.filterNot(_ eq protocol))
+        Kept(name.filterNot(_ eq protocol), readonly.filterNot(_ eq protocol), tracking.filterNot(_ eq protocol), redirected)
     }
     private[fs2] object Kept {
-      final val none: Kept = Kept(None, None, None)
+      final val none: Kept = Kept(None, None, None, None)
     }
 
     // a server loading its data, running a script, cut off from its master or with too many clients refuses for now only: the client
@@ -438,8 +445,11 @@ object RedisClient {
                     def again(ws: List[String])       = Some(Protocol(ws.head, ws.tail).using(RESPRead.raw))
                     def set(f: Kept => Kept): F[Unit] = kept.update(f)
                     (upper.take(3), replies.headOption) match {
-                      case ("CLIENT" :: "TRACKING" :: "ON" :: Nil, Some(Str("OK")))  => set(_.copy(tracking = again(words)))
-                      case ("CLIENT" :: "TRACKING" :: "OFF" :: Nil, Some(Str("OK"))) => set(_.copy(tracking = None))
+                      case ("CLIENT" :: "TRACKING" :: "ON" :: Nil, Some(Str("OK"))) =>
+                        val at = upper.indexOf("REDIRECT")
+                        if (at >= 0 && at + 1 < words.size) set(_.copy(tracking = None, redirected = Some(words(at + 1))))
+                        else set(_.copy(tracking = again(words), redirected = None))
+                      case ("CLIENT" :: "TRACKING" :: "OFF" :: Nil, Some(Str("OK"))) => set(_.copy(tracking = None, redirected = None))
                       case ("READONLY" :: Nil, Some(Str("OK")))                      => set(_.copy(readonly = again(words)))
                       case ("READWRITE" :: Nil, Some(Str("OK")))                     => set(_.copy(readonly = None))
                       case ("CLIENT" :: "SETNAME" :: _, Some(Str("OK")))             => set(_.copy(name = again(words)))
@@ -585,7 +595,14 @@ object RedisClient {
                       .flatMap(first => queue.tryTakeN(None).map(rest => Chunk.from(first :: rest)))
                       .flatTap(current.set)
                   })
-                  Stream.eval(kept.get.map(_.all).flatTap(setAgain.set)).flatMap { setTo =>
+                  val stopsTracking = kept.getAndUpdate(_.copy(redirected = None)).flatTap {
+                    _.redirected.traverse_ { id =>
+                      log.warn(
+                        s"Tracking, which sent its notices to connection $id, isn't turned on again on the new connection to $address: send client.tracking again to go on tracking"
+                      )
+                    }
+                  }
+                  Stream.eval(stopsTracking.map(_.all).flatTap(setAgain.set)).flatMap { setTo =>
                     val connected   = if (setup.isEmpty && setTo.isEmpty) Usage.Idle else Usage.SettingUp
                     val onConnected = log.info(s"Connected to server $address") >> usage.update(_.max(connected))
                     (settingUp(address, usage, setTo) ++ (again ++ queued)

@@ -304,6 +304,9 @@ final class RedisClientSetupSpec extends CatsEffectSuite {
   private def after(received: Ref[IO, Vector[(Int, List[String])]], connection: Int): IO[Vector[List[String]]] =
     received.get.map(_.collect { case (`connection`, ws) => ws })
 
+  // tracking with no connection to send its notices to, as the command line can turn it on
+  private val trackingBcast: Protocol.Single[OK] = Protocol("CLIENT", List("TRACKING", "ON", "BCAST")).as[Str, OK]
+
   private def reconnected(client: RedisClient[IO]): IO[String] =
     client.send(get[String]("bye"), 2.seconds).attempt >> untilReplied(client.send(get[String]("k"), 2.seconds)).map(_.getOrElse(""))
 
@@ -311,7 +314,7 @@ final class RedisClientSetupSpec extends CatsEffectSuite {
     resetting().use { case (port, received) =>
       RedisClient[IO].to("127.0.0.1", port, credentials = loggedIn).use { client =>
         val ok = (c: IO[Maybe[OK]]) => c.flatMap(IO.fromEither).void
-        ok(client.send(laserdisc.redis_6_2.client.tracking(servertypes.trackingOptions.redirect(NonNegLong(7L)).bcast))) >>
+        ok(client.send(trackingBcast)) >>
           ok(client.send(laserdisc.redis_6_2.readonly)) >>
           ok(client.send(laserdisc.redis_6_2.client.setname(ConnectionName("ld")))) >>
           reconnected(client).assertEquals("value") >>
@@ -320,10 +323,24 @@ final class RedisClientSetupSpec extends CatsEffectSuite {
               List("AUTH", "user", "secret"),
               List("CLIENT", "SETNAME", "ld"),
               List("READONLY"),
-              List("CLIENT", "TRACKING", "ON", "REDIRECT", "7", "BCAST"),
+              List("CLIENT", "TRACKING", "ON", "BCAST"),
               List("GET", "k")
             )
           )
+      }
+    }
+  }
+
+  test("tracking whose notices go to another connection isn't turned on again on a new one, as that connection's id may be another's then") {
+    resetting().use { case (port, received) =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        client
+          .send(laserdisc.redis_6_2.client.tracking(servertypes.trackingOptions.redirect(NonNegLong(7L)).bcast))
+          .flatMap(IO.fromEither) >>
+          reconnected(client).assertEquals("value") >>
+          after(received, 2).assertEquals(Vector(List("GET", "k"))) >>
+          reconnected(client).assertEquals("value") >>
+          after(received, 3).assertEquals(Vector(List("GET", "k")))
       }
     }
   }
@@ -346,9 +363,9 @@ final class RedisClientSetupSpec extends CatsEffectSuite {
   test("a new connection refusing what's set again carries on without it, and the next ones aren't set to it") {
     resetting(refuseTracking = _ == 2).use { case (port, received) =>
       RedisClient[IO].to("127.0.0.1", port).use { client =>
-        client.send(laserdisc.redis_6_2.client.tracking(servertypes.trackingOptions.redirect(NonNegLong(7L)))).flatMap(IO.fromEither) >>
+        client.send(trackingBcast).flatMap(IO.fromEither) >>
           reconnected(client).assertEquals("value") >>
-          after(received, 2).assertEquals(Vector(List("CLIENT", "TRACKING", "ON", "REDIRECT", "7"), List("GET", "k"))) >>
+          after(received, 2).assertEquals(Vector(List("CLIENT", "TRACKING", "ON", "BCAST"), List("GET", "k"))) >>
           reconnected(client).assertEquals("value") >>
           after(received, 3).assertEquals(Vector(List("GET", "k")))
       }

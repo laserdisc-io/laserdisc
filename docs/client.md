@@ -232,10 +232,10 @@ with the commands sent before them.
 
 A new connection is set up like the one before it. It logs in and selects the
 database, then it's set again to what you last set on the connection with
-`client.tracking`, `client.setname`, `hello` with a name, or
-`readonly`. If the server refuses one of these on the new connection, as with
-tracking whose notices went to a connection that's gone, the client logs why
-and carries on without it.
+`client.setname`, `hello` with a name, or `readonly`. If the server refuses one
+of these on the new connection, the client logs why and carries on without it.
+Tracking isn't turned on again: see
+[Knowing when keys change](subscribing.md#knowing-when-keys-change).
 
 If the client can't reach the server, or with `toNodes` any of its servers, it
 waits before trying again: 100 milliseconds at first, then twice as long each

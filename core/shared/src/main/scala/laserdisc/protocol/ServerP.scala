@@ -634,9 +634,9 @@ trait ClientCoreCommands extends Features {
 }
 
 /** CLIENT TRACKING, CACHING, GETREDIR and TRACKINGINFO: Redis 6.2. LaserDisc reads RESP2, so the notices go to another connection, with
-  * [[ServerP.TrackingOptions.redirect]]: open it with `RedisSubscriber.identified` and [[invalidations]]. The client turns tracking on
-  * again when it reconnects, but nothing is sent for what changed while it was reconnecting, so a cache kept from these notices can be
-  * stale after a connection problem
+  * [[ServerP.TrackingOptions.redirect]]: open it with `RedisSubscriber.identified` and [[invalidations]]. The client doesn't turn tracking
+  * on again when it reconnects, as the other connection's id may then be another client's: it logs a warning, and tracking goes on once
+  * it's turned on again. A cache kept from these notices can be stale after a connection problem
   */
 trait ClientTrackingCommands extends Features {
   import ServerP.{TrackingInfo, TrackingOptions}

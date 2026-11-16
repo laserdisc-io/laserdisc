@@ -161,7 +161,7 @@ sealed trait RESPCodecs extends BitVectorSyntax {
       override final val sizeBound: SizeBound                                      = SizeBound.unknown
       override final def encode(bits: BitVector): Attempt[BitVector]               = Attempt.successful(bits ++ crlf)
       override final def decode(bits: BitVector): Attempt[DecodeResult[BitVector]] = {
-        val i = bits.bytes.indexOfSlice(crlfBytes, from)
+        val i = Crlf.indexIn(bits.bytes, from)
         if (i == -1)
           Attempt.failure(new MatchingDiscriminatorNotFound("Does not contain 'CRLF' termination bytes"))
         else Attempt.successful(DecodeResult(bits.take(i * BitsInByte), bits.drop(i * BitsInByte + crlfSize)))
@@ -366,7 +366,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
     }
 
   private final def element(buffer: ByteVector, from: Long): Either[String, Element] = {
-    val eol = buffer.indexOfSlice(crlfBytes, from)
+    val eol = Crlf.indexIn(buffer, from)
     buffer(from) match {
       case _ if eol == -1L && isDiscriminator(buffer(from))                       => Right(Short(0L))
       case first if eol - from > MaxNumberLine && maxLine(first) == MaxNumberLine =>
@@ -427,3 +427,17 @@ object BitVectorDecoding {
 }
 
 object RESP extends RESPCodecs with RESPFunctions
+
+private[protocol] object Crlf {
+  private final val CR = CR_CH.toByte
+  private final val LF = LF_CH.toByte
+
+  /* Where the first CRLF at or after `from` starts, or -1. It looks at each byte in turn, as indexOfSlice looks at a view of the bytes at
+   * each one, which on Scala Native took over a second for each MB of a long line */
+  final def indexIn(bytes: ByteVector, from: Long): Long = {
+    val last = bytes.size - 1L
+    var i    = math.max(from, 0L)
+    while (i < last && !(bytes(i) == CR && bytes(i + 1L) == LF)) i += 1L
+    if (i < last) i else -1L
+  }
+}

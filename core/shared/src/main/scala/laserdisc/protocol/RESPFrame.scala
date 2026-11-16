@@ -94,7 +94,7 @@ private[laserdisc] final case class IncompleteFrame(partial: BitVector, bitsToCo
   private def endsALine(before: BitVector, bits: BitVector): Boolean = {
     val came     = bits.bytes
     val crBefore = before.takeRight(8L).bytes.lastOption.contains(CR_CH.toByte)
-    came.indexOfSlice(RESP.crlfBytes) >= 0L || (crBefore && came.headOption.contains(LF_CH.toByte))
+    Crlf.indexIn(came, 0L) >= 0L || (crBefore && came.headOption.contains(LF_CH.toByte))
   }
 }
 

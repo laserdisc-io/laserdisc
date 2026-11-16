@@ -19,9 +19,8 @@ sbt "cli/run localhost 6379"
 
 On Scala Native, run `cliNative/run` the same way. It needs
 [s2n-tls](https://github.com/aws/s2n-tls) installed, as with `brew install s2n`,
-even without `--tls`: see
-[Scala.js and Scala Native](platform-notes.md#scalajs-and-scala-native). On Scala.js, build it first,
-then start it with Node.js:
+even without `--tls`: see [Platform notes](platform-notes.md). On Scala.js,
+build it first, then start it with Node.js:
 
 ```sh
 sbt "++3.9.0" cliJS/fastLinkJS

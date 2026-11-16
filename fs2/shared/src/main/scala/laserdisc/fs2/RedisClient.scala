@@ -35,7 +35,6 @@ import laserdisc.protocol.RESPRead
 import log.effect.fs2.LogSelector
 import log.effect.fs2.syntax.*
 
-import java.io.IOException
 import scala.concurrent.duration.*
 
 object RedisClient {
@@ -227,9 +226,9 @@ object RedisClient {
     // each side at once: what was waiting on it fails with ServerTerminatedConnection, with that error as its cause
     private[fs2] def terminated(address: RedisAddress)(failure: Throwable): Throwable =
       failure match {
-        case socket: IOException                                                    => ServerTerminatedConnection(address, Some(socket))
-        case both: CompositeFailure if both.all.forall(_.isInstanceOf[IOException]) => ServerTerminatedConnection(address, Some(both))
-        case frame: protocol.UnknownBufferState                                     => UnreadableReply(address, frame.getMessage)
+        case socket if PlatformDependent.socketError(socket)                          => ServerTerminatedConnection(address, Some(socket))
+        case both: CompositeFailure if both.all.forall(PlatformDependent.socketError) => ServerTerminatedConnection(address, Some(both))
+        case frame: protocol.UnknownBufferState                                       => UnreadableReply(address, frame.getMessage)
         case decoding: CodecError => UnreadableReply(address, decoding.err.messageWithContext)
         case other                => other
       }

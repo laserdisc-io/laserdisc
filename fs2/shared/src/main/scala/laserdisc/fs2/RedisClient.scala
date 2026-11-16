@@ -644,7 +644,9 @@ object RedisClient {
                   val unavailable = ServerUnavailable(cause)
                   val again       = retries.getAndSet(Chunk.empty).flatMap(_.traverse_(failBatch(unavailable))).uncancelable
                   val queued      = Concurrent[F].uncancelable(poll => poll(queue.take).flatMap(failBatch(unavailable)))
-                  log.errorS("Server unavailable for publishing") >>
+                  log.errorS(
+                    s"No server could be reached, trying again in ${wait.toMillis} ms: commands fail with ServerUnavailable until then"
+                  ) >>
                     (Stream.exec(again) ++ Stream.repeatEval(queued).drain).interruptAfter(wait min longestTimer)
                 }
 
@@ -715,7 +717,7 @@ object RedisClient {
                                   case (Usage.Idle, _)         => Stream.exec(idle) ++ runner(failures, last, waits, Some(address))
                                   case (Usage.Answered, false) => Stream.exec(idle) ++ runner(0, last, 0, Some(address))
                                   case (reached, _)            =>
-                                    log.errorS(s"Failure of publishing connection to $address", failure) >>
+                                    log.errorS(s"Connection to $address failed", failure) >>
                                       (if (reached == Usage.Answered) runner(0, Some(failure), 0)
                                        else runner(failures + 1, Some(failure), waits))
                                 }

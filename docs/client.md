@@ -332,9 +332,26 @@ def wholeList(key: Key): Loop[String] =
 
 Blocking commands, under `blocking`, wait on the server for something to
 happen. The client adds that wait to the `send`'s timeout, so `blpop` with 30
-seconds and the default timeout can take up to 50 seconds. The wait is at least
-0.002 seconds: 0 would mean for as long as it takes, and KeyDB and Dragonfly wait
-for as long as it takes on less.
+seconds and the default timeout can take up to 50 seconds:
+
+```scala mdoc:compile-only
+import cats.effect.IO
+
+import laserdisc.*
+import laserdisc.redis_8_10.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val jobs = OneOrMoreKeys.unsafeFrom(List(Key("jobs")))
+
+// the wait is in seconds and can have a fraction, so it's written 30.0: None if no job came in that time
+def nextJob(client: RedisClient[IO]): IO[Maybe[Option[KV[String]]]] =
+  client.send(blocking.blpop[String](jobs, 30.0))
+```
+
+The wait is at least 0.002 seconds and at most 4294967, about 50 days: 0 would
+mean for as long as it takes, and KeyDB and Dragonfly wait for as long as it
+takes on less.
 
 A few other commands wait on the server too, and get their wait added the same
 way, such as `WAIT`, `MIGRATE` and `CLUSTER SETSLOT`. `SHUTDOWN` gets 10 seconds,

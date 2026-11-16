@@ -22,14 +22,56 @@
 package laserdisc
 
 /** What a [[Host]] can be: an IPv4 address, an IPv6 address with or without a zone id, or a hostname (RFC 1123) with or without a dot at
-  * the end. The same check on Scala 2 and Scala 3
+  * the end, and what an [[IpAddress]] can be: an IPv4 address, or an IPv6 one written as a server writes it. The same check on Scala 2 and
+  * Scala 3
   */
 private[laserdisc] object HostCheck {
   private final val HostnameMaxLength = 253
   private final val LabelMaxLength    = 63
 
   final def isValid(s: String): Boolean     = isIPv4(s) || isIPv6(s) || isHostname(s)
-  final def isIpAddress(s: String): Boolean = isIPv4(s) || isIPv6(s)
+  final def isIpAddress(s: String): Boolean = isIPv4(s) || canonicalIPv6(s).contains(s)
+
+  /** An IPv6 address, without a zone id, written as a server writes a client's address (RFC 5952): in lower case, without leading zeros,
+    * with the first of the longest runs of two zero groups or more shortened to ::, and an IPv4 address mapped to IPv6 as ::ffff:1.2.3.4
+    */
+  final def canonicalIPv6(s: String): Option[String] = {
+    val words = s.split("::", -1) match {
+      case Array(all)           => wordsOf(all, ipv4AtTheEnd = true).filter(_.size == 8)
+      case Array(before, after) =>
+        for {
+          b <- if (before.isEmpty) Some(Nil) else wordsOf(before, ipv4AtTheEnd = false)
+          a <- if (after.isEmpty) Some(Nil) else wordsOf(after, ipv4AtTheEnd = true)
+          if b.size + a.size <= 7
+        } yield b ++ List.fill(8 - b.size - a.size)(0) ++ a
+      case _ => None
+    }
+    words.map(w => canonical(w.toVector))
+  }
+
+  // the 16-bit words of groups, an IPv4 address at the end being two
+  private def wordsOf(s: String, ipv4AtTheEnd: Boolean): Option[List[Int]] = {
+    val parts = s.split(":", -1).toList
+    val init  = parts.init
+    if (!init.forall(isGroup)) None
+    else if (isGroup(parts.last)) Some((init :+ parts.last).map(Integer.parseInt(_, 16)))
+    else if (ipv4AtTheEnd && isIPv4(parts.last)) {
+      val bytes = parts.last.split("\\.").map(_.toInt)
+      Some(init.map(Integer.parseInt(_, 16)) ++ List((bytes(0) << 8) | bytes(1), (bytes(2) << 8) | bytes(3)))
+    } else None
+  }
+
+  private def canonical(w: Vector[Int]): String =
+    if (w.take(5).forall(_ == 0) && w(5) == 0xffff) s"::ffff:${w(6) >> 8}.${w(6) & 0xff}.${w(7) >> 8}.${w(7) & 0xff}"
+    else {
+      // where the longest run of zero groups starts, and how long it is, the first of those as long
+      val (start, length) = w.indices.foldLeft((-1, 0)) { case ((bestStart, bestLength), i) =>
+        val run = w.drop(i).takeWhile(_ == 0).size
+        if ((i == 0 || w(i - 1) != 0) && run > bestLength) (i, run) else (bestStart, bestLength)
+      }
+      def hex(ws: Vector[Int]) = ws.map(Integer.toHexString).mkString(":")
+      if (length < 2) hex(w) else s"${hex(w.take(start))}::${hex(w.drop(start + length))}"
+    }
 
   private def isDigit(c: Char): Boolean        = c >= '0' && c <= '9'
   private def isHexDigit(c: Char): Boolean     = isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')

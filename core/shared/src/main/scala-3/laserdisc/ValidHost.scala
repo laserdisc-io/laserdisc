@@ -41,7 +41,7 @@ final case class ValidIpAddress()
 object ValidIpAddress {
   given Constraint[String, ValidIpAddress] with {
     inline override def test(inline s: String): Boolean = ${ testExpr('s) }
-    inline override def message: String                 = "Should be an IPv4 or IPv6 address"
+    inline override def message: String                 = "Should be an IPv4 or IPv6 address, written as a server writes it, like ::1"
   }
 
   private def testExpr(s: Expr[String])(using Quotes): Expr[Boolean] =

@@ -106,10 +106,18 @@ import laserdisc.auto.*
 val setIfOne = set("a", 2, stringtypes.ifEq(1))
 ```
 
-The rules of `ACL SETUSER` start from `servertypes` too, each added after the
-one before, in the order the server applies them. From Redis 7.0 they're
-`aclSelectorRules`, whose `selector` takes the permissions of a selector, built
-from `aclSelector`:
+The rules of `ACL SETUSER` start from `servertypes` too. You add them one after
+the other, and the server applies them in that order. Where they start depends
+on the import:
+
+| Import | Start from | Which adds |
+| --- | --- | --- |
+| Redis 6.2 | `aclRules` | |
+| Redis 7.0 and later, Valkey up to 9.0 | `aclSelectorRules` | `selector`, more permissions built from `aclSelector` |
+| Valkey 9.1 | `aclDatabaseRules` | the databases a user may use, and selectors built from `aclDatabaseSelector` |
+| Dragonfly | `aclDragonflyRules` | |
+
+For example, with a selector:
 
 ```scala mdoc:compile-only
 import laserdisc.*

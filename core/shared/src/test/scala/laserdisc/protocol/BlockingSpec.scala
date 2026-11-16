@@ -34,9 +34,9 @@ final class BlockingSpec extends BaseSpec {
 
   test("REPLTAKEOVER and CLUSTER SETSLOT with TIMEOUT get their wait on top of the timeout") {
     assertEquals(Blocking.waitOf(laserdisc.dragonfly_2_0.repltakeover(PosInt(60))), 60.seconds)
-    assertEquals(Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1), NonNegLong(30000L))), 30.seconds)
+    assertEquals(Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1), PosLong(30000L))), 30.seconds)
     assertEquals(
-      Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1), ClusterP.SetSlotMode.node, NodeId.unsafeFrom("a" * 40), NonNegLong(2500L))),
+      Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1), ClusterP.SetSlotMode.node, NodeId.unsafeFrom("a" * 40), PosLong(2500L))),
       2500.millis
     )
     assertEquals(Blocking.waitOf(laserdisc.valkey_8_0.setslot(Slot(1))), Duration.Zero)

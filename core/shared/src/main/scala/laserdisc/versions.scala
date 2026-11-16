@@ -246,6 +246,7 @@ trait Forever7_0  extends Forever6_2 with BListMPopForeverP with BSortedSetMPopF
 trait Forever7_2  extends Forever7_0 with KeyWaitAofForeverP
 trait Forever8_4  extends Forever7_2 with BStreamReadGroupClaimForeverP
 trait Forever8_10 extends Forever8_4 with BListMoveManyForeverP with BStreamReadLimitsForeverP
+trait ForeverValkey8_0 extends Forever7_2 with ClusterSetSlotForeverP
 
 /** The blocking commands, under `blocking`, and those that wait for as long as it takes, under `blocking.forever` */
 trait Blocking6_2 extends BListBaseP with BListExtP with BSortedSetBaseP with BStreamBaseP {
@@ -262,6 +263,9 @@ trait Blocking8_4 extends Blocking7_2 with BStreamReadGroupClaimP {
 }
 trait Blocking8_10 extends Blocking8_4 with BListMoveManyP with BStreamReadLimitsP {
   override val forever: Forever8_10 = new Forever8_10 {}
+}
+trait BlockingValkey8_0 extends Blocking7_2 {
+  override val forever: ForeverValkey8_0 = new ForeverValkey8_0 {}
 }
 
 trait Server6_2 extends ServerBaseP
@@ -454,6 +458,7 @@ trait Valkey8_0
     with ScriptingValkey8_0
     with ServerValkey8_0
     with SortedSetsValkey8_0 {
+  override val blocking: BlockingValkey8_0     = new BlockingValkey8_0 {}
   override val cluster: ClusterValkey8_0       = new ClusterValkey8_0 {}
   override val hashmaps: HashesValkey8_0       = new HashesValkey8_0 {}
   override val scripting: ScriptingValkey8_0   = new ScriptingValkey8_0 {}

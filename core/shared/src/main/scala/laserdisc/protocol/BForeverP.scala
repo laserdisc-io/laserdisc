@@ -290,3 +290,15 @@ trait KeyWaitAofForeverP {
   final def waitaof(local: NonNegInt, replicas: NonNegInt): Forever[(NonNegInt, NonNegInt)] =
     Forever(timed.waitaof(local, replicas, PosLong(1L)))
 }
+
+/** CLUSTER SETSLOT with TIMEOUT: Valkey 8.0 */
+trait ClusterSetSlotForeverP {
+  import ClusterP.SetSlotMode
+
+  private final val timed = new ClusterSetSlotTimeoutP {}
+  private final val any   = PosLong(1L)
+
+  /** Like `cluster.setslot`, waiting for as long as it takes for the replicas to take the change */
+  final def setslot(slot: Slot): Forever[OK]                                  = Forever(timed.setslot(slot, any))
+  final def setslot(slot: Slot, mode: SetSlotMode, node: NodeId): Forever[OK] = Forever(timed.setslot(slot, mode, node, any))
+}

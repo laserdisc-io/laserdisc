@@ -167,7 +167,7 @@ final class ClusterManagementPSpec extends BaseSpec with ClusterP with ServerBac
     assertEquals(getslotmigrations.decode(Arr(Nil)), Seq.empty)
     assertEquals(flushslot(Slot(1), FlushMode.async).encode, bulks("CLUSTER", "FLUSHSLOT", "1", "ASYNC"))
     assertEquals(replicatenoone.encode, bulks("CLUSTER", "REPLICATE", "NO", "ONE"))
-    assertEquals(setslot(Slot(1), NonNegLong(100L)).encode, bulks("CLUSTER", "SETSLOT", "1", "STABLE", "TIMEOUT", "100"))
+    assertEquals(setslot(Slot(1), PosLong(100L)).encode, bulks("CLUSTER", "SETSLOT", "1", "STABLE", "TIMEOUT", "100"))
   }
 
   test("The Server protocol using backup reads the status") {

@@ -276,6 +276,16 @@ final class VersionImportsSpec extends BaseSpec {
         .frames,
       frame("BLMOVEM", "a", "b", "LEFT", "LEFT", "0")
     )
+    assert(compileErrors("redis_8_10.blocking.forever.setslot(Slot(1))").nonEmpty)
+    assert(compileErrors("valkey_7_2.blocking.forever.setslot(Slot(1))").nonEmpty)
+    assertEquals(valkey_8_0.blocking.forever.setslot(Slot(1)).protocol.frames, frame("CLUSTER", "SETSLOT", "1", "STABLE", "TIMEOUT", "0"))
+    assertEquals(
+      valkey_9_1.blocking.forever
+        .setslot(Slot(1), valkey_9_1.clustertypes.ClusterSetSlotMode.importing, NodeId.unsafeFrom("0" * 40))
+        .protocol
+        .frames,
+      frame("CLUSTER", "SETSLOT", "1", "IMPORTING", "0" * 40, "TIMEOUT", "0")
+    )
   }
 
   test("blocking.forever can be imported from") {
@@ -860,7 +870,9 @@ final class VersionImportsSpec extends BaseSpec {
     }
     {
       import laserdisc.valkey_8_0.*
-      assertEquals(setslot(Slot(0), NonNegLong(5L)).frames, frame("CLUSTER", "SETSLOT", "0", "STABLE", "TIMEOUT", "5"))
+      assertEquals(setslot(Slot(0), PosLong(5L)).frames, frame("CLUSTER", "SETSLOT", "0", "STABLE", "TIMEOUT", "5"))
+      // 0 waits for as long as it takes, under blocking.forever
+      assert(compileErrors("""setslot(Slot(0), PosLong(0L))""").nonEmpty)
       assert(compileErrors("""replicatenoone""").nonEmpty)
       assert(compileErrors("""slotstatsbymemory""").nonEmpty)
     }

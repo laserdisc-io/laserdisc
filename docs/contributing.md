@@ -32,7 +32,7 @@ certificates in `test-setup/tls`. From the repository's root:
 docker run -p 6390:6379 -v "$PWD/test-setup/tls:/tls:ro" -d redis:8.10.3-alpine --port 0 --tls-port 6379 --tls-cert-file /tls/server.crt --tls-key-file /tls/server.key --tls-ca-cert-file /tls/ca.crt --tls-auth-clients no
 ```
 
-They're skipped on Scala Native, which would need s2n-tls installed.
+On Scala Native, they need s2n-tls installed, as with `brew install s2n`.
 
 Some of them also need a cluster of each. The steps that start those are in
 `.github/workflows/ci.yml`, named "Start up a Redis cluster" and so on: copy

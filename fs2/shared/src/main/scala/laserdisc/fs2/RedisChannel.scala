@@ -85,8 +85,9 @@ object RedisChannel {
       error: =>Throwable
   ): Resource[F, A] =
     Resource.applyFull { poll =>
-      poll(resource.allocated.timeoutTo(after, Temporal[F].raiseError[(A, F[Unit])](error))).map { case (a, release) =>
-        a -> ((_: Resource.ExitCase) => release)
+      poll(resource.allocated.timeoutTo(after min RedisClient.impl.longestTimer, Temporal[F].raiseError[(A, F[Unit])](error))).map {
+        case (a, release) =>
+          a -> ((_: Resource.ExitCase) => release)
       }
     }
 

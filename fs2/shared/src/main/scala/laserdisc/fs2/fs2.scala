@@ -46,7 +46,7 @@ package fs2 {
 
             // waiting for room in the queue counts towards the timeout: a send that times out before it's queued is never sent
             (offer(Batch(requests.map(_._1), claim, duration)) >> replies)
-              .timeout(duration)
+              .timeout(duration min RedisClient.impl.longestTimer)
               .onCancel(giveUp)
               .recoverWith { case _: TimeoutException =>
                 giveUp >> requests.findM(_._2.map(!_)).flatMap { unanswered =>

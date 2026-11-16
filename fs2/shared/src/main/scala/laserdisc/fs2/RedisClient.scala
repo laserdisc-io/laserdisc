@@ -128,6 +128,10 @@ object RedisClient {
     // how long a request that waits for as long as it takes is given: the watchdog never finds it overdue
     private[fs2] final val never: FiniteDuration = FiniteDuration(Long.MaxValue, NANOSECONDS)
 
+    // the longest a timer is set for, about 73 years: cats-effect keeps its timers in order only while they're within half of Long.MaxValue
+    // nanoseconds of each other, and doesn't hold the first one set to that, so a longer one could keep the others from firing
+    private[fs2] final val longestTimer: FiniteDuration = FiniteDuration(Long.MaxValue >> 2, NANOSECONDS)
+
     // a duration added to another, as long as never at most: FiniteDuration fails on a sum past it, as a timeout that long can make
     private[fs2] def upToNever(a: FiniteDuration, b: FiniteDuration): FiniteDuration = if (b >= never - a) never else a + b
 

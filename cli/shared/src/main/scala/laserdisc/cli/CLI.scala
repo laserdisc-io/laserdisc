@@ -292,6 +292,9 @@ object CLI extends IOApp { self =>
               .chunks
               .map(chunk => new String(chunk.toArray, ISO_8859_1))
               .through(text.lines)
+              // input ending with a newline, or empty, has an empty line last, which isn't a line typed: its prompt would be shown twice
+              .zipWithNext
+              .collect { case (line, next) if line.nonEmpty || next.isDefined => line }
               .through(protocol)
               .evalMap { protocol =>
                 // a send that fails, as when it times out, shows the error like a reply would, and the prompt carries on

@@ -268,6 +268,18 @@ final class CLISpec extends CatsEffectSuite {
     }
   }
 
+  test("input that ends with a newline, as when Ctrl-D comes after Enter, or that's empty, ends with one prompt, not two") {
+    replying.use { port =>
+      val prompt = s"127.0.0.1:${port.value}> "
+      // the last line typed is empty: the input ends with the newline before it
+      session(List("127.0.0.1", port.value.toString), "PING", "").map { case (_, screen) =>
+        assertEquals(afterLogo(screen), s"$prompt<<< PING - []\n$prompt\n")
+      } >> session(List("127.0.0.1", port.value.toString)).map { case (_, screen) =>
+        assertEquals(afterLogo(screen), s"$prompt\n")
+      }
+    }
+  }
+
   test("shows an error the server replies with") {
     replying.use { port =>
       session(List("127.0.0.1", port.value.toString), "BOOM").map { case (code, screen) =>

@@ -84,3 +84,9 @@ changes to your code.
 
 - [Commands](commands.md) shows how to build commands and read their replies.
 - [Client](client.md) shows how to connect, send commands and handle errors.
+- [Subscribing](subscribing.md) shows how to receive messages from channels, and
+  to know when keys change.
+- [JSON with circe](circe.md) shows how to store and read JSON.
+- [Command line](cli.md) shows how to send commands from a prompt.
+- [Platform notes](platform-notes.md) says what differs between Scala versions,
+  and on Scala.js and Scala Native.

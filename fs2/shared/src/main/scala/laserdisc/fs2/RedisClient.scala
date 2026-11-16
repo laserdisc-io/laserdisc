@@ -128,9 +128,14 @@ object RedisClient {
     // how long a request that waits for as long as it takes is given: the watchdog never finds it overdue
     private[fs2] final val never: FiniteDuration = FiniteDuration(Long.MaxValue, NANOSECONDS)
 
-    // the longest a timer is set for, about 73 years: cats-effect keeps its timers in order only while they're within half of Long.MaxValue
-    // nanoseconds of each other, and doesn't hold the first one set to that, so a longer one could keep the others from firing
-    private[fs2] final val longestTimer: FiniteDuration = FiniteDuration(Long.MaxValue >> 2, NANOSECONDS)
+    // the longest a timer is set for, about 34 years: on macOS, Scala Native's threads can't wait 2^31 seconds or more, and one asked to
+    // stops, with the connections it reads, and cats-effect keeps its timers in order only while they're within half of Long.MaxValue
+    // nanoseconds of each other
+    private[fs2] final val longestTimer: FiniteDuration = FiniteDuration(1L << 30, SECONDS)
+
+    // fa, or orElse once it has taken longer than after: a wait at least as long as the longest timer is as good as never, and gets no timer
+    private[fs2] def within[F[_]: Temporal, A](fa: F[A], after: FiniteDuration, orElse: F[A]): F[A] =
+      if (after >= longestTimer) fa else fa.timeoutTo(after, orElse)
 
     // a duration added to another, as long as never at most: FiniteDuration fails on a sum past it, as a timeout that long can make
     private[fs2] def upToNever(a: FiniteDuration, b: FiniteDuration): FiniteDuration = if (b >= never - a) never else a + b
@@ -608,7 +613,7 @@ object RedisClient {
                   val again       = retries.getAndSet(Chunk.empty).flatMap(_.traverse_(failBatch(unavailable))).uncancelable
                   val queued      = Concurrent[F].uncancelable(poll => poll(queue.take).flatMap(failBatch(unavailable)))
                   log.errorS("Server unavailable for publishing") >>
-                    (Stream.exec(again) ++ Stream.repeatEval(queued).drain).interruptAfter(wait)
+                    (Stream.exec(again) ++ Stream.repeatEval(queued).drain).interruptAfter(wait min longestTimer)
                 }
 
                 // a connection that closed with nothing sent on it, as a server closes idle clients, is opened again only once there's

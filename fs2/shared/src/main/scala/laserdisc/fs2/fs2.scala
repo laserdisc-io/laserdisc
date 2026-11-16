@@ -45,8 +45,8 @@ package fs2 {
             val giveUp = claim.complete(()).void
 
             // waiting for room in the queue counts towards the timeout: a send that times out before it's queued is never sent
-            (offer(Batch(requests.map(_._1), claim, duration)) >> replies)
-              .timeout(duration min RedisClient.impl.longestTimer)
+            RedisClient.impl
+              .within(offer(Batch(requests.map(_._1), claim, duration)) >> replies, duration, F.raiseError[LOut](new TimeoutException))
               .onCancel(giveUp)
               .recoverWith { case _: TimeoutException =>
                 giveUp >> requests.findM(_._2.map(!_)).flatMap { unanswered =>

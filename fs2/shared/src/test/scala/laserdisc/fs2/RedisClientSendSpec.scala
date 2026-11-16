@@ -47,6 +47,21 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  test("sends with timeouts of decades, or none, are answered one after the other, as a timer that long can stop the client reading") {
+    val answering = FakeRedisServer((_, requests) => requests.as(bulk("v")))
+    answering.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        val timeouts = List(FiniteDuration(Long.MaxValue, NANOSECONDS), FiniteDuration(Long.MaxValue - 1, NANOSECONDS), (365 * 100).days)
+        List
+          .fill(20)(timeouts)
+          .flatten
+          .traverse(client.send(get[String]("a"), _))
+          .timeout(20.seconds)
+          .assertEquals(List.fill(60)(Right(Some("v"))))
+      }
+    }
+  }
+
   test("when the connection goes before MULTI's OK, the commands after the transaction fail too, without waiting for their timeout") {
     val closesOnMulti = FakeRedisServer { (n, commands) =>
       if (n == 1) commands.takeWhile(c => name(c) != "MULTI").drain else commands.as(bulk("v"))

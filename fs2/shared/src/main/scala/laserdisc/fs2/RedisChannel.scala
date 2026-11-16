@@ -26,7 +26,6 @@ import _root_.fs2.{Chunk, Pipe, Pull, Stream}
 import _root_.fs2.interop.scodec.{StreamDecoder, StreamEncoder}
 import _root_.fs2.io.net.{Network, Socket}
 import cats.{ApplicativeThrow, MonadThrow}
-import cats.effect.syntax.all.*
 import cats.effect.{Resource, Temporal}
 import cats.syntax.all.*
 import com.comcast.ip4s.{Host, SocketAddress}
@@ -85,9 +84,8 @@ object RedisChannel {
       error: =>Throwable
   ): Resource[F, A] =
     Resource.applyFull { poll =>
-      poll(resource.allocated.timeoutTo(after min RedisClient.impl.longestTimer, Temporal[F].raiseError[(A, F[Unit])](error))).map {
-        case (a, release) =>
-          a -> ((_: Resource.ExitCase) => release)
+      poll(RedisClient.impl.within(resource.allocated, after, Temporal[F].raiseError[(A, F[Unit])](error))).map { case (a, release) =>
+        a -> ((_: Resource.ExitCase) => release)
       }
     }
 

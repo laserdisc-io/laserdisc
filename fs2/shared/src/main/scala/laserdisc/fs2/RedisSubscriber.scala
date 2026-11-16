@@ -132,7 +132,8 @@ object RedisSubscriber {
             )
         )
         // nothing heard for a whole round, with nothing holding up reading, means the server is gone, even if the connection isn't closed
-        pinging = (heard.set(false) >> write(List(Feed.ping)) >> Async[F].sleep(keepAlive) >> (heard.get, blocked.get).tupled)
+        pinging = (heard.set(false) >> write(List(Feed.ping)) >> Async[F]
+          .sleep(keepAlive min RedisClient.impl.longestTimer) >> (heard.get, blocked.get).tupled)
           .iterateWhile { case (wasHeard, wasBlocked) =>
             wasHeard || wasBlocked
           } >> replies.offer(Left(ServerNotResponding(address)))

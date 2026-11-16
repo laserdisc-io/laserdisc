@@ -70,7 +70,7 @@ non-empty string, a `PosInt` is an `Int` greater than zero, and a `Port` is an
 `Int` between 1 and 65535.
 
 Keys, like other names, are text, sent as UTF-8, so a `Key` can't hold half of
-a character either, as an emoji cut in two does. A name another client wrote
+a character, as an emoji cut in two does. A name another client wrote
 that isn't valid UTF-8 is read with those bytes replaced, as in a `scan`'s
 keys, and so can't be used to reach that key again.
 

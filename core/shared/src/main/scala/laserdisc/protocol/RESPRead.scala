@@ -24,11 +24,9 @@ package protocol
 
 import scala.annotation.{implicitNotFound, nowarn}
 
-/** Evidence that `A` is one of the non-error [[RESP]] types Redis may reply with.
-  *
-  * Instances exist only for the concrete [[RESP]] cases, and for [[RESP]] itself as any of them (and never for [[Err]], which is always
-  * handled as a failure), so a [[RESPRead]] can never be built for a type that Redis could not possibly send back. A value that may be
-  * missing is a [[OneOf]] of its type and of a null, like [[laserdisc.OrNullBulk]] or [[laserdisc.OrNilArr]].
+/** The kinds of reply a command can be read from: [[Str]], [[Num]], [[Bulk]], [[Arr]] and their forms, or [[RESP]] for any of them. An
+  * [[Err]] isn't one, as an error reply is always a failure. A reply that may be missing is a [[OneOf]] of its kind and of a null, like
+  * [[laserdisc.OrNullBulk]] or [[laserdisc.OrNilArr]]
   */
 @implicitNotFound(
   """Implicit not found RESPSub[${A}].

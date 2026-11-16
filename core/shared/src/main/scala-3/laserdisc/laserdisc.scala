@@ -43,7 +43,7 @@ final type OrNullBulk[A] = OneOf[NullBulk *: A *: EmptyTuple]
 /** An array reply that may be missing: an `A`, or the null array RESP2 sends instead */
 final type OrNilArr[A] = OneOf[NilArr *: A *: EmptyTuple]
 
-/** What a type whose values are checked, such as `Key` or `Port`, can do, as on Scala 2: `apply` takes a literal, checked when your code compiles; `from`
+/** What a type whose values are checked, such as `Key` or `Port`, can do: `apply` takes a literal, checked when your code compiles; `from`
   * gives a `Left` for a value that doesn't fit; `unsafeFrom` throws an `IllegalArgumentException` instead; `unapply` matches a value that
   * fits; and `.value` gives back the plain value, such as the `String` of a `Key`
   */

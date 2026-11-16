@@ -47,7 +47,9 @@ final case class ServerTerminatedConnection(redisAddress: RedisAddress, cause: O
 final case class UnreadableReply(redisAddress: RedisAddress, reason: String)
     extends RuntimeException(s"A reply from $redisAddress couldn't be read, so the connection was closed: $reason", null, true, false)
 
-/** The server stopped replying: a reply was late by more than its send's timeout, so the client closed the connection */
+/** The server stopped replying, so the connection was closed: for a [[RedisClient]], a reply was late by more than its send's timeout; for
+  * a [[RedisSubscriber]], the server didn't confirm the subscription within 30 seconds, or said nothing for a whole round of its pings
+  */
 final case class ServerNotResponding(redisAddress: RedisAddress)
     extends RuntimeException(s"Server $redisAddress stopped replying", null, true, false)
 

@@ -124,7 +124,7 @@ import laserdisc.*
 import laserdisc.redis_8_10.*
 import laserdisc.auto.*
 
-// ACL SETUSER app on >secret ~app:* +get +set (~logs:* +xadd): app reads and writes its keys, and may also add to its logs
+// ACL SETUSER app on >secret ~app:* +get +set ("~logs:*" "+xadd"): app reads and writes its keys, and may also add to its logs
 val app = acl.setuser(
   "app",
   servertypes.aclSelectorRules.on

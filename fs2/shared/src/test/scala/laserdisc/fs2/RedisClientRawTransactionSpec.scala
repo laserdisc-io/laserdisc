@@ -22,6 +22,7 @@
 package laserdisc
 package fs2
 
+import _root_.fs2.Stream
 import cats.effect.{IO, Ref, Resource}
 import cats.syntax.all.*
 import laserdisc.auto.*
@@ -63,6 +64,28 @@ final class RedisClientRawTransactionSpec extends CatsEffectSuite {
 
   private def after(client: RedisClient[IO], command: Protocol[RESP]): IO[Either[Throwable, RESP]] =
     IO.sleep(300.millis) >> client.send(command, 5.seconds)
+
+  test("a connection that sent nothing, as everything was refused with TransactionLost, closing is no failure: the next send is answered") {
+    // the first connection answers MULTI and closes, the second closes on its own a moment after it opens, and the others answer
+    val server = FakeRedisServer { (n, requests) =>
+      if (n == 1) requests.take(1).as("+OK\r\n")
+      else if (n == 2) Stream.sleep_[IO](300.millis)
+      else requests.as(bulk("v"))
+    }
+    server.use { port =>
+      RedisClient[IO].to("127.0.0.1", port, reconnect = Reconnect(5.seconds, 5.seconds)).use { client =>
+        for {
+          multi   <- client.send(typed("MULTI"))
+          discard <- after(client, typed("DISCARD"))
+          get     <- IO.sleep(600.millis) >> client.send(typed("GET", "a"), 2.seconds)
+        } yield {
+          assertEquals(multi, Right(Str("OK")))
+          assert(discard.left.exists(_.isInstanceOf[TransactionLost]), discard)
+          assertEquals(get, Right(Bulk("v")))
+        }
+      }
+    }
+  }
 
   test("what's typed after MULTI on a connection that's gone fails with TransactionLost until EXEC or DISCARD, without being sent") {
     closingFirst(answered = 2).use { case (port, later) =>

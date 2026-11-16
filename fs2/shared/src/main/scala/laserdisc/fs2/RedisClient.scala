@@ -607,9 +607,13 @@ object RedisClient {
                   Stream.eval(stopsTracking.map(_.all).flatTap(setAgain.set)).flatMap { setTo =>
                     val connected   = if (setup.isEmpty && setTo.isEmpty) Usage.Idle else Usage.SettingUp
                     val onConnected = log.info(s"Connected to server $address") >> usage.update(_.max(connected))
+                    // the connection is used once something's sent on it: a batch its caller gave up on, or whose commands all failed
+                    // without being sent, leaves it as it was
                     (settingUp(address, usage, setTo) ++ (again ++ queued)
+                      .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(giveBack(current)))
+                      .chunks
                       .evalTap(_ => usage.update(_.max(Usage.Used)))
-                      .flatMap(taken => Stream.chunk(taken).flatMap(push(address, connection)).onFinalize(giveBack(current))))
+                      .unchunks)
                       .through(redisNetChannel(address, onConnected))
                       .evalMap {
                         // a server with too many clients says so to the first command, without running it, and closes the connection: that's

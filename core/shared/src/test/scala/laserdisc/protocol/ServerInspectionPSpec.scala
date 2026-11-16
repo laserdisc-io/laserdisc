@@ -50,6 +50,18 @@ final class ServerInspectionPSpec extends BaseSpec with ServerP {
     assertEquals(commandlog.get(servertypes.commandLogType.largeReply).encode, bulks("COMMANDLOG", "GET", "-1", "large-reply"))
   }
 
+  test("COMMANDLOG GET reads the slow log's entries with their time, and the large-request and large-reply ones' with their size") {
+    val v     = laserdisc.valkey_8_1
+    val sized = Arr(Num(2L), Num(1793582639L), Num(56L), bulks("COMMANDLOG", "GET", "-1", "large-reply"), Bulk("172.17.0.1:5"), Bulk(""))
+    v.commandlog.get(v.servertypes.commandLogType.slow).decode(Arr(withoutTotal)).onRight(_.map(_.microseconds.value) == Seq(36L))
+    v.commandlog.get(v.servertypes.commandLogType.largeRequest).decode(Arr(sized)).onRight(_.map(_.bytes.value) == Seq(56L))
+    v.commandlog.get(v.servertypes.commandLogType.largeReply, PosInt(1)).decode(Arr(sized)).onRight(_.map(_.bytes.value) == Seq(56L))
+    assert(
+      compileErrors("v.commandlog.get(v.servertypes.commandLogType.largeReply).decode(Arr(sized)).map(_.map(_.microseconds))").nonEmpty
+    )
+    assertEquals(v.commandlog.len(v.servertypes.commandLogType.largeRequest).encode, bulks("COMMANDLOG", "LEN", "large-request"))
+  }
+
   test("The Server protocol using latency reads events, samples and histograms") {
     latency.latest.decode(Arr(Arr(Bulk("command"), Num(1793582671L), Num(90L), Num(95L)))).onRight {
       _ == Seq(LatencyEvent("command", NonNegLong(1793582671L), NonNegLong(90L), NonNegLong(95L)))

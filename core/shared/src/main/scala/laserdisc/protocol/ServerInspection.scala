@@ -42,6 +42,27 @@ object ServerInspection {
     def totalArguments: NonNegLong
   }
 
+  /** An entry of COMMANDLOG GET's large-request or large-reply log: like a [[LogEntry6_2]], with the size in bytes of the command's request
+    * or of its reply where the slow log has the time it took
+    */
+  sealed trait SizeLogEntry {
+    def id: NonNegLong
+    def timestamp: NonNegLong
+    def bytes: NonNegLong
+    def arguments: Seq[String]
+    def clientAddress: String
+    def clientName: String
+  }
+
+  private[laserdisc] final case class SizeEntry(
+      id: NonNegLong,
+      timestamp: NonNegLong,
+      bytes: NonNegLong,
+      arguments: Seq[String],
+      clientAddress: String,
+      clientName: String
+  ) extends SizeLogEntry
+
   private[laserdisc] final case class Entry6_2(
       id: NonNegLong,
       timestamp: NonNegLong,
@@ -60,8 +81,8 @@ object ServerInspection {
       totalArguments: NonNegLong
   ) extends LogEntry8_10
 
-  private final type LogEntryReply  = Arr.AsTupleThen[Num *: Num *: Num *: Arr.Of[Bulk] *: Bulk *: Bulk *: EmptyTuple, RESP]
-  private final type LogEntryFields =
+  private[protocol] final type LogEntryReply = Arr.AsTupleThen[Num *: Num *: Num *: Arr.Of[Bulk] *: Bulk *: Bulk *: EmptyTuple, RESP]
+  private final type LogEntryFields          =
     (NonNegLong *: NonNegLong *: NonNegLong *: Seq[String] *: String *: String *: EmptyTuple, Seq[RESP])
 
   // what follows the fields is left alone, as later versions add to it
@@ -76,7 +97,12 @@ object ServerInspection {
       case (_, rest) => Left(RESPDecErr(s"Expected the total of the arguments after the entry's fields but got: $rest"))
     }
   }
+  private implicit final val sizeLogEntry: Read[LogEntryReply, SizeLogEntry] = Read[LogEntryReply, LogEntryFields].map {
+    case (id *: timestamp *: bytes *: arguments *: address *: name *: _, _) => SizeEntry(id, timestamp, bytes, arguments, address, name)
+  }
   private[protocol] final val logEntries6_2: Read[Arr.Of[LogEntryReply], Seq[LogEntry6_2]]   = Read[Arr.Of[LogEntryReply], Seq[LogEntry6_2]]
+  private[protocol] final val sizeLogEntries: Read[Arr.Of[LogEntryReply], Seq[SizeLogEntry]] =
+    Read[Arr.Of[LogEntryReply], Seq[SizeLogEntry]]
   private[protocol] final val logEntries8_10: Read[Arr.Of[LogEntryReply], Seq[LogEntry8_10]] =
     Read.arrOf2Seq[LogEntryReply, LogEntry8_10](using implicitly, logEntry8_10)
 
@@ -513,23 +539,22 @@ object ServerInspection {
     } yield HelloOf7_0(h.server, h.version, h.protocol, h.id, h.mode, h.role, modules, h.others)
   }
 
-  /** SLOW, LARGE-REQUEST and LARGE-REPLY, for COMMANDLOG: Valkey 8.1 */
-  sealed trait CommandLogType
+  /** SLOW, LARGE-REQUEST and LARGE-REPLY, for COMMANDLOG: Valkey 8.1. Each log's entries are `E`s: the slow log's say how long a command
+    * took, the others how big its request or its reply was
+    */
+  sealed abstract class CommandLogType[E] private[ServerInspection] (
+      private[protocol] val name: String,
+      private[protocol] val entries: Read[Arr.Of[LogEntryReply], Seq[E]]
+  )
   trait CommandLogTypeBuilders {
-    val slow: CommandLogType
-    val largeRequest: CommandLogType
-    val largeReply: CommandLogType
+    val slow: CommandLogType[LogEntry6_2]
+    val largeRequest: CommandLogType[SizeLogEntry]
+    val largeReply: CommandLogType[SizeLogEntry]
   }
   private[laserdisc] object CommandLogType extends CommandLogTypeBuilders {
-    object slow         extends CommandLogType
-    object largeRequest extends CommandLogType
-    object largeReply   extends CommandLogType
-
-    implicit val commandLogTypeShow: Show[CommandLogType] = Show.instance {
-      case `slow`         => "slow"
-      case `largeRequest` => "large-request"
-      case `largeReply`   => "large-reply"
-    }
+    object slow         extends CommandLogType[LogEntry6_2]("slow", logEntries6_2)
+    object largeRequest extends CommandLogType[SizeLogEntry]("large-request", sizeLogEntries)
+    object largeReply   extends CommandLogType[SizeLogEntry]("large-reply", sizeLogEntries)
   }
 
   /** What HOTKEYS START tracks: CPU time, network bytes, or both */
@@ -849,7 +874,7 @@ trait HotKeysCommands extends Features {
 
 /** COMMANDLOG: Valkey 8.1 */
 trait CommandLogCommands extends Features {
-  import ServerInspection.{CommandLogType, LogEntry6_2}
+  import ServerInspection.CommandLogType
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -861,13 +886,13 @@ trait CommandLogCommands extends Features {
 
   val help: Single[Seq[String]] = Protocol.help("COMMANDLOG")
 
-  /** Every entry of the log */
-  def get(log: CommandLogType): Single[Seq[LogEntry6_2]] =
-    Protocol("COMMANDLOG", "GET" *: -1 *: log *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries6_2))
-  def get(log: CommandLogType, count: PosInt): Single[Seq[LogEntry6_2]] =
-    Protocol("COMMANDLOG", "GET" *: count *: log *: EmptyTuple).using(RESPRead.instance(ServerInspection.logEntries6_2))
+  /** Every entry of the log, as its type says */
+  def get[E](log: CommandLogType[E]): Single[Seq[E]] =
+    Protocol("COMMANDLOG", "GET" *: -1 *: log.name *: EmptyTuple).using(RESPRead.instance(log.entries))
+  def get[E](log: CommandLogType[E], count: PosInt): Single[Seq[E]] =
+    Protocol("COMMANDLOG", "GET" *: count *: log.name *: EmptyTuple).using(RESPRead.instance(log.entries))
 
-  def len(log: CommandLogType): Single[NonNegLong] = Protocol("COMMANDLOG", "LEN" *: log *: EmptyTuple).as[Num, NonNegLong]
+  def len(log: CommandLogType[?]): Single[NonNegLong] = Protocol("COMMANDLOG", "LEN" *: log.name *: EmptyTuple).as[Num, NonNegLong]
 
-  def reset(log: CommandLogType): Single[OK] = Protocol("COMMANDLOG", "RESET" *: log *: EmptyTuple).as[Str, OK]
+  def reset(log: CommandLogType[?]): Single[OK] = Protocol("COMMANDLOG", "RESET" *: log.name *: EmptyTuple).as[Str, OK]
 }

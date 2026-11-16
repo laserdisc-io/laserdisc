@@ -30,7 +30,6 @@ import cats.syntax.all.*
 import com.comcast.ip4s
 import laserdisc.auto.*
 
-import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import scala.concurrent.duration.*
 
@@ -77,10 +76,8 @@ object FakeRedisServer {
               }
               // a client closing its connection with replies unread resets it, which ends only that connection, as with a real server:
               // otherwise the error would stop the server, closing the client's other connections
-              .handleErrorWith {
-                case _: IOException => Stream.empty
-                case other          => Stream.raiseError[IO](other)
-              }
+              // whatever the socket fails with: on Node.js some of its errors, like a write cancelled by the reset, aren't IOExceptions
+              .handleErrorWith(_ => Stream.empty)
           }
           .parJoinUnbounded
           .compile

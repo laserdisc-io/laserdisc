@@ -404,6 +404,31 @@ jobs:
           modules-ignore: laserdisc-integration_sjs1_2.12 laserdisc-integration_sjs1_2.13 laserdisc-integration_sjs1_3 fs2-bench_2.12 fs2-bench_2.13 fs2-bench_3 laserdisc-integration_2.12 laserdisc-integration_2.13 laserdisc-integration_3 laserdiscjvm_2.12 laserdiscjvm_2.13 laserdiscjvm_3 laserdiscnative_2.12 laserdiscnative_2.13 laserdiscnative_3 docs_2.12 docs_2.13 docs_3 laserdisc-laws_2.12 laserdisc-laws_2.13 laserdisc-laws_3 laserdisc-laws_native0.5_2.12 laserdisc-laws_native0.5_2.13 laserdisc-laws_native0.5_3 core-bench_2.12 core-bench_2.13 core-bench_3 laserdisc-integration_native0.5_2.12 laserdisc-integration_native0.5_2.13 laserdisc-integration_native0.5_3 laserdisc-laws_sjs1_2.12 laserdisc-laws_sjs1_2.13 laserdisc-laws_sjs1_3 laserdiscjs_2.12 laserdiscjs_2.13 laserdiscjs_3
           configs-ignore: test scala-tool scala-doc-tool test-internal
 
+  validate-steward:
+    name: Validate Steward Config
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        java: [temurin@17]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout current branch (fast)
+        uses: actions/checkout@v6
+
+      - name: Setup Java (temurin@17)
+        id: setup-java-temurin-17
+        if: matrix.java == 'temurin@17'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: coursier/setup-action@v1
+        with:
+          apps: scala-steward
+
+      - run: scala-steward validate-repo-config .scala-steward.conf
+
   site:
     name: Generate Site
     strategy:

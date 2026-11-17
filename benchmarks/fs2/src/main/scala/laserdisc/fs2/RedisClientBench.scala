@@ -71,7 +71,7 @@ class JedisState {
 
   @Setup
   def setup(): Unit = {
-    val poolConfig = new GenericObjectPoolConfig
+    val poolConfig = new GenericObjectPoolConfig[Jedis]
     poolConfig.setMaxTotal(8)
     poolConfig.setMinIdle(0)
     poolConfig.setMaxIdle(0)

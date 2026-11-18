@@ -234,6 +234,28 @@ final class CLISpec extends CatsEffectSuite {
     }
   }
 
+  test("answers each line once it's typed, without waiting for the next") {
+    replying.use { port =>
+      IO.ref(Vector.empty[Byte]).flatMap { screen =>
+        val onScreen = screen.get.map(bytes => new String(bytes.toArray, UTF_8).replaceAll("\\[[0-9.,]+ms\\]", "[]"))
+        // the second line is typed only once the first one's reply is shown
+        val replied = (IO.sleep(10.millis) >> onScreen.map(_.contains("<<< PING"))).iterateUntil(identity).timeout(5.seconds).void
+        val typed   = Stream.chunk(Chunk.array("PING\n".getBytes(UTF_8))).covary[IO] ++ Stream.exec(replied) ++
+          Stream.chunk(Chunk.array("GET a\n".getBytes(UTF_8)))
+        val shown = (bytes: Stream[IO, Byte]) => bytes.chunks.foreach(chunk => screen.update(_ ++ chunk.toList))
+
+        CLI.impl.session(List("127.0.0.1", port.value.toString), Map.empty, typed, shown, 20.seconds).flatMap { code =>
+          onScreen.map { text =>
+            val prompt = s"127.0.0.1:${port.value}> "
+            val value  = "\"value\""
+            assertEquals(code, ExitCode.Success)
+            assertEquals(afterLogo(text), s"$prompt<<< PING - []\n$prompt<<< $value - []\n$prompt\n")
+          }
+        }
+      }
+    }
+  }
+
   test("shows the reply to each command typed, formatted, then prompts again") {
     replying.use { port =>
       session(List("127.0.0.1", port.value.toString), "PING", "GET a", "KEYS *").map { case (code, screen) =>

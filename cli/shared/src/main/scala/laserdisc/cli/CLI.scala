@@ -201,6 +201,9 @@ object CLI extends IOApp { self =>
 
     private final val Certificate = "-----BEGIN CERTIFICATE-----"
 
+    // a character no input has, as it's read a character for each byte, each from 0 to 255
+    private final val EndOfInput = "\uffff"
+
     // the authorities' file is read once, before connecting. Without checks, the name on the certificate isn't checked either
     private def tlsOf(choice: TlsWith): Resource[IO, Tls[IO]] =
       choice match {
@@ -291,10 +294,15 @@ object CLI extends IOApp { self =>
               // a character for each byte, so that what isn't UTF-8 is sent as it was typed: a line is split at its ASCII newline
               .chunks
               .map(chunk => new String(chunk.toArray, ISO_8859_1))
+              // the end of input is marked, so that each line goes out once it's typed: input ending with a newline, or empty, has only
+              // the mark last, which isn't a line typed, and its prompt would be shown twice
+              .append(Stream.emit(EndOfInput))
               .through(text.lines)
-              // input ending with a newline, or empty, has an empty line last, which isn't a line typed: its prompt would be shown twice
-              .zipWithNext
-              .collect { case (line, next) if line.nonEmpty || next.isDefined => line }
+              .flatMap {
+                case EndOfInput                        => Stream.empty
+                case last if last.endsWith(EndOfInput) => Stream.emit(last.dropRight(EndOfInput.length))
+                case line                              => Stream.emit(line)
+              }
               .through(protocol)
               .evalMap { protocol =>
                 // a send that fails, as when it times out, shows the error like a reply would, and the prompt carries on

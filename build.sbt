@@ -1,4 +1,5 @@
 import laika.helium.config.{HeliumIcon, IconLink}
+import org.typelevel.sbt.gha.{PermissionValue, Permissions}
 import sbtcrossproject.CrossProject
 
 val scala_212 = "2.12.21"
@@ -10,17 +11,18 @@ val V = new {
   val `cats-effect`          = "3.7.1"
   val `cats-discipline`      = "1.7.0"
   val `collection-compat`    = "2.14.0"
+  val decline                = "2.6.2"
   val `discipline-munit`     = "2.0.0"
   val circe                  = "0.14.17"
   val fs2                    = "3.14.0"
-  val jedis                  = "3.2.0"
+  val jedis                  = "3.10.0"
   val `log-effect`           = "0.20.0"
-  val logback                = "1.6.6"
+  val logback                = "1.6.7"
   val munit                  = "1.3.6"
   val `munit-cats-effect`    = "2.2.1"
   val `munit-scalacheck`     = "1.3.1"
   val `parallel-collections` = "1.3.0"
-  val redis4Cats             = "2.0.3"
+  val redis4Cats             = "2.0.6"
   val refined                = "0.11.4"
   val scalacheck             = "1.20.0"
   val `scala-redis`          = "3.42"
@@ -62,6 +64,13 @@ ThisBuild / coverageHighlighting       := true
 ThisBuild / coverageMinimumStmtTotal   := 90
 ThisBuild / coverageMinimumBranchTotal := 80
 
+// the servers the integration tests run against, at fixed versions, so that a new release doesn't change what CI finds without a
+// commit saying so. KeyDB has no tag for its version that covers both amd64 and arm64, so it's fixed by the digest of 6.3.4
+val redisImage     = "redis:8.10.3-alpine"
+val keydbImage     = "eqalpha/keydb@sha256:6537505c42355ca1f571276bddf83f5b750f760f07b2a185a676481791e388ac"
+val valkeyImage    = "valkey/valkey:9.1.3-alpine"
+val dragonflyImage = "docker.dragonflydb.io/dragonflydb/dragonfly:v2.0.2"
+
 // four nodes for ClusterClientSpec to make a cluster of: they're in one container so that they can reach each other on 127.0.0.1.
 // Not from port 7000, which AirPlay Receiver has on macOS
 def startUpCluster(name: String, image: String, server: String, firstPort: Int) = {
@@ -76,22 +85,56 @@ def startUpCluster(name: String, image: String, server: String, firstPort: Int) 
 }
 
 val startUpRedisServers = List(
-  WorkflowStep.Run(commands = List("docker run -p 6379:6379 -d redis:alpine"), name = Some("Start up Redis")),
-  WorkflowStep.Run(commands = List("docker run -p 6380:6379 -d eqalpha/keydb"), name = Some("Start up KeyDb")),
-  WorkflowStep.Run(commands = List("docker run -p 6381:6379 -d valkey/valkey:alpine"), name = Some("Start up Valkey")),
+  WorkflowStep.Run(commands = List(s"docker run -p 6379:6379 -d $redisImage"), name = Some("Start up Redis")),
+  WorkflowStep.Run(commands = List(s"docker run -p 6380:6379 -d $keydbImage"), name = Some("Start up KeyDb")),
+  WorkflowStep.Run(commands = List(s"docker run -p 6381:6379 -d $valkeyImage"), name = Some("Start up Valkey")),
   WorkflowStep.Run(
-    commands = List("docker run -p 6382:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest"),
+    commands = List(s"docker run -p 6382:6379 --ulimit memlock=-1 -d $dragonflyImage"),
     name = Some("Start up Dragonfly")
   ),
   WorkflowStep.Run(
-    commands =
-      List("docker run -p 6383:6379 --ulimit memlock=-1 -d docker.dragonflydb.io/dragonflydb/dragonfly:latest --cluster_mode=emulated"),
+    commands = List(s"docker run -p 6383:6379 --ulimit memlock=-1 -d $dragonflyImage --cluster_mode=emulated"),
     name = Some("Start up Dragonfly in cluster mode")
   ),
-  startUpCluster("Redis", "redis:alpine", "redis-server", 7100),
-  startUpCluster("KeyDb", "eqalpha/keydb", "keydb-server", 7110),
-  startUpCluster("Valkey", "valkey/valkey:alpine", "valkey-server", 7120)
+  // only TLS, for TlsSpec, with the certificate in test-setup/tls, which is for localhost and not for 127.0.0.1
+  WorkflowStep.Run(
+    commands = List(
+      "docker run -p 6390:6379 -v \"$PWD/test-setup/tls:/tls:ro\" -d " + redisImage +
+        " --port 0 --tls-port 6379 --tls-cert-file /tls/server.crt --tls-key-file /tls/server.key --tls-ca-cert-file /tls/ca.crt" +
+        " --tls-auth-clients no"
+    ),
+    name = Some("Start up Redis with TLS")
+  ),
+  startUpCluster("Redis", redisImage, "redis-server", 7100),
+  startUpCluster("KeyDb", keydbImage, "keydb-server", 7110),
+  startUpCluster("Valkey", valkeyImage, "valkey-server", 7120)
 )
+
+// the jobs only read the code, except publishing the site and submitting the dependencies, which write to the repository
+val readOnly = Permissions.Specify.defaultRestrictive.withContents(PermissionValue.Read)
+ThisBuild / githubWorkflowPermissions := Some(readOnly)
+
+// artifacts only carry the build from one job to a later one in the same run, so a week leaves time to re-run a failed job
+def expiring(step: WorkflowStep): WorkflowStep = step match {
+  case use: WorkflowStep.Use if uploadsArtifact(use.ref) => use.updatedParams("retention-days", "7")
+  case other                                             => other
+}
+def uploadsArtifact(ref: UseRef): Boolean = ref match {
+  case UseRef.Public("actions", "upload-artifact", _) => true
+  case _                                              => false
+}
+
+ThisBuild / githubWorkflowGeneratedCI ~= (_.map { job =>
+  if (Set("site", "dependency-submission")(job.id)) job.withPermissions(Some(readOnly.withContents(PermissionValue.Write))) else job
+}.map(job => job.withSteps(job.steps.map(expiring))))
+
+// the Clean workflow deletes every artifact in the repository on each push, those of runs still going included, and can't be given
+// permissions of its own. Uploads expire instead
+ThisBuild / githubWorkflowIncludeClean := false
+
+// the Scala Native binaries that use TLS link s2n-tls, which CI installs with Homebrew for the jobs that build them
+ThisBuild / nativeBrewInstallCond := Some("matrix.project == 'laserdiscNative' || matrix.project == 'integrationNative'")
+ThisBuild / githubWorkflowBuildPreamble ++= nativeBrewInstallWorkflowSteps.value
 
 ThisBuild / githubWorkflowAddedJobs ++= List(
   WorkflowJob(
@@ -109,7 +152,7 @@ ThisBuild / githubWorkflowAddedJobs ++= List(
         MatrixExclude(Map("project" -> "integrationNative", "java" -> java.render))
       )
     },
-    steps = githubWorkflowJobSetup.value.toList ++ startUpRedisServers :+
+    steps = githubWorkflowJobSetup.value.toList ++ nativeBrewInstallWorkflowSteps.value ++ startUpRedisServers :+
       WorkflowStep.Sbt(
         List("project ${{ matrix.project }}", "headerCheckAll", "scalafmtCheckAll", "test"),
         name = Some("Check headers and formatting, and run the tests")
@@ -172,6 +215,10 @@ ThisBuild / githubWorkflowAddedJobs ++= List(
     )
   )
 )
+
+// publishing waits for every check, through the job that gathers them, not only for the build
+ThisBuild / githubWorkflowPublishNeeds := Seq("ci-passed")
+
 ThisBuild / tlSitePublishBranch := Some("master")
 
 ThisBuild / mergifyLabelPaths    := Map.empty
@@ -287,11 +334,15 @@ lazy val integration = laserdiscCrossModule("integration", CrossType.Full)
       else Seq("org.scala-lang.modules" %%% "scala-parallel-collections" % V.`parallel-collections` % Test)
     }
   )
+  // TlsSpec connects with TLS, which needs s2n-tls on Scala Native
+  .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
+  .nativeSettings(nativeBrewFormulas += "s2n")
 
-lazy val cli = laserdiscCrossModule("cli")
+lazy val cli = laserdiscCrossModule("cli", CrossType.Full)
   .dependsOn(fs2 % "compile->compile;test->test")
   .settings(
     libraryDependencies ++= Seq(
+      "com.monovore"  %%% "decline"           % V.decline,
       "co.fs2"        %%% "fs2-io"            % V.fs2,
       "org.typelevel" %%% "cats-core"         % V.cats,
       "org.typelevel" %%% "cats-effect"       % V.`cats-effect`,
@@ -299,9 +350,17 @@ lazy val cli = laserdiscCrossModule("cli")
       "org.typelevel" %%% "munit-cats-effect" % V.`munit-cats-effect` % Test
     )
   )
+  // run in a process of its own, reading sbt's input, so that what's typed reaches it and Ctrl-D ends it
+  .jvmSettings(
+    Compile / run / fork         := true,
+    Compile / run / connectInput := true
+  )
   .jsSettings(
     scalaJSUseMainModuleInitializer := true
   )
+  // --tls needs s2n-tls on Scala Native, so the CLI's binary always links it
+  .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
+  .nativeSettings(nativeBrewFormulas += "s2n")
 
 lazy val circe = laserdiscCrossModule("circe", CrossType.Full)
   .dependsOn(core)

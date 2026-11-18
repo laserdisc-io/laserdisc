@@ -22,15 +22,16 @@
 package laserdisc
 package fs2
 
-import cats.syntax.eq.*
-import cats.{ApplicativeError, Eq}
+import cats.{ApplicativeError, Order}
 import com.comcast.ip4s
 import com.comcast.ip4s.SocketAddress
 
+/** A server's address, as `RedisClient[F].toNodes` takes them */
 final case class RedisAddress(host: Host, port: Port) {
+  // a hostname ending with a dot is resolved without it, as ip4s takes no such name
   def toSocketAddress[F[_]](implicit F: ApplicativeError[F, Throwable]): F[SocketAddress[ip4s.Host]] =
     (for {
-      h <- ip4s.Host.fromString(host.value)
+      h <- ip4s.Host.fromString(host.value.stripSuffix("."))
       p <- ip4s.Port.fromInt(port.value)
     } yield new SocketAddress(h, p)) match {
       case None    => F.raiseError(InvalidSocketAddress(host, port))
@@ -41,7 +42,9 @@ final case class RedisAddress(host: Host, port: Port) {
 }
 
 object RedisAddress {
-  implicit final val redisAddressEq: Eq[RedisAddress] = Eq.instance { (a1, a2) =>
-    a1.host.value === a2.host.value && a1.port.value === a2.port.value
-  }
+
+  /** By host, alphabetically, so `redis-10` comes before `redis-2`, then by port: the order in which `toNodes` tries a `NonEmptySet` of
+    * addresses built with it
+    */
+  implicit final val redisAddressOrder: Order[RedisAddress] = Order.by(address => (address.host.value, address.port.value))
 }

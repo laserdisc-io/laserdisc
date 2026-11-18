@@ -29,24 +29,23 @@ import io.github.iltotore.iron.constraint.all.*
 import scala.annotation.{implicitNotFound, nowarn}
 import scala.util.NotGiven
 
-// Basic type aliases
+/** A command's result: its reply read as an `A`, or why it failed, such as the server's [[Err]] or a [[RESPDecErr]] */
 final type Maybe[+A] = Either[Throwable, A]
 
 // Export all protocol
-export protocol.{Arr, Bulk, Err, NilArr, NullBulk, Num, OneOf, Protocol, RESP, RESPDecErr, Read, Show, Str, Value}
+export protocol.{Arr, Bulk, Err, Forever, NilArr, NullBulk, Num, OneOf, Protocol, RESP, RESPDecErr, Read, Show, Str, Value}
 final type NilArr   = protocol.NilArr.type
 final type NullBulk = protocol.NullBulk.type
 
-// a value that may be missing, as RESP2 sends it: a null bulk string for a string, a number or a simple string, and a null array for an array
+/** A reply that may be missing, as for a string, a number or a simple string: an `A`, or the null RESP2 sends instead */
 final type OrNullBulk[A] = OneOf[NullBulk *: A *: EmptyTuple]
-final type OrNilArr[A]   = OneOf[NilArr *: A *: EmptyTuple]
 
-private final type NoControlChar = Not[ControlChar]
-private final type NoWhitespace  = Not[WhitespaceChar]
+/** An array reply that may be missing: an `A`, or the null array RESP2 sends instead */
+final type OrNilArr[A] = OneOf[NilArr *: A *: EmptyTuple]
 
-/** A refined newtype `T` (a subtype of `A`), checked by iron's constraint `C`, with the same operations as Scala 2's refined
-  * `RefinedTypeOps`: compile-time checked `apply` for literals, `from`, `unsafeFrom`, `unapply` and `.value`, which (as with refined) gives
-  * back the base type `A`, so that type class instances for `A` keep working on it.
+/** What a type whose values are checked, such as `Key` or `Port`, can do: `apply` takes a literal, checked when your code compiles; `from`
+  * gives a `Left` for a value that doesn't fit; `unsafeFrom` throws an `IllegalArgumentException` instead; `unapply` matches a value that
+  * fits; and `.value` gives back the plain value, such as the `String` of a `Key`
   */
 trait RefinedTypeOps[A, C](using C: RuntimeConstraint[A, C]) {
   opaque type T <: A = A :| C
@@ -66,14 +65,14 @@ trait RefinedTypeOps[A, C](using C: RuntimeConstraint[A, C]) {
 }
 object RefinedTypeOps {
 
-  /** Links a refined newtype to its base type and constraint, used by `auto.autoRefine` */
+  // what a checked type is made of, for auto.autoRefine to find
   trait Mirror[T] {
     type BaseType
     type ConstraintType
   }
 }
 
-/** Refined-style operations for refined collections, which are plain iron types rather than [[RefinedTypeOps]] newtypes */
+/** What a checked collection, such as `OneOrMoreKeys`, can do: `from`, `unsafeFrom` and `unapply`, as for [[RefinedTypeOps]] */
 sealed abstract class RefinedCollectionOps[A, C](using C: RuntimeConstraint[A, C]) {
   final def from(a: A): Either[String, A :| C] = if (C.test(a)) Right(a.asInstanceOf[A :| C]) else Left(C.message)
   final def unsafeFrom(a: A): A :| C           = from(a).fold(e => throw new IllegalArgumentException(e), identity)
@@ -82,30 +81,27 @@ sealed abstract class RefinedCollectionOps[A, C](using C: RuntimeConstraint[A, C
 
 extension [A, C](a: A :| C) inline def value: A = a
 
-/** A literal witness, as Scala 2's refined `W` (a shapeless `Witness`): `.value` is the literal, `.T` its literal type */
+// a literal and its type, as Scala 2's refined W: .value is the literal, .T its type
 final class Witness[A <: Singleton] private[laserdisc] (val value: A) {
   type T = A
 }
 
 // Witnesses
+final val AccessFrequencyMaxValueWit = new Witness(255)
 final val AllNICsEqWit               = new Witness("0.0.0.0")
 final val BlockingSecondsMinValueWit = new Witness(0.002d)
 final val BlockingSecondsMaxValueWit = new Witness(4294967.0d)
-final val DbIndexMaxValueWit         = new Witness(2147483647)
-final val GeoHashRegexWit            = new Witness("[a-z0-9]{11}")
 
-/** A Redis glob: `*`, `?`, `[abc]`, `[a-z]`, `[^abc]`, `\x` for the character x itself, or any other character but a control character. A
-  * `]` outside of a class, and a `^` first in a class, are written `\]` and `\^`
+/** A connection's name, or its library's name or version: printable ASCII without spaces, as the server refuses anything else */
+final val ConnectionNameRegexWit = new Witness("[!-~]+")
+final val DbIndexMaxValueWit     = new Witness(2147483647)
+final val GeoHashRegexWit        = new Witness("[a-z0-9]{11}")
+
+/** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand, in printable ASCII without
+  * spaces. A name starting with `@` is a category, which has rules of its own
   */
-final val GlobPatternRegexWit = new Witness(
-  """[^\x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
-)
+final val AclCommandRegexWit = new Witness("""[!-?A-~][!-~]*""")
 
-/** A glob for the keys and channels of ACL rules: a [[GlobPattern]] without spaces, which ACL SETUSER refuses */
-final val AclPatternRegexWit = new Witness(
-  """[^ \x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
-)
-final val IPv4RegexWit                = new Witness("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
 final val LatitudeMinValueWit         = new Witness(-85.05112878d)
 final val LatitudeMaxValueWit         = new Witness(85.05112878d)
 final val LongitudeMinValueWit        = new Witness(-180.0d)
@@ -118,39 +114,34 @@ final val PONGEqWit                   = new Witness("PONG")
 final val PortMinValueWit             = new Witness(1)
 final val PortMaxValueWit             = new Witness(65535)
 final val RangeOffsetMaxValueWit      = new Witness(536870911)
-final val Rfc1123HostnameMaxLengthWit = new Witness(255)
-final val Rfc1123HostnameRegexWit     =
-  new Witness("(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*")
 final val Sha1RegexWit                = new Witness("[a-f0-9]{40}")
+final val Sha256RegexWit              = new Witness("[a-f0-9]{64}")
+final val AclCategoryRegexWit         = new Witness("[A-Za-z0-9_-]+")
 final val SignedBitWidthMaxValueWit   = new Witness(64)
 final val SlotMaxValueWit             = new Witness(16383)
 final val StringLengthMaxValueWit     = new Witness(4294967295L)
 final val UnsignedBitWidthMaxValueWit = new Witness(63)
 
 // Refinements
-private final type IPv4Ref    = Match["^(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)){3}$"]
-private final type Rfc1918Ref = IPv4Ref &
-  (Match["^10\\..*"] | Match["^172\\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31)\\..+"] | Match["^192\\.168\\..*"])
-private final type Rfc5737Ref     = IPv4Ref & (Match["^192\\.0\\.2\\..*"] | Match["^198\\.51\\.100\\..*"] | Match["^203\\.0\\.113\\..*"])
-private final type Rfc3927Ref     = IPv4Ref & Match["^169\\.254\\..*"]
-private final type Rfc2544Ref     = IPv4Ref & (Match["^198\\.18\\..*"] | Match["^198\\.19\\..*"])
 private final type ValidDoubleRef = NonNaN
 
-/** Seconds a blocking command waits, 0 to wait forever. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above what
+/** The counter LFU eviction keeps of how often a key is used, as OBJECT FREQ reports it */
+final type AccessFrequencyRef = Interval.Closed[0, AccessFrequencyMaxValueWit.T]
+
+/** Seconds a blocking command waits, never forever, as 0 would. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above what
   * Dragonfly takes
   */
-final type BlockingSecondsRef = ValidDoubleRef &
-  (StrictEqual[0.0d] | Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T])
-final type ConnectionNameRef = MinLength[1] & ForAll[NoWhitespace & NoControlChar]
-final type DbIndexRef        = Interval.Closed[0, DbIndexMaxValueWit.T]
-final type GeoHashRef        = Match[GeoHashRegexWit.T]
-final type GlobPatternRef    = Match[GlobPatternRegexWit.T]
-final type AclPatternRef     = Match[AclPatternRegexWit.T]
-final type HostRef           = StrictEqual[AllNICsEqWit.T] | StrictEqual[LoopbackEqWit.T] |
-  (Not[IPv4Ref] & MaxLength[Rfc1123HostnameMaxLengthWit.T] & Match[Rfc1123HostnameRegexWit.T]) | Rfc1918Ref | Rfc5737Ref | Rfc3927Ref |
-  Rfc2544Ref
+final type BlockingSecondsRef  = ValidDoubleRef & Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T]
+final type ConnectionNameRef   = Match[ConnectionNameRegexWit.T]
+final type DbIndexRef          = Interval.Closed[0, DbIndexMaxValueWit.T]
+final type GeoHashRef          = Match[GeoHashRegexWit.T]
+final type GlobPatternRef      = ValidGlobPattern
+final type AclCommandRef       = Match[AclCommandRegexWit.T]
+final type AclPatternRef       = ValidAclPattern
+final type HostRef             = ValidHost
+final type IpAddressRef        = ValidIpAddress
 final type IndexRef            = Pure
-final type KeyRef              = MinLength[1] & ForAll[NoControlChar]
+final type KeyRef              = ValidKey
 final type LatitudeRef         = Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
 final type LongitudeRef        = Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
 final type NodeIdRef           = Match[NodeIdRegexWit.T]
@@ -167,6 +158,8 @@ final type PortRef             = Interval.Closed[PortMinValueWit.T, PortMaxValue
 final type PosRef              = Positive
 final type RangeOffsetRef      = Interval.Closed[0, RangeOffsetMaxValueWit.T]
 final type Sha1Ref             = Match[Sha1RegexWit.T]
+final type Sha256Ref           = Match[Sha256RegexWit.T]
+final type AclCategoryRef      = Match[AclCategoryRegexWit.T]
 final type SignedBitWidthRef   = Interval.Closed[1, SignedBitWidthMaxValueWit.T]
 final type SlotRef             = Interval.Closed[0, SlotMaxValueWit.T]
 final type StringLengthRef     = Interval.Closed[0L, StringLengthMaxValueWit.T]
@@ -174,13 +167,16 @@ final type UnsignedBitWidthRef = Interval.Closed[1, UnsignedBitWidthMaxValueWit.
 final type TwoOrMoreRef        = MinLength[2]
 
 // New types
+final type AccessFrequency       = AccessFrequency.T
 final type BlockingSeconds       = BlockingSeconds.T
 final type ConnectionName        = ConnectionName.T
 final type DbIndex               = DbIndex.T
 final type GeoHash               = GeoHash.T
 final type GlobPattern           = GlobPattern.T
+final type AclCommand            = AclCommand.T
 final type AclPattern            = AclPattern.T
 final type Host                  = Host.T
+final type IpAddress             = IpAddress.T
 final type Index                 = Index.T
 final type Key                   = Key.T
 final type Latitude              = Latitude.T
@@ -202,6 +198,8 @@ final type PosInt                = PosInt.T
 final type PosLong               = PosLong.T
 final type RangeOffset           = RangeOffset.T
 final type Sha1                  = Sha1.T
+final type Sha256                = Sha256.T
+final type AclCategory           = AclCategory.T
 final type SignedBitWidth        = SignedBitWidth.T
 final type Slot                  = Slot.T
 final type StringLength          = StringLength.T
@@ -217,13 +215,16 @@ object OneOrMore {
   def unsafeFrom[A](l: List[A]): OneOrMore[A]           = l.refineUnsafe[OneOrMoreRef]
 }
 
+object AccessFrequency       extends RefinedTypeOps[Int, AccessFrequencyRef]
 object BlockingSeconds       extends RefinedTypeOps[Double, BlockingSecondsRef]
 object ConnectionName        extends RefinedTypeOps[String, ConnectionNameRef]
 object DbIndex               extends RefinedTypeOps[Int, DbIndexRef]
 object GeoHash               extends RefinedTypeOps[String, GeoHashRef]
 object GlobPattern           extends RefinedTypeOps[String, GlobPatternRef]
+object AclCommand            extends RefinedTypeOps[String, AclCommandRef]
 object AclPattern            extends RefinedTypeOps[String, AclPatternRef]
 object Host                  extends RefinedTypeOps[String, HostRef]
+object IpAddress             extends RefinedTypeOps[String, IpAddressRef]
 object Index                 extends RefinedTypeOps[Long, IndexRef]
 object Key                   extends RefinedTypeOps[String, KeyRef]
 object Latitude              extends RefinedTypeOps[Double, LatitudeRef]
@@ -241,6 +242,8 @@ object PosInt                extends RefinedTypeOps[Int, PosRef]
 object PosLong               extends RefinedTypeOps[Long, PosRef]
 object RangeOffset           extends RefinedTypeOps[Int, RangeOffsetRef]
 object Sha1                  extends RefinedTypeOps[String, Sha1Ref]
+object Sha256                extends RefinedTypeOps[String, Sha256Ref]
+object AclCategory           extends RefinedTypeOps[String, AclCategoryRef]
 object SignedBitWidth        extends RefinedTypeOps[Int, SignedBitWidthRef]
 object Slot                  extends RefinedTypeOps[Int, SlotRef]
 object StringLength          extends RefinedTypeOps[Long, StringLengthRef]
@@ -257,10 +260,11 @@ final val PONG: PONG         = io.github.iltotore.iron.autoRefine[String, PONGRe
 private[laserdisc] final val NodeIdRegex: String = NodeIdRegexWit.value
 
 private[laserdisc] final val COMMA_CH = ','
+private[laserdisc] final val CR_CH    = '\r'
 private[laserdisc] final val LF_CH    = '\n'
 private[laserdisc] final val SPACE_CH = ' '
 private[laserdisc] final val COMMA    = s"$COMMA_CH"
-private[laserdisc] final val CRLF     = s"\r$LF_CH"
+private[laserdisc] final val CRLF     = s"$CR_CH$LF_CH"
 private[laserdisc] final val LF       = s"$LF_CH"
 private[laserdisc] final val SPACE    = s"$SPACE_CH"
 
@@ -268,25 +272,13 @@ private[laserdisc] object ToInt {
   def unapply(l: Long): Option[Int] =
     try Some(j.Math.toIntExact(l))
     catch { case _: ArithmeticException => None }
-  def unapply(s: String): Option[Int] =
-    try Some(j.Integer.parseInt(s))
-    catch { case _: NumberFormatException => None }
+  def unapply(s: String): Option[Int] = Numbers.toInt(s)
 }
 private[laserdisc] object ToLong {
-  def unapply(s: String): Option[Long] =
-    try Some(j.Long.parseLong(s))
-    catch { case _: NumberFormatException => None }
+  def unapply(s: String): Option[Long] = Numbers.toLong(s)
 }
-// as Redis writes doubles, which includes infinite ones as inf and -inf
 private[laserdisc] object ToDouble {
-  def unapply(s: String): Option[Double] = s match {
-    case "inf" | "+inf" => Some(Double.PositiveInfinity)
-    case "-inf"         => Some(Double.NegativeInfinity)
-    case "nan" | "-nan" => Some(Double.NaN)
-    case _              =>
-      try Some(j.Double.parseDouble(s))
-      catch { case _: NumberFormatException => None }
-  }
+  def unapply(s: String): Option[Double] = Numbers.toDouble(s)
 }
 
 @implicitNotFound("Cannot prove that ${L} can be converted to the tuple ${T}")

@@ -166,7 +166,7 @@ sealed abstract class LaserdiscFs2ClientSpec(p: Port, dest: String) extends Lase
   }
 
   test(s"an fs2 $dest client handles correctly hundreds of read requests in parallel for an array payload") {
-    implicit val listStringShow: Show[List[String]] = _ mkString COMMA
+    implicit val listStringShow: Show[List[String]] = Show.instance(_ mkString COMMA)
 
     val key: Key = "test-key-list"
     val bulk     = List.fill(payloadSize)(text).mkString(" - ")

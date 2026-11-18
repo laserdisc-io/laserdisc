@@ -66,18 +66,11 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
     val classBody = nonEmptyListOf(frequency(1 -> const("-"), 1 -> escaped, 4 -> plain)).map(_.mkString)
     frequency(3 -> basicGlob.map(_.mkString), 1 -> classBody.map(c => s"[$c]"), 1 -> classBody.map(c => s"[^$c]"))
   }
-  private final val allNICsGen: Gen[String] = const(AllNICsEqWit.value)
-  private final val lbGen: Gen[String]      = const(LoopbackEqWit.value)
   private final val rfc1123Gen: Gen[String] = {
     def dashAtBeginOrEnd(s: String) = s.startsWith(dashString) || s.endsWith(dashString)
     val piece                       = chooseNum(1, 62).flatMap(strOfNGen(_, 1 -> dashGen, 99 -> alphaNumChar))
-    choose(1, 5).flatMap(listOfN(_, piece.retryUntil(!dashAtBeginOrEnd(_))).map(_.mkString(dotString)).retryUntil(_.size <= 255))
+    choose(1, 5).flatMap(listOfN(_, piece.retryUntil(!dashAtBeginOrEnd(_))).map(_.mkString(dotString)).retryUntil(_.size <= 253))
   }
-  private final val rfc1918Gen: Gen[String] = Gen.oneOf(ipv4Gen(10), chooseNum(16, 31).flatMap(ipv4Gen(172, _)), ipv4Gen(192, 168))
-  private final val rfc5737Gen: Gen[String] = Gen.oneOf(ipv4Gen(192, 0, 2), ipv4Gen(198, 51, 100), ipv4Gen(203, 0, 113))
-  private final val rfc3927Gen: Gen[String] = ipv4Gen(169, 254)
-  private final val rfc2544Gen: Gen[String] = chooseNum(18, 19).flatMap(ipv4Gen(198, _))
-
   private final def ipv4Gen(hs: Int*): Gen[String]           = listOfN(4 - hs.size, byteRange).map(ts => (hs ++: ts).mkString(dotString))
   private final def twoOrMore[A](ga: =>Gen[A]): Gen[List[A]] = nonEmptyListOf(ga).suchThat(_.size > 1)
   private final def zip[A, B](arbA: =>Arbitrary[A], arbB: =>Arbitrary[B]): Gen[(A, B)] =
@@ -87,6 +80,7 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   private final def strOfNGen(n: Int, fs: (Int, Gen[Char])*): Gen[String]  = listOfN(n, frequency(fs*)).map(_.mkString)
   private final def strOfNSameFreqGen(n: Int, gs: Gen[Char]*): Gen[String] = strOfNGen(n, gs.map(1 -> _)*)
 
+  final val accessFrequencyIsValid: Int => Boolean                            = AccessFrequency.from(_).isRight
   final val blockingSecondsIsValid: Double => Boolean                         = BlockingSeconds.from(_).isRight
   final val connectionNameIsValid: String => Boolean                          = ConnectionName.from(_).isRight
   final val dbIndexIsValid: Int => Boolean                                    = DbIndex.from(_).isRight
@@ -116,10 +110,12 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
   final val twoOrMoreWeightedKeysIsValid: List[(Key, ValidDouble)] => Boolean = TwoOrMoreWeightedKeys.from(_).isRight
   final val validDoubleIsValid: Double => Boolean                             = ValidDouble.from(_).isRight
 
+  final val accessFrequencyGen: Gen[Int] =
+    chooseNum(0, AccessFrequencyMaxValueWit.value).filter(accessFrequencyIsValid) :| "access frequency"
   final val blockingSecondsGen: Gen[Double] =
-    frequency(1 -> const(0.0d), 9 -> chooseNum(BlockingSecondsMinValueWit.value, BlockingSecondsMaxValueWit.value)) :| "blocking seconds"
+    chooseNum(BlockingSecondsMinValueWit.value, BlockingSecondsMaxValueWit.value) :| "blocking seconds"
   final val connectionNameGen: Gen[String] =
-    strGen(nonEmptyListOf(noSpaceUtf8BMPCharGen)).filter(connectionNameIsValid) :| "connection name"
+    strGen(nonEmptyListOf(choose('!', '~'))).filter(connectionNameIsValid) :| "connection name"
   final val dbIndexGen: Gen[Int]        = chooseNum(0, DbIndexMaxValueWit.value).filter(dbIndexIsValid) :| "db index"
   final val signedBitWidthGen: Gen[Int] = chooseNum(1, SignedBitWidthMaxValueWit.value).filter(signedBitWidthIsValid) :| "signed bit width"
   final val unsignedBitWidthGen: Gen[Int] =
@@ -130,13 +126,15 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
     Gen.resize(20, nonEmptyListOf(globGen)).map(_.mkString).filter(globPatternIsValid) :| "glob pattern"
   final val hostGen: Gen[Host] = {
     val hosts = 7 -> Gen
-      .oneOf(allNICsGen, lbGen, rfc1123Gen, rfc1918Gen, rfc5737Gen, rfc3927Gen, rfc2544Gen)
+      .oneOf(ipv4Gen(), rfc1123Gen)
       .filter(hostIsValid)
       .map(hs => Host.unsafeFrom(hs))
     val loopbackHost = 1 -> Gen.const(LoopbackHost)
 
     frequency(hosts, loopbackHost)
   } :| "host"
+  final val ipAddressGen: Gen[IpAddress] =
+    Gen.oneOf(ipv4Gen(), Gen.oneOf("::1", "2001:db8::1", "fe80::1:2", "::ffff:10.0.0.1")).map(IpAddress.unsafeFrom) :| "ip address"
   final val hostOrEmptyGen: Gen[Either[EmptyString, Host]] =
     frequency(10 -> hostGen.map(Right.apply), 1 -> const(EmptyString).map(Left.apply)) :| "host or empty string"
   final val keyGen: Gen[Key]         = strGen(nonEmptyListOf(utf8BMPCharGen)).filter(keyIsValid).map(Key.unsafeFrom) :| "key"
@@ -160,12 +158,14 @@ abstract class BaseSpec extends ScalaCheckSuite with ScalaCheckSettings with Bas
     strGen(listOf(frequency(1 -> spaceGen, 10 -> noSpaceUtf8BMPCharGen))).filterNot(connectionNameIsValid) :| "string w/ spaces"
   final val validDoubleGen: Gen[Double] = chooseNum(DMin, DMax).suchThat(_ != NaN) :| "double != NaN"
 
+  implicit final val accessFrequencyArb: Arbitrary[AccessFrequency]       = Arbitrary(accessFrequencyGen.map(AccessFrequency.unsafeFrom))
   implicit final val blockingSecondsArb: Arbitrary[BlockingSeconds]       = Arbitrary(blockingSecondsGen.map(BlockingSeconds.unsafeFrom))
   implicit final val connectionNameArb: Arbitrary[ConnectionName]         = Arbitrary(connectionNameGen.map(ConnectionName.unsafeFrom))
   implicit final val directionArb: Arbitrary[Direction]                   = Arbitrary(directionGen)
   implicit final val geoHashArb: Arbitrary[GeoHash]                       = Arbitrary(geoHashGen.map(GeoHash.unsafeFrom))
   implicit final val globPatternArb: Arbitrary[GlobPattern]               = Arbitrary(globPatternGen.map(GlobPattern.unsafeFrom))
   implicit final val hostArb: Arbitrary[Host]                             = Arbitrary(hostGen)
+  implicit final val ipAddressArb: Arbitrary[IpAddress]                   = Arbitrary(ipAddressGen)
   implicit final val indexArb: Arbitrary[Index]                           = Arbitrary(arbitrary[Long].map(Index.unsafeFrom))
   implicit final val keyArb: Arbitrary[Key]                               = Arbitrary(keyGen)
   implicit final def kvArb[A](implicit A: Arbitrary[A]): Arbitrary[KV[A]] =

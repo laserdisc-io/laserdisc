@@ -27,6 +27,8 @@ import laserdisc.auto.*
 final class RedisKeyClientSpec extends KeyClientSpec(LiveServers.port(6379), "redis") {
   since[Redis7_2]("a redis client sets expiries with conditions and reads them")(v => expiries(v))
 
+  test("a redis client reads that no replica acknowledged the writes, as the server here has none")(noReplicas())
+
   since[Redis8_8]("a redis client reads the type of an array or a module's key, and scans by it") { v =>
     import v.*
     import keytypes.*
@@ -44,15 +46,24 @@ final class RedisKeyClientSpec extends KeyClientSpec(LiveServers.port(6379), "re
   }
 }
 
+// not asked to WAIT: KeyDB 6.3.4 crashes when a WAIT times out
 final class KeyDbKeyClientSpec extends KeyClientSpec(LiveServers.port(6380), "keyDb")
 
 final class ValkeyKeyClientSpec extends KeyClientSpec(LiveServers.port(6381), "valkey") {
   since[Valkey7_2]("a valkey client sets expiries with conditions and reads them")(v => expiries(v))
+
+  test("a valkey client reads that no replica acknowledged the writes, as the server here has none")(noReplicas())
 }
 
 abstract class KeyClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p) {
   protected final def send[A](protocol: Protocol[A]): A =
     client.send(protocol).unsafeRunSync()(using runtime).fold(e => fail(s"$dest replied with an error: ${e.getMessage}", e), identity)
+
+  // `wait` on its own would be Object's
+  protected final def noReplicas(): Unit = {
+    send(redis_6_2.set("k:w", 1))
+    assertEquals(send(redis_6_2.wait(1, 10L)).value, 0)
+  }
 
   protected final def expiries(version: Redis7_2): Unit = {
     import version.*
@@ -72,6 +83,19 @@ abstract class KeyClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
     assertEquals(send(sortro[String]("k:none", KeySort.alpha)), Seq.empty)
     val (local, replicas) = send(waitaof(0, 0, 10L))
     assertEquals(local.value -> replicas.value, 0 -> 0)
+  }
+
+  test(s"a $dest client sets a key to expire after 2038, as a timestamp in seconds past then is bigger than an Int") {
+    import laserdisc.redis_6_2.*
+    import keytypes.*
+
+    send(set("k:x", 1))
+    assert(send(expireat("k:x", 4102444800L)))
+    send(ttl("k:x")) match {
+      case KeyExpireAfterTTLResponse(left) => assert(left.value > Int.MaxValue.toLong - System.currentTimeMillis() / 1000L, s"$left")
+      case other                           => fail(s"expected a time left, got $other")
+    }
+    val _ = send(del("k:x"))
   }
 
   test(s"a $dest client reads the encoding of each kind of key") {

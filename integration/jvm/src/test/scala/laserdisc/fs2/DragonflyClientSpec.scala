@@ -111,8 +111,8 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)
     assertEquals(send(v.client.pause(1L, servertypes.pauseMode.write)), OK)
     assertEquals(send(v.client.unpause), OK)
     assertEquals(send(v.client.kill(999999L)).value, 0L)
-    assertEquals(send(v.client.killaddress(Host("192.0.2.1"), Port(1))).value, 0L)
-    assertEquals(send(v.client.killlocaladdress(Host("192.0.2.1"), Port(1))).value, 0L)
+    assertEquals(send(v.client.killaddress(IpAddress("192.0.2.1"), Port(1))).value, 0L)
+    assertEquals(send(v.client.killlocaladdress(IpAddress("192.0.2.1"), Port(1))).value, 0L)
   }
 
   test("a dragonfly client inspects the server") {
@@ -152,15 +152,23 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)
     assertEquals(send(acl.getuser("ld-df-none")), None)
     assert(send(acl.users).contains("ld-df"))
     assert(send(acl.list).exists(_.startsWith("user ld-df ")))
-    assert(send(acl.whoami).nonEmpty)
+    assert(!send(acl.whoami).startsWith("User is"))
     assert(send(acl.cat).nonEmpty)
     assert(send(acl.cat("read")).nonEmpty)
     assert(send(acl.genpass).nonEmpty)
     assert(send(acl.genpass(32)).nonEmpty)
     assert(send(acl.help).nonEmpty)
-    assert(send(acl.log).size >= 0)
-    assert(send(acl.log(1)).size <= 1)
+    // a failed AUTH is what writes an entry to the log
+    assert(client.send(Protocol("AUTH", "ld-df-none" *: "wrong" *: EmptyTuple).as[Str, OK]).unsafeRunSync()(using runtime).isLeft)
+    // Dragonfly replies every entry whatever the count, so other tests' entries may be there too
+    send(acl.log(1)).collectFirst { case AclLogEntry(reason, denied, "ld-df-none", _, _, created) => (reason, denied, created) } match {
+      case Some((reason, denied, created)) =>
+        assertEquals((reason, denied), ("AUTH", "AUTH"))
+        assert(created > 0L)
+      case None => fail("expected the failed AUTH")
+    }
     assertEquals(send(acl.logreset), OK)
+    assertEquals(send(acl.log), Seq.empty)
     assertEquals(send(acl.dryrun("ld-df", get[String]("app:1"))), None)
     assertEquals(send(acl.setuser("ld-df", servertypes.aclDragonflyRules.readKeys("r:*").writeKeys("w:*").readWriteKeys("both:*"))), OK)
     val keys = send(acl.getuser("ld-df")).map(_.keys).getOrElse(fail("expected the user"))
@@ -260,6 +268,35 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)
     send(del("df:h"))
   }
 
+  test("a dragonfly client sends the options it shares with Redis, which only a live server can say it accepts") {
+    import streamtypes.*
+    send(del("df:o:h", "df:o:x", "df:o:b"))
+    val a      = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    val inAMin = System.currentTimeMillis() / 1000L + 60L
+    send(hset("df:o:h", "a", 1))
+    List(hashtypes.HashExpireCondition.xx, hashtypes.HashExpireCondition.gt, hashtypes.HashExpireCondition.lt).foreach { condition =>
+      assertEquals(send(hexpire("df:o:h", 100L, condition, a)).size, 1)
+    }
+    val expiries = List(
+      stringtypes.expiry.millis(100000L),
+      stringtypes.expiry.atSeconds(PosLong.unsafeFrom(inAMin)),
+      stringtypes.expiry.atMillis(PosLong.unsafeFrom(inAMin * 1000L))
+    )
+    (expiries :+ stringtypes.expiry.persist).foreach(expiry => assertEquals(send(hgetex[Int]("df:o:h", expiry, a)), Seq(Some(1))))
+    (expiries :+ stringtypes.expiry.keepTtl).foreach { expiry =>
+      assert(send(hsetex("df:o:h", expiry, OneOrMore.unsafeFrom(List(Key("a") -> 1)))))
+    }
+    assert(send(hsetex("df:o:h", hashtypes.HashFieldsCondition.fnx, OneOrMore.unsafeFrom(List(Key("b") -> 2)))))
+
+    send(xadd("df:o:x", OneOrMore.unsafeFrom(List(Key("a") -> 1))))
+    assertEquals(send(xgroupcreate("df:o:x", "g", StreamFrom.latest, 1L)), OK)
+
+    send(set("df:o:b", "abc"))
+    assertEquals(send(bitcount("df:o:b", 0L, 1L, stringtypes.bitUnit.byte)).value, 6L)
+    assertEquals(send(bitpos("df:o:b", stringtypes.bit.set, 0L, 0L, stringtypes.bitUnit.byte)).map(_.value), Some(1L))
+    send(del("df:o:h", "df:o:x", "df:o:b"))
+  }
+
   test("a dragonfly client digests strings, deletes on a match and counts bits by unit") {
     send(del("df:d", "df:b"))
     send(set("df:d", "v"))
@@ -268,8 +305,8 @@ final class DragonflyClientSpec extends LaserdiscFs2Suite(LiveServers.port(6382)
     assert(send(delex("df:d", stringtypes.ifEq("v"))))
     assertEquals(send(digest("df:d")), None)
     send(setbit("df:b", 3L, stringtypes.bit.set))
-    assertEquals(send(bitcount("df:b", 0L, 7L, stringtypes.bitUnit.bit)).value, 1)
-    assertEquals(send(bitpos("df:b", stringtypes.bit.set, 0L, 7L, stringtypes.bitUnit.bit)).map(_.value), Some(3))
+    assertEquals(send(bitcount("df:b", 0L, 7L, stringtypes.bitUnit.bit)).value, 1L)
+    assertEquals(send(bitpos("df:b", stringtypes.bit.set, 0L, 7L, stringtypes.bitUnit.bit)).map(_.value), Some(3L))
     send(del("df:b"))
   }
 

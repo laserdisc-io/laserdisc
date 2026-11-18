@@ -44,11 +44,15 @@ abstract class ListPSpec extends BaseSpec with ListP {
   }
 
   property("The List protocol using linsert roundtrips successfully given key, position, pivot and value") {
-    forAll { (k: Key, p: ListPosition, pi: String, v: String, opi: Option[PosInt]) =>
+    forAll { (k: Key, p: ListPosition, pi: String, v: String, onni: Option[NonNegInt]) =>
       val protocol = linsert(k, p, pi, v)
       assertEquals(protocol.encode, Arr(Bulk("LINSERT"), Bulk(k), Bulk(p), Bulk(pi), Bulk(v)))
-      assertEquals(protocol.decode(Num(opi.fold(-1L)(_.value.toLong))), opi)
+      assertEquals(protocol.decode(Num(onni.fold(-1L)(_.value.toLong))), onni)
     }
+  }
+
+  test("The List protocol reads linsert's 0, for a list that isn't there, as a length of 0") {
+    assertEquals(linsert(Key("l"), ListPosition.before, "a", "b").decode(Num(0L)), Some(NonNegInt(0)))
   }
 
   property("The List protocol using llen roundtrips successfully given key") {

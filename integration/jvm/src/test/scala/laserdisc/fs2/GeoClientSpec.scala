@@ -93,4 +93,18 @@ abstract class GeoClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p)
     assertEquals(send(geosearchstore("g:s", "g:t", aroundPalermo, GeoStoreDistances)).value, 2)
     assertEquals(send(geosearchstore("g:s", "g:t", aroundPalermo, Direction.desc, GeoCount.closest(1))).value, 1)
   }
+
+  test(s"a $dest client reads the geohash of each member found") {
+    import laserdisc.redis_6_2.*
+    import geotypes.*
+
+    send(del("g:h"))
+    send(geoadd("g:h", OneOrMore.unsafeFrom(List(GeoPosition("Palermo", 38.115556, 13.361389)))))
+    val nearPalermo = GeoArea.radius(GeoCenter.coordinates(GeoCoordinates(38.0, 13.0)), 200.0, GeoUnit.kilometers)
+    val hash        = NonNegLong(3479099956230698L)
+    assertEquals(send(geosearch("g:h", nearPalermo, GeoRadiusMode.hash)), Seq(GeoKeyAndHash("Palermo", hash)))
+    assertEquals(send(geosearch("g:h", nearPalermo, GeoRadiusMode.coordinatesAndHash)).map(_.hash), Seq(hash))
+    assertEquals(send(geosearch("g:h", nearPalermo, GeoRadiusMode.distanceAndHash)).map(_.hash), Seq(hash))
+    assertEquals(send(geosearch("g:h", nearPalermo, GeoRadiusMode.all)).map(_.hash), Seq(hash))
+  }
 }

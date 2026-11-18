@@ -85,19 +85,19 @@ final class DragonflyPSpec extends BaseSpec with DragonflyP {
     assertEquals(role.decode(Arr(Bulk("master"), Arr(Nil))), Primary(Nil): DragonflyP.Role)
     assertEquals(
       role.decode(Arr(Bulk("master"), Arr(bulks("10.0.0.3", "6379", "online")))),
-      Primary(Seq(Replica(Host("10.0.0.3"), Port(6379), "online"))): DragonflyP.Role
+      Primary(Seq(Replica("10.0.0.3", 6379, "online"))): DragonflyP.Role
     )
     assertEquals(
       role.decode(bulks("slave", "df-primary", "6379", "online")),
-      Follower(Host("df-primary"), Port(6379), "online"): DragonflyP.Role
+      Follower("df-primary", 6379, "online"): DragonflyP.Role
     )
     assertEquals(
       role.decode(bulks("replica", "df-primary", "6379", "online")),
-      Follower(Host("df-primary"), Port(6379), "online"): DragonflyP.Role
+      Follower("df-primary", 6379, "online"): DragonflyP.Role
     )
     assertEquals(
       role.decode(bulks("replica", "df-primary", "6379", "stable_sync", "df-other", "6380", "full_sync")),
-      Follower(Host("df-primary"), Port(6379), "stable_sync", Seq(Replica(Host("df-other"), Port(6380), "full_sync"))): DragonflyP.Role
+      Follower("df-primary", 6379, "stable_sync", Seq(Replica("df-other", 6380, "full_sync"))): DragonflyP.Role
     )
     assert(role.decode(bulks("replica", "df-primary", "6379", "stable_sync", "df-other", "6380")).isLeft)
     assert(role.decode(Arr(Bulk("sentinel"), Arr(Nil))).isLeft)

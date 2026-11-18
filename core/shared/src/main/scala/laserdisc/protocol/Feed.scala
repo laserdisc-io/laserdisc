@@ -24,6 +24,8 @@ package protocol
 
 import java.nio.charset.StandardCharsets.UTF_8
 
+import scala.util.control.NonFatal
+
 /** What the server keeps sending on a connection of its own once asked, with no request behind each part: SUBSCRIBE, PSUBSCRIBE, SSUBSCRIBE
   * or MONITOR. `RedisSubscriber` opens the connection for one
   */
@@ -31,10 +33,27 @@ final class Feed[A] private[protocol] (
     private[laserdisc] val command: RESP,
     private[laserdisc] val confirmations: Set[String],
     private[laserdisc] val confirmed: RESP => Option[String],
-    private[laserdisc] val message: RESP => Maybe[Option[A]]
-)
+    private[laserdisc] val message: RESP => Maybe[Option[A]],
+    private[laserdisc] val keptAlive: Boolean = true
+) {
+
+  // what a reply gives the stream: nothing, as for a confirmation, a message, or one that can't be read, also when a reader throws. Only
+  // the server's error fails it
+  private[laserdisc] final def received(resp: RESP): Maybe[Option[Either[Feed.Unreadable, A]]] =
+    (try message(resp)
+    catch { case NonFatal(e) => Left(e) }) match {
+      case Left(error: Err) => Left(error)
+      case Left(error)      => Right(Some(Left(Feed.Unreadable(error, resp))))
+      case Right(read)      => Right(read.map(Right(_)))
+    }
+}
 
 object Feed {
+
+  /** A message that couldn't be read, with why, and the message as it arrived: with its channel and payload, or MONITOR's line. The stream
+    * goes on to the next one
+    */
+  final case class Unreadable(error: Throwable, message: RESP)
 
   /** A message published to a channel */
   final case class Message[A](channel: Key, value: A)
@@ -59,6 +78,16 @@ object Feed {
 
   private final def command(name: String, arguments: List[String]): RESP = Arr(Bulk(name) :: arguments.map(Bulk(_)))
 
+  /** Asked on a subscribed connection to check that the server is still there. MONITOR's connection isn't asked, as the server would report
+    * the PING among the commands it received, or refuse it
+    */
+  private[laserdisc] final val ping: RESP = command("PING", Nil)
+
+  private[laserdisc] final def isPong(resp: RESP): Boolean = resp match {
+    case Arr(Bulk("pong") :: Bulk("") :: Nil) => true
+    case _                                    => false
+  }
+
   private final def confirmedAs(kind: String): RESP => Option[String] = {
     case Arr(Bulk(`kind`) :: Bulk(name) :: Num(_) :: Nil) => Some(name)
     case _                                                => None
@@ -66,7 +95,7 @@ object Feed {
 
   private final def unexpected[A](resp: RESP): Maybe[Option[A]] = resp match {
     case err: Err => Left(err)
-    case other    => Left(RESPDecErr(s"Unexpected message on a subscribed connection: $other"))
+    case other    => Left(RESPDecErr(s"Unexpected message on a subscribed connection: ${RESPDecErr.shown(other)}"))
   }
 
   private final def keyOf(channel: String): Maybe[Key] = Read[Bulk, Key].read(Bulk(channel))
@@ -140,7 +169,7 @@ object Feed {
           keys
             .foldRight[Maybe[List[Key]]](Right(Nil)) {
               case (bulk: Bulk, rest) => rest.flatMap(found => Read[Bulk, Key].read(bulk).map(_ :: found))
-              case (other, _)         => Left(RESPDecErr(s"Unexpected key in a tracking notice: $other"))
+              case (other, _)         => Left(RESPDecErr(s"Unexpected key in a tracking notice: ${RESPDecErr.shown(other)}"))
             }
             .map(found => Some(Invalidation.Keys(found)))
         case resp if confirmation(resp).nonEmpty => Right(None)
@@ -149,7 +178,8 @@ object Feed {
     )
   }
 
-  private final val MonitorLine = """(\d+\.\d+) \[(\d+) ([^\]]*)\] (.*)""".r
+  // the client is an address and port, with an IPv6 address in brackets, a Unix socket, or lua
+  private final val MonitorLine = """(\d+\.\d+) \[(\d+) (\[[^\]]*\]:\d+|[^\]]*)\] (.*)""".r
 
   // the command and its arguments, each in quotes, with what can't be shown as it is escaped
   private[protocol] final def monitorArguments(text: String): Option[List[String]] = {
@@ -207,7 +237,8 @@ object Feed {
             Right(Some(MonitorEvent(BigDecimal(time), db, client, arguments)))
           )
         case resp => unexpected(resp)
-      }
+      },
+      keptAlive = false
     )
   }
 }

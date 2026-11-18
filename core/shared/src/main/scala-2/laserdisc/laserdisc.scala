@@ -23,13 +23,11 @@ import java.lang as j
 
 import eu.timepit.refined.W
 import eu.timepit.refined.api.*
-import eu.timepit.refined.boolean.{And, Not, Or, True}
-import eu.timepit.refined.char.Whitespace
-import eu.timepit.refined.collection.{Forall, MaxSize, MinSize, NonEmpty}
+import eu.timepit.refined.boolean.{And, Not, True}
+import eu.timepit.refined.collection.{MinSize, NonEmpty}
 import eu.timepit.refined.generic.Equal
 import eu.timepit.refined.numeric.{Interval, NonNaN, NonNegative, Positive}
-import eu.timepit.refined.string.{IPv4, MatchesRegex}
-import eu.timepit.refined.types.net.PrivateNetworks.*
+import eu.timepit.refined.string.MatchesRegex
 
 import scala.annotation.{implicitNotFound, nowarn}
 
@@ -53,13 +51,14 @@ package object laserdisc {
   @implicitNotFound("Cannot prove that every element of ${L} is a subtype of ${A}")
   type LUBConstraint[L <: Tuple, A] = shapeless.LUBConstraint[L, A]
 
-  // Basic type aliases
+  /** A command's result: its reply read as an `A`, or why it failed, such as the server's [[Err]] or a [[RESPDecErr]] */
   final type Maybe[+A] = Either[Throwable, A]
 
   // Type forwarders
   final type Arr               = protocol.Arr
   final type Bulk              = protocol.Bulk
   final type Err               = protocol.Err
+  final type Forever[+A]       = protocol.Forever[A]
   final type NilArr            = protocol.NilArr.type
   final type NullBulk          = protocol.NullBulk.type
   final type Num               = protocol.Num
@@ -86,33 +85,28 @@ package object laserdisc {
   final val RESPDecErr = protocol.RESPDecErr
   final val Value      = protocol.Value
 
-  // a value that may be missing, as RESP2 sends it: a null bulk string for a string, a number or a simple string, and a null array for an
-  // array
+  /** A reply that may be missing, as for a string, a number or a simple string: an `A`, or the null RESP2 sends instead */
   final type OrNullBulk[A] = OneOf[NullBulk *: A *: EmptyTuple]
-  final type OrNilArr[A]   = OneOf[NilArr *: A *: EmptyTuple]
 
-  private final type NoControlChar = Not[ControlChar]
-  private final type NoWhitespace  = Not[Whitespace]
+  /** An array reply that may be missing: an `A`, or the null array RESP2 sends instead */
+  final type OrNilArr[A] = OneOf[NilArr *: A *: EmptyTuple]
 
   // Witnesses
+  final val AccessFrequencyMaxValueWit = W(255)
   final val AllNICsEqWit               = W("0.0.0.0")
   final val BlockingSecondsMinValueWit = W(0.002d)
   final val BlockingSecondsMaxValueWit = W(4294967.0d)
-  final val DbIndexMaxValueWit         = W(2147483647)
-  final val GeoHashRegexWit            = W("[a-z0-9]{11}")
 
-  /** A Redis glob: `*`, `?`, `[abc]`, `[a-z]`, `[^abc]`, `\x` for the character x itself, or any other character but a control character. A
-    * `]` outside of a class, and a `^` first in a class, are written `\]` and `\^`
+  /** A connection's name, or its library's name or version: printable ASCII without spaces, as the server refuses anything else */
+  final val ConnectionNameRegexWit = W("[!-~]+")
+  final val DbIndexMaxValueWit     = W(2147483647)
+  final val GeoHashRegexWit        = W("[a-z0-9]{11}")
+
+  /** A command for the ACL rules that allow or deny one: a name like `get`, or `client|kill` for a subcommand, in printable ASCII without
+    * spaces. A name starting with `@` is a category, which has rules of its own
     */
-  final val GlobPatternRegexWit = W(
-    """[^\x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^\x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^\x00-\x1F\x7F-\x9F]|[^\x00-\x1F\x7F-\x9F\]\\^])[^\x00-\x1F\x7F-\x9F\]\\]*(?:\\[^\x00-\x1F\x7F-\x9F][^\x00-\x1F\x7F-\x9F\]\\]*)*\])[^\x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
-  )
+  final val AclCommandRegexWit = W("""[!-?A-~][!-~]*""")
 
-  /** A glob for the keys and channels of ACL rules: a [[GlobPattern]] without spaces, which ACL SETUSER refuses */
-  final val AclPatternRegexWit = W(
-    """[^ \x00-\x1F\x7F-\x9F*?\[\]\\]+(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)*|(?:(?:\\[^ \x00-\x1F\x7F-\x9F]|[*?]|\[\^?(?:\\[^ \x00-\x1F\x7F-\x9F]|[^ \x00-\x1F\x7F-\x9F\]\\^])[^ \x00-\x1F\x7F-\x9F\]\\]*(?:\\[^ \x00-\x1F\x7F-\x9F][^ \x00-\x1F\x7F-\x9F\]\\]*)*\])[^ \x00-\x1F\x7F-\x9F*?\[\]\\]*)+"""
-  )
-  final val IPv4RegexWit                = W("(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(\\.25[0-5]|2[0-4]\\d|[01]?\\d\\d?){3}")
   final val LatitudeMinValueWit         = W(-85.05112878d)
   final val LatitudeMaxValueWit         = W(85.05112878d)
   final val LongitudeMinValueWit        = W(-180.0d)
@@ -125,32 +119,32 @@ package object laserdisc {
   final val PortMinValueWit             = W(1)
   final val PortMaxValueWit             = W(65535)
   final val RangeOffsetMaxValueWit      = W(536870911)
-  final val Rfc1123HostnameMaxLengthWit = W(255)
-  final val Rfc1123HostnameRegexWit     = W(
-    "(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9])(\\.(([A-Za-z0-9][\\-A-Za-z0-9]{0,61}[A-Za-z0-9])|[A-Za-z0-9]))*"
-  )
   final val Sha1RegexWit                = W("[a-f0-9]{40}")
+  final val Sha256RegexWit              = W("[a-f0-9]{64}")
+  final val AclCategoryRegexWit         = W("[A-Za-z0-9_-]+")
   final val SignedBitWidthMaxValueWit   = W(64)
   final val SlotMaxValueWit             = W(16383)
   final val StringLengthMaxValueWit     = W(4294967295L)
   final val UnsignedBitWidthMaxValueWit = W(63)
 
   // Refinements
-  /** Seconds a blocking command waits, 0 to wait forever. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above what
-    * Dragonfly takes
+  /** The counter LFU eviction keeps of how often a key is used, as OBJECT FREQ reports it */
+  final type AccessFrequencyRef = Interval.Closed[W.`0`.T, AccessFrequencyMaxValueWit.T]
+
+  /** Seconds a blocking command waits, never forever, as 0 would. Not below 2ms, as KeyDB and Dragonfly wait forever on less, nor above
+    * what Dragonfly takes
     */
-  final type BlockingSecondsRef = NonNaN And
-    (Equal[W.`0.0D`.T] Or Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T])
-  final type ConnectionNameRef = OneOrMoreRef And Forall[NoWhitespace And NoControlChar]
-  final type DbIndexRef        = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
-  final type GeoHashRef        = MatchesRegex[GeoHashRegexWit.T]
-  final type GlobPatternRef    = MatchesRegex[GlobPatternRegexWit.T]
-  final type AclPatternRef     = MatchesRegex[AclPatternRegexWit.T]
-  final type HostRef           = Equal[AllNICsEqWit.T] Or Equal[LoopbackEqWit.T] Or
-    (Not[IPv4] And MaxSize[Rfc1123HostnameMaxLengthWit.T] And MatchesRegex[Rfc1123HostnameRegexWit.T]) Or Rfc1918PrivateSpec Or
-    Rfc5737TestnetSpec Or Rfc3927LocalLinkSpec Or Rfc2544BenchmarkSpec
+  final type BlockingSecondsRef  = NonNaN And Interval.Closed[BlockingSecondsMinValueWit.T, BlockingSecondsMaxValueWit.T]
+  final type ConnectionNameRef   = MatchesRegex[ConnectionNameRegexWit.T]
+  final type DbIndexRef          = Interval.Closed[W.`0`.T, DbIndexMaxValueWit.T]
+  final type GeoHashRef          = MatchesRegex[GeoHashRegexWit.T]
+  final type GlobPatternRef      = ValidGlobPattern
+  final type AclCommandRef       = MatchesRegex[AclCommandRegexWit.T]
+  final type AclPatternRef       = ValidAclPattern
+  final type HostRef             = ValidHost
+  final type IpAddressRef        = ValidIpAddress
   final type IndexRef            = True
-  final type KeyRef              = OneOrMoreRef And Forall[NoControlChar]
+  final type KeyRef              = ValidKey
   final type LatitudeRef         = NonNaN And Interval.Closed[LatitudeMinValueWit.T, LatitudeMaxValueWit.T]
   final type LongitudeRef        = NonNaN And Interval.Closed[LongitudeMinValueWit.T, LongitudeMaxValueWit.T]
   final type NodeIdRef           = MatchesRegex[NodeIdRegexWit.T]
@@ -167,6 +161,8 @@ package object laserdisc {
   final type PosRef              = Positive
   final type RangeOffsetRef      = Interval.Closed[W.`0`.T, RangeOffsetMaxValueWit.T]
   final type Sha1Ref             = MatchesRegex[Sha1RegexWit.T]
+  final type Sha256Ref           = MatchesRegex[Sha256RegexWit.T]
+  final type AclCategoryRef      = MatchesRegex[AclCategoryRegexWit.T]
   final type SignedBitWidthRef   = Interval.Closed[W.`1`.T, SignedBitWidthMaxValueWit.T]
   final type SlotRef             = Interval.Closed[W.`0`.T, SlotMaxValueWit.T]
   final type StringLengthRef     = Interval.Closed[W.`0L`.T, StringLengthMaxValueWit.T]
@@ -175,13 +171,16 @@ package object laserdisc {
   final type ValidDoubleRef      = NonNaN
 
   // New types
+  final type AccessFrequency       = Int Refined AccessFrequencyRef
   final type BlockingSeconds       = Double Refined BlockingSecondsRef
   final type ConnectionName        = String Refined ConnectionNameRef
   final type DbIndex               = Int Refined DbIndexRef
   final type GeoHash               = String Refined GeoHashRef
   final type GlobPattern           = String Refined GlobPatternRef
+  final type AclCommand            = String Refined AclCommandRef
   final type AclPattern            = String Refined AclPatternRef
   final type Host                  = String Refined HostRef
+  final type IpAddress             = String Refined IpAddressRef
   final type Index                 = Long Refined IndexRef
   final type Key                   = String Refined KeyRef
   final type Latitude              = Double Refined LatitudeRef
@@ -203,6 +202,8 @@ package object laserdisc {
   final type PosLong               = Long Refined PosRef
   final type RangeOffset           = Int Refined RangeOffsetRef
   final type Sha1                  = String Refined Sha1Ref
+  final type Sha256                = String Refined Sha256Ref
+  final type AclCategory           = String Refined AclCategoryRef
   final type SignedBitWidth        = Int Refined SignedBitWidthRef
   final type Slot                  = Int Refined SlotRef
   final type StringLength          = Long Refined StringLengthRef
@@ -218,13 +219,16 @@ package object laserdisc {
     def unsafeFrom[A](l: List[A])(implicit rt: RefinedType.AuxT[OneOrMore[A], List[A]]): OneOrMore[A]           = rt.unsafeRefine(l)
   }
 
+  object AccessFrequency       extends RefinedTypeOps.Numeric[AccessFrequency, Int]
   object BlockingSeconds       extends RefinedTypeOps[BlockingSeconds, Double]
   object ConnectionName        extends RefinedTypeOps[ConnectionName, String]
   object DbIndex               extends RefinedTypeOps.Numeric[DbIndex, Int]
   object GeoHash               extends RefinedTypeOps[GeoHash, String]
   object GlobPattern           extends RefinedTypeOps[GlobPattern, String]
+  object AclCommand            extends RefinedTypeOps[AclCommand, String]
   object AclPattern            extends RefinedTypeOps[AclPattern, String]
   object Host                  extends RefinedTypeOps[Host, String]
+  object IpAddress             extends RefinedTypeOps[IpAddress, String]
   object Index                 extends RefinedTypeOps.Numeric[Index, Long]
   object Key                   extends RefinedTypeOps[Key, String]
   object Latitude              extends RefinedTypeOps[Latitude, Double]
@@ -242,6 +246,8 @@ package object laserdisc {
   object PosLong               extends RefinedTypeOps.Numeric[PosLong, Long]
   object RangeOffset           extends RefinedTypeOps.Numeric[RangeOffset, Int]
   object Sha1                  extends RefinedTypeOps[Sha1, String]
+  object Sha256                extends RefinedTypeOps[Sha256, String]
+  object AclCategory           extends RefinedTypeOps[AclCategory, String]
   object SignedBitWidth        extends RefinedTypeOps.Numeric[SignedBitWidth, Int]
   object Slot                  extends RefinedTypeOps.Numeric[Slot, Int]
   object StringLength          extends RefinedTypeOps.Numeric[StringLength, Long]
@@ -258,10 +264,11 @@ package object laserdisc {
   private[laserdisc] final val NodeIdRegex: String = NodeIdRegexWit.value
 
   private[laserdisc] final val COMMA_CH = ','
+  private[laserdisc] final val CR_CH    = '\r'
   private[laserdisc] final val LF_CH    = '\n'
   private[laserdisc] final val SPACE_CH = ' '
   private[laserdisc] final val COMMA    = s"$COMMA_CH"
-  private[laserdisc] final val CRLF     = s"\r$LF_CH"
+  private[laserdisc] final val CRLF     = s"$CR_CH$LF_CH"
   private[laserdisc] final val LF       = s"$LF_CH"
   private[laserdisc] final val SPACE    = s"$SPACE_CH"
 
@@ -269,38 +276,31 @@ package object laserdisc {
     def unapply(l: Long): Option[Int] =
       try Some(j.Math.toIntExact(l))
       catch { case _: ArithmeticException => None }
-    def unapply(s: String): Option[Int] =
-      try Some(j.Integer.parseInt(s))
-      catch { case _: NumberFormatException => None }
+    def unapply(s: String): Option[Int] = Numbers.toInt(s)
   }
   private[laserdisc] object ToLong {
-    def unapply(s: String): Option[Long] =
-      try Some(j.Long.parseLong(s))
-      catch { case _: NumberFormatException => None }
+    def unapply(s: String): Option[Long] = Numbers.toLong(s)
   }
-  // as Redis writes doubles, which includes infinite ones as inf and -inf
   private[laserdisc] object ToDouble {
-    def unapply(s: String): Option[Double] = s match {
-      case "inf" | "+inf" => Some(Double.PositiveInfinity)
-      case "-inf"         => Some(Double.NegativeInfinity)
-      case "nan" | "-nan" => Some(Double.NaN)
-      case _              =>
-        try Some(j.Double.parseDouble(s))
-        catch { case _: NumberFormatException => None }
-    }
+    def unapply(s: String): Option[Double] = Numbers.toDouble(s)
   }
 
   @nowarn private[laserdisc] sealed trait =:!=[A, B] extends Serializable
-  private[laserdisc] implicit def neq[A, B]: A =:!= B    = new =:!=[A, B] {}
-  private[laserdisc] implicit def neqAmbig1[A]: A =:!= A = absurd
-  private[laserdisc] implicit def neqAmbig2[A]: A =:!= A = absurd
+  // found from any code, as reading a OneOf asks for it where the command is: ambiguous when A is B, so that none is found then
+  object =:!= {
+    implicit def neq[A, B]: A =:!= B    = new =:!=[A, B] {}
+    implicit def neqAmbig1[A]: A =:!= A = absurd
+    implicit def neqAmbig2[A]: A =:!= A = absurd
+  }
 
   @implicitNotFound("${A} must not be a subtype of ${B}")
   @nowarn private[laserdisc] sealed trait <:!<[A, B] extends Serializable
-
-  private[laserdisc] implicit def nsub[A, B]: A <:!< B            = new <:!<[A, B] {}
-  private[laserdisc] implicit def nsubAmbig1[A, B >: A]: A <:!< B = absurd
-  private[laserdisc] implicit def nsubAmbig2[A, B >: A]: A <:!< B = absurd
+  // found from any code, as reading and writing a case class ask for it where the command is: ambiguous when A is a B
+  object <:!< {
+    implicit def nsub[A, B]: A <:!< B            = new <:!<[A, B] {}
+    implicit def nsubAmbig1[A, B >: A]: A <:!< B = absurd
+    implicit def nsubAmbig2[A, B >: A]: A <:!< B = absurd
+  }
 
   private[laserdisc] implicit final class WidenOps1[F[_], A](private val fa: F[A]) extends AnyVal {
     def widen[AA: <:<[A, _]: =:!=[A, _]]: F[AA] = fa.asInstanceOf[F[AA]]

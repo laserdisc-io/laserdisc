@@ -60,7 +60,7 @@ final class ValkeyServerClientSpec extends ServerClientSpec(LiveServers.port(638
     import v.servertypes
 
     val f     = servertypes.valkeyClientFilter
-    val other = Host("192.0.2.1")
+    val other = IpAddress("192.0.2.1")
     val port  = Port(1)
     val me    = send(v.client.id)
     val mine  = OneOrMore.unsafeFrom(List(me))
@@ -150,6 +150,15 @@ abstract class ServerClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite
     assertEquals(send(v.client.kill(servertypes.clientFilter.clientType(servertypes.clientType.slave))).value, 0L)
     assert(!send(v.client.unblock(999999L)))
     assertEquals(send(v.client.unpause), OK)
+  }
+
+  test(s"a $dest client reads its name when it has an = in it") {
+    val v = laserdisc.redis_6_2
+
+    assertEquals(send(v.client.setname("a=b")), OK)
+    assertEquals(send(v.client.info).parameters.get[String]("name"), Right("a=b"))
+    assertEquals(send(v.client.list(OneOrMore.unsafeFrom(List(send(v.client.id))))).clients.map(_.get[String]("name")), Seq(Right("a=b")))
+    assertEquals(send(v.client.unsetname), OK)
   }
 
   test(s"a $dest client reads the server's time") {

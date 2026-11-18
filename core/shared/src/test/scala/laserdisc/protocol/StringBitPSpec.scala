@@ -55,7 +55,7 @@ final class StringBitPSpec extends BaseSpec with StringP {
   }
 
   property("The String protocol using bitcount and bitpos send BIT or BYTE after the range") {
-    forAll { (k: Key, s: Index, e: Index, n: NonNegInt) =>
+    forAll { (k: Key, s: Index, e: Index, n: NonNegLong) =>
       assertEquals(bitcount(k, s, e, stringtypes.bitUnit.bit).encode, Arr(Bulk("BITCOUNT"), Bulk(k), Bulk(s), Bulk(e), Bulk("BIT")))
       assertEquals(
         bitpos(k, stringtypes.bit.set, s, e, stringtypes.bitUnit.byte).encode,
@@ -64,6 +64,17 @@ final class StringBitPSpec extends BaseSpec with StringP {
       assertEquals(bitpos(k, stringtypes.bit.set, s, e, stringtypes.bitUnit.byte).decode(Num(-1L)), None)
       assertEquals(bitcount(k, s, e, stringtypes.bitUnit.bit).decode(Num(n.value.toLong)), n)
     }
+  }
+
+  test("The String protocol reads bit positions and counts past the largest Int, as a 512 MB string has 2^32 bits") {
+    val k = Key("a")
+    assertEquals(bitcount(k).decode(Num(4294967296L)), NonNegLong(4294967296L))
+    assertEquals(bitpos(k, stringtypes.bit.set).decode(Num(4294967295L)), Option(NonNegLong(4294967295L)))
+    assertEquals(bitpos(k, stringtypes.bit.set).decode(Num(-1L)), None)
+  }
+
+  test("The String protocol fails reading a bit position that is neither -1 nor a position, instead of reading it as none") {
+    assert(bitpos(Key("a"), stringtypes.bit.set).decode(Num(-5L)).isLeft)
   }
 
   property("The String protocol using bitop with DIFF sends it like AND and OR") {

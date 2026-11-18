@@ -23,9 +23,8 @@ package laserdisc
 
 import protocol.*
 
-/** Each family's commands by version, for an import of one family only, like `laserdisc.redis_7_0.streams.*`. A new trait only where the
-  * family changed. The versions below are made of these, so a version and its families can't disagree
-  */
+/** Each family's commands by version, for an import of one family only, like `laserdisc.redis_7_0.streams.*` */
+// a new trait only where the family changed: the versions below are made of these, so a version and its families can't disagree
 trait Strings6_2     extends StringBaseP with StringExtP
 trait StringsAlgo6_2 extends Strings6_2 with StringAlgoP {
   override val stringtypes: StringP.StringTypes & StringP.StringAlgoTypes = new StringP.StringTypes with StringP.StringAlgoTypes {}
@@ -241,11 +240,33 @@ trait AclValkey9_1 extends Acl7_2 with AclDatabaseCommands
 /** The SCRIPT commands, under `script` */
 trait ScriptValkey8_0 extends ScriptCommands with ScriptShowCommands
 
-/** The blocking commands, under `blocking` */
-trait Blocking6_2  extends BListBaseP with BListExtP with BSortedSetBaseP with BStreamBaseP
-trait Blocking7_0  extends Blocking6_2 with BListMPopP with BSortedSetMPopP
-trait Blocking8_4  extends Blocking7_0 with BStreamReadGroupClaimP
-trait Blocking8_10 extends Blocking8_4 with BListMoveManyP with BStreamReadLimitsP
+/** The blocking commands that wait for as long as it takes, under `blocking.forever`: only a dedicated client sends them */
+trait Forever6_2  extends BListForeverBaseP with BListForeverExtP with BSortedSetForeverBaseP with BStreamForeverBaseP with KeyWaitForeverP
+trait Forever7_0  extends Forever6_2 with BListMPopForeverP with BSortedSetMPopForeverP
+trait Forever7_2  extends Forever7_0 with KeyWaitAofForeverP
+trait Forever8_4  extends Forever7_2 with BStreamReadGroupClaimForeverP
+trait Forever8_10 extends Forever8_4 with BListMoveManyForeverP with BStreamReadLimitsForeverP
+trait ForeverValkey8_0 extends Forever7_2 with ClusterSetSlotForeverP
+
+/** The blocking commands, under `blocking`, and those that wait for as long as it takes, under `blocking.forever` */
+trait Blocking6_2 extends BListBaseP with BListExtP with BSortedSetBaseP with BStreamBaseP {
+  val forever: Forever6_2 = new Forever6_2 {}
+}
+trait Blocking7_0 extends Blocking6_2 with BListMPopP with BSortedSetMPopP {
+  override val forever: Forever7_0 = new Forever7_0 {}
+}
+trait Blocking7_2 extends Blocking7_0 {
+  override val forever: Forever7_2 = new Forever7_2 {}
+}
+trait Blocking8_4 extends Blocking7_2 with BStreamReadGroupClaimP {
+  override val forever: Forever8_4 = new Forever8_4 {}
+}
+trait Blocking8_10 extends Blocking8_4 with BListMoveManyP with BStreamReadLimitsP {
+  override val forever: Forever8_10 = new Forever8_10 {}
+}
+trait BlockingValkey8_0 extends Blocking7_2 {
+  override val forever: ForeverValkey8_0 = new ForeverValkey8_0 {}
+}
 
 trait Server6_2 extends ServerBaseP
 trait Server7_0 extends Server6_2 with ServerShutdownAndInfoP {
@@ -305,7 +326,8 @@ trait ScriptingValkey8_0 extends Scripting7_0 {
 trait Connection6_2 extends ConnectionBaseP with ConnectionSwapDbP with ConnectionHello6_2P
 trait Connection7_0 extends Connection6_2 with ConnectionHello7_0P
 
-/** What Redis 6.2 has, which every version below builds on */
+/** What every version has: Redis 6.2's commands, but for STRALGO, which Redis 7.0 removed */
+// every version below builds on this
 trait Base6_2
     extends Cluster6_2
     with Connection6_2
@@ -343,7 +365,8 @@ trait Base6_2
   override private[laserdisc] def supported: List[String] = super.supported ++ blocking.supported
 }
 
-/** Redis 7.0 removed STRALGO, so the later versions go on from the base and not from this */
+/** Redis 6.2's commands */
+// Redis 7.0 removed STRALGO, so the later versions go on from Base6_2 and not from this
 trait Redis6_2 extends Base6_2 with StringAlgoP {
   override val stringtypes: StringP.StringTypes & StringP.StringAlgoTypes = new StringP.StringTypes with StringP.StringAlgoTypes {}
 
@@ -377,6 +400,7 @@ trait Redis7_0
   override val strings: Strings7_0       = new Strings7_0 {}
 }
 trait Redis7_2 extends Redis7_0 with Cluster7_2 with Keys7_2 with Server7_2 with SortedSets7_2 with Streams7_2 {
+  override val blocking: Blocking7_2     = new Blocking7_2 {}
   override val streams: Streams7_2       = new Streams7_2 {}
   override val cluster: Cluster7_2       = new Cluster7_2 {}
   override val keys: Keys7_2             = new Keys7_2 {}
@@ -434,6 +458,7 @@ trait Valkey8_0
     with ScriptingValkey8_0
     with ServerValkey8_0
     with SortedSetsValkey8_0 {
+  override val blocking: BlockingValkey8_0     = new BlockingValkey8_0 {}
   override val cluster: ClusterValkey8_0       = new ClusterValkey8_0 {}
   override val hashmaps: HashesValkey8_0       = new HashesValkey8_0 {}
   override val scripting: ScriptingValkey8_0   = new ScriptingValkey8_0 {}
@@ -458,7 +483,8 @@ trait Valkey9_1 extends Valkey9_0 with ClusterValkey9_1 with HashesValkey9_1 wit
   override val strings: StringsValkey9_1 = new StringsValkey9_1 {}
 }
 
-/** Dragonfly, made of the features it accepts, as `COMMAND DOCS` doesn't say */
+/** Dragonfly's commands by family */
+// made of the features Dragonfly accepts, checked one by one, as its COMMAND DOCS doesn't say
 trait ClusterDragonfly2_0 extends ClusterCoreP with ClusterShardsCoreP
 trait GeoDragonfly2_0     extends Geo6_2
 trait HashesDragonfly2_0  extends HashBaseP with HashExtP with HashScanNoValuesP with HashFieldExpiryCoreP with HashGetSetExpiryP {
@@ -647,6 +673,13 @@ trait AclLogReplies6_2 {
       Some((e.count, e.reason, e.context, e.denied, e.username, e.ageSeconds, e.clientInfo))
   }
 }
+trait AclLogRepliesDragonfly {
+  final type AclLogEntry = Acl.AclLogEntryDragonfly
+  object AclLogEntry {
+    def unapply(e: AclLogEntry): Some[(String, String, String, Double, String, Long)] =
+      Some((e.reason, e.denied, e.username, e.ageSeconds, e.clientInfo, e.createdAt))
+  }
+}
 trait AclLogReplies7_2 {
   final type AclLogEntry = Acl.AclLogEntry7_2
   object AclLogEntry {
@@ -664,7 +697,7 @@ trait ClusterReplies6_2 {
   final type ClusterSlots    = ClusterP.Slots6_2
   object ClusterNode {
     def unapply(n: ClusterNode): Some[
-      (NodeId, Option[ClusterAddress], Seq[ClusterP.Flag], Option[NodeId], NonNegLong, NonNegLong, NonNegInt, ClusterP.LinkState, Seq[ClusterP.SlotType])
+      (NodeId, Option[ClusterAddress], Seq[ClusterP.Flag], Option[NodeId], NonNegLong, NonNegLong, NonNegLong, ClusterP.LinkState, Seq[ClusterP.SlotType])
     ] = Some((n.id, n.address, n.flags, n.maybeMaster, n.ping, n.pong, n.configEpoch, n.link, n.slots))
   }
   object ClusterNodes    { def unapply(n: ClusterNodes): Some[Seq[ClusterNode]] = Some(n.nodes) }
@@ -674,8 +707,8 @@ trait ClusterReplies6_2 {
   object ClusterSlots {
     def unapply(s: ClusterSlots): Some[Map[ClusterP.SlotType.Range, ClusterSlotInfo]] = Some(s.slots)
   }
-  object ClusterAddress  { def unapply(a: ClusterAddress): Some[(Option[Host], Port, Port)] = Some((a.host, a.port, a.clusterPort)) }
-  object ClusterSlotNode { def unapply(n: ClusterSlotNode): Some[(Option[Host], Port, NodeId)] = Some((n.host, n.port, n.nodeId))   }
+  object ClusterAddress  { def unapply(a: ClusterAddress): Some[(Option[String], Port, Port)] = Some((a.host, a.port, a.clusterPort)) }
+  object ClusterSlotNode { def unapply(n: ClusterSlotNode): Some[(Option[String], Port, NodeId)] = Some((n.host, n.port, n.nodeId))   }
 }
 trait ClusterReplies7_0 {
   final type ClusterAddress  = ClusterP.Address7_0
@@ -686,7 +719,7 @@ trait ClusterReplies7_0 {
   final type ClusterSlots    = ClusterP.Slots7_0
   object ClusterNode {
     def unapply(n: ClusterNode): Some[
-      (NodeId, Option[ClusterAddress], Seq[ClusterP.Flag], Option[NodeId], NonNegLong, NonNegLong, NonNegInt, ClusterP.LinkState, Seq[ClusterP.SlotType])
+      (NodeId, Option[ClusterAddress], Seq[ClusterP.Flag], Option[NodeId], NonNegLong, NonNegLong, NonNegLong, ClusterP.LinkState, Seq[ClusterP.SlotType])
     ] = Some((n.id, n.address, n.flags, n.maybeMaster, n.ping, n.pong, n.configEpoch, n.link, n.slots))
   }
   object ClusterNodes    { def unapply(n: ClusterNodes): Some[Seq[ClusterNode]] = Some(n.nodes) }
@@ -697,10 +730,11 @@ trait ClusterReplies7_0 {
     def unapply(s: ClusterSlots): Some[Map[ClusterP.SlotType.Range, ClusterSlotInfo]] = Some(s.slots)
   }
   object ClusterAddress {
-    def unapply(a: ClusterAddress): Some[(Option[Host], Port, Port, Option[Host])] = Some((a.host, a.port, a.clusterPort, a.hostname))
+    def unapply(a: ClusterAddress): Some[(Option[String], Port, Port, Option[String])] = Some((a.host, a.port, a.clusterPort, a.hostname))
   }
   object ClusterSlotNode {
-    def unapply(n: ClusterSlotNode): Some[(Option[Host], Port, NodeId, Map[String, String])] = Some((n.host, n.port, n.nodeId, n.metadata))
+    def unapply(n: ClusterSlotNode): Some[(Option[String], Port, NodeId, Map[String, String])] =
+      Some((n.host, n.port, n.nodeId, n.metadata))
   }
 }
 trait ShardReplies7_0 {
@@ -772,7 +806,7 @@ trait RepliesDragonfly2_0
     with ConsumerInfoReplies6_2
     with StreamInfoFullReplies6_2
     with AclUserReplies6_2
-    with AclLogReplies6_2
+    with AclLogRepliesDragonfly
     with ClusterReplies6_2
     with ShardReplies7_0
     with CommandReplies6_2
@@ -838,20 +872,50 @@ trait RepliesValkey9_1
     with CommandReplies7_0
     with HelloReplies7_0
 
+/** The commands of Dragonfly 2.0, for that version and later ones: `import laserdisc.dragonfly_2_0.*` */
 object dragonfly_2_0 extends Dragonfly2_0 with RepliesDragonfly2_0
 
-object redis_6_2  extends Redis6_2 with Replies6_2
-object redis_7_0  extends Redis7_0 with Replies7_0
-object redis_7_2  extends Redis7_2 with Replies7_2
-object redis_7_4  extends Redis7_4 with Replies7_2
-object redis_8_0  extends Redis8_0 with Replies7_2
-object redis_8_2  extends Redis8_2 with Replies7_2
-object redis_8_4  extends Redis8_4 with Replies7_2
-object redis_8_6  extends Redis8_6 with Replies7_2
-object redis_8_8  extends Redis8_8 with Replies7_2
+/** The commands of Redis 6.2 and KeyDB, which is based on it, for that version and later ones: `import laserdisc.redis_6_2.*` */
+object redis_6_2 extends Redis6_2 with Replies6_2
+
+/** The commands of Redis 7.0, for that version and later ones: `import laserdisc.redis_7_0.*` */
+object redis_7_0 extends Redis7_0 with Replies7_0
+
+/** The commands of Redis 7.2, for that version and later ones: `import laserdisc.redis_7_2.*` */
+object redis_7_2 extends Redis7_2 with Replies7_2
+
+/** The commands of Redis 7.4, for that version and later ones: `import laserdisc.redis_7_4.*` */
+object redis_7_4 extends Redis7_4 with Replies7_2
+
+/** The commands of Redis 8.0, for that version and later ones: `import laserdisc.redis_8_0.*` */
+object redis_8_0 extends Redis8_0 with Replies7_2
+
+/** The commands of Redis 8.2, for that version and later ones: `import laserdisc.redis_8_2.*` */
+object redis_8_2 extends Redis8_2 with Replies7_2
+
+/** The commands of Redis 8.4, for that version and later ones: `import laserdisc.redis_8_4.*` */
+object redis_8_4 extends Redis8_4 with Replies7_2
+
+/** The commands of Redis 8.6, for that version and later ones: `import laserdisc.redis_8_6.*` */
+object redis_8_6 extends Redis8_6 with Replies7_2
+
+/** The commands of Redis 8.8, for that version and later ones: `import laserdisc.redis_8_8.*` */
+object redis_8_8 extends Redis8_8 with Replies7_2
+
+/** The commands of Redis 8.10, for that version and later ones: `import laserdisc.redis_8_10.*` */
 object redis_8_10 extends Redis8_10 with Replies8_10
+
+/** The commands of Valkey 7.2, for that version and later ones: `import laserdisc.valkey_7_2.*` */
 object valkey_7_2 extends Valkey7_2 with Replies7_2
+
+/** The commands of Valkey 8.0, for that version and later ones: `import laserdisc.valkey_8_0.*` */
 object valkey_8_0 extends Valkey8_0 with Replies7_2
+
+/** The commands of Valkey 8.1, for that version and later ones: `import laserdisc.valkey_8_1.*` */
 object valkey_8_1 extends Valkey8_1 with Replies7_2
+
+/** The commands of Valkey 9.0, for that version and later ones: `import laserdisc.valkey_9_0.*` */
 object valkey_9_0 extends Valkey9_0 with Replies7_2
+
+/** The commands of Valkey 9.1, for that version and later ones: `import laserdisc.valkey_9_1.*` */
 object valkey_9_1 extends Valkey9_1 with RepliesValkey9_1

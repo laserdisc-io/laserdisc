@@ -24,6 +24,9 @@ package protocol
 
 import scala.annotation.implicitNotFound
 
+/** How a reply of the kind `A`, such as a [[Bulk]], is read as a `B`, or fails to be with a [[RESPDecErr]] saying why. Build one with the
+  * functions of its companion, or from another with `map`, `contramap` or `flatMap`
+  */
 @implicitNotFound(
   """Implicit not found Read[${A}, ${B}].
 
@@ -35,14 +38,18 @@ implicit final val myRead: Read[${A}, ${B}] = Read.instance { (a: ${A}) =>
 
 You may also be able to build it from an existing Read with map, contramap or flatMap.
 """
-) trait Read[A, B] { self =>
+)
+sealed trait Read[A, B] { self =>
 
   def read(a: A): Either[RESPDecErr, B]
 
+  /** Reads a `B` as this does, then turns it into a `C` */
   final def map[C](f: B => C): Read[A, C] = Read.instance(read(_).map(f))
 
+  /** Reads from a `C` that's turned into the `A` this reads */
   final def contramap[C](f: C => A): Read[C, B] = Read.instance(c => read(f(c)))
 
+  /** Reads a `B` as this does, then reads the same reply again with the `Read` that `B` chooses */
   final def flatMap[C](f: B => Read[A, C]): Read[A, C] = Read.instance(a => read(a).flatMap(f(_).read(a)))
 
   private final val _extract: Any => Read.Extract[Any]         = new Read.Extract[Any](_)
@@ -58,35 +65,46 @@ object Read extends ReadInstances0 {
 
   @inline final def apply[A, B](implicit instance: Read[A, B]): Read[A, B] = instance
 
-  @inline final def instance[A, B](f: A => Either[RESPDecErr, B]): Read[A, B] = (a: A) => f(a)
+  // the only Read there is: every one is built with the functions below
+  private final class Of[A, B](f: A => Either[RESPDecErr, B]) extends Read[A, B] {
+    override final def read(a: A): Either[RESPDecErr, B] = f(a)
+  }
 
-  @inline final def infallible[A, B](f: A => B): Read[A, B] = (a: A) => Right(f(a))
+  /** Reads with `f`, which gives a `Left` with a [[RESPDecErr]] when the reply can't be read */
+  @inline final def instance[A, B](f: A => Either[RESPDecErr, B]): Read[A, B] = new Of(f)
 
+  /** Reads with `f`, which reads every reply */
+  @inline final def infallible[A, B](f: A => B): Read[A, B] = new Of(a => Right(f(a)))
+
+  /** Reads every reply as `b` */
   @inline final def const[A, B](b: B): Read[A, B] = Read.infallible(_ => b)
 
+  /** Reads the replies `pf` takes, and fails on any other, saying `expectation` was what it expected */
   @inline final def instancePF[A, B](expectation: String)(pf: PartialFunction[A, B]): Read[A, B] =
-    a => if (pf.isDefinedAt(a)) Right(pf(a)) else Left(RESPDecErr(s"Read Error: expected $expectation but was $a"))
+    new Of(a =>
+      if (pf.isDefinedAt(a)) Right(pf(a)) else Left(RESPDecErr(s"Read Error: expected $expectation but was ${RESPDecErr.shown(a)}"))
+    )
 
+  /** `None` when `cond` holds, otherwise the value read, as `Some` */
   @inline final def lift2OptionWhen[A, B](cond: A => Boolean)(
       implicit R: Read[A, B]
   ): Read[A, Option[B]] =
-    Read.infallible {
-      case i @ R(Right(b)) if !cond(i) => Some(b)
-      case _                           => None
-    }
+    Read.instance(a => if (cond(a)) Right(None) else R.read(a).map(Some(_)))
 
+  /** `None` for -1, which some commands reply when there's nothing, otherwise the number read */
   @inline final def numMinusOneIsNone[A: Read[Num, _]]: Read[Num, Option[A]] =
     lift2OptionWhen(_.value == -1L)
 
+  /** `None` for 0, otherwise the number read */
   @inline final def numZeroIsNone[A: Read[Num, _]]: Read[Num, Option[A]] =
     lift2OptionWhen(_.value == 0L)
 }
 
-trait ReadInstances0 extends ReadInstances1 {
+private[protocol] sealed trait ReadInstances0 extends ReadInstances1 {
   implicit final def identity[A]: Read[A, A] = Read.instance(_.asRight)
 }
 
-trait ReadInstances1 extends ReadLabelledInstances {
+private[protocol] sealed trait ReadInstances1 extends ReadLabelledInstances {
   import Read.{infallible, instance, instancePF}
 
   implicit final val str2StringRead: Read[Str, String] = infallible(_.value)
@@ -107,7 +125,7 @@ trait ReadInstances1 extends ReadLabelledInstances {
         read(resp) match {
           case Some(Right(b)) => go(tail, i + 1, b :: acc)
           case Some(Left(e))  => Left(RESPDecErr(s"Read[Arr.Of, Seq] error at element $i: ${e.message}"))
-          case None           => Left(RESPDecErr(s"Read[Arr.Of, Seq] error at element $i: Unexpected element. Was $resp"))
+          case None => Left(RESPDecErr(s"Read[Arr.Of, Seq] error at element $i: Unexpected element. Was ${RESPDecErr.shown(resp)}"))
         }
     }
     go(arr.elements, 1, Nil)
@@ -123,7 +141,10 @@ trait ReadInstances1 extends ReadLabelledInstances {
   ): Either[RESPDecErr, Seq[(C, D)]] = {
     def element[X, Y](resp: RESP, i: Int, which: String)(S: RESPSub[X], R: Read[X, Y]): Either[RESPDecErr, Y] = S.unapply(resp) match {
       case Some(x) => R.read(x).leftMap(e => RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: ${e.message}"))
-      case None    => Left(RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: Unexpected element. Was $resp"))
+      case None    =>
+        Left(
+          RESPDecErr(s"Read[Arr.OfPairs, Seq] error in the $which element of pair $i: Unexpected element. Was ${RESPDecErr.shown(resp)}")
+        )
     }
     @scala.annotation.tailrec
     def go(rest: List[RESP], i: Int, acc: List[(C, D)]): Either[RESPDecErr, Seq[(C, D)]] = rest match {
@@ -133,7 +154,8 @@ trait ReadInstances1 extends ReadLabelledInstances {
           case Right(cd) => go(tail, i + 1, cd :: acc)
           case Left(e)   => Left(e)
         }
-      case last :: Nil => Left(RESPDecErr(s"Read[Arr.OfPairs, Seq] error: odd number of elements, the last being $last"))
+      case last :: Nil =>
+        Left(RESPDecErr(s"Read[Arr.OfPairs, Seq] error: odd number of elements, the last being ${RESPDecErr.shown(last)}"))
     }
     go(elements, 1, Nil)
   }
@@ -166,6 +188,9 @@ trait ReadInstances1 extends ReadLabelledInstances {
   implicit final val num2BooleanRead: Read[Num, Boolean] = instancePF("0L or 1L") {
     case Num(0L) => false
     case Num(1L) => true
+  }
+  implicit final val num2AccessFrequencyRead: Read[Num, AccessFrequency] = instancePF("Num(AccessFrequency)") {
+    case Num(ToInt(AccessFrequency(i))) => i
   }
   implicit final val num2IntRead: Read[Num, Int]                 = instancePF("Num(Int)") { case Num(ToInt(i)) => i }
   implicit final val num2NonNegIntRead: Read[Num, NonNegInt]     = instancePF("Num(NonNegInt)") { case Num(ToInt(NonNegInt(i))) => i }

@@ -48,7 +48,7 @@ object ClusterP {
     def maybeMaster: Option[NodeId]
     def ping: NonNegLong
     def pong: NonNegLong
-    def configEpoch: NonNegInt
+    def configEpoch: NonNegLong
     def link: LinkState
     def slots: Seq[SlotType]
   }
@@ -65,7 +65,7 @@ object ClusterP {
       maybeMaster: Option[NodeId],
       ping: NonNegLong,
       pong: NonNegLong,
-      configEpoch: NonNegInt,
+      configEpoch: NonNegLong,
       link: LinkState,
       slots: Seq[SlotType]
   ) extends Node6_2
@@ -76,7 +76,7 @@ object ClusterP {
       maybeMaster: Option[NodeId],
       ping: NonNegLong,
       pong: NonNegLong,
-      configEpoch: NonNegInt,
+      configEpoch: NonNegLong,
       link: LinkState,
       slots: Seq[SlotType]
   ) extends Node7_0
@@ -106,21 +106,19 @@ object ClusterP {
       )
 
     private final val A: Read[String, Option[Address7_0]] = {
-      // the hostname, from Redis 7.0, then any other fields, which are left out
-      val HPCP = raw"([A-Za-z0-9\-\.]*):(\d+)@(\d+)(?:,|$$)([A-Za-z0-9\-\.]*)(?:,.*)?".r
-      val HP   = raw"([A-Za-z0-9\-\.]*):(\d+)".r
+      // the host up to the last : before the port, as an IPv6 address comes without brackets, then the hostname, from Redis 7.0, then any
+      // other fields, which are left out
+      val HPCP = raw"([^@,]*):(\d+)@(\d+)(?:,|$$)([^,]*)(?:,.*)?".r
+      val HP   = raw"([^@,]*):(\d+)".r
+      // as the node was given its address or hostname, which can be any name: empty when it has none
       object MaybeHost {
-        def unapply(s: String): Option[Option[Host]] = s match {
-          case ""      => Some(None)
-          case Host(h) => Some(Some(h))
-          case _       => None
-        }
+        def unapply(s: String): Some[Option[String]] = Some(Some(s).filter(_.nonEmpty))
       }
       Read.instance {
         case ":0@0"                                                            => Right(None)
         case HPCP(MaybeHost(h), ToInt(Port(p)), ToInt(Port(cp)), MaybeHost(n)) => Right(Some(AddressOf7_0(h, p, cp, n)))
         case HP(MaybeHost(h), ToInt(Port(p)))                                  => Right(Some(AddressOf7_0(h, p, p, None)))
-        case other => Left(RESPDecErr(s"Unexpected encoding for Address. Was $other"))
+        case other => Left(RESPDecErr(s"Unexpected encoding for Address. Was ${RESPDecErr.shown(other)}"))
       }
     }
     private final val Fs: Read[String, Seq[Flag]] = Read.instance {
@@ -143,12 +141,12 @@ object ClusterP {
     private final val MM: Read[String, Option[NodeId]] = Read.instance {
       case "-"        => Right(None)
       case NodeId(id) => Right(Some(id))
-      case other      => Left(RESPDecErr(s"Wrong encoding for Node Id. Was $other"))
+      case other      => Left(RESPDecErr(s"Wrong encoding for Node Id. Was ${RESPDecErr.shown(other)}"))
     }
     private final val L: Read[String, LinkState] = Read.instance {
       case "connected"    => Right(LinkState.connected)
       case "disconnected" => Right(LinkState.disconnected)
-      case other          => Left(RESPDecErr(s"Wrong encoding for link state. Was $other"))
+      case other          => Left(RESPDecErr(s"Wrong encoding for link state. Was ${RESPDecErr.shown(other)}"))
     }
     private final val Ss: Read[Seq[String], Seq[SlotType]] = {
       val R  = raw"(\d+)-(\d+)".r
@@ -160,16 +158,16 @@ object ClusterP {
           case (R(ToInt(Slot(f)), ToInt(Slot(t))), Right(fgs)) => Right(SlotType.Range(f, t) :: fgs)
           case (IS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.ImportingSlot(s, id) :: fgs)
           case (MS(ToInt(Slot(s)), NodeId(id)), Right(fgs))    => Right(SlotType.MigratingSlot(s, id) :: fgs)
-          case (other, Right(_))                               => Left(RESPDecErr(s"Wrong encoding for Node's slot type. Was $other"))
-          case (_, left)                                       => left
+          case (other, Right(_)) => Left(RESPDecErr(s"Wrong encoding for Node's slot type. Was ${RESPDecErr.shown(other)}"))
+          case (_, left)         => left
         }
       }
     }
     private final val ND: Read[String, Node7_0] = {
       val errorS = "Read[String, Node], Error decoding a cluster Node. Error was: "
-      _.split(SPACE_CH).toList match {
+      Read.instance(_.split(SPACE_CH).toList match {
         case NodeId(id) :: A(Right(a)) :: Fs(Right(fs)) :: MM(Right(mm)) :: ToLong(NonNegLong(ps)) :: ToLong(NonNegLong(pr)) ::
-            ToInt(NonNegInt(ce)) :: L(Right(l)) :: Ss(Right(ss)) =>
+            ToLong(NonNegLong(ce)) :: L(Right(l)) :: Ss(Right(ss)) =>
           Right(NodeOf7_0(id, a, fs, mm, ps, pr, ce, l, ss))
         case _ :: A(Left(e)) :: _ :: _ :: _ :: _ :: _ :: _ :: _  => Left(RESPDecErr(s"$errorS $e"))
         case _ :: _ :: Fs(Left(e)) :: _ :: _ :: _ :: _ :: _ :: _ => Left(RESPDecErr(s"$errorS $e"))
@@ -182,7 +180,7 @@ object ClusterP {
               s"Unexpected encoding for a cluster node. Expected [node id, address, [flags], master id, pings, pongs, epoch, link status, slots] but was $other"
             )
           )
-      }
+      })
     }
 
     private final def nodesOf(lines: Seq[String]): Either[RESPDecErr, Nodes7_0] =
@@ -247,7 +245,7 @@ object ClusterP {
 
   /** A node of CLUSTER SLOTS. `host` is `None` when the server says to use the host you connected to */
   sealed trait SlotNode6_2 {
-    def host: Option[Host]
+    def host: Option[String]
     def port: Port
     def nodeId: NodeId
   }
@@ -257,8 +255,8 @@ object ClusterP {
     def metadata: Map[String, String]
   }
 
-  private[laserdisc] final case class SlotNodeOf6_2(host: Option[Host], port: Port, nodeId: NodeId) extends SlotNode6_2
-  private[laserdisc] final case class SlotNodeOf7_0(host: Option[Host], port: Port, nodeId: NodeId, metadata: Map[String, String])
+  private[laserdisc] final case class SlotNodeOf6_2(host: Option[String], port: Port, nodeId: NodeId) extends SlotNode6_2
+  private[laserdisc] final case class SlotNodeOf7_0(host: Option[String], port: Port, nodeId: NodeId, metadata: Map[String, String])
       extends SlotNode7_0
 
   sealed trait LinkState
@@ -274,18 +272,18 @@ object ClusterP {
 
   /** Where a node listens. `host` is `None` until the node knows its own address, as on a fresh node */
   sealed trait Address6_2 {
-    def host: Option[Host]
+    def host: Option[String]
     def port: Port
     def clusterPort: Port
   }
 
   /** Where a node listens, from Redis 7.0: also the hostname the node announces with cluster-announce-hostname, if it does */
   sealed trait Address7_0 extends Address6_2 {
-    def hostname: Option[Host]
+    def hostname: Option[String]
   }
 
-  private[laserdisc] final case class AddressOf6_2(host: Option[Host], port: Port, clusterPort: Port) extends Address6_2
-  private[laserdisc] final case class AddressOf7_0(host: Option[Host], port: Port, clusterPort: Port, hostname: Option[Host])
+  private[laserdisc] final case class AddressOf6_2(host: Option[String], port: Port, clusterPort: Port) extends Address6_2
+  private[laserdisc] final case class AddressOf7_0(host: Option[String], port: Port, clusterPort: Port, hostname: Option[String])
       extends Address7_0
 
   sealed trait ResetMode
@@ -363,24 +361,28 @@ object ClusterP {
     // the first and last slot and the master, then the replicas
     private type Assigned[N] = Arr.AsTupleThen[Num *: Num *: N *: EmptyTuple, N]
 
-    // an empty host, like a null one, means the server doesn't know it, so use the one you connected to
-    private implicit final val hostRead: Read[Bulk, Option[Host]] = Read.instancePF("Bulk(Host)") {
-      case Bulk("")      => None
-      case Bulk(Host(h)) => Some(h)
+    // an empty host, like a null one, means the server doesn't know it, so use the one you connected to. A ? is what Redis sends for a
+    // node without a hostname when it's told to give hostnames
+    private final case class NodeHost(host: Option[String])
+    private implicit final val hostRead: Read[Bulk, NodeHost] = Read.instance {
+      case Bulk("") | Bulk("?") => Right(NodeHost(None))
+      case Bulk(h)              => Right(NodeHost(Some(h)))
     }
     private implicit final val portRead: Read[Num, Port]      = Read.instancePF("Num(Port)") { case Num(ToInt(Port(p))) => p }
     private implicit final val nodeIdRead: Read[Bulk, NodeId] = ClusterManagement.nodeId
     // what Redis 6.2 reads of either node, and what Redis 7.0 reads of its own
     private implicit final val node6_2Read: Read[NodeReply6_2, SlotNode6_2] =
-      Read[NodeReply6_2, Option[Host] *: Port *: NodeId *: EmptyTuple].map { case host *: port *: id *: _ => SlotNodeOf6_2(host, port, id) }
+      Read[NodeReply6_2, NodeHost *: Port *: NodeId *: EmptyTuple].map { case host *: port *: id *: _ =>
+        SlotNodeOf6_2(host.host, port, id)
+      }
     private implicit final val node7_0As6_2Read: Read[NodeReply7_0, SlotNode6_2] =
-      Read[NodeReply7_0, Option[Host] *: Port *: NodeId *: Map[String, String] *: EmptyTuple].map { case host *: port *: id *: _ =>
-        SlotNodeOf6_2(host, port, id)
+      Read[NodeReply7_0, Option[NodeHost] *: Port *: NodeId *: Map[String, String] *: EmptyTuple].map { case host *: port *: id *: _ =>
+        SlotNodeOf6_2(host.flatMap(_.host), port, id)
       }
     private implicit final val node7_0Read: Read[NodeReply7_0, SlotNode7_0] =
-      Read[NodeReply7_0, Option[Host] *: Port *: NodeId *: Map[String, String] *: EmptyTuple].map {
+      Read[NodeReply7_0, Option[NodeHost] *: Port *: NodeId *: Map[String, String] *: EmptyTuple].map {
         case host *: port *: id *: metadata *: _ =>
-          SlotNodeOf7_0(host, port, id, metadata)
+          SlotNodeOf7_0(host.flatMap(_.host), port, id, metadata)
       }
 
     private final def slotsRead[N, SN, I, S](info: (SN, Seq[SN]) => I, all: Map[Range, I] => S)(
@@ -525,7 +527,7 @@ trait ClusterBaseP extends ClusterCoreP {
   final def getkeysinslot(slot: Slot, count: PosInt): Single[Seq[Key]] =
     Protocol("CLUSTER", "GETKEYSINSLOT" *: slot *: count *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
 
-  final def meet(host: Host, port: Port): Single[OK] = Protocol("CLUSTER", "MEET" *: host *: port *: EmptyTuple).as[Str, OK]
+  final def meet(ip: IpAddress, port: Port): Single[OK] = Protocol("CLUSTER", "MEET" *: ip *: port *: EmptyTuple).as[Str, OK]
 
   def replicas(nodeId: NodeId): Single[ClusterP.Nodes6_2] =
     Protocol("CLUSTER", "REPLICAS" *: nodeId *: EmptyTuple).using(RESPRead.instance(ClusterP.Nodes.nodesOfArr6_2))
@@ -537,7 +539,7 @@ trait ClusterBaseP extends ClusterCoreP {
 
   final val saveconfig: Single[OK] = Protocol("CLUSTER", "SAVECONFIG").as[Str, OK]
 
-  final def setconfigepoch(configEpoch: NonNegInt): Single[OK] =
+  final def setconfigepoch(configEpoch: NonNegLong): Single[OK] =
     Protocol("CLUSTER", "SET-CONFIG-EPOCH" *: configEpoch *: EmptyTuple).as[Str, OK]
 
   final def setslot(slot: Slot): Single[OK] = Protocol("CLUSTER", "SETSLOT" *: slot *: "STABLE" *: EmptyTuple).as[Str, OK]

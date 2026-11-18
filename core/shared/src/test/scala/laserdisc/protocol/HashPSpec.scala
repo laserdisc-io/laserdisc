@@ -129,10 +129,10 @@ abstract class HashPSpec extends BaseSpec with HashP {
 
   test("The Hash protocol using hgetall names the case class field that's missing or doesn't read") {
     val protocol = hgetall[HashPSpecUser](Key("u"))
-    assertLeftEquals(protocol.decode(Arr(Bulk("name"), Bulk("ada"))).leftMap(_.getMessage.endsWith("missing field age")), true)
+    assertLeftEquals(protocol.decode(Arr(Bulk("name"), Bulk("ada"))).leftMap(_.getMessage.contains("missing field age, reading ")), true)
     assertLeftEquals(
       protocol.decode(Arr(Bulk("name"), Bulk("ada"), Bulk("age"), Bulk("x"))).leftMap(_.getMessage),
-      "RESP type(s) of Arr(Bulk(name),Bulk(ada),Bulk(age),Bulk(x)) matched but failed to deserialize correctly with error field age: Read Error: expected Bulk(Int) but was Bulk(x)"
+      "RESP type(s) matched but failed to deserialize correctly with error field age: Read Error: expected Bulk(Int) but was Bulk(x), reading Arr(Bulk(name),Bulk(ada),Bulk(age),Bulk(x))"
     )
   }
 
@@ -276,19 +276,11 @@ abstract class HashPSpec extends BaseSpec with HashP {
     }
   }
 
-  property("The Hash protocol using hvals roundtrips successfully given key (expecting one field)") {
-    forAll { (k: Key, i: Int) =>
-      val protocol = hvals[Int *: EmptyTuple](k)
+  property("The Hash protocol using hvals reads every value, however many the hash has") {
+    forAll { (k: Key, is: List[Int]) =>
+      val protocol = hvals[Int](k)
       assertEquals(protocol.encode, Arr(Bulk("HVALS"), Bulk(k)))
-      assertEquals(protocol.decode(Arr(Bulk(i))), i *: EmptyTuple)
-    }
-  }
-
-  property("The Hash protocol using hvals roundtrips successfully given key (expecting two fields)") {
-    forAll { (k: Key, i: Int, s: String) =>
-      val protocol = hvals[Int *: String *: EmptyTuple](k)
-      assertEquals(protocol.encode, Arr(Bulk("HVALS"), Bulk(k)))
-      assertEquals(protocol.decode(Arr(Bulk(i), Bulk(s))), i *: s *: EmptyTuple)
+      assertEquals(protocol.decode(Arr(is.map(Bulk(_)))), is)
     }
   }
 

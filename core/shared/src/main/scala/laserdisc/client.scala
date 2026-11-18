@@ -25,29 +25,39 @@ import scala.annotation.implicitNotFound
 import scala.concurrent.duration.*
 
 trait ClientBase[F[_], Env] {
+
+  /** How long a send waits for its replies, unless given another timeout: 20 seconds */
   def defaultTimeout: FiniteDuration = 20.seconds
 
+  /** Sends the commands of the tuple `in` together, giving each one's result in a tuple of the same size: a `Right` with its reply, or a
+    * `Left` if it failed. The send fails with `RequestTimedOut` when the replies haven't all come within `timeout`
+    */
   def send[In <: Tuple, Out <: Tuple](in: In, timeout: FiniteDuration)(implicit handler: Handler.Aux[F, Env, In, Out]): F[Out]
+
+  /** Sends the commands of the tuple `in` together, within [[defaultTimeout]] */
   final def send[In <: Tuple, Out <: Tuple](in: In)(implicit ev: Handler.Aux[F, Env, In, Out]): F[Out] = send(in, defaultTimeout)
 
+  /** Sends one command, giving a `Right` with its reply, or a `Left` if it failed, within `timeout` */
   final def send[A1](protocolA1: Protocol[A1], timeout: FiniteDuration)(
       implicit F: Functor[F],
       ev: Handler.Aux[F, Env, Protocol[A1] *: EmptyTuple, Maybe[A1] *: EmptyTuple]
   ): F[Maybe[A1]] = F.map(send(protocolA1 *: EmptyTuple, timeout))(_.head)
+
+  /** Sends one command, within [[defaultTimeout]] */
   final def send[A1](protocolA1: Protocol[A1])(
       implicit F: Functor[F],
       ev: Handler.Aux[F, Env, Protocol[A1] *: EmptyTuple, Maybe[A1] *: EmptyTuple]
   ): F[Maybe[A1]] = send(protocolA1, defaultTimeout)
 
   /** Runs the loop, sending each of its commands once the previous reply is in, as a stream of the values they give. Each command has
-    * `timeout`, plus the loop's wait when its commands block
+    * `timeout`, as a `send` does
     */
   final def stream[S[_], A](loop: Loop[A], timeout: FiniteDuration)(
       implicit F: Functor[F],
       U: Unfold[F, S],
       ev: Handler.Aux[F, Env, Protocol[Loop.Step[A]] *: EmptyTuple, Maybe[Loop.Step[A]] *: EmptyTuple]
   ): S[A] =
-    U.unfold(loop.first)(command => F.map(send(command, timeout + loop.waits))(_.map(step => step.values -> step.next)))
+    U.unfold(loop.first)(command => F.map(send(command, timeout))(_.map(step => step.values -> step.next)))
   final def stream[S[_], A](loop: Loop[A])(
       implicit F: Functor[F],
       U: Unfold[F, S],

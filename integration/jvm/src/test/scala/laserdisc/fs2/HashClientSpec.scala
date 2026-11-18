@@ -115,6 +115,15 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     assertEquals(send(hrandfields("h:none", 2)), Seq.empty)
   }
 
+  test(s"a $dest client reads every value of a hash, however many it has") {
+    import laserdisc.redis_6_2.*
+
+    send(del("h:v", "h:none"))
+    send(hset("h:v", OneOrMore.unsafeFrom(List(Key("a") -> 1, Key("b") -> 2, Key("c") -> 3))))
+    assertEquals(send(hvals[Int]("h:v")).sorted, Seq(1, 2, 3))
+    assertEquals(send(hvals[Int]("h:none")), Seq.empty)
+  }
+
   test(s"a $dest client writes a case class to a hash and reads it back by field name") {
     import laserdisc.redis_6_2.*
 
@@ -128,7 +137,7 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
 
     send(hset("h:p", "name", "bob"))
     this.client.send(hgetall[HashUser]("h:p")).unsafeRunSync()(using runtime) match {
-      case Left(e)  => assert(e.getMessage.endsWith("missing field age"), e.getMessage)
+      case Left(e)  => assert(e.getMessage.contains("missing field age, reading "), e.getMessage)
       case Right(u) => fail(s"expected a missing field, got $u")
     }
   }
@@ -141,7 +150,7 @@ abstract class HashClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     val fields = OneOrMoreKeys.unsafeFrom(List(Key("age"), Key("name")))
     assertEquals(send(hmget[Int *: Option[String] *: EmptyTuple]("h:m", fields)), 36 *: Option.empty[String] *: EmptyTuple)
     this.client.send(hmget[Int *: String *: EmptyTuple]("h:m", fields)).unsafeRunSync()(using runtime) match {
-      case Left(e)  => assert(e.getMessage.endsWith("error at element 2: Read[OneOf] error: missing value"), e.getMessage)
+      case Left(e)  => assert(e.getMessage.contains("error at element 2: Read[OneOf] error: missing value, reading "), e.getMessage)
       case Right(v) => fail(s"expected a missing value, got $v")
     }
   }

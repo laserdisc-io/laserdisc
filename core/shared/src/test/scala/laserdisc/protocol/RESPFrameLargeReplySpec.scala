@@ -39,4 +39,16 @@ final class RESPFrameLargeReplySpec extends BaseSpec {
     assertEquals(frame, CompleteFrame(reply.bits))
     assert(taken < 10000L, s"took $taken ms")
   }
+
+  private val line = ByteVector(s"+${"x" * (8 * 1024 * 1024)}\r\n".getBytes("UTF-8"))
+
+  // looking for the end of the line again from its start for each chunk took seconds for a fraction of this size
+  test("a status line of 8 MB arriving in chunks of 8 KB is found in much less time than the default timeout of a command") {
+    val start = System.nanoTime()
+    val frame = line.grouped(8192L).foldLeft[Either[Exception, RESPFrame]](Right(EmptyFrame))((f, c) => f.flatMap(_.append(c.bits)))
+    val taken = (System.nanoTime() - start) / 1000000L
+
+    assertEquals(frame, CompleteFrame(line.bits))
+    assert(taken < 10000L, s"took $taken ms")
+  }
 }

@@ -26,18 +26,18 @@ package channels
 
 import _root_.fs2.*
 import _root_.fs2.io.net.Network
-import cats.effect.Concurrent
+import cats.effect.Temporal
 import com.comcast.ip4s.{Host, SocketAddress}
 import laserdisc.fs2.RedisChannel.connectedSocket
 
 object ByteInByteOutChannel {
 
-  private[fs2] final def apply[F[_]: Network: Concurrent](
+  private[fs2] final def apply[F[_]: Network: Temporal](
       address: SocketAddress[Host],
       receiveBufferSizeBytes: Int
   ): Pipe[F, Byte, Byte] =
     stream =>
-      Stream.resource(connectedSocket(address, receiveBufferSizeBytes)).flatMap { socket =>
+      Stream.resource(connectedSocket[F](address, receiveBufferSizeBytes)).flatMap { socket =>
         val send    = stream.through(socket.writes)
         val receive = socket.reads
 

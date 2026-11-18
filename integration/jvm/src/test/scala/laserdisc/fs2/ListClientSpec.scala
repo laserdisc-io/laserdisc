@@ -95,6 +95,18 @@ abstract class ListClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     assertEquals(send(lpushx("l:y", OneOrMore.unsafeFrom(List("b", "c")))).map(_.value), Some(4))
   }
 
+  test(s"a $dest client inserts before or after a value, and reads the reply when there's no such value or no list") {
+    import laserdisc.redis_6_2.*
+    import listtypes.*
+
+    send(del("l:i", "l:none"))
+    send(rpush("l:i", OneOrMore.unsafeFrom(List("a", "c"))))
+    assertEquals(send(linsert("l:i", ListPosition.after, "a", "b")).map(_.value), Some(3))
+    assertEquals(send(linsert("l:i", ListPosition.before, "zz", "b")), None)
+    assertEquals(send(linsert("l:none", ListPosition.before, "a", "b")).map(_.value), Some(0))
+    assertEquals(send(lrange[String]("l:i", 0L, -1L)), Seq("a", "b", "c"))
+  }
+
   test(s"a $dest client pops from the first list that has an element with blpop") {
     import laserdisc.redis_6_2.*
 
@@ -102,6 +114,15 @@ abstract class ListClientSpec(p: Port, dest: String) extends LaserdiscFs2Suite(p
     send(rpush("l:b2", OneOrMore.unsafeFrom(List("x"))))
     assertEquals(send(blocking.blpop[String](OneOrMoreKeys.unsafeFrom(List(Key("l:b1"), Key("l:b2"))), 1.0)), Some(KV(Key("l:b2"), "x")))
     assertEquals(send(blocking.blpop[String](OneOrMoreKeys.unsafeFrom(List(Key("l:b1"), Key("l:b2"))), 0.1)), None)
+  }
+
+  test(s"a $dest client gets None when blmove or brpoplpush time out with nothing to move") {
+    import laserdisc.redis_6_2.*
+    import listtypes.*
+
+    send(del("l:t1", "l:t2"))
+    assertEquals(send(blocking.blmove[String]("l:t1", "l:t2", ListSide.left, ListSide.right, 0.1)), None)
+    assertEquals(send(blocking.brpoplpush[String]("l:t1", "l:t2", 0.1)), None)
   }
 
   test(s"a $dest client reads nothing to pop with a count, whichever null the server replies with") {

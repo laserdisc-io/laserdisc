@@ -22,11 +22,14 @@
 package laserdisc
 package fs2
 
-import _root_.fs2.Chunk
+import _root_.fs2.{Chunk, Stream}
 import cats.effect.IO
+import log.effect.{LogLevel, LogWriter}
+import log.effect.internal.Show
 import munit.CatsEffectSuite
 
 import java.nio.charset.StandardCharsets.UTF_8
+import scala.concurrent.duration.*
 
 final class RedisChannelSpec extends CatsEffectSuite {
   // what's read from the socket, chunk by chunk
@@ -55,7 +58,63 @@ final class RedisChannelSpec extends CatsEffectSuite {
     received("$5\r\nhe", "llo", "\r\n").assertEquals(List(Bulk("hello")))
   }
 
+  test("the trace log says what's sent and received, never the values") {
+    IO.ref(Vector.empty[String]).flatMap { logged =>
+      implicit val logWriter: LogWriter[IO] = new LogWriter[IO] {
+        override def write[A: Show](level: LogLevel, a: =>A): IO[Unit] = logged.update(_ :+ implicitly[Show[A]].show(a))
+      }
+      val sending = Stream
+        .emit(Arr(Bulk("AUTH"), Bulk("secret")))
+        .covary[IO]
+        .through(RedisChannel.impl.send[IO](_ => IO.unit))
+      val receiving = Stream
+        .chunk(Chunk.array("$6\r\nsecret\r\n-ERR wrong\r\n".getBytes(UTF_8)))
+        .covary[IO]
+        .through(RedisChannel.impl.receiveResp[IO])
+
+      (sending.compile.drain >> receiving.compile.drain >> logged.get).map { lines =>
+        assertEquals(
+          lines,
+          Vector("sending AUTH with 1 argument(s)", "receiving a bulk string of 6 bytes", "receiving the error ERR wrong")
+        )
+      }
+    }
+  }
+
   test("what isn't a reply fails") {
     received("?\r\n").attempt.map(outcome => assert(outcome.isLeft, outcome.toString))
+  }
+
+  test("the replies before what isn't a reply in the same chunk are read, before it fails") {
+    Stream
+      .chunk(Chunk.array("+a\r\n+b\r\n?\r\n".getBytes(UTF_8)))
+      .covary[IO]
+      .through(RedisChannel.impl.receiveResp[IO])
+      .attempt
+      .compile
+      .toList
+      .map { outcome =>
+        assertEquals(outcome.take(2), List(Right(Str("a")), Right(Str("b"))))
+        assert(outcome.drop(2).headOption.exists(_.isLeft), outcome.toString)
+      }
+  }
+
+  test("connecting fails once its time is up, instead of waiting for as long as the system allows") {
+    val boom = new Exception("timed out")
+    RedisChannel
+      .withTimeout(cats.effect.Resource.eval(IO.never[Int]), 100.millis, boom)
+      .use(IO.pure)
+      .attempt
+      .assertEquals(Left(boom))
+  }
+
+  test("a connection made in time is closed when it's done with") {
+    IO.ref(false).flatMap { closed =>
+      RedisChannel
+        .withTimeout(cats.effect.Resource.make(IO.pure(1))(_ => closed.set(true)), 1.second, new Exception("timed out"))
+        .use(IO.pure)
+        .product(closed.get)
+        .assertEquals(1 -> true)
+    }
   }
 }

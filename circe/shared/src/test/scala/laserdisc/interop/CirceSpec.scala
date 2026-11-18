@@ -23,7 +23,8 @@ package laserdisc
 package interop
 
 import io.circe.generic.semiauto.*
-import io.circe.{Decoder, Encoder}
+import io.circe.syntax.*
+import io.circe.{Decoder, Encoder, Json}
 import laserdisc.interop.circe.*
 import org.scalacheck.Prop.forAll
 import org.scalacheck.{Arbitrary, Gen}
@@ -39,10 +40,14 @@ object Foo {
 object Bar {
   implicit val decoder: Decoder[Bar] = deriveDecoder
   implicit val encoder: Encoder[Bar] = deriveEncoder
+  implicit val show: Show[Bar]       = showAsJson[Bar]
+  implicit val read: Read[Bulk, Bar] = readAsJson[Bar]
 }
 object Baz {
   implicit val decoder: Decoder[Baz] = deriveDecoder
   implicit val encoder: Encoder[Baz] = deriveEncoder
+  implicit val show: Show[Baz]       = showAsJson[Baz]
+  implicit val read: Read[Bulk, Baz] = readAsJson[Baz]
 }
 
 final class CirceSpec extends CirceCheckSettings with EitherTestSyntax {
@@ -66,6 +71,25 @@ final class CirceSpec extends CirceCheckSettings with EitherTestSyntax {
     forAll { (baz: Baz) =>
       assertEquals(Read[Bulk, Baz].read(Bulk(baz)), baz)
     }
+  }
+
+  property("Circe interop writes a Json as compact JSON and reads it back") {
+    forAll { (baz: Baz) =>
+      val json = baz.asJson
+      assertEquals(Show[Json].show(json), json.noSpaces)
+      assertEquals(Read[Bulk, Json].read(Bulk(Show[Json].show(json))), json)
+    }
+  }
+
+  test("Circe interop leaves other values, such as a String or an Int, as they are") {
+    assertEquals(Show[String].show("hello"), "hello")
+    assertEquals(Read[Bulk, String].read(Bulk("hello")), "hello")
+    assertEquals(Show[Int].show(1), "1")
+    assertEquals(Read[Bulk, Int].read(Bulk("1")), 1)
+  }
+
+  test("Circe interop fails to read text that isn't JSON as a Json, saying why") {
+    Read[Bulk, Json].read(Bulk("{not json")).onLeft(e => assert(e.message.startsWith("ParsingFailure"), e.message))
   }
 
   test("Circe interop fails to decode when handling a json that does not respect the contract") {

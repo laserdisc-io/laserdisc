@@ -63,6 +63,9 @@ object StreamP {
   /** The id of a stream entry: the time it was added, in milliseconds, and a sequence number for entries added in the same millisecond */
   final case class Id(milliseconds: IdPart, sequence: IdPart)
   object Id {
+    // the largest id a stream can have
+    private[protocol] final val largest: Id = Id(IdPart.max, IdPart.max)
+
     private final val IdRegex = raw"(\d+)-(\d+)".r
 
     def apply(milliseconds: NonNegLong, sequence: NonNegLong): Id = Id(IdPart(milliseconds), IdPart(sequence))
@@ -72,7 +75,7 @@ object StreamP {
     implicit final val bulk2IdRead: Read[Bulk, Id] = Read.instance {
       case Bulk(s @ IdRegex(ms, seq)) =>
         IdPart.from(ms).flatMap(m => IdPart.from(seq).map(Id(m, _))).leftMap(e => RESPDecErr(s"Read[Bulk, Id], $e in $s"))
-      case other => Left(RESPDecErr(s"Read[Bulk, Id], expected a stream id but was $other"))
+      case other => Left(RESPDecErr(s"Read[Bulk, Id], expected a stream id but was ${RESPDecErr.shown(other)}"))
     }
   }
 
@@ -528,17 +531,23 @@ object StreamP {
   /** MAXCOUNT and MAXSIZE, for XREAD and XREADGROUP: end the whole read, across all its streams, after so many entries, or once it has
     * reached about so many bytes, which always lets at least one entry through. COUNT, instead, applies to each stream. Redis 8.10
     */
-  final class ReadLimits private (val params: List[String]) {
-    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(params ++ List("MAXCOUNT", Show[PosLong].show(entries)))
-    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(params ++ List("MAXSIZE", Show[PosLong].show(bytes)))
+  final class ReadLimits private (val params: List[String], maxEntries: Option[PosLong]) {
+    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(params ++ List("MAXCOUNT", Show[PosLong].show(entries)), Some(entries))
+    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(params ++ List("MAXSIZE", Show[PosLong].show(bytes)), maxEntries)
+
+    // the server refuses a COUNT above MAXCOUNT, which reads no more than MAXCOUNT does, as the whole read stops there: it's sent as MAXCOUNT
+    private[protocol] def withCount(count: PosLong): List[String] = {
+      val sent = maxEntries.filter(_.value < count.value).getOrElse(count)
+      "COUNT" :: Show[PosLong].show(sent) :: params
+    }
   }
   trait ReadLimitsBuilders {
     def maxCount(entries: PosLong): ReadLimits
     def maxSize(bytes: PosLong): ReadLimits
   }
   private[laserdisc] object ReadLimits extends ReadLimitsBuilders {
-    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(List("MAXCOUNT", Show[PosLong].show(entries)))
-    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(List("MAXSIZE", Show[PosLong].show(bytes)))
+    def maxCount(entries: PosLong): ReadLimits = new ReadLimits(List("MAXCOUNT", Show[PosLong].show(entries)), Some(entries))
+    def maxSize(bytes: PosLong): ReadLimits    = new ReadLimits(List("MAXSIZE", Show[PosLong].show(bytes)), None)
   }
 
   /** NOMKSTREAM, for XADD: don't create the stream when it doesn't exist */
@@ -757,9 +766,6 @@ object StreamP {
   private[protocol] final val consumerInfos6_2: Read[Records, Seq[ConsumerInfo6_2]] = Read[Records, Seq[ConsumerInfo6_2]]
   private[protocol] final val consumerInfos7_2: Read[Records, Seq[ConsumerInfo7_2]] = Read[Records, Seq[ConsumerInfo7_2]]
 
-  private[protocol] final def fieldsParams[A: Show](fields: OneOrMore[(Key, A)]): List[Bulk] =
-    fields.value.flatMap { case (k, v) => List(Bulk(k.value), Value.bulk(v)) }
-
   // the builders each feature's commands take, and the types of their replies
   trait StreamTypes {
     final type StreamBound          = StreamP.Bound
@@ -843,7 +849,7 @@ trait StreamBaseP extends Features {
       "XTRIM: = LIMIT MAXLEN MINID ~"
     )
 
-  import StreamP.{Bound, Entry, From, Id, NoMkStream, Trim, fieldsParams}
+  import StreamP.{Bound, Entry, From, Id, NoMkStream, Trim}
 
   /** The builders of this family's commands, and the types of their replies */
   val streamtypes: StreamP.StreamTypes = new StreamP.StreamTypes {}
@@ -852,23 +858,23 @@ trait StreamBaseP extends Features {
 
   /** Adds an entry with an id the server picks, and replies with it */
   final def xadd[A: Show](key: Key, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: trim.params *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: trim.params *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
 
   /** XADD only to an existing stream: `None` when it doesn't exist */
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: "*" *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: "*" *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: Id, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: id *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: id *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: trim.params *: "*" *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: Id, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: trim.params *: id *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
 
   /** Deletes the entries, and replies how many it deleted */
   final def xdel(key: Key, ids: OneOrMore[Id]): Single[NonNegLong] =
@@ -888,7 +894,8 @@ trait StreamBaseP extends Features {
   final def xrangeAll[A: Read[Bulk, _]](key: Key, count: PosLong): Loop[Entry[A]] = xrangeAll[A](key, Bound.min, Bound.max, count)
   final def xrangeAll[A: Read[Bulk, _]](key: Key, start: Bound, end: Bound, count: PosLong): Loop[Entry[A]] =
     Loop(start)(xrange[A](key, _, end, count)) { (_, page) =>
-      page -> (if (page.size < count.value) None else Some(Bound.exclusive(page.last.id)))
+      // no id comes after the largest, and the server refuses to start after it
+      page -> (if (page.size < count.value || page.last.id == Id.largest) None else Some(Bound.exclusive(page.last.id)))
     }
 
   /** The streams' entries after the given ids, by stream, or `None` when none of them has any */
@@ -1197,21 +1204,21 @@ trait StreamSetIdEntriesP extends Features {
 
 /** XADD with an id whose sequence the server picks: Redis 7.0 */
 trait StreamIdAtP extends Features {
-  import StreamP.{Id, IdAt, NoMkStream, Trim, fieldsParams}
+  import StreamP.{Id, IdAt, NoMkStream, Trim}
 
   final def xadd[A: Show](key: Key, id: IdAt, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: IdAt, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: trim.params *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: IdAt, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: id *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: id *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, id: IdAt, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: trim.params *: id *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
 }
 
 /** KEEPREF, DELREF and ACKED for XADD and XTRIM, and XDELEX and XACKDEL: Redis 8.2 */
 trait StreamRefPolicyP extends Features {
-  import StreamP.{DeleteResult, Id, NoMkStream, RefPolicy, Trim, fieldsParams}
+  import StreamP.{DeleteResult, Id, NoMkStream, RefPolicy, Trim}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List(
@@ -1227,9 +1234,9 @@ trait StreamRefPolicyP extends Features {
 
   /** XADD trimming with a policy for the groups' references */
   final def xadd[A: Show](key: Key, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: policy *: trim.params *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, id: Id, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: policy *: trim.params *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](
       key: Key,
       noMkStream: NoMkStream,
@@ -1237,7 +1244,7 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: "*" *: fields.value *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](
       key: Key,
@@ -1247,10 +1254,10 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id *: fields.value *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, id: StreamP.IdAt, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: policy *: trim.params *: id *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](
       key: Key,
       noMkStream: NoMkStream,
@@ -1259,7 +1266,7 @@ trait StreamRefPolicyP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: policy *: trim.params *: id *: fields.value *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
 
   /** Acknowledges the entries for the group and deletes them, with what it did to each */
@@ -1284,24 +1291,24 @@ trait StreamRefPolicyP extends Features {
 
 /** IDMP and IDMPAUTO for XADD, and XCFGSET: Redis 8.6 */
 trait StreamIdmpP extends Features {
-  import StreamP.{Id, Idmp, IdmpConfig, NoMkStream, RefPolicy, Trim, fieldsParams}
+  import StreamP.{Id, Idmp, IdmpConfig, NoMkStream, RefPolicy, Trim}
 
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("XADD: IDMP IDMPAUTO", "XCFGSET: IDMP-DURATION IDMP-MAXSIZE")
 
   /** XADD that adds the entry only once for the producer and idempotency id, and replies with that entry's id */
   final def xadd[A: Show](key: Key, idmp: Idmp, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: idmp.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: idmp.params *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, idmp: Idmp, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: idmp.params *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: idmp.params *: trim.params *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
   final def xadd[A: Show](key: Key, idmp: Idmp, trim: Trim, policy: RefPolicy, fields: OneOrMore[(Key, A)]): Single[Id] =
-    Protocol("XADD", key *: policy *: idmp.params *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[Bulk, Id]
+    Protocol("XADD", key *: policy *: idmp.params *: trim.params *: "*" *: fields.value *: EmptyTuple).as[Bulk, Id]
 
   /** Only to an existing stream: `None` when it doesn't exist */
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, idmp: Idmp, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: idmp.params *: "*" *: fieldsParams(fields) *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
+    Protocol("XADD", key *: noMkStream *: idmp.params *: "*" *: fields.value *: EmptyTuple).as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](key: Key, noMkStream: NoMkStream, idmp: Idmp, trim: Trim, fields: OneOrMore[(Key, A)]): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: idmp.params *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: idmp.params *: trim.params *: "*" *: fields.value *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
   final def xadd[A: Show](
       key: Key,
@@ -1311,7 +1318,7 @@ trait StreamIdmpP extends Features {
       policy: RefPolicy,
       fields: OneOrMore[(Key, A)]
   ): Single[Option[Id]] =
-    Protocol("XADD", key *: noMkStream *: policy *: idmp.params *: trim.params *: "*" *: fieldsParams(fields) *: EmptyTuple)
+    Protocol("XADD", key *: noMkStream *: policy *: idmp.params *: trim.params *: "*" *: fields.value *: EmptyTuple)
       .as[OrNullBulk[Bulk], Option[Id]]
 
   final def xcfgset(key: Key, config: IdmpConfig): Single[OK] = Protocol("XCFGSET", key.value :: config.params).as[Str, OK]
@@ -1390,8 +1397,6 @@ trait StreamReadLimitsP extends Features {
   override private[laserdisc] def supported: List[String] =
     super.supported ++ List("XREAD: MAXCOUNT MAXSIZE", "XREADGROUP: MAXCOUNT MAXSIZE")
 
-  private final def countParams(count: PosLong): List[String] = List("COUNT", Show[PosLong].show(count))
-
   /** The streams' entries after the given ids, by stream, up to the limits for the whole read, or `None` when none of them has any */
   final def xread[A: Read[Bulk, _]](streams: OneOrMore[(Key, From)], limits: ReadLimits): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol("XREAD", limits.params ++ streamsParams(streams)(_.param)).using(maybeStreams[A])
@@ -1400,7 +1405,7 @@ trait StreamReadLimitsP extends Features {
       count: PosLong,
       limits: ReadLimits
   ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    Protocol("XREAD", countParams(count) ++ limits.params ++ streamsParams(streams)(_.param)).using(maybeStreams[A])
+    Protocol("XREAD", limits.withCount(count) ++ streamsParams(streams)(_.param)).using(maybeStreams[A])
 
   private final def group(group: Key, consumer: Key): List[String] = List("GROUP", group.value, consumer.value)
 
@@ -1421,7 +1426,7 @@ trait StreamReadLimitsP extends Features {
       count: PosLong,
       limits: ReadLimits
   ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
-    Protocol("XREADGROUP", this.group(group, consumer) ++ countParams(count) ++ limits.params ++ streamsParams(streams)(_.param))
+    Protocol("XREADGROUP", this.group(group, consumer) ++ limits.withCount(count) ++ streamsParams(streams)(_.param))
       .using(maybeStreams[A])
   final def xreadgroup[A: Read[Bulk, _]](
       group: Key,
@@ -1442,7 +1447,7 @@ trait StreamReadLimitsP extends Features {
   ): Single[Option[Seq[KV[Seq[Entry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      this.group(group, consumer) ++ countParams(count) ++ limits.params ++ (Show[NoAck].show(noAck) :: streamsParams(streams)(_.param))
+      this.group(group, consumer) ++ limits.withCount(count) ++ (Show[NoAck].show(noAck) :: streamsParams(streams)(_.param))
     ).using(maybeStreams[A])
 
   /** XREADGROUP with CLAIM, up to the limits for the whole read */
@@ -1462,7 +1467,7 @@ trait StreamReadLimitsP extends Features {
       count: PosLong,
       limits: ReadLimits
   ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
-    Protocol("XREADGROUP", claimParams(group, consumer, minIdleMilliseconds, keys, countParams(count) ++ limits.params, Nil))
+    Protocol("XREADGROUP", claimParams(group, consumer, minIdleMilliseconds, keys, limits.withCount(count), Nil))
       .using(maybeClaimed[A])
   final def xreadgroupclaim[A: Read[Bulk, _]](
       group: Key,
@@ -1485,7 +1490,7 @@ trait StreamReadLimitsP extends Features {
   ): Single[Option[Seq[KV[Seq[ClaimedEntry[A]]]]]] =
     Protocol(
       "XREADGROUP",
-      claimParams(group, consumer, minIdleMilliseconds, keys, countParams(count) ++ limits.params, List(Show[NoAck].show(noAck)))
+      claimParams(group, consumer, minIdleMilliseconds, keys, limits.withCount(count), List(Show[NoAck].show(noAck)))
     ).using(maybeClaimed[A])
 }
 

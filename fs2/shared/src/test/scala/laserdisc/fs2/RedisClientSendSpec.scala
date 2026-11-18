@@ -22,7 +22,8 @@
 package laserdisc
 package fs2
 
-import cats.effect.{Deferred, IO}
+import _root_.fs2.{Pipe, Stream}
+import cats.effect.{Deferred, IO, Ref}
 import cats.syntax.all.*
 import laserdisc.redis_6_2.*
 import laserdisc.auto.*
@@ -34,6 +35,48 @@ import scala.concurrent.duration.*
 final class RedisClientSendSpec extends CatsEffectSuite {
 
   override val munitIOTimeout: Duration = 60.seconds
+
+  test("a send with a timeout too long to add to the time it's sent at still gets its reply, and other sends theirs") {
+    val answering = FakeRedisServer((_, requests) => requests.as(bulk("v")))
+    answering.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        val longest = FiniteDuration(Long.MaxValue - 1, NANOSECONDS)
+        (client.send(get[String]("a"), longest), client.send(get[String]("b"))).parTupled
+          .assertEquals((Right(Some("v")), Right(Some("v"))))
+      }
+    }
+  }
+
+  test("a reply that isn't RESP2 fails the commands waiting for it with UnreadableReply, saying why") {
+    // the first isn't a reply, and the second is one that can't be read
+    List("?not RESP2\r\n", ":not a number\r\n").traverse_ { reply =>
+      FakeRedisServer((_, requests) => requests.as(reply)).use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use { client =>
+          client.send(get[String]("a"), 5.seconds).map {
+            case Left(UnreadableReply(address, reason)) =>
+              assertEquals(address.port.value, port.value)
+              assert(reason.nonEmpty)
+            case other => fail(s"expected UnreadableReply for $reply, got $other")
+          }
+        }
+      }
+    }
+  }
+
+  test("sends with timeouts of decades, or none, are answered one after the other, as a timer that long can stop the client reading") {
+    val answering = FakeRedisServer((_, requests) => requests.as(bulk("v")))
+    answering.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        val timeouts = List(FiniteDuration(Long.MaxValue, NANOSECONDS), FiniteDuration(Long.MaxValue - 1, NANOSECONDS), (365 * 100).days)
+        List
+          .fill(20)(timeouts)
+          .flatten
+          .traverse(client.send(get[String]("a"), _))
+          .timeout(20.seconds)
+          .assertEquals(List.fill(60)(Right(Some("v"))))
+      }
+    }
+  }
 
   test("when the connection goes before MULTI's OK, the commands after the transaction fail too, without waiting for their timeout") {
     val closesOnMulti = FakeRedisServer { (n, commands) =>
@@ -55,6 +98,120 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  // takes what it's sent and never answers
+  private val silent: (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] =
+    (_, onConnected) => commands => Stream.exec(onConnected) ++ commands.drain ++ Stream.never[IO]
+
+  test("when the server stops answering, the commands after a transaction waiting for MULTI's OK fail with the same error as it") {
+    RedisClient.impl.connection[IO](silent, List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+      for {
+        // once it's overdue, the client sees the server has stopped answering
+        _                    <- client.send(get[String]("x"), 1.second).attempt.start
+        _                    <- IO.sleep(100.millis)
+        (transaction, after) <- client.send(multi(get[String]("a")), get[String]("b"), 30.seconds)
+      } yield {
+        assertEquals(transaction.left.toOption, Some(ServerNotResponding(address(6379)): Throwable))
+        assertEquals(after.left.toOption, Some(ServerNotResponding(address(6379)): Throwable))
+      }
+    }
+  }
+
+  test("when the connection goes once MULTI's OK is in, before the transaction's commands are sent, the multi fails at once") {
+    // takes MULTI, says OK to it, and goes without taking anything else
+    val goingAfterMulti: (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] =
+      (_, onConnected) =>
+        commands => Stream.exec(onConnected) ++ commands.take(1).as(Str("OK"): RESP) ++ Stream.raiseError[IO](new Exception("gone"))
+
+    RedisClient.impl.connection[IO](goingAfterMulti, List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+      client.send(multi(get[String]("a")), 30.seconds).timeout(10.seconds).map { result =>
+        assert(result.left.exists(_.getMessage == "gone"), s"expected the connection's error, got $result")
+      }
+    }
+  }
+
+  test("when the client is closed, the commands after a transaction waiting for MULTI's OK fail with ClientTerminated") {
+    RedisClient.impl.connection[IO](silent, List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).allocated.flatMap {
+      case (client, close) =>
+        for {
+          sending              <- client.send(multi(get[String]("a")), get[String]("b"), 30.seconds).start
+          _                    <- IO.sleep(200.millis)
+          _                    <- close
+          (transaction, after) <- sending.joinWithNever.timeout(2.seconds)
+        } yield {
+          assertEquals(transaction.left.toOption, Some(ClientTerminated: Throwable))
+          assertEquals(after.left.toOption, Some(ClientTerminated: Throwable))
+        }
+    }
+  }
+
+  // takes each command as it comes, and answers them in order, BLPOP 1.5 seconds after the reply before it and anything else a second
+  // after it, counting the connections
+  private def slow(connections: Ref[IO, Int]): (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] =
+    (_, onConnected) =>
+      commands =>
+        Stream.exec(connections.update(_ + 1) >> onConnected) ++
+          Stream.eval(cats.effect.std.Queue.unbounded[IO, RESP]).flatMap { taken =>
+            Stream
+              .fromQueueUnterminated(taken)
+              .evalMap { command =>
+                if (name(command) == "BLPOP") IO.sleep(1500.millis).as(NilArr: RESP) else IO.sleep(1.second).as(Bulk("v"): RESP)
+              }
+              .concurrently(commands.evalMap(taken.offer))
+          }
+
+  test("a blocking command's wait is added to its send's timeout") {
+    IO.ref(0).flatMap { connections =>
+      RedisClient.impl.connection[IO](slow(connections), List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+        client.send(blocking.blpop[String](Key("k"), BlockingSeconds.unsafeFrom(1d)), 1.second).assertEquals(Right(None))
+      }
+    }
+  }
+
+  test("a command sent behind a blocking one, which holds up its reply, isn't taken for a server that stopped answering") {
+    IO.ref(0).flatMap { connections =>
+      RedisClient.impl.connection[IO](slow(connections), List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+        for {
+          blpop <- client.send(blocking.blpop[String](Key("k"), BlockingSeconds.unsafeFrom(2d)), 1.second).start
+          _     <- IO.sleep(100.millis)
+          // its caller gives up after a second, as it's only answered a second after BLPOP is, 1.5 seconds in
+          _     <- client.send(get[String]("a"), 1.second).attempt
+          _     <- IO.sleep(1.second)
+          reply <- blpop.joinWithNever
+          // a connection the watchdog closed would be opened again for this one
+          next   <- client.send(get[String]("b"), 2.seconds)
+          opened <- connections.get
+        } yield {
+          assertEquals(reply, Right(None))
+          assertEquals(next, Right(Some("v")))
+          assertEquals(opened, 1)
+        }
+      }
+    }
+  }
+
+  test("a send waiting for room in the queue times out, as the time it waits counts towards its timeout") {
+    // never takes anything, so the queue fills up
+    val stuck: (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] = (_, _) => _ => Stream.never[IO]
+
+    RedisClient.impl.connection[IO](stuck, List(address(6379))).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+      (1 to 1100).toList
+        .parTraverse(_ => client.send(get[String]("k"), 500.millis).attempt)
+        .timeout(10.seconds)
+        .map(results => assert(results.forall(_.left.exists(_.isInstanceOf[RequestTimedOut[?]])), results.distinct.toString))
+    }
+  }
+
+  test("a send once the connection has ended fails with ClientTerminated at once, instead of waiting for its timeout") {
+    RedisClient.impl.connection[IO](silent, List(address(6379))).allocated.flatMap { case (connection, end) =>
+      RedisClient.impl.mkClient[IO](connection).use { client =>
+        end >> client.send(get[String]("k"), 5.seconds).attempt.timed.map { case (took, result) =>
+          assertEquals(result.flatMap(identity).left.toOption, Some(ClientTerminated: Throwable))
+          assert(took < 2.seconds, s"took $took")
+        }
+      }
+    }
+  }
+
   test("the commands of a send reach the server together, without waiting for each other's replies") {
     // replies only once it has received three commands
     val repliesInThrees =
@@ -65,6 +222,25 @@ final class RedisClientSendSpec extends CatsEffectSuite {
         client
           .send(get[String]("a"), get[String]("b"), get[String]("c"), 2.seconds)
           .assertEquals((Right(Some("a")), Right(Some("b")), Right(Some("c"))))
+      }
+    }
+  }
+
+  test("a reader that throws fails only its own command, and the commands sent with it and after it still get their replies") {
+    val thrown                                       = new IllegalStateException("thrown")
+    implicit val throwing: Read[Bulk, Throwing.type] = Read.instance(_ => throw thrown)
+    val echoing                                      = FakeRedisServer((_, commands) => commands.map(c => bulk(keyOf(c))))
+
+    echoing.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        for {
+          (failed, sentWith) <- client.send(get[Throwing.type]("a"), get[String]("b"), 2.seconds)
+          after              <- client.send(get[String]("c"), 2.seconds)
+        } yield {
+          assertEquals(failed, Left(thrown))
+          assertEquals(sentWith, Right(Some("b")))
+          assertEquals(after, Right(Some("c")))
+        }
       }
     }
   }
@@ -124,8 +300,9 @@ final class RedisClientSendSpec extends CatsEffectSuite {
   }
 
   // the first connection answers WATCH and a GET, then closes; the next ones run transactions, keeping the names of what they get. The
-  // connection numbered refusingDiscardOn refuses DISCARD, as for a user an ACL rule doesn't let run it, so it stays in the transaction
-  private def droppingWatch(seen: cats.effect.Ref[IO, List[String]], refusingDiscardOn: Int = 0) =
+  // connection numbered refusingDiscardOn refuses DISCARD, as for a user an ACL rule doesn't let run it, so it stays in the transaction,
+  // and the one numbered refusingUnwatchOn refuses UNWATCH
+  private def droppingWatch(seen: cats.effect.Ref[IO, List[String]], refusingDiscardOn: Int = 0, refusingUnwatchOn: Int = 0) =
     FakeRedisServer { (n, commands) =>
       def ok(c: RESP): Boolean = Set("WATCH", "UNWATCH", "DISCARD")(name(c))
       if (n == 1) commands.take(2).map(c => if (ok(c)) "+OK\r\n" else bulk("v"))
@@ -137,9 +314,11 @@ final class RedisClientSendSpec extends CatsEffectSuite {
             case (_, c) if name(c) == "EXEC"                              => false -> s"*1\r\n+OK\r\n"
             case (_, c) if name(c) == "DISCARD" && n == refusingDiscardOn =>
               true -> "-NOPERM User has no permissions to run the 'discard' command\r\n"
-            case (_, c) if name(c) == "DISCARD" => false -> "+OK\r\n"
-            case (true, _)                      => true  -> "+QUEUED\r\n"
-            case (false, c)                     => false -> (if (ok(c)) "+OK\r\n" else bulk("w"))
+            case (_, c) if name(c) == "DISCARD"                           => false -> "+OK\r\n"
+            case (_, c) if name(c) == "UNWATCH" && n == refusingUnwatchOn =>
+              false -> "-NOPERM User has no permissions to run the 'unwatch' command\r\n"
+            case (true, _)  => true  -> "+QUEUED\r\n"
+            case (false, c) => false -> (if (ok(c)) "+OK\r\n" else bulk("w"))
           }
           .map(_._2)
     }
@@ -204,21 +383,141 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
-  test("when the server refuses to discard the transaction of a lost watch, the client connects again, as it may still be inside it") {
-    IO.ref(List.empty[String]).flatMap { seen =>
-      droppingWatch(seen, refusingDiscardOn = 2).use { port =>
-        RedisClient[IO].to("127.0.0.1", port).use { client =>
-          for {
-            _    <- watchedThenReconnected(client)
-            lost <- client.send(multi(set("k", 2)), 2.seconds)
-            // on a connection still inside the transaction, the GET would be queued instead of run
-            after <- untilReplied(client.send(get[String]("k"), 2.seconds))
-            ran   <- client.send(multi(set("k", 2)), 2.seconds)
-          } yield {
-            assert(lost.left.exists(_.isInstanceOf[WatchLost]), s"expected WatchLost, got $lost")
-            assertEquals(after, Some("w"))
-            assertEquals(ran, Right(Some(Right(OK))))
+  List("DISCARD", "UNWATCH").foreach { refused =>
+    test(s"when the server refuses $refused for the transaction of a lost watch, its caller hears, and the client connects again") {
+      IO.ref(List.empty[String]).flatMap { seen =>
+        val server =
+          if (refused == "DISCARD") droppingWatch(seen, refusingDiscardOn = 2) else droppingWatch(seen, refusingUnwatchOn = 2)
+        server.use { port =>
+          RedisClient[IO].to("127.0.0.1", port).use { client =>
+            for {
+              _    <- watchedThenReconnected(client)
+              lost <- client.send(multi(set("k", 2)), 2.seconds)
+              // on a connection still inside the transaction, the GET would be queued instead of run
+              after <- untilReplied(client.send(get[String]("k"), 2.seconds))
+              ran   <- client.send(multi(set("k", 2)), 2.seconds)
+            } yield {
+              lost match {
+                case Left(WatchCleanupRefused(_, command, reply)) =>
+                  assertEquals(command, refused)
+                  assert(reply.startsWith("NOPERM"), reply)
+                case other => fail(s"expected WatchCleanupRefused, got $other")
+              }
+              assertEquals(after, Some("w"))
+              assertEquals(ran, Right(Some(Right(OK))))
+            }
           }
+        }
+      }
+    }
+  }
+
+  // watches k on the first connection, and answers the next command with ending, then closes it
+  private def endingWatchWith(ending: String, seen: cats.effect.Ref[IO, List[String]]) =
+    FakeRedisServer { (n, commands) =>
+      if (n == 1) commands.take(2).map(c => if (name(c) == "WATCH") "+OK\r\n" else ending)
+      else
+        commands.evalTap(c => seen.update(_ :+ name(c))).map { c =>
+          name(c) match {
+            case "MULTI" | "DISCARD" | "UNWATCH" => "+OK\r\n"
+            case "SET"                           => "+QUEUED\r\n"
+            case "EXEC"                          => "*1\r\n+OK\r\n"
+            case _                               => bulk("w")
+          }
+        }
+    }
+
+  List(
+    ("EXEC", "*0\r\n", true),
+    ("EXEC", "-EXECABORT Transaction discarded because of previous errors.\r\n", true),
+    ("DISCARD", "+OK\r\n", true),
+    ("RESET", "+RESET\r\n", true),
+    ("EXEC", "-ERR EXEC without MULTI\r\n", false),
+    ("DISCARD", "-ERR DISCARD without MULTI\r\n", false)
+  ).foreach { case (command, reply, ends) =>
+    test(s"a $command sent as a plain command, answered ${reply.trim}, ${if (ends) "ends" else "doesn't end"} the watch") {
+      IO.ref(List.empty[String]).flatMap { seen =>
+        endingWatchWith(reply, seen).use { port =>
+          RedisClient[IO].to("127.0.0.1", port).use { client =>
+            for {
+              _ <- client.send(watch("k"), 2.seconds)
+              _ <- client.send(Protocol(command, EmptyTuple).using(laserdisc.protocol.RESPRead.raw), 2.seconds)
+              _ <- untilReplied(
+                client
+                  .send(get[String]("k"), 2.seconds)
+                  .map(_.flatMap(r => if (r.contains("w")) Right(r) else Left(new Exception(s"still $r"))))
+              )
+              _     <- seen.set(Nil)
+              ran   <- client.send(multi(set("k", 2)), 2.seconds)
+              names <- seen.get
+            } yield
+              if (ends) {
+                assert(ran.exists(_.exists(_ == Right(OK))), s"expected the multi to run, got $ran")
+                assertEquals(names, List("MULTI", "SET", "EXEC"))
+              } else assertNotRun(ran, names)
+          }
+        }
+      }
+    }
+  }
+
+  // answers like a server that runs transactions, reading k as x
+  private def running(c: RESP): String = name(c) match {
+    case "WATCH" | "MULTI" | "DISCARD" | "UNWATCH" => "+OK\r\n"
+    case "SET"                                     => "+QUEUED\r\n"
+    case "EXEC"                                    => "*1\r\n+OK\r\n"
+    case _                                         => bulk("x")
+  }
+
+  // sends watch k and a multi with it after the reconnection
+  private def watchedAgainThenRun(client: RedisClient[IO]): IO[Unit] =
+    for {
+      _ <- untilReplied(
+        client.send(get[String]("k"), 2.seconds).map(_.flatMap(r => if (r.contains("x")) Right(r) else Left(new Exception(s"still $r"))))
+      )
+      watched <- client.send(watch("k"), 2.seconds)
+      ran     <- client.send(multi(set("k", 2)), 2.seconds)
+    } yield {
+      assertEquals(watched, Right(OK))
+      assert(ran.exists(_.exists(_ == Right(OK))), s"expected the multi after watching again to run, got $ran")
+    }
+
+  test("when the connection goes before MULTI's OK, with the keys watched on an earlier one, the multi fails with WatchLost") {
+    // the first connection watches k and closes, the second closes on MULTI, and the third runs everything
+    val closingOnMulti = FakeRedisServer { (n, commands) =>
+      n match {
+        case 1 => commands.take(2).map(c => if (name(c) == "WATCH") "+OK\r\n" else bulk("v"))
+        case 2 => commands.takeWhile(c => name(c) != "MULTI").as(bulk("w"))
+        case _ => commands.map(running)
+      }
+    }
+
+    closingOnMulti.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        for {
+          _    <- watchedThenReconnected(client)
+          lost <- client.send(multi(set("k", 2)), 2.seconds)
+          _    <- watchedAgainThenRun(client)
+        } yield assert(lost.left.exists(_.isInstanceOf[WatchLost]), s"expected WatchLost, got $lost")
+      }
+    }
+  }
+
+  test("when the connection the keys were watched on goes before MULTI's OK, the multi fails with WatchLost") {
+    // the first connection watches k and closes on MULTI, and the second runs everything
+    val closingOnMulti = FakeRedisServer { (n, commands) =>
+      if (n == 1) commands.takeWhile(c => name(c) != "MULTI").as("+OK\r\n") else commands.map(running)
+    }
+
+    closingOnMulti.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        for {
+          watched <- client.send(watch("k"), 2.seconds)
+          lost    <- client.send(multi(set("k", 2)), 2.seconds)
+          _       <- watchedAgainThenRun(client)
+        } yield {
+          assertEquals(watched, Right(OK))
+          assert(lost.left.exists(_.isInstanceOf[WatchLost]), s"expected WatchLost, got $lost")
         }
       }
     }
@@ -265,6 +564,59 @@ final class RedisClientSendSpec extends CatsEffectSuite {
     }
   }
 
+  // the first connection takes the queued sends together, answers the first command, and goes once it has the second
+  private def goingAfterTwo(taking: Deferred[IO, Unit], connections: cats.effect.Ref[IO, Int], next: Pipe[IO, RESP, RESP]) =
+    RedisClient.impl.connection[IO](
+      (_, onConnected) =>
+        commands =>
+          Stream.eval(connections.updateAndGet(_ + 1)).flatMap { n =>
+            if (n == 1)
+              Stream.exec(onConnected >> taking.get) ++
+                commands.take(2).zipWithIndex.collect { case (_, 0L) => Bulk("v"): RESP } ++
+                Stream.raiseError[IO](new Exception("gone"))
+            else next(commands)
+          },
+      List(address(6379))
+    )
+
+  test("when the connection goes, the sends taken off the queue with the ones it was sending, but not sent, go on the next connection") {
+    (Deferred[IO, Unit], IO.ref(0), IO.ref(Vector.empty[RESP])).tupled.flatMap { case (taking, connections, again) =>
+      val answering: Pipe[IO, RESP, RESP] = _.evalTap(c => again.update(_ :+ c)).as(Bulk("v"))
+
+      goingAfterTwo(taking, connections, answering).flatMap(RedisClient.impl.mkClient[IO](_)).use { client =>
+        val keys = List(Key("a"), Key("b"), Key("c"))
+        for {
+          sends    <- keys.parTraverse(k => client.send(get[String](k), 30.seconds).attempt.map(_.flatten)).start
+          _        <- IO.sleep(200.millis)
+          _        <- taking.complete(())
+          outcomes <- sends.joinWithNever.timeout(10.seconds)
+          sent     <- again.get
+        } yield {
+          // the one sent and not answered may have run, so it isn't sent again
+          assertEquals(outcomes.count(_.isLeft), 1, s"$outcomes")
+          assertEquals(outcomes.count(_ == Right(Some("v"))), 2, s"$outcomes")
+          assertEquals(sent.size, 1)
+        }
+      }
+    }
+  }
+
+  test("the sends waiting to go on the next connection fail when the client is closed") {
+    (Deferred[IO, Unit], IO.ref(0)).tupled.flatMap { case (taking, connections) =>
+      goingAfterTwo(taking, connections, _ => Stream.never[IO]).flatMap(RedisClient.impl.mkClient[IO](_)).allocated.flatMap {
+        case (client, close) =>
+          for {
+            sends    <- List(Key("a"), Key("b"), Key("c")).parTraverse(k => client.send(get[String](k), 30.seconds).attempt).start
+            _        <- IO.sleep(200.millis)
+            _        <- taking.complete(())
+            _        <- IO.sleep(200.millis)
+            _        <- close
+            outcomes <- sends.joinWithNever.timeout(2.seconds)
+          } yield assert(outcomes.exists(_.fold(_ == ClientTerminated, _.left.exists(_ == ClientTerminated))), s"$outcomes")
+      }
+    }
+  }
+
   test("a command its caller gave up on while it was queued isn't sent") {
     (Deferred[IO, Unit], IO.ref(Vector.empty[RESP])).tupled.flatMap { case (connected, sent) =>
       // takes nothing from the queue until it's told to
@@ -286,4 +638,53 @@ final class RedisClientSendSpec extends CatsEffectSuite {
       }
     }
   }
+
+  // queues each of two requests as a send of its own would, without waiting for replies
+  private implicit val queuedApart: Handler.Aux[IO, Env[IO], Request[IO] *: Request[IO] *: EmptyTuple, EmptyTuple] =
+    new Handler[IO, Env[IO], Request[IO] *: Request[IO] *: EmptyTuple] {
+      override type LOut = EmptyTuple
+      override def apply(env: Env[IO], in: Request[IO] *: Request[IO] *: EmptyTuple): IO[EmptyTuple] = in match {
+        case first *: second *: _ =>
+          List(first, second)
+            .traverse_(r => Deferred[IO, Unit].flatMap(claim => env._1(Batch(Vector(r), claim, 30.seconds))))
+            .as(EmptyTuple)
+      }
+    }
+
+  test("when the server is unavailable, a send failed slowly doesn't stop the sends queued with it from failing") {
+    // reads nothing for a moment, so that both sends are queued, and goes without connecting
+    val unreachable: (RedisAddress, IO[Unit]) => Pipe[IO, RESP, RESP] =
+      (_, _) => _ => Stream.sleep_[IO](200.millis) ++ Stream.raiseError[IO](new Exception("unreachable"))
+
+    RedisClient.impl.connection[IO](unreachable, List(address(6379))).use { connection =>
+      Deferred[IO, Maybe[Option[String]]].flatMap { answer =>
+        val slow = Request[IO, Option[String]](get[String]("a"), _ => IO.sleep(4.seconds))
+        val next = Request[IO, Option[String]](get[String]("b"), answer.complete(_).void)
+        connection.send(slow *: next *: EmptyTuple, 30.seconds) >>
+          answer.get.timeout(10.seconds).map { reply =>
+            assertEquals(reply.left.toOption.collect { case ServerUnavailable(cause) => cause.getMessage }, Some("unreachable"))
+          }
+      }
+    }
+  }
+
+  test("commands on a connection the server closes while they're sent fail with ServerTerminatedConnection, not the socket's error") {
+    // each connection takes one command and closes, while the client is still writing the next ones: its writes and reads then fail
+    val closing = FakeRedisServer((_, requests) => requests.take(1).as("+OK\r\n"))
+    val value   = "v" * 65536
+    closing.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        (1 to 64).toList.parTraverse(i => client.send(set(Key.unsafeFrom(s"k$i"), value), 5.seconds).attempt.map(_.flatten)).map {
+          results =>
+            val socketErrors = results.collect {
+              case Left(e: java.io.IOException)         => e
+              case Left(e: _root_.fs2.CompositeFailure) => e
+            }
+            assertEquals(socketErrors, Nil)
+        }
+      }
+    }
+  }
 }
+
+private object Throwing

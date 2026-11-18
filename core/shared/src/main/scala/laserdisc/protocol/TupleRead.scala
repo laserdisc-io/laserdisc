@@ -31,7 +31,7 @@ object ElementRead {
   implicit final def elementRead[E, A](implicit S: RESPSub[E], R: Read[E, A]): ElementRead[E, A] = new ElementRead[E, A] {
     override final def read(resp: RESP): Either[String, A] = S.unapply(resp) match {
       case Some(e) => R.read(e).leftMap(_.message)
-      case None    => Left(s"Unexpected element. Was $resp")
+      case None    => Left(s"Unexpected element. Was ${RESPDecErr.shown(resp)}")
     }
   }
 }

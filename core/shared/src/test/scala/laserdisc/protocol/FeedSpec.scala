@@ -43,6 +43,18 @@ final class FeedSpec extends BaseSpec with PublishShardP with MonitorP {
     assertLeftEquals(feed.message(Err("boom")), Err("boom"))
   }
 
+  test("A message that can't be read is handed over with why and as it arrived, and only the server's error is a failure") {
+    val feed       = subscribe[Int](keys)
+    val notAnInt   = bulks("message", "a", "x")
+    val noChannel  = bulks("message", "", "1")
+    val unreadable = (resp: RESP) => feed.received(resp).toOption.flatten.flatMap(_.left.toOption).map(_.message)
+    assertEquals(feed.received(bulks("message", "a", "1")), Some(Right(Message(Key("a"), 1))))
+    assertEquals(feed.received(Arr(Bulk("subscribe"), Bulk("a"), Num(1L))), None)
+    assertEquals(unreadable(notAnInt), Some(notAnInt))
+    assertEquals(unreadable(noChannel), Some(noChannel))
+    assertLeftEquals(feed.received(Err("boom")), Err("boom"))
+  }
+
   test("A subscribe feed keeps the bytes of a message") {
     val payload = Bulk(hex"f5c30301ff")
     assertEquals(subscribe[Bulk](keys).message(Arr(Bulk("message"), Bulk("a"), payload)), Some(Message(Key("a"), payload)))
@@ -69,6 +81,10 @@ final class FeedSpec extends BaseSpec with PublishShardP with MonitorP {
     assertEquals(
       monitor.message(Str("""1793945914.511813 [0 172.17.0.1:52012] "SET" "k" "1"""")),
       Some(MonitorEvent(BigDecimal("1793945914.511813"), NonNegInt(0), "172.17.0.1:52012", Seq("SET", "k", "1")))
+    )
+    assertEquals(
+      monitor.message(Str("""1794324808.229333 [0 [::1]:35078] "SET" "k6" "v"""")),
+      Some(MonitorEvent(BigDecimal("1794324808.229333"), NonNegInt(0), "[::1]:35078", Seq("SET", "k6", "v")))
     )
     assertEquals(
       monitor.message(Str("""1793945915.2341746 [3 lua] "get" "k"""")),
@@ -126,12 +142,10 @@ final class FeedSpec extends BaseSpec with PublishShardP with MonitorP {
     )
   }
 
-  test("HELLO asks for protocol 2, logging in and naming the connection, and reads what each server sends") {
+  test("HELLO asks for protocol 2, naming the connection, and reads what each server sends") {
     val h = redis_6_2
     assertEquals(h.hello.encode, bulks("HELLO", "2"))
-    assertEquals(h.hello(Key("u"), Key("p")).encode, bulks("HELLO", "2", "AUTH", "u", "p"))
     assertEquals(h.hello(ConnectionName("n")).encode, bulks("HELLO", "2", "SETNAME", "n"))
-    assertEquals(h.hello(Key("u"), Key("p"), ConnectionName("n")).encode, bulks("HELLO", "2", "AUTH", "u", "p", "SETNAME", "n"))
     def fields(extra: RESP*) =
       Arr(
         List[RESP](Bulk("server"), Bulk("redis"), Bulk("version"), Bulk("7.4.0"), Bulk("proto"), Num(2L), Bulk("id"), Num(1L)) ++

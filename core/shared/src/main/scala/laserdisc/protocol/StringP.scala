@@ -169,16 +169,17 @@ object StringP {
     }
 
   /** What STRALGO LCS compares: the values at two keys, or two values given directly */
-  sealed trait StrAlgoInput  { def params: List[Bulk] }
+  sealed trait StrAlgoInput  { private[protocol] def params: Seq[Bulk] }
   trait StrAlgoInputBuilders {
     def keys(key1: Key, key2: Key): StrAlgoInput
     def strings[A: Show](value1: A, value2: A): StrAlgoInput
   }
   private[laserdisc] object StrAlgoInput extends StrAlgoInputBuilders {
-    private final class Of(override final val params: List[Bulk]) extends StrAlgoInput
+    private final class Of(override private[protocol] final val params: Seq[Bulk]) extends StrAlgoInput
 
-    def keys(key1: Key, key2: Key): StrAlgoInput             = new Of(List(Bulk("KEYS"), Bulk(key1.value), Bulk(key2.value)))
-    def strings[A: Show](value1: A, value2: A): StrAlgoInput = new Of(List(Bulk("STRINGS"), Value.bulk(value1), Value.bulk(value2)))
+    def keys(key1: Key, key2: Key): StrAlgoInput             = new Of(RESPParamWrite.params("KEYS" *: key1 *: key2 *: EmptyTuple))
+    def strings[A: Show](value1: A, value2: A): StrAlgoInput =
+      new Of(RESPParamWrite.params("STRINGS" *: value1 *: value2 *: EmptyTuple))
   }
 
   /** Where a match is, in each of the two strings LCS compares */
@@ -239,23 +240,23 @@ object StringP {
   }
 
   /** IFEQ, which Valkey and Redis added separately from IFNE, IFDEQ and IFDNE */
-  final class IfEq private (val params: List[Bulk])
+  final class IfEq private (private[protocol] val params: Seq[Bulk])
   private[laserdisc] object IfEq {
-    def apply[A: Show](a: A): IfEq = new IfEq(List(Bulk("IFEQ"), Value.bulk(a)))
+    def apply[A: Show](a: A): IfEq = new IfEq(RESPParamWrite.params("IFEQ" *: a *: EmptyTuple))
   }
 
-  sealed trait Compare  { def params: List[Bulk] }
+  sealed trait Compare  { private[protocol] def params: Seq[Bulk] }
   trait CompareBuilders {
     def ifNe[A: Show](a: A): Compare
     def ifDeq(digest: String): Compare
     def ifDne(digest: String): Compare
   }
   private[laserdisc] object Compare extends CompareBuilders {
-    private final class Of(override final val params: List[Bulk]) extends Compare
+    private final class Of(override private[protocol] final val params: Seq[Bulk]) extends Compare
 
-    def ifNe[A: Show](a: A): Compare   = new Of(List(Bulk("IFNE"), Value.bulk(a)))
-    def ifDeq(digest: String): Compare = new Of(List(Bulk("IFDEQ"), Bulk(digest)))
-    def ifDne(digest: String): Compare = new Of(List(Bulk("IFDNE"), Bulk(digest)))
+    def ifNe[A: Show](a: A): Compare   = new Of(RESPParamWrite.params("IFNE" *: a *: EmptyTuple))
+    def ifDeq(digest: String): Compare = new Of(RESPParamWrite.params("IFDEQ" *: digest *: EmptyTuple))
+    def ifDne(digest: String): Compare = new Of(RESPParamWrite.params("IFDNE" *: digest *: EmptyTuple))
   }
 
   // the builders each feature's commands take, and the types of their replies
@@ -331,16 +332,16 @@ trait StringBaseP extends Features {
       "SUBSTR"
     )
 
-  private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegInt])
+  private final val minusOneIsNone = RESPRead.instance(Read.numMinusOneIsNone[NonNegLong])
 
   /** The builders of this family's commands, and the types of their replies */
   val stringtypes: StringP.StringTypes = new StringP.StringTypes {}
 
   final def append[A: Show](key: Key, value: A): Single[NonNegInt] = Protocol("APPEND", key *: value *: EmptyTuple).as[Num, NonNegInt]
 
-  final def bitcount(key: Key): Single[NonNegInt]                           = Protocol("BITCOUNT", key).as[Num, NonNegInt]
-  final def bitcount(key: Key, start: Index, end: Index): Single[NonNegInt] =
-    Protocol("BITCOUNT", key *: start *: end *: EmptyTuple).as[Num, NonNegInt]
+  final def bitcount(key: Key): Single[NonNegLong]                           = Protocol("BITCOUNT", key).as[Num, NonNegLong]
+  final def bitcount(key: Key, start: Index, end: Index): Single[NonNegLong] =
+    Protocol("BITCOUNT", key *: start *: end *: EmptyTuple).as[Num, NonNegLong]
 
   final def bitfield(key: Key, steps: BitField): Single[Seq[Option[Long]]] =
     Protocol("BITFIELD", key *: steps.params *: EmptyTuple).using(RESPRead.instance(StringP.bitFieldResults))
@@ -355,10 +356,10 @@ trait StringBaseP extends Features {
   final def bitopnot(key: Key, destinationKey: Key): Single[NonNegInt] =
     Protocol("BITOP", "NOT" :: destinationKey.value :: key.value :: Nil).as[Num, NonNegInt]
 
-  final def bitpos(key: Key, bit: Bit): Single[Option[NonNegInt]] = Protocol("BITPOS", key *: bit *: EmptyTuple).using(minusOneIsNone)
-  final def bitpos(key: Key, bit: Bit, start: Index): Single[Option[NonNegInt]] =
+  final def bitpos(key: Key, bit: Bit): Single[Option[NonNegLong]] = Protocol("BITPOS", key *: bit *: EmptyTuple).using(minusOneIsNone)
+  final def bitpos(key: Key, bit: Bit, start: Index): Single[Option[NonNegLong]] =
     Protocol("BITPOS", key *: bit *: start *: EmptyTuple).using(minusOneIsNone)
-  final def bitpos(key: Key, bit: Bit, start: Index, end: Index): Single[Option[NonNegInt]] =
+  final def bitpos(key: Key, bit: Bit, start: Index, end: Index): Single[Option[NonNegLong]] =
     Protocol("BITPOS", key *: bit *: start *: end *: EmptyTuple).using(minusOneIsNone)
 
   final def decr[A: Read[Num, _]](key: Key): Single[A] = Protocol("DECR", key).as[Num, A]
@@ -493,11 +494,11 @@ trait StringBitUnitP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("BITCOUNT: BIT BYTE", "BITPOS: BIT BYTE")
 
-  final def bitcount(key: Key, start: Index, end: Index, unit: BitUnit): Single[NonNegInt] =
-    Protocol("BITCOUNT", key *: start *: end *: unit *: EmptyTuple).as[Num, NonNegInt]
+  final def bitcount(key: Key, start: Index, end: Index, unit: BitUnit): Single[NonNegLong] =
+    Protocol("BITCOUNT", key *: start *: end *: unit *: EmptyTuple).as[Num, NonNegLong]
 
-  final def bitpos(key: Key, bit: Bit, start: Index, end: Index, unit: BitUnit): Single[Option[NonNegInt]] =
-    Protocol("BITPOS", key *: bit *: start *: end *: unit *: EmptyTuple).using(RESPRead.instance(Read.numMinusOneIsNone[NonNegInt]))
+  final def bitpos(key: Key, bit: Bit, start: Index, end: Index, unit: BitUnit): Single[Option[NonNegLong]] =
+    Protocol("BITPOS", key *: bit *: start *: end *: unit *: EmptyTuple).using(RESPRead.instance(Read.numMinusOneIsNone[NonNegLong]))
 }
 
 /** STRALGO LCS: Redis 6.2 and KeyDB. Redis 7.0 replaced it with LCS */

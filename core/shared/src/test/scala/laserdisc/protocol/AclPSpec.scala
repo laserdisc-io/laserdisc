@@ -28,9 +28,25 @@ final class AclPSpec extends BaseSpec with ServerP {
   private def bulks(ss: String*): Arr = Arr(ss.map(Bulk(_)).toList)
   private val hash                    = "2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b"
 
+  test("The ACL protocol allows or denies a command, and a category only with its own rules") {
+    assertEquals(servertypes.aclRules.allow(AclCommand("client|kill")).deny(AclCommand("get")).params, List("+client|kill", "-get"))
+    assertEquals(servertypes.aclRules.allowCategory(AclCategory("all")).params, List("+@all"))
+    assert(compileErrors("servertypes.aclRules.allow(AclCommand(\"@all\"))").nonEmpty)
+  }
+
+  test("The ACL protocol adds and removes a password by its SHA-256, which must be 64 lowercase hexadecimal characters") {
+    assertEquals(servertypes.aclRules.hashedPassword(Sha256.unsafeFrom(hash)).params, List(s"#$hash"))
+    assertEquals(servertypes.aclRules.removeHashedPassword(Sha256.unsafeFrom(hash)).params, List(s"!$hash"))
+    assert(compileErrors("""servertypes.aclRules.hashedPassword(Key("abc"))""").nonEmpty)
+  }
+
   test("The ACL protocol using setuser sends the rules in order") {
     val rules =
-      servertypes.aclRules.reset.on.password(Key("secret")).keys(AclPattern("app:*")).allow(Key("get")).denyCategory(Key("dangerous"))
+      servertypes.aclRules.reset.on
+        .password(Key("secret"))
+        .keys(AclPattern("app:*"))
+        .allow(AclCommand("get"))
+        .denyCategory(AclCategory("dangerous"))
     assertEquals(
       acl.setuser(Key("u"), rules).encode,
       bulks("ACL", "SETUSER", "u", "reset", "on", ">secret", "~app:*", "+get", "-@dangerous")
@@ -39,11 +55,16 @@ final class AclPSpec extends BaseSpec with ServerP {
     val withSelectors =
       servertypes.aclSelectorRules.on
         .readKeys(AclPattern("r:*"))
-        .selector(servertypes.aclSelectorRules.keys(AclPattern("b:*")).allow(Key("set")))
+        .selector(servertypes.aclSelector.keys(AclPattern("b:*")).allow(AclCommand("set")))
     assertEquals(acl.setuser(Key("u"), withSelectors).encode, bulks("ACL", "SETUSER", "u", "on", "%R~r:*", "(\"~b:*\" \"+set\")"))
     // the server takes quotes and backslashes out of a selector's rules, so they're quoted and escaped to stay as they are
-    val quoting = servertypes.aclSelectorRules.selector(servertypes.aclSelectorRules.keys(AclPattern.unsafeFrom("\"q\\:*\"")))
+    val quoting = servertypes.aclSelectorRules.selector(servertypes.aclSelector.keys(AclPattern.unsafeFrom("\"q\\:*\"")))
     assertEquals(acl.setuser(Key("u"), quoting).encode, bulks("ACL", "SETUSER", "u", "(\"~\\\"q\\\\:*\\\"\")"))
+    // a selector only holds permissions: the server refuses passwords, on, off and reset in one
+    assert(compileErrors("""servertypes.aclSelector.password(Key("secret"))""").nonEmpty)
+    assert(compileErrors("""servertypes.aclSelector.on""").nonEmpty)
+    assert(compileErrors("""servertypes.aclSelector.reset""").nonEmpty)
+    assert(compileErrors("""servertypes.aclSelectorRules.selector(servertypes.aclSelectorRules.on)""").nonEmpty)
     // and refuses spaces in the patterns of keys and channels
     assert(AclPattern.from("a b").isLeft)
     assert(compileErrors("""servertypes.aclSelectorRules.keys(AclPattern("a b"))""").nonEmpty)
@@ -62,7 +83,12 @@ final class AclPSpec extends BaseSpec with ServerP {
     assertEquals(acl.setuser(Key("u"), rules.allDatabases).encode, bulks("ACL", "SETUSER", "u", "alldbs"))
     assertEquals(acl.setuser(Key("u"), rules.resetDatabases).encode, bulks("ACL", "SETUSER", "u", "resetdbs"))
     assertEquals(
-      acl.setuser(Key("u"), rules.selector(rules.databases(OneOrMore.unsafeFrom(List(DbIndex(1)))).keys(AclPattern("b:*")))).encode,
+      acl
+        .setuser(
+          Key("u"),
+          rules.selector(servertypes.aclDatabaseSelector.databases(OneOrMore.unsafeFrom(List(DbIndex(1)))).keys(AclPattern("b:*")))
+        )
+        .encode,
       bulks("ACL", "SETUSER", "u", "(\"db=1\" \"~b:*\")")
     )
   }
@@ -160,6 +186,22 @@ final class AclPSpec extends BaseSpec with ServerP {
     }
     acl.log(PosInt(1)).decode(Arr(withIds)).onRight(_.map(e => (e.entryId, e.createdAt, e.updatedAt)) == Seq((0L, 17L, 18L)))
     assert(acl.log.decode(Arr(entry(Nil))).isLeft)
+  }
+
+  test("The ACL protocol using log on Dragonfly reads its entries, in simple strings and with when they were created") {
+    def entry(reason: String, created: Long) = Arr(
+      List("reason", reason, "object", "AUTH", "username", "nobody", "age-seconds", "0.903047", "client-info", "id=1").map(Str(_)) :::
+        List(Str("timestamp-created"), Num(created))
+    )
+    assertEquals(
+      dragonfly_2_0.acl.log.decode(Arr(entry("AUTH", 17L), entry("COMMAND", 18L))),
+      Seq(
+        AclLogEntryOfDragonfly("AUTH", "AUTH", "nobody", 0.903047, "id=1", 17L),
+        AclLogEntryOfDragonfly("COMMAND", "AUTH", "nobody", 0.903047, "id=1", 18L)
+      )
+    )
+    assertEquals(dragonfly_2_0.acl.log(PosInt(1)).decode(Arr(Nil)), Seq.empty)
+    assert(dragonfly_2_0.acl.log.decode(Arr(Arr(Str("reason"), Str("AUTH")))).isLeft)
   }
 
   test("The ACL protocol using dryrun sends the command it is given and reads OK as None and a reason as Some") {

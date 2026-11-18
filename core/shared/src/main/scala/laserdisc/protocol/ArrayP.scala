@@ -49,14 +49,16 @@ object ArrayP {
   }
 
   /** What ARGREP looks for: a value that's exactly this, contains this, or matches a glob pattern or a regular expression */
-  sealed trait Predicate { def params: List[Bulk] }
+  sealed trait Predicate { private[protocol] def params: Seq[Bulk] }
   object Predicate       {
-    private final class Of(override final val params: List[Bulk]) extends Predicate
+    private final class Of(override private[protocol] final val params: Seq[Bulk]) extends Predicate
 
-    def exact[A: Show](value: A): Predicate    = new Of(List(Bulk("EXACT"), Value.bulk(value)))
-    def matching[A: Show](value: A): Predicate = new Of(List(Bulk("MATCH"), Value.bulk(value)))
-    def glob(pattern: GlobPattern): Predicate  = new Of(List(Bulk("GLOB"), Bulk(pattern.value)))
-    def re(pattern: String): Predicate         = new Of(List(Bulk("RE"), Bulk(pattern)))
+    implicit final val predicateRESPParamWrite: RESPParamWrite[Predicate] = RESPParamWrite.instance(_.params)
+
+    def exact[A: Show](value: A): Predicate    = new Of(RESPParamWrite.params("EXACT" *: value *: EmptyTuple))
+    def matching[A: Show](value: A): Predicate = new Of(RESPParamWrite.params("MATCH" *: value *: EmptyTuple))
+    def glob(pattern: GlobPattern): Predicate  = new Of(RESPParamWrite.params("GLOB" *: pattern.value *: EmptyTuple))
+    def re(pattern: String): Predicate         = new Of(RESPParamWrite.params("RE" *: pattern *: EmptyTuple))
   }
 
   /** AND, OR, LIMIT and NOCASE, for ARGREP: match all the predicates or any of them, stop after some matches, and ignore case */
@@ -81,7 +83,7 @@ object ArrayP {
   object Op {
     final class Number private[ArrayP] (private[protocol] val param: String)
     final class Bits private[ArrayP] (private[protocol] val param: String)
-    final class Count private[ArrayP] (private[protocol] val params: List[Bulk])
+    final class Count private[ArrayP] (private[protocol] val params: Seq[Bulk])
 
     final val sum: Number                  = new Number("SUM")
     final val min: Number                  = new Number("MIN")
@@ -89,8 +91,8 @@ object ArrayP {
     final val and: Bits                    = new Bits("AND")
     final val or: Bits                     = new Bits("OR")
     final val xor: Bits                    = new Bits("XOR")
-    final val used: Count                  = new Count(List(Bulk("USED")))
-    def matching[A: Show](value: A): Count = new Count(List(Bulk("MATCH"), Value.bulk(value)))
+    final val used: Count                  = new Count(RESPParamWrite.params("USED"))
+    def matching[A: Show](value: A): Count = new Count(RESPParamWrite.params("MATCH" *: value *: EmptyTuple))
   }
 
   /** ARINFO's reply: how many elements are set, the highest index plus one, the next index of ARINSERT, and how the array is stored */
@@ -138,8 +140,9 @@ object ArrayP {
   }
 }
 
-/** The arrays of Redis 8.8: values at whole number indexes, with gaps. Indexes above the largest `Long` aren't supported, though a server
-  * takes them, and replies with one fail to read
+/** The arrays of Redis 8.8: values at whole number indexes, with gaps. The highest index to use is one below the largest `Long`: a server
+  * takes higher ones, but replies holding one fail to read, and so do ARLEN and ARINFO's length, the highest index plus one, once an
+  * element is set at the largest `Long` itself
   */
 trait ArrayP extends Features {
   import ArrayP.{Bound, Full, FullInfo, GrepOptions, Info, Op, Predicate, Rev}
@@ -209,8 +212,13 @@ trait ArrayP extends Features {
   final def argetrange[A: Read[Bulk, _]](key: Key, start: NonNegLong, end: NonNegLong): Single[Seq[Option[A]]] =
     Protocol("ARGETRANGE", key *: start *: end *: EmptyTuple).as[Arr.Of[OrNullBulk[Bulk]], Seq[Option[A]]]
 
-  private final def grepParams(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): List[Bulk] =
-    Bulk(key.value) :: Bulk(start.param) :: Bulk(end.param) :: predicates.value.flatMap(_.params)
+  private final def grepParams(
+      key: Key,
+      start: Bound,
+      end: Bound,
+      predicates: OneOrMore[Predicate]
+  ): Key *: String *: String *: List[Predicate] *: EmptyTuple =
+    key *: start.param *: end.param *: predicates.value *: EmptyTuple
 
   /** The indexes of the elements from `start` to `end` that match */
   final def argrep(key: Key, start: Bound, end: Bound, predicates: OneOrMore[Predicate]): Single[Seq[NonNegLong]] =
@@ -224,7 +232,7 @@ trait ArrayP extends Features {
       predicates: OneOrMore[Predicate],
       options: GrepOptions
   ): Single[Seq[NonNegLong]] =
-    Protocol("ARGREP", grepParams(key, start, end, predicates) ++ options.params.map(Bulk(_))).as[Arr.Of[Num], Seq[NonNegLong]]
+    Protocol("ARGREP", grepParams(key, start, end, predicates) *: options.params *: EmptyTuple).as[Arr.Of[Num], Seq[NonNegLong]]
 
   /** The indexes and values of the elements from `start` to `end` that match */
   final def argrepwithvalues[A: Read[Bulk, _]](
@@ -233,7 +241,7 @@ trait ArrayP extends Features {
       end: Bound,
       predicates: OneOrMore[Predicate]
   ): Single[Seq[(NonNegLong, A)]] =
-    Protocol("ARGREP", grepParams(key, start, end, predicates) :+ Bulk("WITHVALUES"))
+    Protocol("ARGREP", grepParams(key, start, end, predicates) *: "WITHVALUES" *: EmptyTuple)
       .as[Arr.Of[Arr.AsTuple[Num *: Bulk *: EmptyTuple]], Seq[(NonNegLong, A)]]
   final def argrepwithvalues[A: Read[Bulk, _]](
       key: Key,
@@ -250,7 +258,7 @@ trait ArrayP extends Features {
       predicates: OneOrMore[Predicate],
       options: GrepOptions
   ): Single[Seq[(NonNegLong, A)]] =
-    Protocol("ARGREP", grepParams(key, start, end, predicates) ++ options.params.map(Bulk(_)) :+ Bulk("WITHVALUES"))
+    Protocol("ARGREP", grepParams(key, start, end, predicates) *: options.params *: "WITHVALUES" *: EmptyTuple)
       .as[Arr.Of[Arr.AsTuple[Num *: Bulk *: EmptyTuple]], Seq[(NonNegLong, A)]]
 
   /** Fails with an error when the key doesn't exist */
@@ -281,8 +289,7 @@ trait ArrayP extends Features {
 
   /** Sets the values at their indexes, with how many weren't set before */
   final def armset[A: Show](key: Key, values: OneOrMore[(NonNegLong, A)]): Single[NonNegLong] =
-    Protocol("ARMSET", Bulk(key.value) :: values.value.flatMap { case (index, value) => List(Bulk(index), Value.bulk(value)) })
-      .as[Num, NonNegLong]
+    Protocol("ARMSET", key *: values.value *: EmptyTuple).as[Num, NonNegLong]
 
   /** The index the next `arinsert` will use */
   final def arnext(key: Key): Single[NonNegLong] = Protocol("ARNEXT", key).as[Num, NonNegLong]

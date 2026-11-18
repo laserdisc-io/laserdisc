@@ -22,7 +22,6 @@
 package laserdisc
 package interop
 
-import laserdisc.interop.circe.*
 import munit.FunSuite
 
 final class CirceSpecJvmNative extends FunSuite with EitherTestSyntax {

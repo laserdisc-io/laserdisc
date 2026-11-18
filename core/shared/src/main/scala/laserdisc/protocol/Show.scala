@@ -24,75 +24,91 @@ package protocol
 
 import scala.annotation.implicitNotFound
 
+/** How an `A` is written as the text a command sends, such as a value to store. Build one with the functions of its companion, or from
+  * another with `contramap`
+  */
 @implicitNotFound(
   """Implicit not found Show[${A}].
 
 Try writing your own, for example:
 
-implicit final val myShow: Show[${A}] = new Show[${A}] {
-  override final def show(a: ${A}): String = ???
+implicit final val myShow: Show[${A}] = Show.instance { (a: ${A}) =>
+  ??? // the text a is sent as
 }
+
+You may also be able to build it from an existing Show with contramap.
 """
-) trait Show[A] {
+)
+sealed trait Show[A] {
   def show(a: A): String
 
-  final def contramap[B](f: B => A): Show[B] = Show.instance(b => show(f(b)))
+  // what's sent for a: its text, except for a Bulk, and what's shown with a Show built from Show[Bulk], which are sent as their bytes
+  private[protocol] def bulk(a: A): Bulk = Bulk(show(a))
+
+  /** Writes a `B` by turning it into the `A` this writes, as `Show[Long].contramap(_.value)` for a type holding a `Long` */
+  final def contramap[B](f: B => A): Show[B] = new Show.Contramapped(this, f)
 }
 
 object Show extends ShowInstances {
   @inline final def apply[A](implicit instance: Show[A]): Show[A] = instance
 
-  final def const[A](s: =>String): Show[A] =
-    new Show[A] {
-      override def show(a: A): String = s
-    }
-  final def unsafeFromToString[A]: Show[A] =
-    new Show[A] {
-      override def show(a: A): String = a.toString
-    }
-  final def instance[A](f: A => String): Show[A] =
-    new Show[A] {
-      override def show(a: A): String = f(a)
-    }
+  // the only Show there is: every one is built with the functions below
+  private final class Of[A](f: A => String) extends Show[A] {
+    override final def show(a: A): String = f(a)
+  }
+  private final class Contramapped[A, B](S: Show[A], f: B => A) extends Show[B] {
+    override final def show(b: B): String                 = S.show(f(b))
+    override private[protocol] final def bulk(b: B): Bulk = S.bulk(f(b))
+  }
+  private final class OfBulk extends Show[Bulk] {
+    override final def show(b: Bulk): String                 = b.value
+    override private[protocol] final def bulk(b: Bulk): Bulk = b
+  }
+
+  private[protocol] final val bulkShow: Show[Bulk] = new OfBulk
+
+  /** Writes every value as `s` */
+  final def const[A](s: =>String): Show[A] = new Of(_ => s)
+
+  /** Writes a value as its `toString`, which suits only a type whose `toString` is exactly the text to send */
+  final def unsafeFromToString[A]: Show[A] = new Of(_.toString)
+
+  /** Writes a value as the text `f` gives */
+  final def instance[A](f: A => String): Show[A] = new Of(f)
 }
 
 private[protocol] sealed trait ShowInstances {
-  private final def doubleCases(d: Double): String = d match {
-    case Double.NegativeInfinity => "-inf"
-    case Double.PositiveInfinity => "+inf"
-    case d                       => d.toString
-  }
-
-  implicit final val doubleShow: Show[Double] = Show.unsafeFromToString
+  // the same text on every platform, which toString isn't
+  implicit final val doubleShow: Show[Double] = Show.instance(Numbers.show)
   implicit final val intShow: Show[Int]       = Show.unsafeFromToString
   implicit final val longShow: Show[Long]     = Show.unsafeFromToString
   implicit final val stringShow: Show[String] = Show.instance(identity)
   implicit final val symbolShow: Show[Symbol] = Show.instance(_.name)
 
-  implicit final val blockingSecondsShow: Show[BlockingSeconds] = Show.instance { s =>
-    if (s.value == s.value.toLong.toDouble) s.value.toLong.toString else s.value.toString
-  }
-  implicit final val connectionNameShow: Show[ConnectionName] = Show.unsafeFromToString
-  implicit final val dbIndexShow: Show[DbIndex]               = Show.unsafeFromToString
-  implicit final val globPatternShow: Show[GlobPattern]       = Show.unsafeFromToString
-  implicit final val hostShow: Show[Host]                     = Show.unsafeFromToString
-  implicit final val indexShow: Show[Index]                   = Show.unsafeFromToString
-  implicit final val keyShow: Show[Key]                       = Show.unsafeFromToString
-  implicit final val latitudeShow: Show[Latitude]             = Show.unsafeFromToString
-  implicit final val longitudeShow: Show[Longitude]           = Show.unsafeFromToString
-  implicit final val nodeIdShow: Show[NodeId]                 = Show.unsafeFromToString
-  implicit final val sha1Show: Show[Sha1]                     = Show.unsafeFromToString
-  implicit final val nonNegDoubleShow: Show[NonNegDouble]     = Show.instance(d => doubleCases(d.value))
-  implicit final val nonNegIntShow: Show[NonNegInt]           = Show.unsafeFromToString
-  implicit final val nonNegLongShow: Show[NonNegLong]         = Show.unsafeFromToString
-  implicit final val nonZeroDoubleShow: Show[NonZeroDouble]   = Show.instance(d => doubleCases(d.value))
-  implicit final val nonZeroIntShow: Show[NonZeroInt]         = Show.unsafeFromToString
-  implicit final val nonZeroLongShow: Show[NonZeroLong]       = Show.unsafeFromToString
-  implicit final val portShow: Show[Port]                     = Show.unsafeFromToString
-  implicit final val posIntShow: Show[PosInt]                 = Show.unsafeFromToString
-  implicit final val posLongShow: Show[PosLong]               = Show.unsafeFromToString
-  implicit final val rangeOffsetShow: Show[RangeOffset]       = Show.unsafeFromToString
-  implicit final val slotShow: Show[Slot]                     = Show.unsafeFromToString
-  implicit final val stringLengthShow: Show[StringLength]     = Show.unsafeFromToString
-  implicit final val validDoubleShow: Show[ValidDouble]       = Show.instance(d => doubleCases(d.value))
+  implicit final val accessFrequencyShow: Show[AccessFrequency] = Show.unsafeFromToString
+  implicit final val blockingSecondsShow: Show[BlockingSeconds] = Show.instance(s => Numbers.show(s.value))
+  implicit final val connectionNameShow: Show[ConnectionName]   = Show.unsafeFromToString
+  implicit final val dbIndexShow: Show[DbIndex]                 = Show.unsafeFromToString
+  implicit final val globPatternShow: Show[GlobPattern]         = Show.unsafeFromToString
+  implicit final val hostShow: Show[Host]                       = Show.unsafeFromToString
+  implicit final val ipAddressShow: Show[IpAddress]             = Show.unsafeFromToString
+  implicit final val indexShow: Show[Index]                     = Show.unsafeFromToString
+  implicit final val keyShow: Show[Key]                         = Show.unsafeFromToString
+  implicit final val latitudeShow: Show[Latitude]               = Show.instance(l => Numbers.show(l.value))
+  implicit final val longitudeShow: Show[Longitude]             = Show.instance(l => Numbers.show(l.value))
+  implicit final val nodeIdShow: Show[NodeId]                   = Show.unsafeFromToString
+  implicit final val sha1Show: Show[Sha1]                       = Show.unsafeFromToString
+  implicit final val nonNegDoubleShow: Show[NonNegDouble]       = Show.instance(d => Numbers.show(d.value))
+  implicit final val nonNegIntShow: Show[NonNegInt]             = Show.unsafeFromToString
+  implicit final val nonNegLongShow: Show[NonNegLong]           = Show.unsafeFromToString
+  implicit final val nonZeroDoubleShow: Show[NonZeroDouble]     = Show.instance(d => Numbers.show(d.value))
+  implicit final val nonZeroIntShow: Show[NonZeroInt]           = Show.unsafeFromToString
+  implicit final val nonZeroLongShow: Show[NonZeroLong]         = Show.unsafeFromToString
+  implicit final val portShow: Show[Port]                       = Show.unsafeFromToString
+  implicit final val posIntShow: Show[PosInt]                   = Show.unsafeFromToString
+  implicit final val posLongShow: Show[PosLong]                 = Show.unsafeFromToString
+  implicit final val rangeOffsetShow: Show[RangeOffset]         = Show.unsafeFromToString
+  implicit final val slotShow: Show[Slot]                       = Show.unsafeFromToString
+  implicit final val stringLengthShow: Show[StringLength]       = Show.unsafeFromToString
+  implicit final val validDoubleShow: Show[ValidDouble]         = Show.instance(d => Numbers.show(d.value))
 }

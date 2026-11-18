@@ -24,6 +24,7 @@ package fs2
 package parallel
 package testcases
 
+import _root_.fs2.Pipe
 import cats.effect.kernel.Concurrent
 import laserdisc.protocol.RESP
 

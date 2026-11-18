@@ -45,7 +45,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
     KeyEncoding.other(Key("compact")) -> "compact"
   )
   private implicit final val restoreEvictionArb: Arbitrary[KeyRestoreEviction] = Arbitrary {
-    nonNegIntArb.arbitrary.flatMap(nni => Gen.oneOf(KeyIdleTimeEviction(nni), KeyFrequencyEviction(nni)))
+    Gen.oneOf(nonNegIntArb.arbitrary.map(KeyIdleTimeEviction(_)), accessFrequencyArb.arbitrary.map(KeyFrequencyEviction(_)))
   }
   private implicit final val restoreModeArb: Arbitrary[KeyRestoreMode] = Arbitrary {
     Gen.oneOf(KeyRestoreMode.replace, KeyRestoreMode.absolutettl, KeyRestoreMode.both)
@@ -130,9 +130,9 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using expireat roundtrips successfully given key and expire timestamp") {
-    forAll { (k: Key, nni: NonNegInt, b: Boolean) =>
-      val protocol = expireat(k, nni)
-      assertEquals(protocol.encode, Arr(Bulk("EXPIREAT"), Bulk(k), Bulk(nni)))
+    forAll { (k: Key, nnl: NonNegLong, b: Boolean) =>
+      val protocol = expireat(k, nnl)
+      assertEquals(protocol.encode, Arr(Bulk("EXPIREAT"), Bulk(k), Bulk(nnl)))
       assertEquals(protocol.decode(boolToNum(b)), b)
     }
   }
@@ -143,6 +143,12 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
       assertEquals(protocol.encode, Arr(Bulk("KEYS"), Bulk(g)))
       assertEquals(protocol.decode(Arr(ks.map(Bulk(_)))), ks)
     }
+  }
+
+  test("The Key protocol reads a name with control characters as it is, which can be sent back") {
+    val odd = Key.unsafeFrom("a\u0001\nb")
+    assertEquals(keys(GlobPattern("*")).decode(Arr(Bulk(odd))), Seq(odd))
+    assertEquals(del(odd).encode, Arr(Bulk("DEL"), Bulk("a\u0001\nb")))
   }
 
   property("The Key protocol using migrate roundtrips successfully given key, host, port, db index and timeout") {
@@ -218,11 +224,15 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using obj.freq roundtrips successfully given key") {
-    forAll { (k: Key, nni: NonNegInt) =>
+    forAll { (k: Key, af: AccessFrequency) =>
       val protocol = obj.freq(k)
       assertEquals(protocol.encode, Arr(Bulk("OBJECT"), Bulk("FREQ"), Bulk(k)))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+      assertEquals(protocol.decode(Num(af.value.toLong)), af)
     }
+  }
+
+  test("The Key protocol using obj.freq fails on a counter above 255") {
+    assert(obj.freq(Key("k")).decode(Num(256L)).isLeft)
   }
 
   property("The Key protocol using obj.idletime roundtrips successfully given key") {
@@ -316,20 +326,20 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   property("The Key protocol using restore roundtrips successfully given key, ttl, serialized value and eviction") {
     forAll { (k: Key, nnl: NonNegLong, s: String, e: KeyRestoreEviction) =>
       val protocol = restore(k, nnl, Bulk(s), e)
-      assertEquals(protocol.encode, Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk(s), Bulk(e.param), Bulk(e.seconds)))
+      assertEquals(protocol.encode, Arr(Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: e.params.map(Bulk(_))))
       assertEquals(protocol.decode(Str(OK.value)), OK)
     }
   }
 
   property("The Key protocol using restore sends IDLETIME and FREQ for the eviction") {
-    forAll { (k: Key, nnl: NonNegLong, nni: NonNegInt) =>
+    forAll { (k: Key, nnl: NonNegLong, nni: NonNegInt, af: AccessFrequency) =>
       assertEquals(
         restore(k, nnl, Bulk("v"), KeyIdleTimeEviction(nni)).encode,
         Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk("v"), Bulk("IDLETIME"), Bulk(nni))
       )
       assertEquals(
-        restore(k, nnl, Bulk("v"), KeyFrequencyEviction(nni)).encode,
-        Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk("v"), Bulk("FREQ"), Bulk(nni))
+        restore(k, nnl, Bulk("v"), KeyFrequencyEviction(af)).encode,
+        Arr(Bulk("RESTORE"), Bulk(k), Bulk(nnl), Bulk("v"), Bulk("FREQ"), Bulk(af))
       )
     }
   }
@@ -340,7 +350,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
       assertEquals(
         protocol.encode,
         Arr(
-          Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)) ::: (Bulk(e.param) :: Bulk(e.seconds) :: Nil)
+          Bulk("RESTORE") :: Bulk(k) :: Bulk(nnl) :: Bulk(s) :: m.params.map(Bulk(_)) ::: e.params.map(Bulk(_))
         )
       )
       assertEquals(protocol.decode(Str(OK.value)), OK)
@@ -412,11 +422,15 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using wait roundtrips successfully given replicas and timeout") {
-    forAll { (pi1: PosInt, pl: PosLong, pi2: PosInt) =>
+    forAll { (pi1: PosInt, pl: PosLong, nni: NonNegInt) =>
       val protocol = wait(pi1, pl)
       assertEquals(protocol.encode, Arr(Bulk("WAIT"), Bulk(pi1), Bulk(pl)))
-      assertEquals(protocol.decode(Num(pi2.value.toLong)), pi2)
+      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
     }
+  }
+
+  test("The Key protocol using wait reads that no replica acknowledged the writes") {
+    assertEquals(wait(PosInt(1), PosLong(10L)).decode(Num(0L)), NonNegInt(0))
   }
 
   property("The Key protocol using copy roundtrips successfully given source, destination, db and REPLACE") {
@@ -525,7 +539,7 @@ abstract class KeyPSpec extends BaseSpec with KeyP {
   }
 
   property("The Key protocol using waitaof reads how many it reached locally and on replicas") {
-    forAll { (l: NonNegInt, r: NonNegInt, t: NonNegLong) =>
+    forAll { (l: NonNegInt, r: NonNegInt, t: PosLong) =>
       val protocol = waitaof(l, r, t)
       assertEquals(protocol.encode, Arr(Bulk("WAITAOF"), Bulk(l), Bulk(r), Bulk(t)))
       assertEquals(protocol.decode(Arr(Num(l.value.toLong), Num(r.value.toLong))), l -> r)

@@ -23,8 +23,20 @@ package laserdisc.fs2
 
 import _root_.fs2.io.net.SocketOption
 
+import java.io.IOException
 import scala.annotation.unused
+import scala.scalajs.js
 
 private[fs2] object PlatformDependent {
-  final def socketOptions(@unused receiveBufferSizeBytes: Int): List[SocketOption] = List(SocketOption.noDelay(true))
+  // keep-alive lets the system notice a server that's gone without closing the connection, which nothing else does for a command that
+  // waits for as long as it takes, or for MONITOR
+  final def socketOptions(@unused receiveBufferSizeBytes: Int): List[SocketOption] =
+    List(SocketOption.noDelay(true), SocketOption.keepAlive(true))
+
+  // whether a connection failed with an error of its socket: Node.js gives some, like a write cancelled by a reset, as they are
+  final def socketError(failure: Throwable): Boolean =
+    failure match {
+      case _: IOException | _: js.JavaScriptException => true
+      case _                                          => false
+    }
 }

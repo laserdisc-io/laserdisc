@@ -34,7 +34,7 @@ trait HyperLogLogBaseP extends Features {
 
   final def pfadd(key: Key, elements: OneOrMoreKeys): Single[Boolean] = Protocol("PFADD", key :: elements.value).as[Num, Boolean]
 
-  final def pfcount(keys: OneOrMoreKeys): Single[NonNegInt] = Protocol("PFCOUNT", keys.value).as[Num, NonNegInt]
+  final def pfcount(keys: OneOrMoreKeys): Single[NonNegLong] = Protocol("PFCOUNT", keys.value).as[Num, NonNegLong]
 
   final def pfmerge(sourceKeys: TwoOrMoreKeys, destinationKey: Key): Single[OK] =
     Protocol("PFMERGE", destinationKey :: sourceKeys.value).as[Str, OK]

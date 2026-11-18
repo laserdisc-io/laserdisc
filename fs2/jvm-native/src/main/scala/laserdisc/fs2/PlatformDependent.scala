@@ -23,9 +23,17 @@ package laserdisc.fs2
 
 import _root_.fs2.io.net.SocketOption
 
+import java.io.IOException
+
 private[fs2] object PlatformDependent {
+  // keep-alive lets the system notice a server that's gone without closing the connection, which nothing else does for a command that
+  // waits for as long as it takes, or for MONITOR
   final def socketOptions(receiveBufferSizeBytes: Int): List[SocketOption] = List(
     SocketOption.noDelay(true),
+    SocketOption.keepAlive(true),
     SocketOption.receiveBufferSize(receiveBufferSizeBytes)
   )
+
+  // whether a connection failed with an error of its socket
+  final def socketError(failure: Throwable): Boolean = failure.isInstanceOf[IOException]
 }

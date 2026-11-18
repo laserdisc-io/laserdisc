@@ -32,8 +32,8 @@ Normally you would not need to define one manually, as one will be derived for y
 - ${A} is a List whose LUB has a RESPParamWrite instance defined
 - ${A} is a Tuple whose elements all have a RESPParamWrite instance defined
 """
-) trait RESPParamWrite[A] {
-  def write(a: A): Seq[GenBulk]
+) sealed trait RESPParamWrite[A] {
+  def write(a: A): Seq[Bulk]
 
   final def contramap[B](f: B => A): RESPParamWrite[B] = RESPParamWrite.instance(b => write(f(b)))
 }
@@ -41,19 +41,22 @@ Normally you would not need to define one manually, as one will be derived for y
 object RESPParamWrite extends RESPParamWriteInstances {
   @inline final def apply[A](implicit instance: RESPParamWrite[A]): RESPParamWrite[A] = instance
 
-  final def const[A](thunk: =>Seq[GenBulk]): RESPParamWrite[A] =
-    (_: A) => thunk
-  final def instance[A](f: A => Seq[GenBulk]): RESPParamWrite[A] =
-    (a: A) => f(a)
+  // the only RESPParamWrite there is: every one is built with the functions below
+  private final class Of[A](f: A => Seq[Bulk]) extends RESPParamWrite[A] {
+    override final def write(a: A): Seq[Bulk] = f(a)
+  }
+
+  final def const[A](thunk: =>Seq[Bulk]): RESPParamWrite[A]   = new Of(_ => thunk)
+  final def instance[A](f: A => Seq[Bulk]): RESPParamWrite[A] = new Of(f)
+
+  // what an option made of several values is sent as, kept in the option until a command sends it
+  private[protocol] final def params[A](a: A)(implicit A: RESPParamWrite[A]): Seq[Bulk] = A.write(a)
 }
 
 private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteInstances1 {
   implicit final val bulkRESPParamWrite: RESPParamWrite[Bulk] = RESPParamWrite.instance(a => Seq(a))
-  // a Bulk is sent as its bytes are, even where the command takes any value with a Show, as Show would make it text
-  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A] = RESPParamWrite.instance {
-    case bulk: Bulk => Seq(bulk)
-    case a          => Seq(Bulk(a))
-  }
+  // only Bulk, never NullBulk: no command takes a nil argument, and one in a request would be a protocol error that closes the connection
+  implicit final val paramsRESPParamWrite: RESPParamWrite[Seq[Bulk]] = RESPParamWrite.instance(identity)
   implicit final def pairRESPParamWrite[A, B](
       implicit A: RESPParamWrite[A],
       B: RESPParamWrite[B]
@@ -65,7 +68,7 @@ private[protocol] sealed trait RESPParamWriteInstances extends RESPParamWriteIns
     RESPParamWrite.instance(_.flatMap(A.write))
 }
 
-private[protocol] sealed trait RESPParamWriteInstances1 extends RESPParamWriteProductInstances {
+private[protocol] sealed trait RESPParamWriteInstances1 extends RESPParamWriteScalaTupleInstances {
   implicit final val emptyTupleRESPParamWrite: RESPParamWrite[EmptyTuple] = RESPParamWrite.const(Seq.empty)
 
   implicit final def tupleRESPParamWrite[H, T <: Tuple](
@@ -75,4 +78,9 @@ private[protocol] sealed trait RESPParamWriteInstances1 extends RESPParamWritePr
     RESPParamWrite.instance { case h *: t =>
       H.write(h) ++: T.write(t)
     }
+}
+
+// below tuples, so a tuple is sent as its elements even when a Show for it is in scope, as cats' is with laserdisc.fs2
+private[protocol] trait RESPParamWriteInstances2 extends RESPParamWriteProductInstances {
+  implicit final def showRESPParamWrite[A: Show]: RESPParamWrite[A] = RESPParamWrite.instance(a => Seq(Value.fromShow(a).bulk))
 }

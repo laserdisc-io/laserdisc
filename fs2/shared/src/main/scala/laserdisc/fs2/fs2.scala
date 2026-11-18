@@ -21,6 +21,7 @@
 
 package laserdisc
 
+import _root_.fs2.Stream
 import cats.effect.kernel.{Deferred, Temporal}
 import cats.effect.syntax.all.*
 import cats.syntax.all.*
@@ -34,22 +35,24 @@ package fs2 {
     def prepare(in: In): F[Prepared[F, LOut]]
 
     override final def apply(env: Env[F], in: In): F[LOut] = {
-      val (queue, duration) = env
+      val (offer, timeout) = env
       prepare(in).flatMap {
         case (requests, replies) if requests.isEmpty => replies
         case (requests, replies)                     =>
+          // blocking commands get their wait on the server on top of the timeout
+          val duration = RedisClient.impl.upToNever(timeout, protocol.Blocking.waitOf(requests.map(_._1.protocol)))
           Deferred[F, Unit].flatMap { claim =>
             val giveUp = claim.complete(()).void
 
-            queue.offer(Batch(requests.map(_._1), claim, duration)) >>
-              replies
-                .timeout(duration)
-                .onCancel(giveUp)
-                .recoverWith { case _: TimeoutException =>
-                  giveUp >> requests.findM(_._2.map(!_)).flatMap { unanswered =>
-                    F.raiseError(RequestTimedOut(unanswered.getOrElse(requests.head)._1.protocol))
-                  }
+            // waiting for room in the queue counts towards the timeout: a send that times out before it's queued is never sent
+            RedisClient.impl
+              .within(offer(Batch(requests.map(_._1), claim, duration)) >> replies, duration, F.raiseError[LOut](new TimeoutException))
+              .onCancel(giveUp)
+              .recoverWith { case _: TimeoutException =>
+                giveUp >> requests.findM(_._2.map(!_)).flatMap { unanswered =>
+                  F.raiseError(RequestTimedOut(unanswered.getOrElse(requests.head)._1.protocol))
                 }
+              }
           }
       }
     }
@@ -61,18 +64,10 @@ package fs2 {
 }
 
 package object fs2 {
-  final type Network[F[_]]      = _root_.fs2.io.net.Network[F]
-  final type Pipe[F[_], -I, +O] = _root_.fs2.Pipe[F, I, O]
-  final type Queue[F[_]]        = cats.effect.std.Queue[F, Batch[F]]
-  final type Signal[F[_], A]    = _root_.fs2.concurrent.SignallingRef[F, A]
-  final type Stream[+F[_], +O]  = _root_.fs2.Stream[F, O]
+  // how a send's batch is queued, and how long the send may take
+  final type Env[F[_]] = (Batch[F] => F[Unit], FiniteDuration)
 
-  final val Network = _root_.fs2.io.net.Network
-  final val Queue   = cats.effect.std.Queue
-  final val Signal  = _root_.fs2.concurrent.SignallingRef
-  final val Stream  = _root_.fs2.Stream
-
-  final type Env[F[_]]         = (Queue[F], FiniteDuration)
+  /** A client, opened with `RedisClient[F].to`, `toNodes` or `dedicated`: `send` sends commands and gives each one's result */
   final type RedisClient[F[_]] = Client[F, Env[F]]
 
   // the requests of a send, each with a check for whether its reply arrived, and the action that waits for all the replies
@@ -111,7 +106,4 @@ package object fs2 {
       override final def unfold[St, A](start: St)(next: St => F[Maybe[(Seq[A], Option[St])]]): Stream[F, A] =
         Stream.unfoldChunkLoopEval(start)(next(_).rethrow.map { case (as, more) => _root_.fs2.Chunk.from(as) -> more })
     }
-
-  implicit final def showForCats[A](implicit S: cats.Show[A]): Show[A] =
-    (a: A) => S.show(a)
 }

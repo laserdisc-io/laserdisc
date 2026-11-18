@@ -22,7 +22,8 @@
 package laserdisc
 package fs2
 
-import _root_.fs2.Chunk
+import _root_.fs2.io.net.Network
+import _root_.fs2.{Chunk, Stream}
 import _root_.fs2.io.net.ServerSocket
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
@@ -49,16 +50,34 @@ object FakeRedisServer {
     }
 
   // a server that answers the commands of its n-th connection (from 1) with the replies of `handle`
-  def apply(handle: (Int, Stream[IO, RESP]) => Stream[IO, String]): Resource[IO, Port] =
-    withRetries(bindInRange).flatMap { case (server, port) =>
+  def apply(handle: (Int, Stream[IO, RESP]) => Stream[IO, String]): Resource[IO, Port] = serving(withRetries(bindInRange))(handle)
+
+  // the same, on the port given, as for a server that comes back where the client is trying to connect
+  def on(port: Port)(handle: (Int, Stream[IO, RESP]) => Stream[IO, String]): Resource[IO, Port] =
+    serving(
+      Network[IO]
+        .bind(ip4s.SocketAddress(ip4s.Ipv4Address.fromString("127.0.0.1").get, ip4s.Port.fromInt(port.value).get))
+        .map(_ -> port)
+    )(handle)
+
+  private def serving(
+      bound: Resource[IO, (ServerSocket[IO], Port)]
+  )(handle: (Int, Stream[IO, RESP]) => Stream[IO, String]): Resource[IO, Port] =
+    bound.flatMap { case (server, port) =>
       Resource.eval(IO.ref(0)).flatMap { connections =>
         server.accept
           .map { socket =>
-            Stream.eval(connections.updateAndGet(_ + 1)).flatMap { n =>
-              handle(n, socket.reads.through(RedisChannel.impl.receiveResp[IO]))
-                .flatMap(reply => Stream.chunk(Chunk.array(reply.getBytes(UTF_8))))
-                .through(socket.writes) ++ Stream.exec(socket.endOfOutput)
-            }
+            Stream
+              .eval(connections.updateAndGet(_ + 1))
+              .flatMap { n =>
+                handle(n, socket.reads.through(RedisChannel.impl.receiveResp[IO]))
+                  .flatMap(reply => Stream.chunk(Chunk.array(reply.getBytes(UTF_8))))
+                  .through(socket.writes) ++ Stream.exec(socket.endOfOutput)
+              }
+              // a client closing its connection with replies unread resets it, which ends only that connection, as with a real server:
+              // otherwise the error would stop the server, closing the client's other connections
+              // whatever the socket fails with: on Node.js some of its errors, like a write cancelled by the reset, aren't IOExceptions
+              .handleErrorWith(_ => Stream.empty)
           }
           .parJoinUnbounded
           .compile

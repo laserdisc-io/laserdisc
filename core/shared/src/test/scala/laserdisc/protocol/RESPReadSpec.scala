@@ -44,7 +44,7 @@ final class RESPReadSpec extends BaseSpec {
     assertLeftEquals(
       optBulk.read(Bulk("nope")),
       RESPDecErr(
-        "RESP type(s) of Bulk(nope) matched but failed to deserialize correctly with error Read[OneOf] error: Read Error: expected Bulk(Int) but was Bulk(nope)"
+        "RESP type(s) matched but failed to deserialize correctly with error Read[OneOf] error: Read Error: expected Bulk(Int) but was Bulk(nope), reading Bulk(nope)"
       )
     )
   }
@@ -66,5 +66,28 @@ final class RESPReadSpec extends BaseSpec {
   test("a RESPRead of a value or a null does not accept the other null") {
     assertLeftEquals(optBulk.read(NilArr), RESPDecErr("RESP type(s) did not match: NilArr"))
     assertLeftEquals(optArr.read(NullBulk), RESPDecErr("RESP type(s) did not match: NullBulk"))
+  }
+
+  test("an error reading a reply says what the reply was only up to a limit, without first writing it all out, however big it is") {
+    val big   = Bulk("x" * 20000000)
+    val many  = Arr(List.fill(200000)(Bulk("element")))
+    val limit = RESPDecErr.MaxLength + 100
+    List[Either[Throwable, Any]](
+      RESPRead[Num, Long].read(big),
+      RESPRead[Bulk, Int].read(big),
+      RESPRead[Arr.Of[Num], Seq[Long]].read(many),
+      Read[Bulk, Int].read(big),
+      // read as such, so the message is only cut once, saying how much it left out
+      Read[Arr.AsTuple[Num *: EmptyTuple], Long *: EmptyTuple].read(new Arr.AsTuple(List(Arr(big)))),
+      Read[Arr.OfPairs[Bulk, Bulk], Seq[(String, String)]].read(new Arr.OfPairs(List(Bulk("a"), Bulk("b"), big)))
+    ).foreach { result =>
+      val message = result.left.toOption.map(_.getMessage).getOrElse(fail(s"expected an error, got $result"))
+      assert(message.length <= limit, s"${message.length} characters: ${message.take(200)}")
+      // a message cut short only once it was all written out says so with how much it left out: the whole reply
+      val leftOut = """\((\d+) more characters\)""".r.findFirstMatchIn(message).fold(0L)(_.group(1).toLong)
+      assert(leftOut < 10000L, s"wrote out the whole reply, leaving out $leftOut characters: ${message.take(200)}")
+    }
+    assertEquals(RESPDecErr.shown(Arr(Bulk("a"), Num(1L), NullBulk)), "Arr(Bulk(a),Num(1),NullBulk)")
+    assert(RESPDecErr.shown(big).length <= RESPDecErr.MaxLength + 1)
   }
 }

@@ -24,7 +24,7 @@ package fs2
 package parallel
 package adapters
 
-import _root_.fs2.{Chunk, Pipe, Pull, Stream}
+import _root_.fs2.{Chunk, Pipe}
 import _root_.fs2.interop.scodec.{StreamDecoder, StreamEncoder}
 import cats.ApplicativeThrow
 import laserdisc.protocol.*
@@ -52,29 +52,6 @@ private[parallel] object RespChannelAdapter {
   def receive[F[_]: ApplicativeThrow]: Pipe[F, Byte, RESP] = {
     val streamDecoder = StreamDecoder.many(Codec[RESP])
 
-    def framing: Pipe[F, Byte, CompleteFrame] = {
-      def loopScan(bytesIn: Stream[F, Byte], previous: RESPFrame): Pull[F, CompleteFrame, Unit] =
-        bytesIn.pull.uncons.flatMap {
-          case Some((chunk, rest)) =>
-            previous.append(chunk.toBitVector) match {
-              case Left(ex)                       => Pull.raiseError(ex)
-              case Right(frame: CompleteFrame)    => Pull.output1(frame) >> loopScan(rest, EmptyFrame)
-              case Right(frame: MoreThanOneFrame) =>
-                Pull.output(Chunk.from(frame.complete)) >> {
-                  if (frame.remainder.isEmpty) loopScan(rest, EmptyFrame)
-                  else loopScan(rest, IncompleteFrame(frame.remainder, 0L)())
-                }
-              case Right(frame: IncompleteFrame) => loopScan(rest, frame)
-            }
-
-          case _ => Pull.done
-        }
-
-      bytesIn => loopScan(bytesIn, EmptyFrame).stream
-    }
-
-    pipeIn =>
-      streamDecoder
-        .decode(pipeIn.through(framing).map(_.bits))
+    pipeIn => streamDecoder.decode(pipeIn.through(RedisChannel.impl.framing[F]).map(_.bits))
   }
 }

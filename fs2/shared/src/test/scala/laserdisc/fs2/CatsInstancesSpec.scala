@@ -23,12 +23,22 @@ package laserdisc
 package fs2
 
 import cats.effect.IO
-import cats.instances.int.*
 import munit.CatsEffectSuite
 
+object CatsInstancesSpec {
+  final case class Shown(value: Int)
+  object Shown {
+    implicit val catsShow: cats.Show[Shown] = cats.Show.show(s => s"shown ${s.value}")
+  }
+}
+
 final class CatsInstancesSpec extends CatsEffectSuite {
-  test("a cats Show gives a Show") {
-    assertEquals(showForCats[Int].show(1), "1")
+  test("a cats Show doesn't give a Show") {
+    assert(compileErrors("implicitly[Show[CatsInstancesSpec.Shown]]").nonEmpty)
+  }
+
+  test("a command sends a tuple as its elements, though cats has a Show for the tuple") {
+    assertEquals(Protocol("X", "a" *: 1L *: "c" *: EmptyTuple).as[Str, OK].encode, Arr(Bulk("X"), Bulk("a"), Bulk("1"), Bulk("c")))
   }
 
   test("a cats Functor gives a Functor") {

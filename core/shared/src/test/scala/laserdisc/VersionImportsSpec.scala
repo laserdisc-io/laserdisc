@@ -210,8 +210,8 @@ final class VersionImportsSpec extends BaseSpec {
     val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
     assertEquals(valkey_9_1.zscannoscores[String]("a", 0L).frames, frame("ZSCAN", "a", "0", "NOSCORES"))
     assertEquals(zrevrankwithscore("a", "m").frames, frame("ZREVRANK", "a", "m", "WITHSCORE"))
-    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.min, 0.0).frames, frame("BZMPOP", "0", "1", "a", "MIN"))
-    assertEquals(blocking.blpop[String](a, 0.0).frames, frame("BLPOP", "a", "0"))
+    assertEquals(blocking.bzmpop[String](a, sortedsettypes.pop.min, 1.0).frames, frame("BZMPOP", "1", "1", "a", "MIN"))
+    assertEquals(blocking.blpop[String](a, 1.0).frames, frame("BLPOP", "a", "1"))
   }
 
   test("redis_6_2 has LMOVE, LPOS and BLMOVE, but not LMPOP, BLMPOP or LMOVEM") {
@@ -244,6 +244,54 @@ final class VersionImportsSpec extends BaseSpec {
         """blocking.blmovem[String]("a", "b", ListSide.left, ListSide.left, ListAmount.upTo(2), ListOrder.asBlock, 1.0)"""
       ).nonEmpty
     )
+  }
+
+  test("blocking.forever has the commands that wait for as long as it takes from the version that has them") {
+    import laserdisc.auto.*
+
+    val a = OneOrMoreKeys.unsafeFrom(List(Key("a")))
+    assertEquals(redis_6_2.blocking.forever.blpop[String](a).protocol.frames, frame("BLPOP", "a", "0"))
+    assertEquals(redis_6_2.blocking.forever.waitreplicas(1).protocol.frames, frame("WAIT", "1", "0"))
+    assert(
+      compileErrors(
+        """redis_6_2.blocking.forever.blmpop[String](OneOrMoreKeys.unsafeFrom(List(Key("a"))), redis_6_2.listtypes.ListSide.left)"""
+      ).nonEmpty
+    )
+    assert(compileErrors("redis_7_0.blocking.forever.waitaof(0, 1)").nonEmpty)
+    assertEquals(redis_7_2.blocking.forever.waitaof(0, 1).protocol.frames, frame("WAITAOF", "0", "1", "0"))
+    assertEquals(valkey_9_1.blocking.forever.waitaof(0, 1).protocol.frames, frame("WAITAOF", "0", "1", "0"))
+    assert(compileErrors("dragonfly_2_0.blocking.forever.waitaof(0, 1)").nonEmpty)
+    assert(
+      compileErrors("""redis_8_2.blocking.forever.xreadgroupclaim[Int]("g", "c", OneOrMoreKeys.unsafeFrom(List(Key("a"))), 0L)""").nonEmpty
+    )
+    assert(
+      compileErrors(
+        """redis_8_8.blocking.forever.blmovem[String]("a", "b", redis_8_8.listtypes.ListSide.left, redis_8_8.listtypes.ListSide.left)"""
+      ).nonEmpty
+    )
+    assertEquals(
+      redis_8_10.blocking.forever
+        .blmovem[String]("a", "b", redis_8_10.listtypes.ListSide.left, redis_8_10.listtypes.ListSide.left)
+        .protocol
+        .frames,
+      frame("BLMOVEM", "a", "b", "LEFT", "LEFT", "0")
+    )
+    assert(compileErrors("redis_8_10.blocking.forever.setslot(Slot(1))").nonEmpty)
+    assert(compileErrors("valkey_7_2.blocking.forever.setslot(Slot(1))").nonEmpty)
+    assertEquals(valkey_8_0.blocking.forever.setslot(Slot(1)).protocol.frames, frame("CLUSTER", "SETSLOT", "1", "STABLE", "TIMEOUT", "0"))
+    assertEquals(
+      valkey_9_1.blocking.forever
+        .setslot(Slot(1), valkey_9_1.clustertypes.ClusterSetSlotMode.importing, NodeId.unsafeFrom("0" * 40))
+        .protocol
+        .frames,
+      frame("CLUSTER", "SETSLOT", "1", "IMPORTING", "0" * 40, "TIMEOUT", "0")
+    )
+  }
+
+  test("blocking.forever can be imported from") {
+    import laserdisc.redis_8_10.blocking.forever.*
+
+    assertEquals(bzpopmin[String](OneOrMoreKeys.unsafeFrom(List(Key("z")))).protocol.frames, frame("BZPOPMIN", "z", "0"))
   }
 
   test("redis_8_10 has LMOVEM and BLMOVEM") {
@@ -627,8 +675,10 @@ final class VersionImportsSpec extends BaseSpec {
     assert(compileErrors("""client.unblock(1L)""").nonEmpty)
     assert(compileErrors("""client.kill(servertypes.clientFilter.user("u"))""").nonEmpty)
     // Dragonfly replies to CLIENT KILL with an address with a count, read by killaddress
-    assert(compileErrors("""client.kill(Host("h.example"), Port(1))""").nonEmpty)
-    assertEquals(client.killaddress(Host("h.example"), Port(1)).frames, frame("CLIENT", "KILL", "ADDR", "h.example:1"))
+    assert(compileErrors("""client.kill(IpAddress("10.0.0.1"), Port(1))""").nonEmpty)
+    assertEquals(client.killaddress(IpAddress("10.0.0.1"), Port(1)).frames, frame("CLIENT", "KILL", "ADDR", "10.0.0.1:1"))
+    assertEquals(client.killaddress(IpAddress("::1"), Port(1)).frames, frame("CLIENT", "KILL", "ADDR", "[::1]:1"))
+    assertEquals(client.killlocaladdress(IpAddress("::1"), Port(1)).frames, frame("CLIENT", "KILL", "LADDR", "[::1]:1"))
     assert(compileErrors("""countkeysinslot(1)""").nonEmpty)
     assert(compileErrors("""hpersist("a", OneOrMoreKeys.unsafeFrom(List(Key("b"))))""").nonEmpty)
     assert(compileErrors("""shutdownabort""").nonEmpty)
@@ -820,7 +870,9 @@ final class VersionImportsSpec extends BaseSpec {
     }
     {
       import laserdisc.valkey_8_0.*
-      assertEquals(setslot(Slot(0), NonNegLong(5L)).frames, frame("CLUSTER", "SETSLOT", "0", "STABLE", "TIMEOUT", "5"))
+      assertEquals(setslot(Slot(0), PosLong(5L)).frames, frame("CLUSTER", "SETSLOT", "0", "STABLE", "TIMEOUT", "5"))
+      // 0 waits for as long as it takes, under blocking.forever
+      assert(compileErrors("""setslot(Slot(0), PosLong(0L))""").nonEmpty)
       assert(compileErrors("""replicatenoone""").nonEmpty)
       assert(compileErrors("""slotstatsbymemory""").nonEmpty)
     }
@@ -844,6 +896,12 @@ final class VersionImportsSpec extends BaseSpec {
     {
       import laserdisc.valkey_9_0.*
       assertEquals(acl.whoami.frames, frame("ACL", "WHOAMI"))
+      assertEquals(acl.whoami.decode(Bulk("wu")), "wu")
+    }
+    {
+      // Dragonfly says "User is" before the name
+      import laserdisc.dragonfly_2_0.*
+      assertEquals(acl.whoami.decode(Bulk("User is wu")), "wu")
       assert(compileErrors("""acl.setuser("u", servertypes.aclDatabaseRules.allDatabases)""").nonEmpty)
     }
     {

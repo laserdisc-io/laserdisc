@@ -24,11 +24,9 @@ package protocol
 
 import scala.annotation.{implicitNotFound, nowarn}
 
-/** Evidence that `A` is one of the non-error [[RESP]] types Redis may reply with.
-  *
-  * Instances exist only for the concrete [[RESP]] cases, and for [[RESP]] itself as any of them (and never for [[Err]], which is always
-  * handled as a failure), so a [[RESPRead]] can never be built for a type that Redis could not possibly send back. A value that may be
-  * missing is a [[OneOf]] of its type and of a null, like [[laserdisc.OrNullBulk]] or [[laserdisc.OrNilArr]].
+/** The kinds of reply a command can be read from: [[Str]], [[Num]], [[Bulk]], [[Arr]] and their forms, or [[RESP]] for any of them. An
+  * [[Err]] isn't one, as an error reply is always a failure. A reply that may be missing is a [[OneOf]] of its kind and of a null, like
+  * [[laserdisc.OrNullBulk]] or [[laserdisc.OrNilArr]]
   */
 @implicitNotFound(
   """Implicit not found RESPSub[${A}].
@@ -94,13 +92,14 @@ object RESPRead {
 
   private final def mismatch(resp: RESP): Maybe[Nothing] = resp match {
     case err: Err => Left(err)
-    case other    => Left(RESPDecErr(s"RESP type(s) did not match: $other"))
+    case other    => Left(RESPDecErr(s"RESP type(s) did not match: ${RESPDecErr.shown(other)}"))
   }
 
   private final def readMatched[A, B](R: Read[A, B], resp: RESP, a: A): Maybe[B] = R.read(a) match {
     case Right(b)            => Right(b)
     case Left(RESPDecErr(m)) =>
-      Left(RESPDecErr(s"RESP type(s) of $resp matched but failed to deserialize correctly with error $m")).widenLeft[Throwable]
+      Left(RESPDecErr(s"RESP type(s) matched but failed to deserialize correctly with error $m, reading ${RESPDecErr.shown(resp)}"))
+        .widenLeft[Throwable]
   }
 
   final def instance[A, B](R: Read[A, B])(implicit S: RESPSub[A]): RESPRead.Aux[A, B] =
@@ -122,7 +121,7 @@ object RESPRead {
         case Str("OK") => Right(None)
         case Bulk(s)   => Right(Some(s))
         case err: Err  => Left(err)
-        case other     => Left(RESPDecErr(s"Expected OK or a message, but was $other"))
+        case other     => Left(RESPDecErr(s"Expected OK or a message, but was ${RESPDecErr.shown(other)}"))
       }
     }
 

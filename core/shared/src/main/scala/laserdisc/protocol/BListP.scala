@@ -33,6 +33,9 @@ trait BListBaseP extends Features {
       "BRPOPLPUSH"
     )
 
+  // what BLMOVE and BRPOPLPUSH moved, or nothing: when they time out, every server replies with a null array, not a null bulk string
+  private def moved[A: Read[Bulk, _]]: RESPRead[Option[A]] = RESPRead[OneOf[NilArr *: NullBulk *: Bulk *: EmptyTuple], Option[A]]
+
   final def blmove[A: Read[Bulk, _]](
       source: Key,
       destination: Key,
@@ -40,7 +43,7 @@ trait BListBaseP extends Features {
       to: ListP.Side,
       seconds: BlockingSeconds
   ): Single[Option[A]] =
-    Protocol("BLMOVE", source *: destination *: from *: to *: seconds *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+    Protocol("BLMOVE", source *: destination *: from *: to *: seconds *: EmptyTuple).using(moved[A])
 
   final def blpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: BlockingSeconds): Single[Option[KV[A]]] =
     Protocol("BLPOP", keys.value *: seconds *: EmptyTuple).as[OrNilArr[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]], Option[KV[A]]]
@@ -48,10 +51,8 @@ trait BListBaseP extends Features {
   final def brpop[A: Read[Bulk, _]](keys: OneOrMoreKeys, seconds: BlockingSeconds): Single[Option[KV[A]]] =
     Protocol("BRPOP", keys.value *: seconds *: EmptyTuple).as[OrNilArr[Arr.AsTuple[Bulk *: Bulk *: EmptyTuple]], Option[KV[A]]]
 
-  final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key): Single[Option[A]] =
-    Protocol("BRPOPLPUSH", source *: destination *: 0 *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
   final def brpoplpush[A: Read[Bulk, _]](source: Key, destination: Key, seconds: BlockingSeconds): Single[Option[A]] =
-    Protocol("BRPOPLPUSH", source *: destination *: seconds *: EmptyTuple).as[OrNullBulk[Bulk], Option[A]]
+    Protocol("BRPOPLPUSH", source *: destination *: seconds *: EmptyTuple).using(moved[A])
 }
 
 /** BLMPOP: Redis 7.0 */

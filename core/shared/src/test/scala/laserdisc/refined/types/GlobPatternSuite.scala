@@ -27,20 +27,30 @@ import org.scalacheck.Prop.forAll
 
 final class GlobPatternSuite extends BaseSpec {
   test("GlobPattern fails to compile given an empty String") {
-    assertCompileErrorsContain(compileErrors("""GlobPattern("")"""), """Predicate failed: "".matches(""", "Should match")
+    assertCompileErrorsContain(compileErrors("""GlobPattern("")"""), "Predicate failed: isGlobPattern()", "Should be a glob pattern")
   }
 
   test("GlobPattern fails to compile given a class that's never closed") {
-    assertCompileErrorsContain(compileErrors("""GlobPattern("a[b")"""), """Predicate failed: "a[b".matches(""", "Value: a[b")
+    assertCompileErrorsContain(compileErrors("""GlobPattern("a[b")"""), "Predicate failed: isGlobPattern(a[b)", "Should be a glob pattern")
   }
 
   test("GlobPattern fails to compile given a ] that closes no class") {
-    assertCompileErrorsContain(compileErrors("""GlobPattern("a]")"""), """Predicate failed: "a]".matches(""", "Value: a]")
+    assertCompileErrorsContain(compileErrors("""GlobPattern("a]")"""), "Predicate failed: isGlobPattern(a])", "Should be a glob pattern")
   }
 
   test("GlobPattern fails to compile given an empty class") {
-    assertCompileErrorsContain(compileErrors("""GlobPattern("a[]")"""), """Predicate failed: "a[]".matches(""", "Value: a[]")
-    assertCompileErrorsContain(compileErrors("""GlobPattern("a[^]")"""), """Predicate failed: "a[^]".matches(""", "Value: a[^]")
+    assertCompileErrorsContain(compileErrors("""GlobPattern("a[]")"""), "Predicate failed: isGlobPattern(a[])", "Should be a glob pattern")
+    assertCompileErrorsContain(
+      compileErrors("""GlobPattern("a[^]")"""),
+      "Predicate failed: isGlobPattern(a[^])",
+      "Should be a glob pattern"
+    )
+  }
+
+  test("GlobPattern checks a long pattern in one pass, giving a Left instead of overflowing the stack") {
+    List("*", "a*", "[a]", "\\x", "[^a-z]?").foreach(unit => assert(GlobPattern.from(unit * 100000).isRight, unit))
+    assert(GlobPattern.from("[a" * 100000).isLeft)
+    assert(GlobPattern.from(("[a]" * 100000) + "]").isLeft)
   }
 
   test("GlobPattern refuses a \\ with nothing after it, and control characters") {
@@ -82,5 +92,11 @@ final class GlobPatternSuite extends BaseSpec {
     forAll(globPatternGen) { s =>
       GlobPattern.from(s).onRight(_.value == s)
     }
+  }
+
+  test("GlobPattern refuses half of a character, a lone surrogate, which would be sent as ?, a wildcard") {
+    assert(GlobPattern.from("a\uD800").isLeft)
+    assert(GlobPattern.from("[\uDC00]").isLeft)
+    assert(GlobPattern.from("a😀*").isRight)
   }
 }

@@ -22,7 +22,6 @@
 package laserdisc
 package interop
 
-import laserdisc.interop.circe.*
 import munit.FunSuite
 
 final class CirceSpecJs extends FunSuite with EitherTestSyntax {

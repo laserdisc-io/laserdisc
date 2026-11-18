@@ -39,78 +39,117 @@ final class HostSuite extends BaseSpec {
     assert(!compileErrors("""Host("o123456701234567012345670123456701234567012345670123456701234567")""").isEmpty)
   }
 
-  test("Host fails to compile given a hostname whose length is > 255 (RFC-1123)") {
+  test("Host fails to compile given a hostname whose length is > 253") {
     assert(
       !compileErrors(
         """Host(
         "o12345670123456701234567012345670123456701234567012345670123456" +
         ".o12345670123456701234567012345670123456701234567012345670123456" +
         ".o12345670123456701234567012345670123456701234567012345670123456" +
-        ".o12345670123456701234567012345670123456701234567012345670123456" +
-        ".a"
+        ".o1234567012345670123456701234567012345670123456701234567012345"
       )"""
       ).isEmpty
     )
   }
 
-  test("Host fails to compile given an invalid (non-private) IP address") {
-    assert(!compileErrors("""Host("1.1.1.1")""").isEmpty)
+  test("Host fails to compile given a hostname with an empty label, an underscore or a space") {
+    assert(!compileErrors("""Host(".")""").isEmpty)
+    assert(!compileErrors("""Host("a..b")""").isEmpty)
+    assert(!compileErrors("""Host("a.b..")""").isEmpty)
+    assert(!compileErrors("""Host("a_b.example")""").isEmpty)
+    assert(!compileErrors("""Host("a b")""").isEmpty)
   }
 
-  test("Host compiles given all NICs (0.0.0.0)") {
-    Host("0.0.0.0")
+  test("Host fails to compile given a name whose last label is only digits, as it would be read as an address") {
+    assert(!compileErrors("""Host("01234")""").isEmpty)
+    assert(!compileErrors("""Host("example.123")""").isEmpty)
+    assert(!compileErrors("""Host("256.1.1.1")""").isEmpty)
+    assert(!compileErrors("""Host("1.2.3")""").isEmpty)
+    assert(!compileErrors("""Host("1.2.3.4.5")""").isEmpty)
   }
-  test("Host compiles given loopback address (127.0.0.1)") {
-    Host("127.0.0.1")
+
+  test("Host fails to compile given an IPv4 address with a leading zero") {
+    assert(!compileErrors("""Host("010.1.2.3")""").isEmpty)
+    assert(!compileErrors("""Host("10.1.2.03")""").isEmpty)
   }
+
+  test("Host fails to compile given an invalid IPv6 address") {
+    assert(!compileErrors("""Host(":")""").isEmpty)
+    assert(!compileErrors("""Host(":::")""").isEmpty)
+    assert(!compileErrors("""Host("1:2:3:4:5:6:7")""").isEmpty)
+    assert(!compileErrors("""Host("1:2:3:4:5:6:7:8:9")""").isEmpty)
+    assert(!compileErrors("""Host("1:2:3:4:5:6:7:8::")""").isEmpty)
+    assert(!compileErrors("""Host("1::2::3")""").isEmpty)
+    assert(!compileErrors("""Host("12345::")""").isEmpty)
+    assert(!compileErrors("""Host("g::1")""").isEmpty)
+    assert(!compileErrors("""Host("1.2.3.4::")""").isEmpty)
+    assert(!compileErrors("""Host("::1.2.3.4:5")""").isEmpty)
+    assert(!compileErrors("""Host("[::1]")""").isEmpty)
+  }
+
+  test("Host fails to compile given an IPv6 address with an empty or invalid zone id") {
+    assert(!compileErrors("""Host("fe80::1%")""").isEmpty)
+    assert(!compileErrors("""Host("fe80::1%eth 0")""").isEmpty)
+    assert(!compileErrors("""Host("fe80::1%eth0%1")""").isEmpty)
+  }
+
   test("Host compiles given localhost (RFC-1123)") {
     Host("localhost")
   }
   test("Host compiles given domain.local (RFC-1123)") {
     Host("domain.local")
   }
-  test("Host compiles given any digit hostname (RFC-1123)") {
-    Host("01234")
+  test("Host compiles given a hostname ending with a dot") {
+    Host("localhost.")
+    Host("redis.example.com.")
   }
-  test("Host compiles given any dash inside hostname (RFC-1123)") {
+  test("Host compiles given labels starting with digits, the last one with something else than digits") {
     Host("01234-abc")
+    Host("1-2.example")
+    Host("123.example.com")
   }
-  test("Host compiles given 10. IPv4 (RFC-1918)") {
+  test("Host compiles given a hostname whose length is 253") {
+    Host(
+      "o12345670123456701234567012345670123456701234567012345670123456" +
+        ".o12345670123456701234567012345670123456701234567012345670123456" +
+        ".o12345670123456701234567012345670123456701234567012345670123456" +
+        ".o123456701234567012345670123456701234567012345670123456701234"
+    )
+  }
+  test("Host compiles given any IPv4 address") {
+    Host("0.0.0.0")
+    Host("127.0.0.1")
+    Host("1.1.1.1")
     Host("10.1.2.3")
-  }
-  test("Host compiles given 172.(15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31). IPv4 (RFC-1918)") {
-    Host("10.15.1.2")
-    Host("10.16.1.2")
-    Host("10.17.1.2")
-    Host("10.18.1.2")
-    Host("10.19.1.2")
-    Host("10.20.1.2")
-    Host("10.21.1.2")
-    Host("10.22.1.2")
-    Host("10.23.1.2")
-    Host("10.24.1.2")
-    Host("10.25.1.2")
-    Host("10.26.1.2")
-    Host("10.27.1.2")
-    Host("10.28.1.2")
-    Host("10.29.1.2")
-    Host("10.30.1.2")
-    Host("10.31.1.2")
-  }
-  test("Host compiles given 192.168. IPv4 (RFC-1918)") {
+    Host("172.16.1.2")
     Host("192.168.1.2")
+    Host("8.8.8.8")
+    Host("255.255.255.255")
   }
-  test("Host compiles given 192.0.2. IPv4 (RFC-5737)") {
-    Host("192.0.2.1")
+  test("Host compiles given any IPv6 address") {
+    Host("::")
+    Host("::1")
+    Host("2001:db8::1")
+    Host("2001:DB8::1")
+    Host("1:2:3:4:5:6:7:8")
+    Host("1:2:3:4:5:6:7::")
+    Host("1::8")
+    Host("::ffff:192.0.2.1")
+    Host("64:ff9b::192.0.2.1")
+    Host("1:2:3:4:5:6:192.0.2.1")
   }
-  test("Host compiles given 198.51.100. IPv4 (RFC-5737)") {
-    Host("198.51.100.1")
+  test("Host compiles given an IPv6 address with a zone id") {
+    Host("fe80::1%eth0")
+    Host("fe80::1%1")
+    Host("fe80::1%en0.100")
   }
-  test("Host compiles given 169.254. IPv4 (RFC-3927)") {
-    Host("169.254.1.2")
-  }
-  test("Host compiles given 198.(18|19). IPv4 (RFC-2544)") {
-    Host("198.18.1.2")
-    Host("198.19.1.2")
+
+  test("Host.from takes and refuses the same values at run time") {
+    val (taken, refused) = (
+      List("localhost", "localhost.", "1.1.1.1", "::1", "fe80::1%eth0", "::ffff:192.0.2.1"),
+      List("", "01234", "256.1.1.1", "010.1.2.3", "1::2::3", "fe80::1%", "a_b", "[::1]")
+    )
+    assertEquals(taken.filterNot(Host.from(_).isRight), Nil)
+    assertEquals(refused.filter(Host.from(_).isRight), Nil)
   }
 }

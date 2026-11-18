@@ -23,7 +23,6 @@ package laserdisc
 package protocol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.lang as j
 
 import scodec.Err.{General, MatchingDiscriminatorNotFound}
 import scodec.bits.*
@@ -32,88 +31,52 @@ import scodec.{Attempt, Codec, DecodeResult, Decoder, Err as SErr, SizeBound}
 
 import scala.annotation.tailrec
 
-/** [[https://redis.io/topics/protocol Redis Protocol Specification]]
-  *
-  * This sealed trait represents the entire Redis Serialization Protocol algebra
-  *
-  * Concrete instances of this trait must be created using this trait's companion object's methods, were [[scodec.Codec]] s for each are
-  * also defined
-  *
-  * @see
-  *   [[RESPCodecs]]
+/** A reply from the server, in RESP2, the format Redis replies in ([[https://redis.io/docs/latest/develop/reference/protocol-spec/ its
+  * specification]]): a status ([[Str]]), an error ([[Err]]), an integer ([[Num]]), a string ([[Bulk]]) or an array ([[Arr]]), or nil
+  * ([[NullBulk]] or [[NilArr]])
   */
 sealed trait RESP extends AnyRef with Serializable
 
-/** RESP [[https://redis.io/topics/protocol#resp-simple-strings Simple Strings]]
+/** A status, a short line of text such as `OK`
   *
-  * @note
-  *   Sometimes the value "OK" is used to represent a successful acknowledgement/processing of a command.
-  *
-  * @example
-  *   {{{
-  *   val s: Str = Str("some string")
-  *   }}}
-  *
-  * @param value
-  *   The wrapped string value
+  * {{{
+  * val s: Str = Str("OK")
+  * }}}
   */
 final case class Str(value: String) extends RESP
 object Str {
   final def apply[A](a: A)(implicit A: Show[A]): Str = new Str(A.show(a))
 }
 
-/** RESP [[https://redis.io/topics/protocol#resp-errors Errors]]
+/** An error the server replied with, such as `WRONGTYPE Operation against a key holding the wrong kind of value`. It's also an exception,
+  * without a stack trace, so that a failed command can give it as its `Left`
   *
-  * RESP [[Err]] s are also [[scala.RuntimeException]] s, although __where possible__ they will not contain stacktrace data
-  *
-  * @example
-  *   {{{
-  *   val e: Err = Err("some error message")
-  *   }}}
-  * @param message
-  *   The wrapped exception's message
+  * {{{
+  * val e: Err = Err("ERR unknown command")
+  * }}}
   */
 final case class Err(message: String) extends RuntimeException(message, null, true, false) with RESP
 
-/** RESP [[https://redis.io/topics/protocol#resp-integers Integers]]
+/** An integer. Some commands reply 1 or 0 for yes or no
   *
-  * @note
-  *   Sometimes the values 0 and 1 are used to represent boolean values. In this case 0 corresponds to False while 1 to True, respectively.
-  *
-  * @example
-  *   {{{
-  *   val n: Num = Num(42)
-  *   }}}
-  *
-  * @param value
-  *   The wrapped long value
+  * {{{
+  * val n: Num = Num(42)
+  * }}}
   */
 final case class Num(value: Long) extends RESP
 
-/** RESP [[https://redis.io/topics/protocol#resp-bulk-strings Bulk Strings]]
+/** A string, or nil: a [[Bulk]], or [[NullBulk]], as a missing key's value is
   *
-  * There can be 2 cases:
-  *   - `null` bulk strings, where the length is -1 and no actual underlying string is present
-  *   - actual (non-null) bulk strings, where the length is >= 0
-  *
-  * @example
-  *   {{{
-  *   val b: Bulk      = Bulk("some string")
-  *   val nb: NullBulk = NullBulk
-  *   }}}
-  * @see
-  *   [[Show]]
+  * {{{
+  * val b: Bulk      = Bulk("some string")
+  * val nb: NullBulk = NullBulk
+  * }}}
   */
 sealed trait GenBulk extends RESP
 case object NullBulk extends GenBulk
 
-/** This is the special case of a non-null RESP [[GenBulk]]
-  *
-  * It keeps the bytes exactly as they are, as what a bulk string holds may not be text, like what DUMP replies with. `value` is those bytes
-  * read as UTF-8 text, where any bytes that aren't valid UTF-8 are replaced, so it doesn't always say what `bytes` does
-  *
-  * @param bytes
-  *   The wrapped bulk string's bytes
+/** A string, as the bytes the server sent, which may not be text, as with what DUMP replies. `value` reads them as UTF-8, replacing any
+  * bytes that aren't valid UTF-8, so it doesn't always say what `bytes` does
   */
 final class Bulk private (val bytes: ByteVector, text: =>String) extends GenBulk {
   lazy val value: String = text
@@ -128,43 +91,26 @@ final class Bulk private (val bytes: ByteVector, text: =>String) extends GenBulk
 object Bulk {
   final def apply(bytes: ByteVector): Bulk            = new Bulk(bytes, new String(bytes.toArray, UTF_8))
   final def apply(value: String): Bulk                = new Bulk(ByteVector.view(value.getBytes(UTF_8)), value)
-  final def apply[A](a: A)(implicit A: Show[A]): Bulk = apply(A.show(a))
+  final def apply[A](a: A)(implicit A: Show[A]): Bulk = A.bulk(a)
 
   final def unapply(bulk: Bulk): Some[String] = Some(bulk.value)
 
-  implicit final val bulkShow: Show[Bulk] = Show.instance(_.value)
+  implicit final val bulkShow: Show[Bulk] = Show.bulkShow
 }
 
-/** RESP [[https://redis.io/topics/protocol#resp-arrays Arrays]]
+/** An array, or nil: an [[Arr]], or [[NilArr]]
   *
-  * There can be 2 cases:
-  *   - `nil` arrays, where the length is -1 and no array element is present
-  *   - actual (non-nil) arrays, where the length is >= 0
-  *
-  * @note
-  *   [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]] ] is an overload
-  *   which supports the creation of guaranteed non-empty sequences only. This is achieved through the usage of one fixed parameter followed
-  *   by a var-arg of the same
-  * @example
-  *   {{{
-  *   val arr: Arr                = Arr(List(Str("hello"), Str("world")))
-  *   val guaranteedNonEmpty: Arr = Arr(Str("hello"), Str("world"))
-  *   val empty: Arr              = Arr(List.empty)
-  *   val nil: NilArr             = NilArr
-  *   }}}
+  * {{{
+  * val arr: Arr      = Arr(List(Str("hello"), Str("world")))
+  * val nonEmpty: Arr = Arr(Str("hello"), Str("world"))
+  * val empty: Arr    = Arr(List.empty)
+  * val nil: NilArr   = NilArr
+  * }}}
   */
 sealed trait GenArr extends RESP
 case object NilArr  extends GenArr
 
-/** This is the special case of a non-nil RESP [[GenArr]]
-  *
-  * These can be constructed either by the default case class' apply by resorting to the overloaded
-  * [[[Arr#apply(one:laserdisc\.protocol\.RESP,rest:laserdisc\.protocol\.RESP*)* Arr#apply(one: RESP, rest: RESP*)]] ] method which expects
-  * one parameter to be supplied followed by a (possibly empty) sequence of [[RESP]] s (vararg).
-  *
-  * @param elements
-  *   The wrapped array values, as a [[scala.List]] of [[RESP]]
-  */
+/** An array of replies, which may be empty. `Arr(one, rest*)` makes one with at least one element */
 final case class Arr(elements: List[RESP]) extends GenArr {
   override def toString: String = s"Arr(${elements.mkString(COMMA)})"
 }
@@ -203,11 +149,11 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   protected final val colon: BitVector    = hex"3a".bits
   protected final val dollar: BitVector   = hex"24".bits
   protected final val star: BitVector     = hex"2a".bits
-  protected final val crlf: BitVector     = hex"0d0a".bits
+  protected final val crlf: BitVector     = ByteVector(CR_CH.toByte, LF_CH.toByte).bits
   protected final val minusOne: BitVector = hex"2d31".bits
   protected final val zero: BitVector     = hex"30".bits
   private final val crlfSize              = crlf.size
-  protected final val crlfBytes           = crlf.bytes
+  private[protocol] final val crlfBytes   = crlf.bytes
   private final val crlfBytesSize         = crlfBytes.size
 
   private final def crlfTerminatedFrom(from: Long) =
@@ -215,9 +161,9 @@ sealed trait RESPCodecs extends BitVectorSyntax {
       override final val sizeBound: SizeBound                                      = SizeBound.unknown
       override final def encode(bits: BitVector): Attempt[BitVector]               = Attempt.successful(bits ++ crlf)
       override final def decode(bits: BitVector): Attempt[DecodeResult[BitVector]] = {
-        val i = bits.bytes.indexOfSlice(crlfBytes, from)
+        val i = Crlf.indexIn(bits.bytes, from)
         if (i == -1)
-          Attempt.failure(new MatchingDiscriminatorNotFound(s"Does not contain 'CRLF' termination bytes. Content: ${bits.tailToUtf8}"))
+          Attempt.failure(new MatchingDiscriminatorNotFound("Does not contain 'CRLF' termination bytes"))
         else Attempt.successful(DecodeResult(bits.take(i * BitsInByte), bits.drop(i * BitsInByte + crlfSize)))
       }
     }
@@ -225,11 +171,23 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   private final def crlfTerminatedCodec[A](baseCodec: Codec[A], from: Long = 0L): Codec[A] =
     filtered(baseCodec, crlfTerminatedFrom(from))
 
+  // the most bytes a bulk string, or elements an array, can declare: a reply that big can't be held in memory, and a bigger size would
+  // overflow the arithmetic that finds where the reply ends
+  private[protocol] final val MaxSize: Long = Int.MaxValue.toLong
+
+  // the most bytes a line can have, from the byte that starts it: a size or a number has at most 20 digits and a sign, while a status or
+  // an error can be as long as a script makes it, so it has a bulk string's limit
+  private[protocol] final val MaxNumberLine: Long        = 32L
+  private[protocol] final def maxLine(first: Byte): Long =
+    if (first == dollar.toByte() || first == star.toByte() || first == colon.toByte()) MaxNumberLine else MaxSize
+
+  // the most arrays a reply can nest: decoding goes one level deeper on the stack for each, and no reply nests more than a handful
+  private[protocol] final val MaxDepth: Int = 128
+
   private final val crlfTerminatedStringCodec: Codec[String] = crlfTerminatedCodec(utf8Codec)
   private final val crlfTerminatedLongCodec: Codec[Long]     = {
     @inline def parseLong(s: String) =
-      try Attempt.successful(j.Long.parseLong(s))
-      catch { case _: NumberFormatException => Attempt.failure(SErr(s"Expected long but found $s")) }
+      Numbers.toLong(s).fold[Attempt[Long]](Attempt.failure(SErr(s"Expected long but found $s")))(Attempt.successful)
     crlfTerminatedStringCodec.narrow(parseLong(_), _.toString)
   }
   private final val strCodec: Codec[Str]      = crlfTerminatedStringCodec.xmap[Str](Str.apply, _.value)
@@ -238,11 +196,12 @@ sealed trait RESPCodecs extends BitVectorSyntax {
   private final val bulkCodec: Codec[GenBulk] = new Codec[GenBulk] {
     private final val nullBulkBits = minusOne ++ crlf
     private final val decoder      = crlfTerminatedLongCodec.flatMap {
-      case -1                => Decoder.liftAttempt(Attempt.successful(NullBulk))
-      case size if size >= 0 => fixedSizeBytes(size + crlfBytesSize, crlfTerminatedCodec(bytes, size)).map(Bulk(_))
-      case negSize           => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
+      case -1                                   => Decoder.liftAttempt(Attempt.successful(NullBulk))
+      case size if size >= 0 && size <= MaxSize =>
+        fixedSizeBytes(size + crlfBytesSize, crlfTerminatedCodec(bytes, size)).map(Bulk(_))
+      case badSize => Decoder.liftAttempt(Attempt.failure(failDec(badSize)))
     }
-    private final def failDec(negSize: Long)            = General(s"failed to decode bulk-string of size $negSize", List("size"))
+    private final def failDec(badSize: Long)            = General(s"failed to decode bulk-string of size $badSize", List("size"))
     private final def failEnc(bulk: GenBulk, err: SErr) =
       General(s"failed to encode size of [$bulk]: ${err.messageWithContext}", List("size"))
 
@@ -262,13 +221,13 @@ sealed trait RESPCodecs extends BitVectorSyntax {
       if (v.size == expectedSize) Attempt.successful(v)
       else Attempt.failure(SErr(s"Insufficient number of elements: decoded ${v.size} instead of $expectedSize"))
     private final val decoder = crlfTerminatedLongCodec.flatMap {
-      case -1               => Decoder.liftAttempt(Attempt.successful(NilArr))
-      case 0                => Decoder.liftAttempt(Attempt.successful(Arr(List.empty)))
-      case size if size > 0 =>
+      case -1                                  => Decoder.liftAttempt(Attempt.successful(NilArr))
+      case 0                                   => Decoder.liftAttempt(Attempt.successful(Arr(List.empty)))
+      case size if size > 0 && size <= MaxSize =>
         Decoder(ScodecCompat.decodeList(respCodec, Some(size.toInt))(_)).emap(checkSize(_, size)).map(Arr.apply)
-      case negSize => Decoder.liftAttempt(Attempt.failure(failDec(negSize)))
+      case badSize => Decoder.liftAttempt(Attempt.failure(failDec(badSize)))
     }
-    private final def failDec(negSize: Long)          = General(s"failed to decode array of size $negSize", List("size"))
+    private final def failDec(badSize: Long)          = General(s"failed to decode array of size $badSize", List("size"))
     private final def failEnc(arr: GenArr, err: SErr) =
       General(s"failed to encode size of [$arr]: ${err.messageWithContext}", List("size"))
 
@@ -314,6 +273,46 @@ sealed trait RESPCodecs extends BitVectorSyntax {
 
 final case class RESPDecErr(message: String) extends RuntimeException(message, null, true, false)
 
+object RESPDecErr {
+  private[laserdisc] final val MaxLength = 1000
+
+  /** A reply in a message can be as long as the reply itself: what's past 1000 characters is cut, saying how much was left out */
+  private[laserdisc] final def capped(message: String): String =
+    if (message.length <= MaxLength) message else s"${message.take(MaxLength)}… (${message.length - MaxLength} more characters)"
+
+  def apply(message: String): RESPDecErr = new RESPDecErr(capped(message))
+
+  /** A reply, or a value read from one, as an error shows it: up to [[MaxLength]] characters, with … when there's more, without writing out
+    * the rest, however big the reply is
+    */
+  private[laserdisc] final def shown(a: Any): String = {
+    val out                                        = new java.lang.StringBuilder
+    def full: Boolean                              = out.length > MaxLength
+    def add(s: String): Unit                       = if (!full) { out.append(s, 0, math.min(s.length, MaxLength + 1 - out.length)); () }
+    def wrapped(name: String, inner: =>Unit): Unit = { add(s"$name("); inner; add(")") }
+    def go(a: Any): Unit                           =
+      if (!full) a match {
+        case bulk: Bulk    => wrapped("Bulk", add(new String(bulk.bytes.take(MaxLength.toLong + 1L).toArray, UTF_8)))
+        case Arr(elements) =>
+          wrapped(
+            "Arr", {
+              val each = elements.iterator
+              if (each.hasNext) go(each.next())
+              while (!full && each.hasNext) { add(COMMA); go(each.next()) }
+            }
+          )
+        case Str(value)    => wrapped("Str", add(value))
+        case Err(message)  => wrapped("Err", add(message))
+        case one: OneOf[?] => go(one.value)
+        case text: String  => add(text)
+        case other         => add(other.toString)
+      }
+    go(a)
+    if (full) { out.setLength(MaxLength); out.append('…'); () }
+    out.toString
+  }
+}
+
 sealed trait RESPFunctions { this: RESPCodecs =>
 
   import BitVectorDecoding.*
@@ -347,8 +346,10 @@ sealed trait RESPFunctions { this: RESPCodecs =>
       element(buffer, from) match {
         case Left(e)                => Left(e)
         case Right(Short(missing))  => Right(Stopped(from, open, missing))
-        case Right(Opened(next, n)) => scan(buffer, next, n :: open)
-        case Right(Finished(next))  =>
+        case Right(Opened(next, n)) =>
+          if (open.lengthCompare(MaxDepth) >= 0) Left(s"Expected arrays nested at most $MaxDepth deep")
+          else scan(buffer, next, n :: open)
+        case Right(Finished(next)) =>
           closing(open) match {
             case Nil       => Right(Scanned(next))
             case stillOpen => scan(buffer, next, stillOpen)
@@ -365,23 +366,27 @@ sealed trait RESPFunctions { this: RESPCodecs =>
     }
 
   private final def element(buffer: ByteVector, from: Long): Either[String, Element] = {
-    val eol = buffer.indexOfSlice(crlfBytes, from)
+    val eol = Crlf.indexIn(buffer, from)
     buffer(from) match {
-      case _ if eol == -1L && isDiscriminator(buffer(from)) => Right(Short(0L))
-      case `plusByte` | `minusByte` | `colonByte`           => Right(Finished(eol + crlfBytes.size))
-      case `dollarByte`                                     =>
+      case _ if eol == -1L && isDiscriminator(buffer(from))                       => Right(Short(0L))
+      case first if eol - from > MaxNumberLine && maxLine(first) == MaxNumberLine =>
+        Left(s"Expected a line of at most $MaxNumberLine bytes")
+      case `plusByte` | `minusByte` | `colonByte` => Right(Finished(eol + crlfBytes.size))
+      case `dollarByte`                           =>
         sizeBetween(buffer, from + 1L, eol).flatMap {
-          case -1L          => Right(Finished(eol + crlfBytes.size))
-          case n if n < -1L => Left(s"Expected a size of at least -1 but found $n")
-          case n            =>
+          case -1L              => Right(Finished(eol + crlfBytes.size))
+          case n if n < -1L     => Left(s"Expected a size of at least -1 but found $n")
+          case n if n > MaxSize => Left(s"Expected a size of at most $MaxSize but found $n")
+          case n                =>
             val end = eol + crlfBytes.size + n + crlfBytes.size
             Right(if (end <= buffer.size) Finished(end) else Short((end - buffer.size) * BitsInByte))
         }
       case `starByte` =>
         sizeBetween(buffer, from + 1L, eol).flatMap {
-          case -1L | 0L     => Right(Finished(eol + crlfBytes.size))
-          case n if n < -1L => Left(s"Expected a size of at least -1 but found $n")
-          case n            => Right(Opened(eol + crlfBytes.size, n))
+          case -1L | 0L         => Right(Finished(eol + crlfBytes.size))
+          case n if n < -1L     => Left(s"Expected a size of at least -1 but found $n")
+          case n if n > MaxSize => Left(s"Expected a size of at most $MaxSize but found $n")
+          case n                => Right(Opened(eol + crlfBytes.size, n))
         }
       case _ =>
         val other = buffer.slice(from, from + 1L).bits
@@ -397,8 +402,7 @@ sealed trait RESPFunctions { this: RESPCodecs =>
 
   private final def sizeBetween(buffer: ByteVector, from: Long, until: Long): Either[String, Long] = {
     val size = buffer.slice(from, until).decodeUtf8.fold(_ => "", identity)
-    try Right(j.Long.parseLong(size))
-    catch { case _: NumberFormatException => Left(s"Expected long but found $size") }
+    Numbers.toLong(size).toRight(s"Expected long but found $size")
   }
 }
 
@@ -423,3 +427,17 @@ object BitVectorDecoding {
 }
 
 object RESP extends RESPCodecs with RESPFunctions
+
+private[protocol] object Crlf {
+  private final val CR = CR_CH.toByte
+  private final val LF = LF_CH.toByte
+
+  /* Where the first CRLF at or after `from` starts, or -1. It looks at each byte in turn, as indexOfSlice looks at a view of the bytes at
+   * each one, which on Scala Native took over a second for each MB of a long line */
+  final def indexIn(bytes: ByteVector, from: Long): Long = {
+    val last = bytes.size - 1L
+    var i    = math.max(from, 0L)
+    while (i < last && !(bytes(i) == CR && bytes(i + 1L) == LF)) i += 1L
+    if (i < last) i else -1L
+  }
+}

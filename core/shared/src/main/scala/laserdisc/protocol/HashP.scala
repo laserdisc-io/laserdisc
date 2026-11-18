@@ -149,8 +149,8 @@ object HashP {
   private[protocol] final def fields(fields: OneOrMoreKeys): List[String] =
     "FIELDS" :: Show[Int].show(fields.value.length) :: fields.value.map(_.value)
 
-  private[protocol] final def fieldsAndValues[A: Show](fieldValues: OneOrMore[(Key, A)]): List[Bulk] =
-    Bulk("FIELDS") :: Bulk(fieldValues.value.length) :: fieldValues.value.flatMap { case (f, v) => List(Bulk(f.value), Value.bulk(v)) }
+  private[protocol] final def fieldsAndValues[A](fieldValues: OneOrMore[(Key, A)]): String *: Int *: List[(Key, A)] *: EmptyTuple =
+    "FIELDS" *: fieldValues.value.length *: fieldValues.value *: EmptyTuple
 
   // the builders each feature's commands take, and the types of their replies
   trait HashTypes       {}
@@ -279,8 +279,8 @@ trait HashBaseP extends Features {
 
   final def hstrlen(key: Key, field: Key): Single[NonNegInt] = Protocol("HSTRLEN", key :: field :: Nil).as[Num, NonNegInt]
 
-  final def hvals[L <: Tuple: Read[Arr.Of[OrNullBulk[Bulk]], _]](key: Key): Single[L] =
-    Protocol("HVALS", key).as[Arr.Of[OrNullBulk[Bulk]], L]
+  /** Every value of the hash, as many as it has, in no set order */
+  final def hvals[A: Read[Bulk, _]](key: Key): Single[Seq[A]] = Protocol("HVALS", key).as[Arr.Of[Bulk], Seq[A]]
 }
 
 /** HSCAN with NOVALUES: Redis 7.4, Valkey 8.0 */

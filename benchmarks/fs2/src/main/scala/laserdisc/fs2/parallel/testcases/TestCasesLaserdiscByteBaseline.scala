@@ -24,7 +24,7 @@ package fs2
 package parallel
 package testcases
 
-import _root_.fs2.Chunk
+import _root_.fs2.{Chunk, Pipe, Stream}
 import cats.effect.kernel.Concurrent
 
 private[fs2] object TestCasesLaserdiscByteBaseline {

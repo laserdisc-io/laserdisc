@@ -18,38 +18,12 @@ import laserdisc.fs2.*
 val client: Resource[IO, RedisClient[IO]] = RedisClient[IO].to("localhost", 6379)
 ```
 
-If the connection drops, commands still waiting for a reply get a `Left` right
-away, and the client reconnects. While it can't reach the server, it tries again
-every 3 seconds, and commands sent in the meantime fail with
-`ServerUnavailable`.
+A client has one connection, which every part of your program that uses the
+client shares: commands from all of them go out on it in turn, and their replies
+come back in the same order. Open it once and pass it around.
 
-The client also reconnects when the server stops replying: once a reply is late
-by more than its `send`'s timeout, the client drops the connection and opens a
-new one.
-
-## Several servers
-
-`RedisClient[IO].toNodes` takes a set of addresses. The client uses one server
-at a time. If it can't reach that server, or the connection drops, it moves on
-to the next one:
-
-```scala mdoc:compile-only
-import cats.effect.{IO, Resource}
-
-import laserdisc.*
-import laserdisc.auto.*
-import laserdisc.fs2.*
-
-val client: Resource[IO, RedisClient[IO]] =
-  RedisClient[IO].toNodes(Set(RedisAddress("redis-1", 6379), RedisAddress("redis-2", 6379)))
-```
-
-When none of the servers can be reached, it waits 3 seconds before trying them
-all again.
-
-This doesn't make it a Redis Cluster client: laserdisc doesn't send each key to
-the node that holds it, or follow a cluster's `MOVED` and `ASK` redirects. On a
-cluster, a command for a key held by another node fails with a `MOVED` error.
+The host is a name or an address, IPv6 ones included, written without brackets,
+such as `"::1"`.
 
 ## Sending commands
 
@@ -69,8 +43,8 @@ def setAndGet(client: RedisClient[IO]): IO[(Maybe[OK], Maybe[Option[PosInt]])] =
 ```
 
 Each result is a `Maybe[A]`, which is an `Either[Throwable, A]`. It's a `Left`
-when the server answers with an error or when the reply can't be read as the
-type you asked for, so one failed command doesn't affect the others.
+when that command failed, so one failed command doesn't affect the others: see
+[Errors](#errors).
 
 ## Timeouts
 
@@ -92,7 +66,231 @@ def quickGet(client: RedisClient[IO]): IO[Maybe[Option[String]]] =
 
 When it times out, the whole `send` fails with `RequestTimedOut`, which names
 the first command still without a reply. Commands that were still waiting to be
-sent aren't sent at all.
+sent aren't sent at all. A command that was sent may still have run on the
+server: the client only stopped waiting for its reply.
+
+## Errors
+
+A command that fails gives a `Left` in its place in the results, holding one of
+these:
+
+| Error | What happened |
+| --- | --- |
+| `Err` | The server replied with an error, such as `WRONGTYPE` for a key of another type. Its `message` is the server's. |
+| `RESPDecErr` | The reply couldn't be read as the type you asked for. Its `message` says why. |
+| `ServerUnavailable` | The client couldn't reach the server: see [Reconnecting](#reconnecting). Its `cause` says why. |
+| `ConnectionSetupRefused` | The server refused the password or the database: see [Logging in](#logging-in-and-choosing-a-database). |
+| `ServerTerminatedConnection` | The connection closed, or the server reset it, before the reply came. Its `cause` is the socket's error, if there was one. |
+| `ServerNotResponding` | The server stopped replying, so the client closed the connection. |
+| `UnreadableReply` | A reply couldn't be read, so the client closed the connection: it was bigger than 2 GiB, had a line that didn't end, or wasn't RESP2. Its `reason` says what was wrong. |
+| `WatchLost` | The keys of a transaction were watched on a connection that's gone: see [Transactions](commands.md#transactions). |
+| `TransactionLost` | A transaction sent as plain commands, as from the command line, was on a connection that's gone, or lost the watch it needed. What's sent until `EXEC` or `DISCARD` ends it fails with this, and isn't sent. |
+| `WatchCleanupRefused` | As for `WatchLost`, and the server also refused to end the watch on the new connection, so the client closed that connection too. None of the transaction's commands ran. |
+
+The `send` itself fails, instead of giving results, when it times out, with
+`RequestTimedOut`, and when the client was already closed, with
+`ClientTerminated`.
+
+## Logging in and choosing a database
+
+If the server needs a password, pass `credentials`. To use a database other than
+0, pass `database`:
+
+```scala mdoc:compile-only
+import cats.effect.{IO, Resource}
+
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val client: Resource[IO, RedisClient[IO]] =
+  RedisClient[IO].to("localhost", 6379, credentials = Some(Credentials("app", "secret")), database = Some(DbIndex(2)))
+```
+
+`Credentials("secret")`, with only a password, logs in as the default user.
+User names and passwords are `Key`s, LaserDisc's type for a string that isn't
+empty: see [Arguments](commands.md#arguments). A password from your
+configuration is a `String`: turn it into a `Key` with `Key.from`, which gives a
+`Left` if it's empty:
+
+```scala mdoc:compile-only
+import laserdisc.*
+import laserdisc.fs2.*
+
+def credentials(user: String, password: String): Either[String, Credentials] =
+  for {
+    name   <- Key.from(user)
+    secret <- Key.from(password)
+  } yield Credentials(name, secret)
+```
+
+Each connection logs in and selects the database before it sends anything else,
+and that includes the connections the client opens when it reconnects. Don't
+send `AUTH` or `SELECT` yourself: a new connection wouldn't have them.
+
+If the server refuses the password or the database, the client stops: every
+command fails with `ConnectionSetupRefused`, which says why. If it refuses only
+for now, as when it's loading its data, running a script, has too many clients,
+or is a replica cut off from its primary, the client connects again, as when it
+can't reach the server.
+
+## Connecting with TLS
+
+To encrypt the connection, pass `tls`. `Tls.system` trusts the certificates your
+system trusts, as for a hosted Redis whose certificate a public authority
+signed:
+
+```scala mdoc:compile-only
+import cats.effect.{IO, Resource}
+
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val client: Resource[IO, RedisClient[IO]] =
+  Tls.system[IO].flatMap(tls => RedisClient[IO].to("redis.example.com", 6380, tls = Some(tls)))
+```
+
+The client checks that a certificate it trusts signed the server's, and that the
+server's certificate is for the host you connect to. So connect with the name on
+the certificate. If the server's certificate fails either check, the client
+sends nothing: your commands fail, and the client logs why and tries again.
+
+To trust a certificate authority of your own, give `Tls` an fs2 `TLSContext`
+that trusts it. On the JVM, one comes from a Java key store holding the
+authority's certificate:
+
+```scala mdoc:compile-only
+import cats.effect.{IO, Resource}
+import fs2.io.file.Path
+import fs2.io.net.Network
+
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val client: Resource[IO, RedisClient[IO]] =
+  Resource
+    .eval(Network[IO].tlsContext.fromKeyStoreFile(Path("truststore.jks"), "changeit".toCharArray, "changeit".toCharArray))
+    .flatMap(context => RedisClient[IO].to("redis.internal", 6380, tls = Some(Tls(context))))
+```
+
+If the server asks for a client certificate, put yours, with its key, in the
+same key store. On Scala.js and Scala Native, fs2 builds a `TLSContext` from
+that platform's own settings: see
+[fs2's TLS documentation](https://fs2.io/#/io?id=tls).
+
+If you have to connect with a name or an address that the certificate doesn't
+have, pass `Tls(context, checkServerName = false)`. The certificate still has to
+be signed by one you trust, but any server with such a certificate could then
+pose as yours.
+
+On Scala Native, TLS needs s2n-tls installed, and a certificate that fails a check
+takes 10 to 30 seconds to fail: see [Platform notes](platform-notes.md).
+
+## Several servers
+
+`RedisClient[IO].toNodes` takes a non-empty set of addresses. The client uses
+one server at a time, starting with the first. If it can't reach that server, or
+the connection drops with commands waiting on it, it moves on to the next one. A
+server closing a connection nothing was waiting on, as servers do with idle
+clients, is connected to again:
+
+```scala mdoc:compile-only
+import cats.data.NonEmptySet
+import cats.effect.{IO, Resource}
+
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val client: Resource[IO, RedisClient[IO]] =
+  RedisClient[IO].toNodes(NonEmptySet.of(RedisAddress("redis-1", 6379), RedisAddress("redis-2", 6379)))
+```
+
+The addresses are tried in the set's order: by host, alphabetically, so
+`redis-10` comes before `redis-2`, then by port, unless you build the set with
+an `Order` of your own.
+
+When none of the servers can be reached, it waits before trying them all again,
+as described in [Reconnecting](#reconnecting).
+
+`toNodes` takes `credentials`, `database`, `tls` and `reconnect` too, and uses
+them for every server.
+
+This doesn't make it a Redis Cluster client. A cluster spreads its keys across
+its nodes, and a node answers a command for a key it doesn't hold with a
+`MOVED` error naming the right node. LaserDisc doesn't send each key to the node
+that holds it, or follow those redirects, so on a cluster such a command fails
+with that error.
+
+It doesn't ask Redis Sentinel which server is the primary either: give `toNodes`
+the addresses of the servers themselves.
+
+## Reconnecting
+
+If the connection drops, commands still waiting for a reply get a `Left` right
+away, with `ServerTerminatedConnection` when the server closed it, and the
+client connects again at once. Those commands may have run on the server: the
+connection went before their replies came. Commands that hadn't been sent yet
+go out on the new connection, except the rest of a `send` that was partly sent,
+such as the commands of a transaction waiting for `MULTI`'s reply: they fail
+with the commands sent before them.
+
+A new connection is set up like the one before it. It logs in and selects the
+database, then it's set again to what you last set on the connection with
+`client.setname`, `hello` with a name, or `readonly`. If the server refuses one
+of these on the new connection, the client logs why and carries on without it.
+Tracking isn't turned on again: see
+[Knowing when keys change](subscribing.md#knowing-when-keys-change).
+
+If the client can't reach the server, or with `toNodes` any of its servers, it
+waits before trying again: 100 milliseconds at first, then twice as long each
+time, up to 5 seconds. While it waits, commands fail at once with
+`ServerUnavailable`, whose `cause` says why the last attempt failed, such as the
+connection being refused or the TLS handshake failing. While it's connecting,
+commands wait for the connection, up to their timeout. Once a server answers one
+of your commands again, the next wait is short again. Each wait is cut by up to
+half at random, so that many clients don't all reconnect at the same moment. To
+wait differently, pass a `Reconnect` with the first and the longest wait. The
+first has to be more than 0, and the longest at least the first, or `Reconnect`
+throws an `IllegalArgumentException`:
+
+```scala mdoc:compile-only
+import cats.effect.{IO, Resource}
+import scala.concurrent.duration.*
+
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val patient: Resource[IO, RedisClient[IO]] =
+  RedisClient[IO].to("localhost", 6379, reconnect = Reconnect(500.millis, 30.seconds))
+```
+
+The client also reconnects when the server stops replying: once a reply is late
+by more than its `send`'s timeout, the client drops the connection and opens a
+new one.
+
+Connecting to a server gives up after 10 seconds, so a server that doesn't
+answer doesn't hold the client up: commands then fail with `ServerUnavailable`,
+whose `cause` is `ConnectTimedOut`. To choose another limit, pass
+`connectTimeout`:
+
+```scala mdoc:compile-only
+import cats.effect.{IO, Resource}
+import scala.concurrent.duration.*
+
+import laserdisc.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val client: Resource[IO, RedisClient[IO]] = RedisClient[IO].to("localhost", 6379, connectTimeout = 2.seconds)
+```
+
+Each connection also asks the system for an 8 MiB buffer to hold replies until
+they're read. Pass `receiveBufferSizeBytes` to choose another size. On
+Scala.js, Node.js chooses the size, and this setting is ignored.
 
 ## Loops
 
@@ -100,12 +298,13 @@ Some commands are meant to be sent again and again. SCAN replies with a cursor
 to send back until the server is done, XRANGE reads a stream a page at a time,
 and XREAD can follow a stream as entries are added. For these there are loops:
 `scanAll`, `hscanAll`, `hscannovaluesAll`, `sscanAll`, `zscanAll`,
-`zscannoscoresAll`, `xrangeAll` and `xrevrangeAll`, and, with the blocking
-commands, `xreadFollow` and `xreadgroupFollow`. `stream` runs a loop and gives
-you its values as a `Stream`:
+`zscannoscoresAll`, `xrangeAll` and `xrevrangeAll`, and, among the blocking
+commands, `blocking.xreadFollow` and `blocking.xreadgroupFollow`. `stream` runs
+a loop and gives you its values as a `Stream`:
 
 ```scala mdoc:compile-only
 import cats.effect.IO
+import fs2.Stream
 
 import laserdisc.*
 import laserdisc.redis_8_10.*
@@ -118,7 +317,7 @@ def userKeys(client: RedisClient[IO]): Stream[IO, Key] =
 
 Each command is sent once the reply to the one before it is in. A failed
 command fails the stream. Each command gets the same timeout as a `send`, or the
-one you pass after the loop, and for a blocking command its wait is added to it.
+one you pass after the loop.
 
 To make your own loop, give `Loop` where to start, the command to send from
 there, and what to do with the reply: the values it gives, and where to go next,
@@ -134,18 +333,88 @@ def wholeList(key: Key): Loop[String] =
   }
 ```
 
-For blocking commands, use `Loop.blocking` with how long each one waits.
-
 ## Blocking commands
 
 Blocking commands, under `blocking`, wait on the server for something to
-happen. While one waits, it holds the client's connection: commands sent after
-it on the same client, from anywhere in your program, only get their replies
-once it's done. Give blocking commands, and loops that follow streams, a client
-of their own.
+happen. The client adds that wait to the `send`'s timeout, so `blpop` with 30
+seconds and the default timeout can take up to 50 seconds:
+
+```scala mdoc:compile-only
+import cats.effect.IO
+
+import laserdisc.*
+import laserdisc.redis_8_10.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val jobs = OneOrMoreKeys.unsafeFrom(List(Key("jobs")))
+
+// the wait is in seconds and can have a fraction, so it's written 30.0: None if no job came in that time
+def nextJob(client: RedisClient[IO]): IO[Maybe[Option[KV[String]]]] =
+  client.send(blocking.blpop[String](jobs, 30.0))
+```
+
+The wait is at least 0.002 seconds and at most 4294967, about 50 days: 0 would
+mean for as long as it takes, and KeyDB and Dragonfly wait for as long as it
+takes on less.
+
+A few other commands wait on the server too, and get their wait added the same
+way, such as `WAIT`, `MIGRATE` and `CLUSTER SETSLOT`. `SHUTDOWN` gets 10 seconds,
+as long as a server waits for its replicas unless set otherwise with
+`shutdown-timeout`: if yours waits longer, give `SHUTDOWN` a longer timeout.
+
+While one waits, it holds the client's connection: commands sent after it on the
+same client, from anywhere in your program, only get their replies once it's
+done, and may time out first. Give blocking commands, and loops that follow
+streams, a client of their own.
+
+### Waiting for as long as it takes
+
+To wait with no limit, use a dedicated client and the commands under
+`blocking.forever`. A dedicated client sends one command at a time, each once
+the one before it has returned, so it's meant for one caller: a command's
+timeout only starts once its turn comes. Besides those commands, it sends any
+other:
+
+```scala mdoc:compile-only
+import cats.effect.IO
+
+import laserdisc.*
+import laserdisc.redis_8_10.*
+import laserdisc.auto.*
+import laserdisc.fs2.*
+
+val jobs = OneOrMoreKeys.unsafeFrom(List(Key("jobs")))
+
+RedisClient[IO].dedicated("localhost", 6379).use { client =>
+  client.send(blocking.forever.blpop[String](jobs)).flatMap(job => IO.println(job))
+}
+```
+
+A command that waits for as long as it takes has no timeout. Cancel it to stop
+waiting: as the server is still waiting on it, the client closes the connection,
+and the next command connects again. The shared client from `to` doesn't
+compile with these commands.
+
+The server may have run a command as you cancel it. A pop, such as `blpop`, can
+then have taken an item off the list that its reply would have brought you, and
+that item is lost. If items mustn't be lost, move them to a list of your own
+with `blmove` instead, and take them off that list once they're done.
+
+If the server goes away without closing the connection, as when its machine
+loses power, a command with no timeout only fails once the operating system
+gives up on the connection. Its keep-alive checks take about two hours by
+default on Linux and macOS.
 
 ## Logging
 
 The client logs through [log-effect](https://github.com/laserdisc-io/log-effect).
 To see its logs, put a `LogWriter` in implicit scope, for example
-`SyncLogWriter.consoleLog[IO]`. Without one, the client doesn't log.
+`SyncLogWriter.consoleLogUpToLevel(LogLevels.Info)`. Without one, the client
+doesn't log.
+
+At info and above, the client logs its connections and their failures. At
+trace, it also logs each command it sends and each reply it gets, but only the
+command's name and how many arguments it has, and the kind and size of the
+reply, or an error's message: never their values, which can be passwords or
+your data.

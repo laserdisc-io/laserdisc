@@ -35,11 +35,15 @@ abstract class HyperLogLogPSpec extends BaseSpec with HyperLogLogP {
   }
 
   property("The HyperLogLog protocol using pfcount roundtrips successfully given keys") {
-    forAll { (ks: OneOrMoreKeys, nni: NonNegInt) =>
+    forAll { (ks: OneOrMoreKeys, nnl: NonNegLong) =>
       val protocol = pfcount(ks)
       assertEquals(protocol.encode, Arr(Bulk("PFCOUNT") :: ks.value.map(Bulk(_))))
-      assertEquals(protocol.decode(Num(nni.value.toLong)), nni)
+      assertEquals(protocol.decode(Num(nnl.value)), nnl)
     }
+  }
+
+  test("The HyperLogLog protocol reads a pfcount above the largest Int") {
+    assertEquals(pfcount(OneOrMoreKeys.unsafeFrom(List(Key("h")))).decode(Num(3000000000L)), NonNegLong(3000000000L))
   }
 
   property("The HyperLogLog protocol using pfmerge roundtrips successfully given two or more source keys and a destination key") {

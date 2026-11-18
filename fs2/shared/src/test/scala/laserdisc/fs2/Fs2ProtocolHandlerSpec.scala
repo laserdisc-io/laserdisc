@@ -22,6 +22,7 @@
 package laserdisc
 package fs2
 
+import cats.effect.std.Queue
 import cats.effect.IO
 import cats.syntax.foldable.*
 import munit.CatsEffectSuite
@@ -38,7 +39,7 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
 
     for {
       queue <- Queue.unbounded[IO, Batch[IO]]
-      fiber <- handler(queue -> 1.second, num *: str *: EmptyTuple).start
+      fiber <- handler((queue.offer(_)) -> 1.second, num *: str *: EmptyTuple).start
       batch <- queue.take
       _     <- batch.requests.traverse_(r => r.callback(r.protocol.decodeReplies(Seq(if (r.protocol eq num) Num(42L) else Str("ok")))))
       out   <- fiber.joinWithNever
@@ -53,7 +54,7 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
 
     for {
       queue     <- Queue.unbounded[IO, Batch[IO]]
-      out       <- handler(queue -> 50.millis, num *: EmptyTuple).attempt
+      out       <- handler((queue.offer(_)) -> 50.millis, num *: EmptyTuple).attempt
       batch     <- queue.take
       canBeSent <- batch.claim.complete(())
     } yield {
@@ -68,7 +69,7 @@ final class Fs2ProtocolHandlerSpec extends CatsEffectSuite {
 
     for {
       queue <- Queue.unbounded[IO, Batch[IO]]
-      fiber <- handler(queue -> 200.millis, num *: str *: EmptyTuple).attempt.start
+      fiber <- handler((queue.offer(_)) -> 200.millis, num *: str *: EmptyTuple).attempt.start
       batch <- queue.take
       _     <- batch.claim.complete(())
       first = batch.requests.head

@@ -22,7 +22,10 @@
 package laserdisc
 package fs2
 
-import cats.effect.IO
+import _root_.fs2.Stream
+import cats.Order
+import cats.data.NonEmptySet
+import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import laserdisc.redis_6_2.*
 import laserdisc.auto.*
@@ -37,10 +40,27 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
 
   test("toNodes connects to the next address when one is unreachable") {
     (FakeRedisServer((_, requests) => requests.as(bulk("alive"))), unusedPort).tupled.use { case (alive, dead) =>
-      RedisClient[IO].toNodes(Set(address(alive), address(dead))).use { client =>
+      RedisClient[IO].toNodes(NonEmptySet.of(address(alive), address(dead))).use { client =>
         untilReplied(client.send(get[String]("k"), 2.seconds)).assertEquals(Some("alive"))
       }
     }
+  }
+
+  test("toNodes tries the addresses in the order of their set") {
+    def answering(name: String) = FakeRedisServer((_, requests) => requests.as(bulk(name)))
+
+    (answering("a"), answering("b")).tupled.use { case (a, b) =>
+      val (low, high)                                      = if (a.value < b.value) ("a", "b") else ("b", "a")
+      def firstReply(addresses: NonEmptySet[RedisAddress]) =
+        RedisClient[IO].toNodes(addresses).use(client => untilReplied(client.send(get[String]("k"), 2.seconds)))
+      val byPort           = NonEmptySet.of(address(a), address(b))
+      val byPortDescending = NonEmptySet.of(address(a), address(b))(using Order.reverse(RedisAddress.redisAddressOrder))
+      firstReply(byPort).assertEquals(Some(low)) >> firstReply(byPortDescending).assertEquals(Some(high))
+    }
+  }
+
+  test("toNodes takes at least one address") {
+    assert(compileErrors("RedisClient[IO].toNodes(Set.empty[RedisAddress])").nonEmpty)
   }
 
   test("toNodes connects to the next address when the connected one goes away") {
@@ -48,13 +68,15 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
     val remaining = FakeRedisServer((_, requests) => requests.as(bulk("second")))
 
     (leaving, remaining).tupled.use { case (first, second) =>
-      RedisClient[IO].toNodes(Set(address(first), address(second))).use { client =>
+      // the server that goes away first, whatever its port
+      val leavingFirst = NonEmptySet.of(address(first), address(second))(using Order.by(_.port.value != first.value))
+      RedisClient[IO].toNodes(leavingFirst).use { client =>
         for {
           r1 <- untilReplied(client.send(get[String]("k"), 2.seconds))
           r2 <- untilReplied(
             client.send(get[String]("k"), 2.seconds).map(_.flatMap(r => if (r == r1) Left(new Exception(s"still $r")) else Right(r)))
           )
-        } yield assertEquals(Set(r1, r2), Set(Option("first"), Option("second")))
+        } yield assertEquals(List(r1, r2), List(Option("first"), Option("second")))
       }
     }
   }
@@ -97,15 +119,107 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
     }
   }
 
-  test("commands fail while no server can be reached") {
-    def untilUnavailable(client: RedisClient[IO]): IO[Throwable] =
+  test("when the connection to the only address goes, the client connects to it again, instead of failing commands as unreachable") {
+    val leavingOnce = FakeRedisServer((n, requests) => if (n == 1) requests.take(1).as(bulk("first")) else requests.as(bulk("back")))
+
+    leavingOnce.use { port =>
+      RedisClient[IO].to("127.0.0.1", port).use { client =>
+        for {
+          first <- client.send(get[String]("k"), 2.seconds)
+          _     <- IO.sleep(500.millis)
+          later <- client.send(get[String]("k"), 2.seconds)
+        } yield {
+          assertEquals(first, Right(Some("first")))
+          assertEquals(later, Right(Some("back")))
+        }
+      }
+    }
+  }
+
+  test("a server that closes each connection before answering anything isn't connected to again and again") {
+    IO.ref(0).flatMap { connections =>
+      FakeRedisServer((n, _) => Stream.exec(connections.set(n))).use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use(_ => IO.sleep(1.second)) >> connections.get.map(n => assert(n <= 2, s"$n connections"))
+      }
+    }
+  }
+
+  test("when the server closes a connection nothing was sent on, the client connects again for the next command, which goes through") {
+    IO.ref(0).flatMap { connections =>
+      val idleClosedOnce =
+        FakeRedisServer((n, requests) => Stream.exec(connections.set(n)) ++ (if (n == 1) Stream.empty else requests.as(bulk("back"))))
+
+      idleClosedOnce.use { port =>
+        RedisClient[IO].to("127.0.0.1", port).use { client =>
+          for {
+            _      <- IO.sleep(500.millis)
+            before <- connections.get
+            reply  <- client.send(get[String]("k"), 2.seconds)
+            after  <- connections.get
+          } yield {
+            assertEquals(before, 1)
+            assertEquals(reply, Right(Some("back")))
+            assertEquals(after, 2)
+          }
+        }
+      }
+    }
+  }
+
+  test("the client waits longer each time in a row no server answers") {
+    // reads each command and closes the connection without answering, keeping when each connection came
+    IO.ref(Vector.empty[FiniteDuration]).flatMap { came =>
+      val refusing =
+        FakeRedisServer((_, requests) => Stream.exec(IO.monotonic.flatMap(now => came.update(_ :+ now))) ++ requests.take(1).drain)
+      refusing.use { port =>
+        RedisClient[IO].to("127.0.0.1", port, reconnect = Reconnect(50.millis, 800.millis)).use { client =>
+          // sends keep coming, as each connection is opened for one
+          (client.send(get[String]("k"), 1.second).attempt >> IO.sleep(10.millis)).foreverM.timeoutTo(4500.millis, IO.unit)
+        } >> came.get.map { times =>
+          val gaps = times.zip(times.drop(1)).map { case (a, b) => b - a }
+          assert(gaps.size >= 5, s"only ${times.size} connections")
+          // each gap is also each connection's own time, which a busy machine makes longer, so the last ones only have to be well above
+          // the first: waits of 400 milliseconds or more, after the random cut, against 50 at most
+          assert(gaps.takeRight(2).forall(_ > gaps.head * 2), s"gaps didn't grow: $gaps")
+        }
+      }
+    }
+  }
+
+  test("a server that comes back is used again after a short wait") {
+    unusedPort.use { port =>
+      RedisClient[IO].to("127.0.0.1", port, reconnect = Reconnect(50.millis, 200.millis)).use { client =>
+        client.send(get[String]("k"), 1.second).attempt >>
+          FakeRedisServer.on(port)((_, requests) => requests.as(bulk("back"))).use { _ =>
+            untilBack(client).timed.map { case (took, reply) =>
+              assertEquals(reply, Some("back"))
+              assert(took < 1.second, s"took $took")
+            }
+          }
+      }
+    }
+  }
+
+  // sends every 20 milliseconds until one is answered
+  private def untilBack(client: RedisClient[IO]): IO[Option[String]] =
+    client.send(get[String]("k"), 1.second).attempt.map(_.flatten).flatMap {
+      case Right(reply) => IO.pure(reply)
+      case Left(_)      => IO.sleep(20.millis) >> untilBack(client)
+    }
+
+  test("commands fail while no server can be reached, with why the last connection failed") {
+    def untilUnavailable(client: RedisClient[IO]): IO[ServerUnavailable] =
       client.send(get[String]("k"), 1.second).attempt.flatMap {
-        case Right(Left(failure)) if failure == ServerUnavailable => IO.pure(failure)
-        case _                                                    => IO.sleep(200.millis) >> untilUnavailable(client)
+        case Right(Left(failure: ServerUnavailable)) => IO.pure(failure)
+        case _                                       => IO.sleep(200.millis) >> untilUnavailable(client)
       }
 
     unusedPort.use { port =>
-      RedisClient[IO].to("127.0.0.1", port).use(untilUnavailable).assertEquals(ServerUnavailable: Throwable)
+      RedisClient[IO].to("127.0.0.1", port).use(untilUnavailable).map { unavailable =>
+        assert(unavailable.getCause eq unavailable.cause)
+        assert(!unavailable.cause.isInstanceOf[ServerUnavailable], unavailable.cause.toString)
+        assertEquals(unavailable.getMessage, s"No server available: ${unavailable.cause.getMessage}")
+      }
     }
   }
 
@@ -122,6 +236,38 @@ final class RedisClientReconnectSpec extends CatsEffectSuite {
         } yield {
           assert(first.left.exists(_.isInstanceOf[RequestTimedOut[?]]), s"expected a timeout, got $first")
           assertEquals(later, Some("back"))
+        }
+      }
+    }
+  }
+
+  // a server that answers the first command of each connection with its name, and closes the connection a little after it opened, as a
+  // server closing idle clients does
+  private def closingIdle(name: String): Resource[IO, Port] =
+    FakeRedisServer((_, requests) => requests.take(1).as(bulk(name)).interruptAfter(300.millis))
+
+  private def everyFewHundredMillis[A](times: Int)(send: IO[A]): IO[List[A]] =
+    (1 to times).toList.traverse(_ => send <* IO.sleep(600.millis))
+
+  // a server that closes each connection once it has answered its first command, with its name
+  private def closingAfterReply(name: String): Resource[IO, Port] = FakeRedisServer((_, requests) => requests.take(1).as(bulk(name)))
+
+  test("toNodes stays on its server when the server closes a connection with nothing waiting on it, instead of moving to the next address") {
+    (closingAfterReply("a"), closingAfterReply("b")).tupled.use { case (a, b) =>
+      RedisClient[IO].toNodes(NonEmptySet.of(address(a), address(b))).use { client =>
+        everyFewHundredMillis(5)(client.send(get[String]("k"), 2.seconds)).map { replies =>
+          assert(replies.forall(_.isRight), replies.toString)
+          assertEquals(replies.distinct.size, 1, replies.toString)
+        }
+      }
+    }
+  }
+
+  test("toNodes keeps answering from a server that closes idle connections while another address is unreachable") {
+    (closingIdle("up"), unusedPort).tupled.use { case (up, down) =>
+      RedisClient[IO].toNodes(NonEmptySet.of(address(up), address(down))).use { client =>
+        everyFewHundredMillis(6)(client.send(get[String]("k"), 2.seconds)).map { replies =>
+          assertEquals(replies, List.fill(6)(Right(Some("up"))))
         }
       }
     }

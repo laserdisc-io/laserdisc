@@ -80,7 +80,7 @@ object SortedSetP {
         case bulk: Bulk               => Read[Bulk, A].read(bulk).map(Some(_))
         case Arr((bulk: Bulk) :: Nil) => Read[Bulk, A].read(bulk).map(Some(_))
         case Arr(Nil) | NullBulk      => Right(None)
-        case other                    => Left(RESPDecErr(s"Unexpected reply to ZRANDMEMBER. Was $other"))
+        case other                    => Left(RESPDecErr(s"Unexpected reply to ZRANDMEMBER. Was ${RESPDecErr.shown(other)}"))
       }
     }
 

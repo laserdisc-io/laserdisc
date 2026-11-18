@@ -74,26 +74,27 @@ final class ServerPSpec extends BaseSpec with ServerP {
   }
 
   property("The Server protocol using client.kill with filters sends each filter and reads how many clients it closed") {
-    forAll { (id: NonNegLong, h: Host, p: Port, u: String, n: NonNegLong) =>
+    forAll { (id: NonNegLong, h: IpAddress, p: Port, u: String, n: NonNegLong) =>
+      val at       = if (h.value.contains(':')) s"[${h.value}]:${p.value}" else s"${h.value}:${p.value}"
       val filter   = servertypes.clientFilter.id(id).address(h, p).clientType(servertypes.clientType.pubsub).user(u).skipMe(false)
       val protocol = client.kill(filter)
       assertEquals(
         protocol.encode,
         Arr(
-          List("CLIENT", "KILL", "ID", id.value.toString, "ADDR", s"${h.value}:${p.value}", "TYPE", "pubsub", "USER", u, "SKIPME", "no")
+          List("CLIENT", "KILL", "ID", id.value.toString, "ADDR", at, "TYPE", "pubsub", "USER", u, "SKIPME", "no")
             .map(Bulk(_))
         )
       )
       assertEquals(protocol.decode(Num(n.value)), n)
       assertEquals(
         client.kill(servertypes.clientFilter.localAddress(h, p), PosLong(10L)).encode,
-        Arr(List("CLIENT", "KILL", "LADDR", s"${h.value}:${p.value}", "MAXAGE", "10").map(Bulk(_)))
+        Arr(List("CLIENT", "KILL", "LADDR", at, "MAXAGE", "10").map(Bulk(_)))
       )
     }
   }
 
   property("The Server protocol using the client commands sends their arguments") {
-    forAll { (ids: OneOrMore[NonNegLong], ms: PosLong, id: NonNegLong, k: Key) =>
+    forAll { (ids: OneOrMore[NonNegLong], ms: PosLong, id: NonNegLong, k: ConnectionName) =>
       assertEquals(client.list(ids).encode, Arr(Bulk("CLIENT") :: Bulk("LIST") :: Bulk("ID") :: ids.value.map(Bulk(_))))
       assertEquals(client.list(servertypes.clientType.replica).encode, Arr(Bulk("CLIENT"), Bulk("LIST"), Bulk("TYPE"), Bulk("replica")))
       assertEquals(client.pause(ms, servertypes.pauseMode.write).encode, Arr(Bulk("CLIENT"), Bulk("PAUSE"), Bulk(ms), Bulk("WRITE")))
@@ -109,6 +110,12 @@ final class ServerPSpec extends BaseSpec with ServerP {
   test("The Server protocol using client.info reads the client's fields") {
     client.info.decode(Bulk("id=3 addr=127.0.0.1:50000 name=me db=0\n")).onRight { case ClientInfo(parameters) =>
       parameters.get[String]("id") == Right("3") && parameters.get[String]("name") == Right("me")
+    }
+  }
+
+  test("The Server protocol using client.info reads a value with an = in it, as a client name can have") {
+    client.info.decode(Bulk("id=3 name=a=b db=0\n")).onRight { case ClientInfo(parameters) =>
+      parameters.get[String]("name") == Right("a=b") && parameters.get[String]("db") == Right("0")
     }
   }
 
@@ -147,8 +154,22 @@ final class ServerPSpec extends BaseSpec with ServerP {
     assertEquals(client.list(client.ids(twoIds)).encode, words("CLIENT", "LIST", "ID", "1", "2"))
   }
 
+  test("The Server protocol writes an IPv6 address in brackets, as the server shows a client's address, and an IPv4 one as it is") {
+    val (v6, v4, p)                 = (IpAddress("::1"), IpAddress("127.0.0.1"), Port(6379))
+    def sent(protocol: Protocol[?]) = protocol.frames.flatMap { case Arr(ws) => ws.collect { case Bulk(w) => w }; case _ => Nil }.toList
+    assertEquals(sent(client.kill(servertypes.clientFilter.address(v6, p))), List("CLIENT", "KILL", "ADDR", "[::1]:6379"))
+    assertEquals(sent(client.kill(servertypes.clientFilter.localAddress(v6, p))), List("CLIENT", "KILL", "LADDR", "[::1]:6379"))
+    assertEquals(sent(client.kill(servertypes.clientFilter.address(v4, p))), List("CLIENT", "KILL", "ADDR", "127.0.0.1:6379"))
+    assertEquals(sent(client.kill(v6, p)), List("CLIENT", "KILL", "[::1]:6379"))
+    val f = servertypes.valkeyClientFilter
+    assertEquals(
+      sent(client.kill(f.address(v6, p).localAddress(v6, p).notAddress(v6, p).notLocalAddress(v6, p))),
+      List("CLIENT", "KILL", "ADDR", "[::1]:6379", "LADDR", "[::1]:6379", "NOT-ADDR", "[::1]:6379", "NOT-LADDR", "[::1]:6379")
+    )
+  }
+
   test("The Server protocol sends each of Valkey's filters, for both CLIENT KILL and CLIENT LIST") {
-    val h        = Host("h.example")
+    val h        = IpAddress("10.0.0.1")
     val p        = Port(1)
     val k        = Key("k")
     val n        = ConnectionName("n")
@@ -179,11 +200,11 @@ final class ServerPSpec extends BaseSpec with ServerP {
       "USER",
       "u",
       "ADDR",
-      "h.example:1",
+      "10.0.0.1:1",
       "LADDR",
-      "h.example:1",
+      "10.0.0.1:1",
       "IP",
-      "h.example",
+      "10.0.0.1",
       "NAME",
       "n",
       "FLAGS",
@@ -226,11 +247,11 @@ final class ServerPSpec extends BaseSpec with ServerP {
       "NOT-USER",
       "u",
       "NOT-ADDR",
-      "h.example:1",
+      "10.0.0.1:1",
       "NOT-LADDR",
-      "h.example:1",
+      "10.0.0.1:1",
       "NOT-IP",
-      "h.example",
+      "10.0.0.1",
       "NOT-NAME",
       "n",
       "NOT-FLAGS",
@@ -252,9 +273,9 @@ final class ServerPSpec extends BaseSpec with ServerP {
     List[(ServerP.ValkeyClientFilter, List[String])](
       f.clientType(servertypes.clientType.normal)    -> List("TYPE", "normal"),
       f.user("u")                                    -> List("USER", "u"),
-      f.address(h, p)                                -> List("ADDR", "h.example:1"),
-      f.localAddress(h, p)                           -> List("LADDR", "h.example:1"),
-      f.ip(h)                                        -> List("IP", "h.example"),
+      f.address(h, p)                                -> List("ADDR", "10.0.0.1:1"),
+      f.localAddress(h, p)                           -> List("LADDR", "10.0.0.1:1"),
+      f.ip(h)                                        -> List("IP", "10.0.0.1"),
       f.name(n)                                      -> List("NAME", "n"),
       f.flags(k)                                     -> List("FLAGS", "k"),
       f.libName(k)                                   -> List("LIB-NAME", "k"),
@@ -266,9 +287,9 @@ final class ServerPSpec extends BaseSpec with ServerP {
       f.notIds(twoIds)                               -> List("NOT-ID", "1", "2"),
       f.notClientType(servertypes.clientType.pubsub) -> List("NOT-TYPE", "pubsub"),
       f.notUser("u")                                 -> List("NOT-USER", "u"),
-      f.notAddress(h, p)                             -> List("NOT-ADDR", "h.example:1"),
-      f.notLocalAddress(h, p)                        -> List("NOT-LADDR", "h.example:1"),
-      f.notIp(h)                                     -> List("NOT-IP", "h.example"),
+      f.notAddress(h, p)                             -> List("NOT-ADDR", "10.0.0.1:1"),
+      f.notLocalAddress(h, p)                        -> List("NOT-LADDR", "10.0.0.1:1"),
+      f.notIp(h)                                     -> List("NOT-IP", "10.0.0.1"),
       f.notFlags(k)                                  -> List("NOT-FLAGS", "k"),
       f.notLibName(k)                                -> List("NOT-LIB-NAME", "k"),
       f.notLibVersion(k)                             -> List("NOT-LIB-VER", "k"),
@@ -317,18 +338,30 @@ final class ServerPSpec extends BaseSpec with ServerP {
     assertEquals(role.decode(Arr(Bulk("master"), Num(0L), Arr(Nil))), Role.Master(NonNegLong(0L), Nil): Role)
     assertEquals(
       role.decode(Arr(Bulk("master"), Num(14L), Arr(Arr(Bulk("172.18.0.3"), Bulk("6379"), Bulk("14"))))),
-      Role.Master(NonNegLong(14L), Seq(Role.Client(Host.unsafeFrom("172.18.0.3"), Port.unsafeFrom(6379), NonNegLong(14L)))): Role
+      Role.Master(NonNegLong(14L), Seq(Role.Client("172.18.0.3", 6379, NonNegLong(14L)))): Role
     )
   }
 
   test("The Server protocol using role reads a replica, with no offset until it has synced") {
     def replica(status: String, offset: Long) = Arr(Bulk("slave"), Bulk("10.0.0.1"), Num(6379L), Bulk(status), Num(offset))
-    val host                                  = Host.unsafeFrom("10.0.0.1")
-    val port                                  = Port.unsafeFrom(6379)
+    val (host, port)                          = ("10.0.0.1", 6379)
     assertEquals(role.decode(replica("connected", 14L)), Role.Slave(host, port, Role.connected, Some(NonNegLong(14L))): Role)
     assertEquals(role.decode(replica("handshake", -1L)), Role.Slave(host, port, Role.handshake, None): Role)
     assertEquals(role.decode(replica("connecting", -1L)), Role.Slave(host, port, Role.connecting, None): Role)
     assert(role.decode(replica("nope", 0L)).isLeft)
+  }
+
+  test("The Server protocol using role reads hosts and ports as the server gives them: any name, and a port of 0") {
+    // a replica given its master by a name that isn't a hostname, as Docker Compose services are named
+    assertEquals(
+      role.decode(Arr(Bulk("slave"), Bulk("redis_master"), Num(6379L), Bulk("connect"), Num(-1L))),
+      Role.Slave("redis_master", 6379, Role.connect, None): Role
+    )
+    // a replica that didn't give its port, as a client syncing with PSYNC alone
+    assertEquals(
+      role.decode(Arr(Bulk("master"), Num(0L), Arr(Arr(Bulk("172.17.0.1"), Bulk("0"), Bulk("0"))))),
+      Role.Master(NonNegLong(0L), Seq(Role.Client("172.17.0.1", 0, NonNegLong(0L)))): Role
+    )
   }
 
   test("The Server protocol using role reads a sentinel, and rejects a reply naming another role") {

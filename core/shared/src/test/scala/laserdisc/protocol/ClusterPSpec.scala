@@ -38,16 +38,16 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
         maybeMaster: Option[NodeId],
         ping: NonNegLong,
         pong: NonNegLong,
-        configEpoch: NonNegInt,
+        configEpoch: NonNegLong,
         link: ClusterLinkState,
         slots: Seq[ClusterP.SlotType]
     ): ClusterP.Node7_0              = ClusterP.NodeOf7_0(id, address, flags, maybeMaster, ping, pong, configEpoch, link, slots)
     def unapply(n: ClusterP.Node7_0) = Some((n.id, n.address, n.flags, n.maybeMaster, n.ping, n.pong, n.configEpoch, n.link, n.slots))
   }
   private def ClusterNodes(nodes: Seq[ClusterP.Node7_0]): ClusterNodes = ClusterP.NodesOf7_0(nodes)
-  private def ClusterAddress(host: Option[Host], port: Port, clusterPort: Port, hostname: Option[Host]): ClusterP.Address7_0 =
+  private def ClusterAddress(host: Option[String], port: Port, clusterPort: Port, hostname: Option[String]): ClusterP.Address7_0 =
     ClusterP.AddressOf7_0(host, port, clusterPort, hostname)
-  private def ClusterSlotNode(host: Option[Host], port: Port, nodeId: NodeId, metadata: Map[String, String]): ClusterSlotNode =
+  private def ClusterSlotNode(host: Option[String], port: Port, nodeId: NodeId, metadata: Map[String, String]): ClusterSlotNode =
     ClusterP.SlotNodeOf7_0(host, port, nodeId, metadata)
   private def ClusterSlotInfo(master: ClusterSlotNode, replicas: Seq[ClusterSlotNode]): ClusterP.SlotInfo7_0 =
     ClusterP.SlotInfoOf7_0(master, replicas)
@@ -65,8 +65,8 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       "07c37dfeb235213a872192d90877d0cd55635b91 127.0.0.1:30004@31004,my.host.example slave e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca 0 1426238317239 4 connected"
     redis_6_2.nodes
       .decode(Bulk(line))
-      .onRight(_.nodes.flatMap(_.address) == Seq(ClusterP.AddressOf6_2(Some(Host("127.0.0.1")), Port(30004), Port(31004))))
-    nodes.decode(Bulk(line)).onRight(_.nodes.flatMap(_.address).map(_.hostname) == Seq(Some(Host("my.host.example"))))
+      .onRight(_.nodes.flatMap(_.address) == Seq(ClusterP.AddressOf6_2(Some("127.0.0.1"), Port(30004), Port(31004))))
+    nodes.decode(Bulk(line)).onRight(_.nodes.flatMap(_.address).map(_.hostname) == Seq(Some("my.host.example")))
     val withMetadata = Arr(
       Arr(
         Num(0L),
@@ -78,7 +78,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       .decode(withMetadata)
       .onRight(
         _.slots.values.map(_.master).toSeq == Seq(
-          ClusterP.SlotNodeOf6_2(Some(Host("127.0.0.1")), Port(30001), NodeId("e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca"))
+          ClusterP.SlotNodeOf6_2(Some("127.0.0.1"), Port(30001), NodeId("e7d1eecce10fd6bb5eb35b9f99a514335d9ba9ca"))
         )
       )
     assert(compileErrors("redis_6_2.nodes.decode(Bulk(line)).map(_.nodes.flatMap(_.address).map(_.hostname))").nonEmpty)
@@ -105,7 +105,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
   }
 
   private type RawNode =
-    (String, Either[EmptyString, Host], Port, Option[Port], Seq[String], String, Long, Long, Int, String, Seq[String])
+    (String, Either[EmptyString, Host], Port, Option[Port], Seq[String], String, Long, Long, Long, String, Seq[String])
   private type RawNodes = List[RawNode]
   private val rawNodeToString: RawNode => String = {
     case (nid, h, p, None, fs, mnid, ps, pr, ce, l, ss) =>
@@ -114,13 +114,12 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       s"$nid ${h.fold(_.value, _.value)}:$p@$cp ${fs.mkString(COMMA)} $mnid $ps $pr $ce $l${ss.mkString(SPACE, SPACE, "")}"
   }
   private val nodesIsValid: RawNodes => Boolean = {
-    val nid    = NodeIdRegexWit.value
-    val ip     = IPv4RegexWit.value
-    val domain = Rfc1123HostnameRegexWit.value
-    val flags  = raw"noflags|([a-z?]+)(,([a-z?]+))*"
-    val link   = raw"(connected|disconnected)"
-    val slots  = raw"(\d+|(\d+-\d+)|\[\d+-[><]-$nid\])?(\s(\d+|(\d+-\d+)|\[\d+-[><]-$nid\]))*"
-    val R      = raw"^$nid\s($ip|$domain)?:(\d+)(@\d+)?\s($flags)\s(-|$nid)\s\d+\s\d+\s\d+\s$link\s$slots$$".r
+    val nid   = NodeIdRegexWit.value
+    val host  = raw"[A-Za-z0-9\-\.]*"
+    val flags = raw"noflags|([a-z?]+)(,([a-z?]+))*"
+    val link  = raw"(connected|disconnected)"
+    val slots = raw"(\d+|(\d+-\d+)|\[\d+-[><]-$nid\])?(\s(\d+|(\d+-\d+)|\[\d+-[><]-$nid\]))*"
+    val R     = raw"^$nid\s($host):(\d+)(@\d+)?\s($flags)\s(-|$nid)\s\d+\s\d+\s\d+\s$link\s$slots$$".r
 
     _.map(rawNodeToString).forall { case R(_*) => true; case _ => false }
   }
@@ -141,7 +140,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
       mmnid <- Gen.oneOf(const("-"), nodeIdGen)
       ps    <- nonNegLongGen
       pr    <- nonNegLongGen
-      ce    <- nonNegIntGen
+      ce    <- nonNegLongGen
       l     <- Gen.oneOf("connected", "disconnected")
       ss    <- choose(1, 20).flatMap(listOfN(_, slotType))
     } yield (nid, h, p, mcp, fs, mmnid, ps, pr, ce, l, ss)
@@ -160,7 +159,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
                 (n, h, p, cp, fs, m, ps, pr, ce, l, ss)
               ) =>
             assertEquals(n0.value, n)
-            assertEquals(a0.map(_.host), Some(h.toOption))
+            assertEquals(a0.map(_.host), Some(h.toOption.map(_.value)))
             assertEquals(a0.map(_.port), Some(p))
             assertEquals(a0.map(_.clusterPort), Some(cp.getOrElse(p)))
             assertEquals(
@@ -296,8 +295,8 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     }
   }
 
-  property("The Cluster protocol using meet roundtrips successfully given a host and a port") {
-    forAll { (h: Host, p: Port) =>
+  property("The Cluster protocol using meet roundtrips successfully given an address and a port") {
+    forAll { (h: IpAddress, p: Port) =>
       val protocol = meet(h, p)
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("MEET"), Bulk(h), Bulk(p)))
       assertEquals(protocol.decode(Str(OK.value)), OK)
@@ -322,7 +321,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     def address(a: String) = nodes.decode(Bulk(s"$id $a myself,master - 0 0 1 connected")).map(_.nodes.map(_.address))
 
     val (port, bus) = (Port(6379), Port(16379))
-    val (ip, name)  = (Host("127.0.0.1"), Host("my.host.example"))
+    val (ip, name)  = ("127.0.0.1", "my.host.example")
     assertEquals(address(":6379@16379"), Seq(Some(ClusterAddress(None, port, bus, None))))
     assertEquals(address("127.0.0.1:6379@16379"), Seq(Some(ClusterAddress(Some(ip), port, bus, None))))
     assertEquals(address(":6379@16379,my.host.example"), Seq(Some(ClusterAddress(None, port, bus, Some(name)))))
@@ -330,7 +329,23 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     assertEquals(address("127.0.0.1:6379@16379,my.host.example,shard-id=abc"), Seq(Some(ClusterAddress(Some(ip), port, bus, Some(name)))))
     assertEquals(address("127.0.0.1:6379@16379,,shard-id=abc"), Seq(Some(ClusterAddress(Some(ip), port, bus, None))))
     assertEquals(address("127.0.0.1:6379"), Seq(Some(ClusterAddress(Some(ip), port, port, None))))
-    assert(address("127.0.0.1:6379@16379,not_a_host").isLeft)
+    // the hostname as it was given to the node, which can be any name
+    assertEquals(address("127.0.0.1:6379@16379,redis_node"), Seq(Some(ClusterAddress(Some(ip), port, bus, Some("redis_node")))))
+  }
+
+  test("The Cluster protocol using nodes reads an IPv6 address, which Redis sends without brackets") {
+    val id                 = "0ca04a0a36e401b77e45584f8c44d7543eb9cc68"
+    def address(a: String) = nodes.decode(Bulk(s"$id $a myself,master - 0 0 1 connected")).map(_.nodes.map(_.address))
+
+    val (port, bus) = (Port(6379), Port(16379))
+    val (ip, local) = ("2001:db8::1", "::1")
+    assertEquals(address("2001:db8::1:6379@16379"), Seq(Some(ClusterAddress(Some(ip), port, bus, None))))
+    assertEquals(
+      address("::1:6379@16379,my.host.example"),
+      Seq(Some(ClusterAddress(Some(local), port, bus, Some("my.host.example"))))
+    )
+    assertEquals(address("2001:db8::1:6379"), Seq(Some(ClusterAddress(Some(ip), port, port, None))))
+    assertEquals(address("redis_node:6379@16379"), Seq(Some(ClusterAddress(Some("redis_node"), port, bus, None))))
   }
 
   test("The Cluster protocol using nodes reads a node with no known address as no address, and no other port of 0") {
@@ -407,8 +422,13 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
     assertEquals(protocol.decode(Str(OK.value)), OK)
   }
 
+  test("The Cluster protocol using nodes reads a config epoch above 2^31, as the server keeps a 64-bit one") {
+    val line = "0ca04a0a36e401b77e45584f8c44d7543eb9cc68 127.0.0.1:6379@16379 myself,master - 0 0 3000000000 connected"
+    assertEquals(nodes.decode(Bulk(line)).map(_.nodes.map(_.configEpoch.value)), Seq(3000000000L))
+  }
+
   property("The Cluster protocol using setconfigepoch roundtrips successfully given a config epoch") {
-    forAll { (nni: NonNegInt) =>
+    forAll { (nni: NonNegLong) =>
       val protocol = setconfigepoch(nni)
       assertEquals(protocol.encode, Arr(Bulk("CLUSTER"), Bulk("SET-CONFIG-EPOCH"), Bulk(nni)))
       assertEquals(protocol.decode(Str(OK.value)), OK)
@@ -441,7 +461,7 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
   property("The Cluster protocol using slots roundtrips successfully using val") {
     forAll(slotsGen) { ss =>
-      val node: RawSlotNode => ClusterSlotNode = { case (h, p, id) => ClusterSlotNode(h.toOption, p, id, Map.empty) }
+      val node: RawSlotNode => ClusterSlotNode = { case (h, p, id) => ClusterSlotNode(h.toOption.map(_.value), p, id, Map.empty) }
 
       assertEquals(slots.encode, Arr(Bulk("CLUSTER"), Bulk("SLOTS")))
       slots.decode(slotsToArr(ss)).onRight {
@@ -463,11 +483,16 @@ final class ClusterPSpec extends BaseSpec with ClusterP {
 
     assertEquals(
       slots.decode(reply(Bulk("foo.example"), Arr(Bulk("ip"), Bulk("10.0.0.1")))).map(_.slots),
-      Map(range -> ClusterSlotInfo(ClusterSlotNode(Some(Host.unsafeFrom("foo.example")), port, nodeId, Map("ip" -> "10.0.0.1")), Nil))
+      Map(range -> ClusterSlotInfo(ClusterSlotNode(Some("foo.example"), port, nodeId, Map("ip" -> "10.0.0.1")), Nil))
     )
     assertEquals(
       slots.decode(reply(NullBulk, Arr(Bulk("hostname"), Bulk("foo.example")))).map(_.slots),
       Map(range -> ClusterSlotInfo(ClusterSlotNode(None, port, nodeId, Map("hostname" -> "foo.example")), Nil))
+    )
+    // what Redis sends for a node without a hostname when it's told to give hostnames
+    assertEquals(
+      slots.decode(reply(Bulk("?"), Arr(Nil))).map(_.slots),
+      Map(range -> ClusterSlotInfo(ClusterSlotNode(None, port, nodeId, Map.empty), Nil))
     )
     assertEquals(
       slots.decode(reply(Bulk(""), Arr(Nil))).map(_.slots),

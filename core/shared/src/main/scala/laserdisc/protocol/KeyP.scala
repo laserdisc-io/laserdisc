@@ -139,13 +139,14 @@ object KeyP {
     object both    extends MigrateMode { override final val params: List[String] = List("COPY", "REPLACE") }
   }
 
-  sealed trait RestoreEviction { def param: String; def seconds: NonNegInt }
+  /** What RESTORE sets for the eviction policy: how long the key has been idle, for LRU, or how often it's used, for LFU */
+  sealed trait RestoreEviction { private[laserdisc] def params: List[String] }
   object RestoreEviction       {
-    final case class IdleTime(override final val seconds: NonNegInt) extends RestoreEviction {
-      override final val param: String = "IDLETIME"
+    final case class IdleTime(seconds: NonNegInt) extends RestoreEviction {
+      override private[laserdisc] final def params: List[String] = List("IDLETIME", Show[NonNegInt].show(seconds))
     }
-    final case class Frequency(override final val seconds: NonNegInt) extends RestoreEviction {
-      override final val param: String = "FREQ"
+    final case class Frequency(frequency: AccessFrequency) extends RestoreEviction {
+      override private[laserdisc] final def params: List[String] = List("FREQ", Show[AccessFrequency].show(frequency))
     }
   }
 
@@ -156,7 +157,7 @@ object KeyP {
     case object both        extends RestoreMode { override final val params: List[String] = List("REPLACE", "ABSTTL") }
   }
 
-  /** What TYPE replies, and what SCAN can look for. `other` is any type laserdisc doesn't name, like a module's `vectorset`, or an array
+  /** What TYPE replies, and what SCAN can look for. `other` is any type LaserDisc doesn't name, like a module's `vectorset`, or an array
     * before Redis 8.8
     */
   sealed trait Type
@@ -189,7 +190,7 @@ object KeyP {
     final val hash: Type.hash.type     = Type.hash
     final val stream: Type.stream.type = Type.stream
 
-    /** A type laserdisc doesn't name, to send or to match in a reply */
+    /** A type LaserDisc doesn't name, to send or to match in a reply */
     object other {
       def apply(name: Key): Type.other        = Type.other(name)
       def unapply(keyType: Type): Option[Key] = keyType match {
@@ -343,7 +344,7 @@ trait KeyBaseP extends Features {
   // TODO check if we must support deletions via timeout < 0
   final def expire(key: Key, seconds: NonNegInt): Single[Boolean] = Protocol("EXPIRE", key *: seconds *: EmptyTuple).as[Num, Boolean]
 
-  final def expireat(key: Key, seconds: NonNegInt): Single[Boolean] =
+  final def expireat(key: Key, seconds: NonNegLong): Single[Boolean] =
     Protocol("EXPIREAT", key *: seconds *: EmptyTuple).as[Num, Boolean]
 
   final def keys(pattern: GlobPattern): Single[Seq[Key]] = Protocol("KEYS", pattern *: EmptyTuple).as[Arr.Of[Bulk], Seq[Key]]
@@ -372,7 +373,7 @@ trait KeyBaseP extends Features {
   final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, mode: KeyRestoreMode): Single[OK] =
     Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: EmptyTuple).as[Str, OK]
   final def restore(key: Key, ttl: NonNegLong, serializedValue: Bulk, eviction: KeyRestoreEviction): Single[OK] =
-    Protocol("RESTORE", key *: ttl *: serializedValue *: eviction.param *: eviction.seconds *: EmptyTuple).as[Str, OK]
+    Protocol("RESTORE", key *: ttl *: serializedValue *: eviction.params *: EmptyTuple).as[Str, OK]
   final def restore(
       key: Key,
       ttl: NonNegLong,
@@ -380,7 +381,7 @@ trait KeyBaseP extends Features {
       mode: KeyRestoreMode,
       eviction: KeyRestoreEviction
   ): Single[OK] =
-    Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: eviction.param *: eviction.seconds *: EmptyTuple).as[Str, OK]
+    Protocol("RESTORE", key *: ttl *: serializedValue *: mode.params *: eviction.params *: EmptyTuple).as[Str, OK]
 
   final def scan(cursor: NonNegLong): Single[Scan[Key]]                       = Protocol("SCAN", cursor).as[ScanOf[Arr.Of[Bulk]], Scan[Key]]
   final def scan(cursor: NonNegLong, pattern: GlobPattern): Single[Scan[Key]] =
@@ -436,9 +437,8 @@ trait KeyBaseP extends Features {
 
   final def unlink(keys: OneOrMoreKeys): Single[NonNegInt] = Protocol("UNLINK", keys.value).as[Num, NonNegInt]
 
-  final def wait(replicas: PosInt): Single[PosInt]                   = Protocol("WAIT", replicas *: 0 *: EmptyTuple).as[Num, PosInt]
-  final def wait(replicas: PosInt, timeout: PosLong): Single[PosInt] =
-    Protocol("WAIT", replicas *: timeout *: EmptyTuple).as[Num, PosInt]
+  final def wait(replicas: PosInt, timeout: PosLong): Single[NonNegInt] =
+    Protocol("WAIT", replicas *: timeout *: EmptyTuple).as[Num, NonNegInt]
 }
 
 /** NX, XX, GT and LT for EXPIRE, PEXPIRE, EXPIREAT and PEXPIREAT, and EXPIRETIME and PEXPIRETIME: Redis 7.0 */
@@ -458,7 +458,7 @@ trait KeyExpireConditionP extends Features {
   final def expire(key: Key, seconds: NonNegInt, condition: ExpireCondition): Single[Boolean] =
     Protocol("EXPIRE", key *: seconds *: condition.params *: EmptyTuple).as[Num, Boolean]
 
-  final def expireat(key: Key, seconds: NonNegInt, condition: ExpireCondition): Single[Boolean] =
+  final def expireat(key: Key, seconds: NonNegLong, condition: ExpireCondition): Single[Boolean] =
     Protocol("EXPIREAT", key *: seconds *: condition.params *: EmptyTuple).as[Num, Boolean]
 
   final def expiretime(key: Key): Single[ExpireTimeResponse] = Protocol("EXPIRETIME", key).as[Num, ExpireTimeResponse]
@@ -489,9 +489,9 @@ trait KeyWaitAofP extends Features {
   override private[laserdisc] def supported: List[String] = super.supported ++ List("WAITAOF")
 
   /** Waits until the writes before it are on disk locally (when `local` is 1) and on `replicas` replicas, or until `timeout` milliseconds
-    * have passed (0 waits forever). Replies with how many of each it reached
+    * have passed. Replies with how many of each it reached
     */
-  final def waitaof(local: NonNegInt, replicas: NonNegInt, timeout: NonNegLong): Single[(NonNegInt, NonNegInt)] =
+  final def waitaof(local: NonNegInt, replicas: NonNegInt, timeout: PosLong): Single[(NonNegInt, NonNegInt)] =
     Protocol("WAITAOF", local *: replicas *: timeout *: EmptyTuple).using(RESPRead.instance(KeyP.localAndReplicas))
 }
 
@@ -512,7 +512,7 @@ trait KeyMigrateP extends Features {
   private implicit final val str2NOKEYOrOK: Read[Str, Either[NOKEY, OK]] = Read.instance {
     case Str("NOKEY") => Right(Left(NOKEY))
     case Str("OK")    => Right(Right(OK))
-    case Str(other)   => Left(RESPDecErr(s"Unexpected string for Read[Str, (NOKEY | OK)]. Was $other"))
+    case Str(other)   => Left(RESPDecErr(s"Unexpected string for Read[Str, (NOKEY | OK)]. Was ${RESPDecErr.shown(other)}"))
   }
 
   final def migrate(key: Key, host: Host, port: Port, dbIndex: DbIndex, timeout: NonNegInt): Single[Either[NOKEY, OK]] =
@@ -591,7 +591,8 @@ trait KeyObjectP extends Features {
     def encoding(key: Key): Single[Option[KeyP.Encoding]] =
       Protocol("OBJECT", "ENCODING" :: key.value :: Nil).as[OrNullBulk[Bulk], Option[KeyP.Encoding]]
 
-    def freq(key: Key): Single[NonNegInt] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, NonNegInt]
+    /** The counter LFU eviction keeps of how often the key is used, which RESTORE's FREQ takes */
+    def freq(key: Key): Single[AccessFrequency] = Protocol("OBJECT", "FREQ" :: key.value :: Nil).as[Num, AccessFrequency]
 
     def idletime(key: Key): Single[NonNegInt] = Protocol("OBJECT", "IDLETIME" :: key.value :: Nil).as[Num, NonNegInt]
 

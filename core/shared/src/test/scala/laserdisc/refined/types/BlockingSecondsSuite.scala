@@ -29,6 +29,10 @@ final class BlockingSecondsSuite extends BaseSpec {
     assert(compileErrors("BlockingSeconds(0.001d)").nonEmpty)
   }
 
+  test("BlockingSeconds fails to compile given 0, which waits forever") {
+    assert(compileErrors("BlockingSeconds(0.0d)").nonEmpty)
+  }
+
   test("BlockingSeconds fails to compile above what every server takes") {
     assert(compileErrors("BlockingSeconds(4294967.5d)").nonEmpty)
   }
@@ -38,7 +42,6 @@ final class BlockingSecondsSuite extends BaseSpec {
   }
 
   test("BlockingSeconds compiles given its edge cases") {
-    BlockingSeconds(0.0d)
     BlockingSeconds(0.002d)
     BlockingSeconds(4294967.0d)
   }

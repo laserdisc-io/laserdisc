@@ -366,10 +366,12 @@ trait ClusterSetSlotTimeoutP extends Features {
 
   override private[laserdisc] def supported: List[String] = super.supported ++ List("CLUSTER SETSLOT: TIMEOUT")
 
-  /** Like `setslot`, waiting at most `milliseconds` for the replicas to take the change */
-  final def setslot(slot: Slot, milliseconds: NonNegLong): Single[OK] =
+  /** Like `setslot`, waiting at most `milliseconds` for the replicas to take the change. To wait for as long as it takes, use
+    * `blocking.forever.setslot`
+    */
+  final def setslot(slot: Slot, milliseconds: PosLong): Single[OK] =
     Protocol("CLUSTER", "SETSLOT" *: slot *: "STABLE" *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
-  final def setslot(slot: Slot, mode: SetSlotMode, node: NodeId, milliseconds: NonNegLong): Single[OK] =
+  final def setslot(slot: Slot, mode: SetSlotMode, node: NodeId, milliseconds: PosLong): Single[OK] =
     Protocol("CLUSTER", "SETSLOT" *: slot *: mode *: node *: "TIMEOUT" *: milliseconds *: EmptyTuple).as[Str, OK]
 }
 

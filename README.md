@@ -2,10 +2,12 @@
 
 [![Continuous Integration](https://github.com/laserdisc-io/laserdisc/actions/workflows/ci.yml/badge.svg)](https://github.com/laserdisc-io/laserdisc/actions/workflows/ci.yml)
 [![Known Vulnerabilities](https://snyk.io/test/github/laserdisc-io/laserdisc/badge.svg?targetFile=build.sbt)](https://snyk.io/test/github/laserdisc-io/laserdisc?targetFile=build.sbt)
+[![Maven Central](https://img.shields.io/maven-central/v/io.laserdisc/laserdisc-fs2_2.13)](https://central.sonatype.com/artifact/io.laserdisc/laserdisc-fs2_2.13)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-blue.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
 
-[![laserdisc-core Scala version support](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core/latest-by-scala-version.svg?targetType=Js)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
+[![laserdisc-core Scala version support on the JVM](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core/latest-by-scala-version.svg?platform=jvm)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
+[![laserdisc-core Scala version support on Scala.js](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core/latest-by-scala-version.svg?platform=sjs1)](https://index.scala-lang.org/laserdisc-io/laserdisc/laserdisc-core)
 
 LaserDisc is a Scala client for [Redis](https://redis.io/) and for servers that
 speak the same protocol, such as [Valkey](https://valkey.io/),
@@ -16,26 +18,36 @@ can't be empty and a port can't be out of range. Mistakes in literal values are
 caught when your code compiles, and you choose the type each reply is read
 into.
 
-LaserDisc works with Scala 2.12, 2.13 and 3.9 or newer, on Java 17 or newer.
+LaserDisc works with Scala 2.12, 2.13 and 3.9 or newer, and on the JVM with Java
+17 or newer.
 
 | Module | What it gives you | JVM | Scala.js | Scala Native |
 | --- | --- | --- | --- | --- |
-| `laserdisc-core` | Commands and the Redis wire format | ✓ | ✓ | ✓ |
+| `laserdisc-core` | The commands, and how they're written and their replies read | ✓ | ✓ | ✓ |
 | `laserdisc-fs2` | A client built on [fs2](https://fs2.io/) and [Cats Effect](https://typelevel.org/cats-effect/) | ✓ | ✓ | ✓ |
 | `laserdisc-circe` | Store and read values as JSON with [circe](https://circe.github.io/circe/) | ✓ | ✓ | ✓ |
 | `laserdisc-cli` | An interactive prompt, like `redis-cli` | ✓ | ✓ | ✓ |
 
 ## Usage
 
+Add the client to your build, with the version in the Maven Central badge above
+in place of `latestVersion`. On the JVM:
+
 ```scala
-libraryDependencies += "io.laserdisc" %%% "laserdisc-fs2" % latestVersion
+libraryDependencies += "io.laserdisc" %% "laserdisc-fs2" % latestVersion
 ```
+
+In a Scala.js or Scala Native project, use `%%%` instead of `%%`. On Scala 2,
+the examples need `scalacOptions += "-Xsource:3"` for their `*` imports, or
+write `_` in their place. On Scala 2.12, also add `"-Ypartial-unification"`,
+which cats needs there too.
 
 With Redis running on `localhost:6379`:
 
+<!-- the same example as docs/index.md, where it's compiled: keep the two the same -->
 ```scala
 import cats.effect.{IO, IOApp}
-import log.effect.LogWriter
+import log.effect.{LogLevels, LogWriter}
 import log.effect.fs2.SyncLogWriter
 
 import laserdisc.*
@@ -44,11 +56,14 @@ import laserdisc.auto.*
 import laserdisc.fs2.*
 
 object Main extends IOApp.Simple {
-  implicit val logWriter: LogWriter[IO] = SyncLogWriter.consoleLog[IO]
+  // logs the client's connections to the console: leave it out to log nothing
+  implicit val logWriter: LogWriter[IO] = SyncLogWriter.consoleLogUpToLevel(LogLevels.Info)
 
   override val run: IO[Unit] =
     RedisClient[IO].to("localhost", 6379).use { client =>
+      // both commands go to the server together, and each reply comes back as a Right, or a Left if that command failed
       client.send(set("a", 23), get[PosInt]("a")).flatMap {
+        // get gives None when the key doesn't exist, and .value turns the PosInt back into an Int
         case (Right(OK), Right(Some(a))) => IO.println(s"a is ${a.value}")
         case other                       => IO.raiseError(new RuntimeException(s"unexpected reply: $other"))
       }
@@ -61,8 +76,14 @@ object Main extends IOApp.Simple {
 The full documentation is at
 [www.laserdisc.io](https://www.laserdisc.io/).
 It covers commands and their argument types, reading replies into your own
-types, the client, JSON with circe, the command line prompt, and the
-differences between platforms.
+types, the client, subscribing to channels, JSON with circe, the command line
+prompt, and the differences between platforms.
+
+The API documentation lists every command and type:
+[laserdisc-core](https://javadoc.io/doc/io.laserdisc/laserdisc-core_3/latest/index.html)
+for the commands, and
+[laserdisc-fs2](https://javadoc.io/doc/io.laserdisc/laserdisc-fs2_3/latest/index.html)
+for the client.
 
 ## Versioning
 
